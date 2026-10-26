@@ -2106,7 +2106,7 @@ function buildItemEl(it, forExport) {
   else if (it.type === 'sim') { buildSim(d, it, forExport); }
   else if (it.type === 'lab') { buildLab(d, it, forExport); }
   else d.innerHTML = mdToHtml(it.md || '');
-  if (!forExport && !it.lock && (!it.type || it.type === 'text' || it.type === 'img' || it.type === 'svg')) { const g = document.createElement('button'); g.type = 'button'; g.className = 'tgrab'; g.setAttribute('aria-label', 'จับเพื่อเลือก ย้าย หรือลบ'); g.innerHTML = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 2.5v15 M2.5 10h15 M10 2.5l-2.2 2.2 M10 2.5l2.2 2.2 M10 17.5l-2.2-2.2 M10 17.5l2.2-2.2 M2.5 10l2.2-2.2 M2.5 10l2.2 2.2 M17.5 10l-2.2-2.2 M17.5 10l-2.2 2.2" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>'; d.appendChild(g); }
+  if (!forExport && !it.lock && it.by !== 'teacher' && (!it.type || it.type === 'text' || it.type === 'img' || it.type === 'svg')) { const g = document.createElement('button'); g.type = 'button'; g.className = 'tgrab'; g.setAttribute('aria-label', 'จับเพื่อเลือก ย้าย หรือลบ'); g.innerHTML = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 2.5v15 M2.5 10h15 M10 2.5l-2.2 2.2 M10 2.5l2.2 2.2 M10 17.5l-2.2-2.2 M10 17.5l2.2-2.2 M2.5 10l2.2-2.2 M2.5 10l2.2 2.2 M17.5 10l-2.2-2.2 M17.5 10l-2.2 2.2" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>'; d.appendChild(g); }
   if ((it.type === 'img' || it.type === 'video') && it.credit) { const c = document.createElement('div'); c.className = 'credit'; c.textContent = String(it.credit).slice(0, 160); d.appendChild(c); }
   return d;
 }
@@ -2518,7 +2518,7 @@ function eraseAt(x, y, r, pt) {
 }
 function eraseWhole(x, y, r, pt, touched) {
   let hit = false;
-  const lists = [[DEV, S.mine], ...Object.entries(S.others)];
+  const lists = [[DEV, S.mine], ...Object.entries(S.others)].filter(([lid]) => lid !== 'teacher');
   for (const [lid, arr] of lists) {
     for (let i = arr.length - 1; i >= 0; i--) {
       const s = arr[i], rr = r + s.w / 2, b = sbox(s);
@@ -2548,7 +2548,7 @@ const ERASE_R = [8, 16, 34];
 /* rub away only the touched part of each stroke; the rest splits into new strokes */
 function erasePart(x, y, r, pt, touched) {
   let hit = false;
-  for (const [lid, arr] of [[DEV, S.mine], ...Object.entries(S.others)]) {
+  for (const [lid, arr] of [[DEV, S.mine], ...Object.entries(S.others)]) { if (lid === 'teacher') continue;
     for (let i = arr.length - 1; i >= 0; i--) {
       const s = arr[i], rr = r + s.w / 2, b = sbox(s);
       if (x < b[0] - rr || x > b[2] + rr || y < b[1] - rr || y > b[3] + rr) continue;
@@ -2736,7 +2736,7 @@ function tryScribble(stroke) {
   const sam = p.filter((_, i) => i % 2 === 0);
   const near = (x, y) => { for (const s of sam) { const dx = s[0] - x, dy = s[1] - y; if (dx * dx + dy * dy < R2) return true; } return false; };
   const removed = [], touched = new Set();
-  for (const [lid, arr] of [[DEV, S.mine], ...Object.entries(S.others)]) {
+  for (const [lid, arr] of [[DEV, S.mine], ...Object.entries(S.others)]) { if (lid === 'teacher') continue;
     for (let i = arr.length - 1; i >= 0; i--) {
       const s = arr[i], b = sbox(s);
       if (b[2] < x0 - R || b[0] > x1 + R || b[3] < y0 - R || b[1] > y1 + R) continue;
@@ -2834,7 +2834,7 @@ function commitShape(pt) {
 function strokeAt(x, y) {
   const tol = 10 / ((S.base || 1) * (S.zoom || 1));
   let best = null, bd = 1e9;
-  for (const r of allStrokes()) {
+  for (const r of allStrokes()) { if (r.layer === 'teacher') continue;
     const b = sbox(r.s), pad = tol + r.s.w;
     if (x < b[0] - pad || x > b[2] + pad || y < b[1] - pad || y > b[3] + pad) continue;
     const p = r.s.p;
@@ -2948,13 +2948,13 @@ function finishLasso(poly) {
   if (rect) poly = rect;
   else if (poly.length < 4) { selEl.innerHTML = ''; return; }
   const strokes = [];
-  for (const r of allStrokes()) {
+  for (const r of allStrokes()) { if (r.layer === 'teacher') continue;
     const p = r.s.p; let inside = 0, n = 0;
     for (let i = 0; i < p.length; i += 9) { n++; if (inPoly(poly, p[i] / 10, p[i + 1] / 10)) inside++; }
     if (n && inside / n >= 0.55) strokes.push({ layer: r.layer, id: r.s.id });
   }
   const items = [];
-  for (const it of visibleItems()) { if (it.lock) continue; const b = itemBox(it); if (inPoly(poly, (b[0] + b[2]) / 2, (b[1] + b[3]) / 2)) items.push(it.id); }
+  for (const it of visibleItems()) { if (it.lock || it.by === 'teacher') continue; const b = itemBox(it); if (inPoly(poly, (b[0] + b[2]) / 2, (b[1] + b[3]) / 2)) items.push(it.id); }
   if (!strokes.length && !items.length) { selEl.innerHTML = ''; toast('ไม่พบลายมือในบริเวณที่วง', 1600); return; }
   S.sel = { strokes, items, box: null };
   S.sel.box = selBox(S.sel);
@@ -2965,7 +2965,7 @@ function findStroke(r) { const arr = r.layer === DEV ? S.mine : (S.others[r.laye
 /* the topmost picture, graph, video or text box under a point */
 function itemsAt(x, y) {
   const its = visibleItems(), out = [];
-  for (let i = its.length - 1; i >= 0; i--) { if (its[i].lock) continue; const b = itemBox(its[i]); if (x >= b[0] && x <= b[2] && y >= b[1] && y <= b[3]) out.push(its[i]); }
+  for (let i = its.length - 1; i >= 0; i--) { if (its[i].lock || its[i].by === 'teacher') continue; const b = itemBox(its[i]); if (x >= b[0] && x <= b[2] && y >= b[1] && y <= b[3]) out.push(its[i]); }
   return out;
 }
 function itemAt(x, y) { return itemsAt(x, y)[0] || null; }
@@ -7220,7 +7220,7 @@ async function pdfImport(newNb) {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793011725';
+const BUILD = '1793011927';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
