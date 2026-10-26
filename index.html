@@ -114,6 +114,10 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .item.svg svg { width: 100%; height: auto; display: block; }
 .item.editing { -webkit-user-select: text; user-select: text; -webkit-touch-callout: default; cursor: text; outline: 2px dashed #2F4BB8; background: rgba(229, 234, 250, 0.6); white-space: pre-wrap; font-family: var(--doc); }
 .item mjx-container { display: inline-block; }
+.item { overflow-wrap: break-word; }
+.item .mh { display: block; font-weight: 700; font-size: 1.15em; margin: 0.1em 0 0.3em; }
+.item .chrow { display: flex; flex-wrap: wrap; gap: 0.2em 1.6em; margin: 0.15em 0 0.2em 1.4em; }
+.item .ch { display: inline-block; max-width: 100%; }
 .item .tgrab { position: absolute; left: -22px; top: -22px; width: 40px; height: 40px; border-radius: 999px; border: 1px solid #C9D2E3; background: rgba(255,255,255,0.92); color: #5F6F94; display: grid; place-items: center; pointer-events: auto; cursor: grab; padding: 0; opacity: 0.75; touch-action: none; z-index: 2; }
 .item .tgrab svg { width: 22px; height: 22px; }
 .item.editing .tgrab, body.present .item .tgrab, #items.editable .item .tgrab { display: none; }
@@ -1092,8 +1096,17 @@ async function typeset(node) {
     await window.MathJax.typesetPromise([node]);
   } catch (e) { /* math stays as text */ }
 }
+const CHOICE_SEP = '\u2003\u2003';
 function mdToHtml(md) {
-  return esc(md).replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>').replace(/\n/g, '<br>');
+  return String(md == null ? '' : md).split('\n').map((line) => {
+    let h = esc(line).replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>');
+    /* keep a number with its unit, and a choice letter with its answer */
+    h = h.replace(/(\d)\s+(?=(?:[a-zA-Zμ°Ω]|\$\\[a-z]))/g, '$1\u00a0').replace(/(^|\s)([กขคง]\.)\s+/g, '$1$2\u00a0');
+    if (/^##\s+/.test(line)) return '<span class="mh">' + h.replace(/^##\s+/, '') + '</span>';
+    const parts = line.split(CHOICE_SEP);
+    if (parts.length >= 2 && parts.every((x) => /^\s*[กขคงABCD]\.\s/.test(x))) return '<span class="chrow">' + h.split(CHOICE_SEP).map((x) => '<span class="ch">' + x.trim() + '</span>').join('') + '</span>';
+    return h;
+  }).join('<br>').replace(/(<\/span>)<br>/g, '$1');
 }
 function cleanSvg(str) {
   try {
@@ -5787,7 +5800,8 @@ function exQToMd(x, withKey) {
 }
 function exPutOnPage(x, withKey) {
   if (!S.page) return;
-  placeText(exQToMd(x, withKey), null, 620).then((w) => toast((withKey ? 'วางโจทย์พร้อมเฉลย' : 'วางโจทย์') + (w === 'newpage' ? 'ในหน้าใหม่แล้ว เพราะหน้านี้เต็ม' : 'ในที่ว่างแล้ว'), 1800));
+  const q = Object.assign({}, x.q, { c: x.order.map((o) => x.q.c[o]), a: x.key });
+  placeBlocks([qBlock(q, 0, withKey).replace(/^1\. /, '**โจทย์** ')], null, {}).then((r) => toast(placedMsg(r, 1), 1800));
 }
 function exEl(tag, cls, html) { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; }
 function exChips(box, list, cur, on) {
@@ -6188,22 +6202,12 @@ async function exSaveSet(qs) {
 async function exWorksheet(qs, withKey) {
   if (!S.nb) return;
   const L = 'กขคง';
-  const mk = (q, i) => { const order = q.c.map((_, k) => k); return (i + 1) + '. ' + q.q + '\n\n' + order.map((o, k) => '\u00a0\u00a0' + L[k] + '. ' + q.c[o]).join('\n'); };
-  const per = 5, items = [];
-  for (let i = 0; i < qs.length; i += per) {
-    const md = (i === 0 ? '## แบบฝึก ' + GB.picks.map(([t, c]) => exChName(t, c)).join(', ') + '\nชื่อ ........................................ เลขที่ ........\n\n' : '') + qs.slice(i, i + per).map((q, k) => mk(q, i + k)).join('\n\n');
-    items.push([{ id: 'i' + uid(), by: DEV, type: 'text', x: 60, y: 60, w: 880, md }]);
-  }
-  if (withKey) items.push([{ id: 'i' + uid(), by: DEV, type: 'text', x: 60, y: 60, w: 880, md: '## เฉลย\n\n' + qs.map((q, i) => (i + 1) + '. ' + L[q.a || 0] + '  ' + (q.e || '')).join('\n\n') }]);
-  const pages = (S.nb.pages || []).slice(); let at = pages.indexOf(S.pid); let first = null;
-  for (const its of items) {
-    const pid = 'p' + uid(); first = first || pid;
-    await S.store.set('pages/' + pid, { nb: S.nid, paper: 'lined', items: its, rev: now() }).catch(onStoreError);
-    pages.splice(++at, 0, pid);
-  }
-  try { await S.store.update('notebooks/' + S.nid, { pages, updatedAt: now() }); S.nb = Object.assign({}, S.nb, { pages }); openPage(first); renderPageList(); renderTitle(); } catch (e) { onStoreError(e); }
+  const blocks = ['## แบบฝึก ' + GB.picks.map(([t, c]) => exChName(t, c)).join(', ') + '\nชื่อ ........................................ เลขที่ ........\n\n' + qBlock(qs[0], 0) + '\n\n'].concat(qs.slice(1).map((q, i) => qBlock(q, i + 1) + '\n\n'));
+  const r = await placeBlocks(blocks, null, { newPage: true, paper: 'lined', fs: 20, gap: 40 });
+  let k = 0;
+  if (withKey) { const kb = ['## เฉลย'].concat(qs.map((q, i) => (i + 1) + '. ' + L[q.a || 0] + '  ' + (q.e || ''))); const r2 = await placeBlocks(kb, null, { newPage: true, paper: 'lined', fs: 18, gap: 10 }); k = r2.pages; }
   $('#examSheet').hidden = true;
-  toast('วางใบงาน ' + items.length + ' หน้าแล้ว ผู้เรียนเขียนตอบบนหน้าได้เลย', 2600);
+  toast('วางใบงาน ' + r.pages + ' หน้า' + (k ? ' และเฉลย ' + k + ' หน้า' : '') + ' เว้นที่ใต้แต่ละข้อให้เขียนวิธีทำ', 2800);
 }
 /* ---------- item analysis (classical test theory) ---------- */
 function analyseSet(set) {
@@ -6536,7 +6540,7 @@ function renderStudentQuiz() {
     const send = exEl('button', 'btn solid', Q.sent ? 'ส่งคำตอบใหม่อีกครั้ง' : 'ส่งคำตอบ'); send.onclick = () => { liveSend('ans', { id: Q.id, sid: LIVE.sid, name: LIVE.name, ans: Q.pick }); Q.sent = true; toast('ส่งคำตอบแล้ว รอผู้สอนเฉลย', 2200); renderStudentQuiz(); }; row.appendChild(send);
     row.appendChild(exEl('span', 'exch', left ? 'ยังไม่ได้ตอบ ' + left + ' ข้อ' : 'ตอบครบแล้ว' + (Q.sent ? ' ส่งแล้ว แก้แล้วส่งใหม่ได้จนกว่าจะเฉลย' : '')));
   }
-  const pg = exEl('button', 'btn', 'คัดลอกโจทย์ลงสมุดของฉัน'); pg.onclick = () => { const md = Q.qs.map((q, i) => (i + 1) + '. ' + q.q + '\n' + q.c.map((c, o) => '  ' + L[o] + '. ' + c).join('\n') + (Q.keys ? '\nตอบ ' + L[Q.keys[q.id]] + (Q.why && Q.why[q.id] ? ' ' + Q.why[q.id] : '') : '')).join('\n\n'); placeText(md, null, 700); $('#sqSheet').hidden = true; }; row.appendChild(pg);
+  const pg = exEl('button', 'btn', 'คัดลอกโจทย์ลงสมุดของฉัน'); pg.onclick = () => { const blocks = Q.qs.map((q, i) => qBlock(Object.assign({}, q, { a: Q.keys ? Q.keys[q.id] : 0, e: Q.why ? Q.why[q.id] : '' }), i, !!Q.keys)); placeBlocks(blocks, null, {}).then((r) => toast(placedMsg(r, blocks.length), 1800)); $('#sqSheet').hidden = true; }; row.appendChild(pg);
   box.appendChild(row);
   typeset(box);
 }
@@ -6573,6 +6577,53 @@ function freeSpot(w, h, near) {
   for (const x of xs) for (let y = 6; y + h <= H - 6; y += 12) if (fits(x, y)) return [x, y];
   return null;
 }
+
+/* measure a text box exactly as it will appear (fonts and equations included) */
+async function measureMd(md, w, fs) {
+  const d = document.createElement('div'); d.className = 'item'; d.style.cssText = 'visibility:hidden;left:0;top:0;width:' + w + 'px;font-size:' + fs + 'px';
+  d.innerHTML = mdToHtml(md); itemsEl.appendChild(d);
+  try { await typeset(d); } catch (e) { /* plain text height */ }
+  const h = d.offsetHeight; d.remove(); return h || estTextH(md, w, fs);
+}
+/* lay question blocks top to bottom: fill free space on this page, then continue on new pages; never past the page bottom */
+async function placeBlocks(blocks, near, opt) {
+  opt = opt || {}; const fs = opt.fs || 20, w = opt.w || (W - 100), gap = opt.gap != null ? opt.gap : Math.round(fs * 0.9), bottom = H - 30, top = 40;
+  if (!blocks.length || !S.page) return { pages: 0 };
+  const hs = []; for (const b of blocks) hs.push(await measureMd(b, w, fs));
+  const occ = occupiedBoxes(), m = 12;
+  const freeRect = (x, y, h) => y + h <= bottom && !occ.some((b) => x < b[2] + m && x + w > b[0] - m && y < b[3] + m && y + h > b[1] - m);
+  const x0 = clamp(Math.round(near ? near[0] : (W - w) / 2), 20, W - w - 20);
+  const chunks = []; let cur = null;
+  if (!opt.newPage) {
+    for (let y = clamp(Math.round(near ? near[1] : top), top, bottom); y + hs[0] <= bottom; y += 10) if (freeRect(x0, y, hs[0])) { cur = { here: true, x: x0, y, parts: [], h: 0 }; break; }
+  }
+  for (let i = 0; i < blocks.length; i++) {
+    const add = hs[i] + (cur && cur.parts.length ? gap : 0);
+    const ok = cur && (cur.here ? freeRect(cur.x, cur.y, cur.h + add) : cur.y + cur.h + add <= bottom);
+    if (!ok) { if (cur && cur.parts.length) chunks.push(cur); cur = { here: false, x: Math.round((W - w) / 2), y: top, parts: [], h: 0 }; }
+    cur.parts.push(blocks[i]); cur.h += hs[i] + (cur.parts.length > 1 ? gap : 0);
+  }
+  if (cur && cur.parts.length) chunks.push(cur);
+  const sep = opt.sepLines ? '\n' + '\n'.repeat(opt.sepLines) : '\n\n';
+  let newPages = 0, firstNew = null;
+  const pages = ((S.nb && S.nb.pages) || []).slice(); let at = pages.indexOf(S.pid);
+  for (const c of chunks) {
+    const it = { type: 'text', x: c.x, y: c.y, w, fs, md: c.parts.join(sep) };
+    if (c.here) { addItem(it); continue; }
+    const pid = 'p' + uid(); newPages++; firstNew = firstNew || pid;
+    await S.store.set('pages/' + pid, { nb: S.nid, paper: opt.paper || (S.page && S.page.paper) || 'grid', items: [Object.assign({ id: 'i' + uid(), by: DEV }, it)], rev: now() }).catch(onStoreError);
+    pages.splice(++at, 0, pid);
+  }
+  if (newPages) {
+    try { await S.store.update('notebooks/' + S.nid, { pages, updatedAt: now() }); S.nb = Object.assign({}, S.nb, { pages }); renderPageList(); renderTitle(); if (opt.newPage || !chunks.some((c) => c.here)) openPage(firstNew); } catch (e) { onStoreError(e); }
+  }
+  return { here: chunks.some((c) => c.here), pages: newPages };
+}
+function qBlock(q, i, withKey) {
+  const L = 'กขคง';
+  return (i + 1) + '. ' + q.q + '\n' + q.c.map((c, o) => L[o] + '. ' + c).join(CHOICE_SEP) + (withKey ? '\n**ตอบ ' + L[q.a || 0] + '** ' + (q.e || '') : '');
+}
+function placedMsg(r, n) { return r.pages ? 'วางโจทย์ ' + n + ' ข้อแล้ว' + (r.here ? ' ต่อไปอีก ' : ' ใน ') + r.pages + ' หน้าใหม่ถัดไป' : 'วางโจทย์ ' + n + ' ข้อในที่ว่างแล้ว'; }
 /* put a text box where it fits; if this page is full, start a new page right after it */
 async function placeText(md, near, w, fs) {
   w = w || 640; fs = fs || 20; const h = estTextH(md, w, fs);
@@ -6705,12 +6756,13 @@ async function qmMake() {
   if (!qs.length) { say('<div class="note err">ไม่พบโจทย์ในบทที่เลือก ลองเลือกบทอื่นหรือระดับคละ</div>'); return; }
   if (QM.out === 'page') {
     const L = 'กขคง';
-    const md = '**แบบฝึก** ' + (QM.picks.map(([t, c]) => exChName(t, c)).join(', ') || '') + '\n\n' + qs.map((q, i) => (i + 1) + '. ' + q.q + '\n' + q.c.map((c, o) => L[o] + '. ' + c).join('\u00a0\u00a0\u00a0\u00a0')).join('\n\n')
-      + (QM.key ? '\n\n**เฉลย** ' + qs.map((q, i) => (i + 1) + '. ' + L[q.a || 0]).join('  ') : '');
-    const near = QM.box ? [QM.box[0], QM.box[3] + 16] : null;
-    const where = await placeText(md, near, 720, 20);
+    const blocks = ['**แบบฝึก** ' + (QM.picks.map(([t, c]) => exChName(t, c)).join(', ') || '') + '\n' + qBlock(qs[0], 0)].concat(qs.slice(1).map((q, i) => qBlock(q, i + 1)));
+    if (QM.key) blocks.push('**เฉลย** ' + qs.map((q, i) => (i + 1) + '. ' + L[q.a || 0]).join('   '));
+    const near = QM.box ? [40, QM.box[3] + 16] : null;
+    say('<div class="note">กำลังจัดหน้า</div>');
+    const r = await placeBlocks(blocks, near, { fs: QM.fs || 20 });
     $('#qmSheet').hidden = true;
-    toast(where === 'newpage' ? 'หน้านี้เต็ม จึงวางโจทย์ ' + qs.length + ' ข้อในหน้าใหม่ถัดไป' : 'วางโจทย์ ' + qs.length + ' ข้อในที่ว่างใต้ส่วนที่เลือกแล้ว', 2600);
+    toast(placedMsg(r, qs.length) + ' ปรับขนาดตัวอักษรได้ด้วยการเลือกกล่องแล้วลากมุม', 3200);
     return;
   }
   const set = await exSaveSet(qs);
@@ -6767,7 +6819,7 @@ async function pdfImport(newNb) {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793002962';
+const BUILD = '1793003309';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
