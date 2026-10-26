@@ -258,8 +258,7 @@ body.present #viewport { border-radius: 0; cursor: default; }
 .pwait { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 8; padding: 14px 18px; border-radius: 14px; background: var(--surface); color: var(--muted); font-size: 15px; box-shadow: var(--shadow); text-align: center; line-height: 1.6; }
 body.focus #app { padding-block: 0; padding-left: 0; padding-right: 0; }
 body.focus #viewport { border-radius: 0; }
-body.fs-ios .dock { top: 84px; }
-body.fs-ios .exitfull { top: 84px; }
+body.fs-ios .dock { left: 96px; }
 .exitfull { position: absolute; right: 12px; top: 12px; z-index: 6; width: 44px; height: 44px; border-radius: 12px; border: 0; background: var(--surface); color: var(--fg); box-shadow: var(--shadow); cursor: pointer; display: flex; align-items: center; justify-content: center; opacity: 0.85; }
 .exitfull svg { width: 20px; height: 20px; }
 .grip { width: 24px; height: 46px; display: flex; align-items: center; justify-content: center; cursor: grab; touch-action: none; color: var(--muted); border-radius: 10px; }
@@ -4046,7 +4045,10 @@ function setDockPos(fx, fy) {
   if (fx == null) { d.style.left = ''; d.style.top = ''; d.style.bottom = ''; placeDock(); return; }
   const vw = vp.clientWidth, vh = vp.clientHeight;
   const ios = document.body.classList.contains('fs-ios');
-  const x = clamp(fx * vw, 6, Math.max(6, vw - d.offsetWidth - 6)), y = clamp(fy * vh, ios ? 84 : 6, Math.max(ios ? 84 : 6, vh - d.offsetHeight - 6));
+  const y = clamp(fy * vh, 6, Math.max(6, vh - d.offsetHeight - 6));
+  /* in iPad Safari fullscreen the system close button sits in the top-left corner: keep the toolbar to its right */
+  const minX = ios && y < 80 ? 96 : 6;
+  const x = clamp(fx * vw, minX, Math.max(minX, vw - d.offsetWidth - 6));
   d.style.left = x + 'px'; d.style.top = y + 'px'; d.style.bottom = 'auto';
   placeDock();
 }
