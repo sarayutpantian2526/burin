@@ -352,6 +352,10 @@ body.tv .peek.big { width: 660px; }
 .gplot svg { width: 100%; height: auto; display: block; }
 .gsl { display: grid; grid-template-columns: minmax(64px, max-content) 1fr 70px; gap: 4px 10px; align-items: center; font-size: 15px; margin-top: 6px; }
 .gsl input[type="range"] { width: 100%; height: 36px; accent-color: #2F4BB8; touch-action: none; }
+.sviews { display: flex; gap: 6px; flex-wrap: wrap; margin: 4px 0; }
+.sviews button, .stog { min-height: 34px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--fg); font: inherit; font-size: 13px; cursor: pointer; justify-self: start; }
+.stog[aria-pressed="true"] { background: var(--chrome); color: var(--chrome-fg); border-color: transparent; }
+canvas.s3d { cursor: grab; touch-action: none; }
 .gsl output { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
 .convbar { position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%); z-index: 6; display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px; padding: 8px; border-radius: 18px; background: var(--accent); color: var(--accent-fg); box-shadow: var(--shadow); max-width: calc(100% - 24px); }
 .convbar span { padding: 0 8px; font-size: 14px; font-weight: 600; }
@@ -4489,6 +4493,250 @@ const SIMS = {
     readouts(s, p) { const n = Math.round(p.n); return [['λ', f2(2 * p.L / n) + ' m'], ['f', f2(n * p.v / (2 * p.L)) + ' Hz'], ['ความถี่มูลฐาน', f2(p.v / (2 * p.L)) + ' Hz']]; }
   }
 };
+/* ---------- 3D scenes: a small depth-sorted canvas renderer, drag to turn, pinch or wheel to zoom ---------- */
+const CAM0 = { yaw: -0.55, pitch: 0.42, zoom: 1 };
+function cam3(s, w, h, R, tz) {
+  const cm = s.cam || (s.cam = Object.assign({}, CAM0));
+  const D = R * 3.2 / cm.zoom, F = D * Math.min(w, h) * 0.46 / R;
+  const cy = Math.cos(cm.yaw), sy = Math.sin(cm.yaw), cp = Math.cos(cm.pitch), sp = Math.sin(cm.pitch), X0 = w / 2, Y0 = h / 2;
+  return (x, y, z) => {
+    z -= tz || 0;
+    const x1 = x * cy + y * sy, y1 = -x * sy + y * cy;
+    const d = y1 * cp - z * sp, u = y1 * sp + z * cp, k = F / Math.max(D * 0.08, D + d);
+    return [X0 + x1 * k, Y0 - u * k, d, k];
+  };
+}
+class G3 {
+  constructor(P) { this.P = P; this.L = []; }
+  line(pts, col, lw, o) {
+    o = o || {};
+    let prev = null;
+    for (const p of pts) { const q = this.P(p[0], p[1], p[2]); if (prev) this.L.push({ t: 'l', d: (prev[2] + q[2]) / 2 + (o.bias || 0), a: prev, b: q, col, lw: lw || 2, dash: o.dash, al: o.alpha }); prev = q; }
+  }
+  ball(p, r, col, o) { const q = this.P(p[0], p[1], p[2]); this.L.push({ t: 'b', d: q[2] - 1e-6, q, r: Math.max(2, r * q[3]), col, glow: o && o.glow }); }
+  arrow(a, b, col, lw) { const A = this.P(a[0], a[1], a[2]), B = this.P(b[0], b[1], b[2]); this.L.push({ t: 'a', d: (A[2] + B[2]) / 2 - 1e-4, A, B, col, lw: lw || 2.4 }); }
+  text(p, s, col, size, align) { const q = this.P(p[0], p[1], p[2]); this.L.push({ t: 't', d: -1e9, q, s, col, size, align }); }
+  draw(c) {
+    this.L.sort((m, n) => n.d - m.d);
+    c.lineCap = 'round';
+    for (const e of this.L) {
+      if (e.t === 'l') {
+        c.globalAlpha = e.al == null ? 1 : e.al; c.strokeStyle = e.col; c.lineWidth = e.lw; c.setLineDash(e.dash || []);
+        c.beginPath(); c.moveTo(e.a[0], e.a[1]); c.lineTo(e.b[0], e.b[1]); c.stroke();
+      } else if (e.t === 'b') {
+        c.globalAlpha = 1; c.setLineDash([]);
+        const [x, y] = e.q, r = e.r;
+        if (e.glow) { const g0 = c.createRadialGradient(x, y, r * 0.6, x, y, r * 2.2); g0.addColorStop(0, 'rgba(255,190,60,0.45)'); g0.addColorStop(1, 'rgba(255,190,60,0)'); c.fillStyle = g0; c.beginPath(); c.arc(x, y, r * 2.2, 0, 6.283); c.fill(); }
+        const g = c.createRadialGradient(x - r * 0.35, y - r * 0.4, r * 0.1, x, y, r);
+        g.addColorStop(0, '#FFFFFF'); g.addColorStop(0.25, e.col); g.addColorStop(1, shade(e.col, 0.45));
+        c.fillStyle = g; c.beginPath(); c.arc(x, y, r, 0, 6.283); c.fill();
+      } else if (e.t === 'a') { c.globalAlpha = 1; c.setLineDash([]); simArrow(c, e.A[0], e.A[1], e.B[0], e.B[1], e.col, e.lw); }
+    }
+    c.globalAlpha = 1; c.setLineDash([]);
+    for (const e of this.L) if (e.t === 't') simLabel(c, e.s, e.q[0], e.q[1], e.col || INK, e.size || 13, e.align);
+  }
+}
+function shade(hex, f) { const n = parseInt(hex.slice(1), 16); const r = (n >> 16) * f, g = ((n >> 8) & 255) * f, b = (n & 255) * f; return 'rgb(' + (r | 0) + ',' + (g | 0) + ',' + (b | 0) + ')'; }
+function axes3(g, L, labels, o) {
+  o = o || {};
+  const cols = ['#B23A3A', '#2E7D4F', '#2F4BB8'], lab = labels || ['x', 'y', 'z'];
+  for (let i = 0; i < 3; i++) { if (o.skip && o.skip[i]) continue; const a = [0, 0, 0], b = [0, 0, 0]; a[i] = o.neg && o.neg[i] ? -L : 0; b[i] = L; a[2] += o.z0 || 0; b[2] += o.z0 || 0; g.line([a, b], cols[i], 1.2, { alpha: 0.6 }); g.text(b, lab[i], cols[i], 13); }
+}
+function circ3(cx, cy, cz, r, n, plane) {
+  const out = []; for (let i = 0; i <= n; i++) { const t = i / n * 6.2832, a = r * Math.cos(t), b = r * Math.sin(t); out.push(plane === 'xz' ? [cx + a, cy, cz + b] : [cx + a, cy + b, cz]); } return out;
+}
+/* Kepler orbits from J2000 mean elements: a (AU), e, i, node, perihelion longitude, mean longitude (deg), period (days) */
+const PLANETS = [
+  ['ดาวพุธ', 0.3871, 0.2056, 7.00, 48.33, 77.46, 252.25, 87.97, '#8D8D8D', 0.05],
+  ['ดาวศุกร์', 0.7233, 0.0068, 3.39, 76.68, 131.53, 181.98, 224.70, '#D9A441', 0.08],
+  ['โลก', 1.0000, 0.0167, 0.00, 0, 102.95, 100.46, 365.26, '#2F6FD0', 0.085],
+  ['ดาวอังคาร', 1.5237, 0.0934, 1.85, 49.56, 336.04, 355.45, 686.98, '#C2571A', 0.065],
+  ['ดาวพฤหัสบดี', 5.2034, 0.0484, 1.30, 100.46, 14.73, 34.40, 4332.6, '#B88A5A', 0.2]
+];
+function planetPos(P, t, tiltX) {
+  const [, a, e, inc, node, peri, L0, T] = P, rad = Math.PI / 180;
+  const M = ((L0 - peri) * rad + 2 * Math.PI * t / T) % (2 * Math.PI);
+  let E = M; for (let k = 0; k < 8; k++) E -= (E - e * Math.sin(E) - M) / (1 - e * Math.cos(E));
+  const xp = a * (Math.cos(E) - e), yp = a * Math.sqrt(1 - e * e) * Math.sin(E);
+  const w = (peri - node) * rad, O = node * rad, i = Math.min(80, inc * tiltX) * rad;
+  const x1 = xp * Math.cos(w) - yp * Math.sin(w), y1 = xp * Math.sin(w) + yp * Math.cos(w);
+  const x2 = x1, y2 = y1 * Math.cos(i), z2 = y1 * Math.sin(i);
+  return [x2 * Math.cos(O) - y2 * Math.sin(O), x2 * Math.sin(O) + y2 * Math.cos(O), z2, Math.hypot(xp, yp)];
+}
+Object.assign(SIMS, {
+  solar3d: {
+    three: true, h: 380, title: 'ระบบสุริยะ 3 มิติ', hint: 'วงโคจรตามกฎของเคปเลอร์จากค่าจริง ลากเพื่อหมุนมุมมอง เปิดกาลอวกาศเพื่อดูวงโคจรเป็นเกลียวตามเวลา',
+    params: { spd: ['ความเร็วเวลา (วันต่อวินาที)', 60, 1, 400, 1], n: ['จำนวนดาวเคราะห์', 4, 1, 5, 1], tilt: ['ขยายความเอียงวงโคจร (เท่า)', 1, 1, 10, 1], st: ['มุมมองกาลอวกาศ', 0, 0, 1, 1] },
+    views: [['มุมเอียง', -0.55, 0.42], ['มองจากบน', 0, 1.5707], ['มองจากข้าง', 0, 0.02]],
+    init() { return { t: 0, cam: Object.assign({}, CAM0) }; },
+    preview(s) { s.t = 120; },
+    step(s, p, dt) { s.t += dt * p.spd; return false; },
+    draw(c, w, h, s, p) {
+      const pl = PLANETS.slice(0, Math.round(p.n)), R = pl[pl.length - 1][1] * 1.15, stm = p.st >= 0.5;
+      const span = Math.max(...pl.map((q) => q[7])) * 1.25, ks = R * 1.5 / span;
+      const P = cam3(s, w, h, R * (stm ? 1.25 : 1), stm ? -R * 0.75 : 0), g = new G3(P);
+      for (const q of circ3(0, 0, 0, R, 4, 'xy').slice(0, 4)) g.line([[0, 0, 0], q], '#E3E7EE', 1, { alpha: 0.6 });
+      g.line(circ3(0, 0, 0, R, 96), '#E3E7EE', 1);
+      if (stm) {
+        g.line([[0, 0, -span * ks], [0, 0, 0]], '#E0A23A', 3);
+        g.text([0, 0, -span * ks], 'อดีต', SOFT, 13); g.text([R * 1.02, 0, 0], 'ปัจจุบัน', SOFT, 13);
+      }
+      for (const q of pl) {
+        const pts = [];
+        if (stm) { const n = 360; for (let i = 0; i <= n; i++) { const tt = s.t - span * (1 - i / n), r = planetPos(q, tt, p.tilt); pts.push([r[0], r[1], r[2] - (s.t - tt) * ks]); } g.line(pts, q[8], 1.8, { alpha: 0.9 }); }
+        else { for (let i = 0; i <= 180; i++) { const r = planetPos(q, s.t + q[7] * i / 180, p.tilt); pts.push([r[0], r[1], r[2]]); } g.line(pts, q[8], 1.4, { alpha: 0.75 }); }
+        const r = planetPos(q, s.t, p.tilt);
+        if (Math.abs(r[2]) > 0.002 && !stm) g.line([[r[0], r[1], 0], [r[0], r[1], r[2]]], SOFT, 1, { dash: [3, 3] });
+        g.ball([r[0], r[1], r[2]], Math.max(q[9], R * 0.022), q[8]);
+        g.text([r[0], r[1], r[2] + R * 0.06], q[0], INK, 12, 'center');
+      }
+      g.ball([0, 0, 0], R * 0.05, '#F2B52E', { glow: true });
+      g.draw(c);
+      simLabel(c, stm ? 'แกนตั้งคือเวลา ดาวแต่ละดวงลากเส้นโลกเป็นเกลียว ดวงอาทิตย์เป็นเส้นตรง' : 'ระนาบเส้นจางคือระนาบวงโคจรของโลก', 12, h - 14, SOFT, 12);
+    },
+    readouts(s, p) {
+      const E = PLANETS[2], r = planetPos(E, s.t, 1)[3], v = Math.sqrt(0.0002959122 * (2 / r - 1 / E[1])) * 1731.46;
+      return [['เวลาผ่านไป', Math.floor(s.t) + ' วัน'], ['โลกห่างดวงอาทิตย์', r.toFixed(4) + ' AU'], ['อัตราเร็วโลก', v.toFixed(2) + ' km/s']];
+    }
+  },
+  helix3d: {
+    three: true, h: 380, title: 'ประจุในสนามแม่เหล็ก 3 มิติ', hint: 'ความเร็วขนานกับ B ไม่เปลี่ยน ความเร็วตั้งฉากทำให้วน จึงได้เส้นทางเป็นเกลียว เวกเตอร์ความเร็วสีน้ำเงิน แรงสีส้ม',
+    params: { vp: ['ความเร็วตั้งฉากกับ B', 2, 0.5, 5, 0.1], va: ['ความเร็วขนานกับ B', 0.6, 0, 3, 0.1], B: ['สนามแม่เหล็ก B', 1, 0.2, 3, 0.1], q: ['ประจุต่อมวล q/m', 1, -2, 2, 0.5] },
+    views: [['มุมเอียง', -0.55, 0.42], ['มองตามแนว B', 0, 1.5707], ['มองจากข้าง', 0, 0.02]],
+    init() { return { t: 0, cam: Object.assign({}, CAM0) }; },
+    preview(s) { s.t = 6; },
+    path(p, t) {
+      const W = p.q * p.B;
+      if (Math.abs(W) < 1e-6) return [[p.vp * t, 0, p.va * t], [p.vp, 0, p.va]];
+      return [[p.vp / W * Math.sin(W * t), p.vp / W * (Math.cos(W * t) - 1), p.va * t], [p.vp * Math.cos(W * t), -p.vp * Math.sin(W * t), p.va]];
+    },
+    tEnd(p) { const W = Math.abs(p.q * p.B); return W < 1e-6 ? 4 : 3 * 2 * Math.PI / W; },
+    step(s, p, dt) { s.t = Math.min(s.t + dt * 1.5, this.tEnd(p)); return s.t >= this.tEnd(p); },
+    draw(c, w, h, s, p) {
+      const W = Math.abs(p.q * p.B), r = W < 1e-6 ? 2 : p.vp / W, top = p.va * this.tEnd(p);
+      const R = Math.max(2.4, r * 2.2, top * 0.6), g = new G3(cam3(s, w, h, R, top / 2));
+      for (const x of [-1, 0, 1]) for (const y of [-1, 0, 1]) { const X = x * R * 0.7, Y = y * R * 0.7 - r; g.line([[X, Y, -0.2], [X, Y, top + 0.6]], '#C9D2E3', 1, { alpha: 0.7 }); g.arrow([X, Y, top + 0.2], [X, Y, top + 0.9], '#9AA9C6', 1.6); }
+      g.text([R * 0.7, R * 0.7 - r, top + 1], 'B', '#5F6F94', 15);
+      const pts = [], n = 400, tt = s.t;
+      for (let i = 0; i <= n; i++) pts.push(this.path(p, tt * i / n)[0]);
+      if (pts.length > 1) g.line(pts, '#14181F', 2.2);
+      const ghost = []; const te = this.tEnd(p); for (let i = 0; i <= 200; i++) ghost.push(this.path(p, te * i / 200)[0]); g.line(ghost, SOFT, 1, { dash: [4, 5], alpha: 0.6 });
+      const [pos, v] = this.path(p, tt);
+      const F = [p.q * v[1] * p.B, -p.q * v[0] * p.B, 0], sc = 0.45;
+      g.ball(pos, 0.13, p.q >= 0 ? '#D24B4B' : '#2F6FD0');
+      g.arrow(pos, [pos[0] + v[0] * sc, pos[1] + v[1] * sc, pos[2] + v[2] * sc], VC);
+      if (Math.hypot(F[0], F[1]) > 1e-6) g.arrow(pos, [pos[0] + F[0] * sc * 0.6, pos[1] + F[1] * sc * 0.6, pos[2]], FC);
+      g.draw(c);
+    },
+    readouts(s, p) {
+      const W = Math.abs(p.q * p.B); if (W < 1e-6) return [['ประจุเป็นศูนย์', 'ไม่มีแรงแม่เหล็ก เคลื่อนที่แนวตรง']];
+      const T = 2 * Math.PI / W; return [['รัศมี r = mv⊥/qB', f2(p.vp / W)], ['คาบ T = 2πm/qB', f2(T)], ['ระยะเกลียว v∥T', f2(p.va * T)]];
+    }
+  },
+  emwave3d: {
+    three: true, title: 'คลื่นแม่เหล็กไฟฟ้า 3 มิติ', hint: 'สนามไฟฟ้า E (แดง) และสนามแม่เหล็ก B (น้ำเงิน) ตั้งฉากกัน เฟสเดียวกัน และตั้งฉากกับทิศที่คลื่นเคลื่อนที่',
+    params: { lam: ['ความยาวคลื่น', 3, 1, 6, 0.1], E0: ['แอมพลิจูด', 1.2, 0.4, 2, 0.1], spd: ['ความเร็วภาพเคลื่อนไหว', 1, 0, 3, 0.1] },
+    views: [['มุมเอียง', -0.9, 0.38], ['มองตามทิศคลื่น', 0, 0.02], ['มองจากข้าง', 1.5707, 0.02]],
+    init() { return { t: 0, cam: { yaw: -0.9, pitch: 0.38, zoom: 1 } }; },
+    step(s, p, dt) { s.t += dt * p.spd; return false; },
+    draw(c, w, h, s, p) {
+      const L = 6, R = 4.3, g = new G3(cam3(s, w, h, R, 0)), k = 2 * Math.PI / p.lam, ph = k * s.t * 1.2;
+      g.line([[0, -L, 0], [0, L + 0.5, 0]], INK, 1.4); g.arrow([0, L, 0], [0, L + 0.9, 0], INK, 2); g.text([0, L + 1.2, 0], 'ทิศการเคลื่อนที่', INK, 13, 'center');
+      const e = [], b = [];
+      for (let i = 0; i <= 240; i++) { const y = -L + 2 * L * i / 240, a = p.E0 * Math.cos(k * y - ph); e.push([0, y, a]); b.push([a, y, 0]); }
+      g.line(e, '#C0392B', 2.2); g.line(b, '#2F6FD0', 2.2);
+      for (let y = -L; y <= L + 1e-6; y += p.lam / 8) { const a = p.E0 * Math.cos(k * y - ph); if (Math.abs(a) > 0.08) { g.arrow([0, y, 0], [0, y, a], 'rgba(192,57,43,0.75)', 1.5); g.arrow([0, y, 0], [a, y, 0], 'rgba(47,111,208,0.75)', 1.5); } }
+      g.text([0, -L, p.E0 + 0.3], 'E', '#C0392B', 16); g.text([p.E0 + 0.3, -L, 0], 'B', '#2F6FD0', 16);
+      g.draw(c);
+    },
+    readouts(s, p) { return [['λ', f2(p.lam) + ' หน่วย'], ['ขนาดของ B', 'B = E/c ในภาพขยาย B ให้เห็นชัด'], ['ทิศ', 'E × B ชี้ไปทางที่คลื่นเคลื่อนที่']]; }
+  },
+  wire3d: {
+    three: true, h: 380, title: 'สนามแม่เหล็กรอบลวดตรง 3 มิติ', hint: 'เส้นสนามเป็นวงกลมรอบลวด ทิศตามกฎมือขวา ยิ่งไกลลวดสนามยิ่งอ่อน จุดบนวงเคลื่อนตามทิศของสนาม',
+    params: { I: ['กระแส (A)', 10, -20, 20, 1], z: ['จำนวนชั้นที่แสดง', 3, 1, 5, 1] },
+    views: [['มุมเอียง', -0.55, 0.42], ['มองตามแนวลวด', 0, 1.5707], ['มองจากข้าง', 0, 0.02]],
+    init() { return { t: 0, cam: Object.assign({}, CAM0) }; },
+    preview(s) { s.t = 0.4; },
+    step(s, p, dt) { s.t += dt; return false; },
+    draw(c, w, h, s, p) {
+      const R = 4, g = new G3(cam3(s, w, h, R, 0)), nz = Math.round(p.z), radii = [1, 2, 3];
+      const up = p.I >= 0 ? 1 : -1;
+      g.line([[0, 0, -3.4], [0, 0, 3.4]], '#B8762E', 5); if (p.I) g.arrow([0, 0, -up * 1.2], [0, 0, up * 1.8], '#E39A3B', 3);
+      g.text([0.2, 0, 3.6], 'I = ' + p.I + ' A', '#8A5A1E', 13);
+      for (let j = 0; j < nz; j++) {
+        const z = nz === 1 ? 0 : -2.6 + 5.2 * j / (nz - 1);
+        for (const r of radii) {
+          const str = Math.abs(p.I) / 20 / r;
+          g.line(circ3(0, 0, z, r, 72), '#2F4BB8', 1 + 2.5 * str, { alpha: 0.35 + 0.6 * Math.min(1, str * 2) });
+          if (!p.I) continue;
+          const nA = 6;
+          for (let i = 0; i < nA; i++) {
+            const a0 = i / nA * 6.2832 + up * s.t * str * 3, x = r * Math.cos(a0), y = r * Math.sin(a0), L = 0.35 + str * 1.2;
+            g.arrow([x, y, z], [x - up * L * Math.sin(a0), y + up * L * Math.cos(a0), z], VC, 1.8);
+          }
+        }
+      }
+      g.draw(c);
+    },
+    readouts(s, p) { const B = (r) => (2e-7 * Math.abs(p.I) / r * 1e6).toFixed(1) + ' μT'; return [['B ที่ 1 cm', B(0.01)], ['B ที่ 2 cm', B(0.02)], ['B ที่ 3 cm', B(0.03)]]; }
+  },
+  spacetime3d: {
+    three: true, h: 380, title: 'กาลอวกาศและกรวยแสง', hint: 'แกนตั้งคือ ct แกนนอนสองแกนคืออวกาศ เส้นโลกต้องอยู่ในกรวยแสงเสมอ ขีดบนเส้นโลกคือนาฬิกาที่ติดไปกับวัตถุ เดินทุก 0.5 หน่วยเวลาของตัวเอง',
+    params: { v: ['อัตราเร็ว (เท่าของ c)', 0.6, 0, 0.95, 0.01], r: ['รัศมีวงโคจร', 1, 0.5, 2, 0.1] },
+    views: [['มุมเอียง', -0.55, 0.3], ['มองจากบน', 0, 1.5707], ['มองจากข้าง (x กับ ct)', 0, 0.01]],
+    init() { return { t: 0, cam: { yaw: -0.55, pitch: 0.3, zoom: 1 } }; },
+    preview(s) { s.t = 3; },
+    step(s, p, dt) { s.t = Math.min(6, s.t + dt * 0.8); return s.t >= 6; },
+    draw(c, w, h, s, p) {
+      const T = 6, R = 4.6, g = new G3(cam3(s, w, h, R, T / 2)), gam = 1 / Math.sqrt(1 - p.v * p.v);
+      axes3(g, T + 0.4, ['x', 'y', 'ct'], { skip: [0, 0, 0] });
+      for (let i = 0; i < 16; i++) { const a = i / 16 * 6.2832; g.line([[0, 0, 0], [T * Math.cos(a), T * Math.sin(a), T]], '#E6B85C', 1, { alpha: 0.45 }); }
+      g.line(circ3(0, 0, T, T, 96), '#E6B85C', 1.4, { alpha: 0.8 }); g.text([T * 0.72, 0, T * 0.72], 'แสง', '#B07D1E', 13);
+      g.line(circ3(0, 0, s.t, s.t, 72), '#E6B85C', 2.2);
+      g.line([[0, 0, 0], [0, 0, T]], '#5D6B80', 2.2);
+      g.line([[0, 0, 0], [p.v * T, 0, T]], '#2E7D4F', 2.2);
+      const hel = []; for (let i = 0; i <= 300; i++) { const ct = T * i / 300, a = p.v * ct / p.r; hel.push([p.r * Math.cos(a) - p.r, p.r * Math.sin(a), ct]); }
+      g.line(hel, '#2F4BB8', 2.2);
+      for (let k = 1; k * 0.5 <= T; k++) { g.ball([0, 0, k * 0.5], 0.05, '#5D6B80'); }
+      for (let k = 1; k * 0.5 * gam <= T; k++) { const ct = k * 0.5 * gam, a = p.v * ct / p.r; g.ball([p.r * Math.cos(a) - p.r, p.r * Math.sin(a), ct], 0.06, '#2F4BB8'); g.ball([p.v * ct, 0, ct], 0.05, '#2E7D4F'); }
+      const a = p.v * s.t / p.r;
+      g.ball([0, 0, s.t], 0.13, '#5D6B80'); g.ball([p.v * s.t, 0, s.t], 0.13, '#2E7D4F'); g.ball([p.r * Math.cos(a) - p.r, p.r * Math.sin(a), s.t], 0.13, '#2F4BB8');
+      g.line(circ3(0, 0, s.t, 5.5, 4).slice(0, 5), '#C9D2E3', 1, { alpha: 0.5 });
+      g.draw(c);
+      simLabel(c, 'เทา: อยู่นิ่ง   เขียว: เคลื่อนที่แนวตรง   น้ำเงิน: วิ่งเป็นวงกลม', 12, h - 14, SOFT, 12);
+    },
+    readouts(s, p) { const gam = 1 / Math.sqrt(1 - p.v * p.v); return [['γ', gam.toFixed(3)], ['เวลาของผู้อยู่นิ่ง', (s.t).toFixed(2)], ['เวลาของผู้เคลื่อนที่', (s.t / gam).toFixed(2)]]; }
+  }
+});
+/* turn, zoom and preset views for 3D scenes */
+function bindSim3D(cv, it, head) {
+  const S0 = SIMS[it.kind]; cv.style.touchAction = 'none'; cv.classList.add('s3d');
+  const pts = new Map(); let pinch0 = 0, zoom0 = 1, lastTap = 0;
+  const redraw = () => { const live = findItem(it.id) || it, R = simRuntime(live); if (!R.playing) simRender(live, cv, cv.parentNode.querySelector('.sro')); };
+  const cam = () => { const R = simRuntime(findItem(it.id) || it); return R.st.cam || (R.st.cam = Object.assign({}, CAM0)); };
+  cv.addEventListener('pointerdown', (e) => {
+    e.stopPropagation(); cv.setPointerCapture(e.pointerId); pts.set(e.pointerId, [e.clientX, e.clientY]);
+    if (pts.size === 2) { const [a, b] = [...pts.values()]; pinch0 = Math.hypot(a[0] - b[0], a[1] - b[1]); zoom0 = cam().zoom; }
+    const t = now(); if (pts.size === 1 && t - lastTap < 320) { const v = S0.views[0]; Object.assign(cam(), { yaw: v[1], pitch: v[2], zoom: 1 }); redraw(); } lastTap = t;
+  });
+  cv.addEventListener('pointermove', (e) => {
+    if (!pts.has(e.pointerId)) return; e.stopPropagation();
+    const p0 = pts.get(e.pointerId), dx = e.clientX - p0[0], dy = e.clientY - p0[1]; pts.set(e.pointerId, [e.clientX, e.clientY]);
+    const c = cam();
+    if (pts.size >= 2) { const [a, b] = [...pts.values()]; const d = Math.hypot(a[0] - b[0], a[1] - b[1]); if (pinch0) c.zoom = clamp(zoom0 * d / pinch0, 0.4, 4); }
+    else { c.yaw -= dx * 0.009; c.pitch = clamp(c.pitch + dy * 0.009, -1.5707, 1.5707); }
+    redraw();
+  });
+  const up = (e) => { pts.delete(e.pointerId); if (pts.size < 2) pinch0 = 0; };
+  cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
+  cv.addEventListener('wheel', (e) => { e.preventDefault(); e.stopPropagation(); const c = cam(); c.zoom = clamp(c.zoom * Math.exp(-e.deltaY * 0.0015), 0.4, 4); redraw(); }, { passive: false });
+  if (head && S0.views) {
+    const box = document.createElement('span'); box.className = 'sviews';
+    for (const v of S0.views) { const b = document.createElement('button'); b.type = 'button'; b.textContent = v[0]; b.onclick = () => { Object.assign(cam(), { yaw: v[1], pitch: v[2], zoom: 1 }); redraw(); }; box.appendChild(b); }
+    head.after(box);
+  }
+}
+
 const SIMRT = new Map();
 let simRaf = 0, simLast = 0;
 function simParams(it) { const def = SIMS[it.kind].params, out = {}; for (const k of Object.keys(def)) out[k] = it.params && isFinite(it.params[k]) ? +it.params[k] : def[k][1]; return out; }
@@ -4499,7 +4747,7 @@ function simRuntime(it) {
 }
 function simRender(it, cv, ro) {
   const S0 = SIMS[it.kind], rt = simRuntime(it), p = simParams(it);
-  const w = 560, h = 300, dpr = Math.min(3, (window.devicePixelRatio || 1) * Math.max(1, (S.base || 1) * (S.zoom || 1)));
+  const w = 560, h = S0.h || 300, dpr = Math.min(3, (window.devicePixelRatio || 1) * Math.max(1, (S.base || 1) * (S.zoom || 1)));
   if (cv.width !== Math.round(w * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); }
   const c = cv.getContext('2d'); c.setTransform(dpr, 0, 0, dpr, 0, 0); c.clearRect(0, 0, w, h);
   c.fillStyle = '#FFFFFF'; c.fillRect(0, 0, w, h);
@@ -4527,6 +4775,7 @@ function buildSim(d, it, forExport) {
   head.innerHTML = '<span></span>' + (forExport ? '' : '<span class="sbtns"><button type="button" data-s="play">เล่น</button><button type="button" data-s="reset">เริ่มใหม่</button></span>');
   head.firstChild.textContent = S0.title; d.appendChild(head);
   const cv = document.createElement('canvas'); cv.className = 'simcv'; d.appendChild(cv);
+  if (S0.three && !forExport) bindSim3D(cv, it, head);
   const ro = document.createElement('div'); ro.className = 'sro'; d.appendChild(ro);
   const hint = document.createElement('div'); hint.className = 'shint'; hint.textContent = S0.hint; d.appendChild(hint);
   const rt = simRuntime(it);
@@ -4538,11 +4787,17 @@ function buildSim(d, it, forExport) {
     const lab = document.createElement('span'); lab.textContent = def[0];
     const out = document.createElement('output'); out.textContent = fmtNum(p[k]);
     if (forExport) { g.append(lab, document.createElement('span'), out); continue; }
+    if (def[2] === 0 && def[3] === 1 && def[4] === 1) {
+      const tb = document.createElement('button'); tb.type = 'button'; tb.className = 'stog'; tb.setAttribute('aria-pressed', p[k] >= 0.5 ? 'true' : 'false'); tb.textContent = p[k] >= 0.5 ? 'เปิด' : 'ปิด';
+      out.textContent = '';
+      tb.onclick = () => { const live = findItem(it.id); if (!live) return; const v = (simParams(live)[k] >= 0.5) ? 0 : 1; live.params = Object.assign({}, live.params || {}, { [k]: v }); tb.setAttribute('aria-pressed', v ? 'true' : 'false'); tb.textContent = v ? 'เปิด' : 'ปิด'; const R = simRuntime(live); if (!R.playing) simRender(live, cv, ro); savePage(); };
+      g.append(lab, tb, out); continue;
+    }
     const r = document.createElement('input'); r.type = 'range'; r.min = def[2]; r.max = def[3]; r.step = def[4]; r.value = p[k]; r.setAttribute('aria-label', def[0]);
     r.addEventListener('input', () => {
       const live = findItem(it.id); if (!live) return;
       live.params = Object.assign({}, live.params || {}, { [k]: +r.value }); out.textContent = fmtNum(+r.value);
-      const R = simRuntime(live); R.st = S0.init(simParams(live)); R.ended = false; simRender(live, cv, ro);
+      const R = simRuntime(live), cam = R.st.cam, tKeep = S0.three ? R.st.t : null; R.st = S0.init(simParams(live)); if (cam) R.st.cam = cam; if (tKeep != null && it.kind !== 'helix3d' && it.kind !== 'spacetime3d') R.st.t = tKeep; R.ended = false; simRender(live, cv, ro);
     });
     r.addEventListener('change', () => savePage());
     g.append(lab, r, out);
@@ -4553,11 +4808,11 @@ function buildSim(d, it, forExport) {
     pb.textContent = rt.playing ? 'หยุด' : (rt.ended ? 'เล่นอีกครั้ง' : 'เล่น');
     pb.onclick = () => {
       const live = findItem(it.id) || it, R = simRuntime(live);
-      if (R.ended) { R.st = S0.init(simParams(live)); R.ended = false; }
+      if (R.ended) { const cam = R.st.cam; R.st = S0.init(simParams(live)); if (cam) R.st.cam = cam; R.ended = false; }
       R.playing = !R.playing; pb.textContent = R.playing ? 'หยุด' : 'เล่น';
       if (R.playing && !simRaf) simRaf = requestAnimationFrame(simTick);
     };
-    rb.onclick = () => { const live = findItem(it.id) || it, R = simRuntime(live); R.st = S0.init(simParams(live)); R.playing = false; R.ended = false; pb.textContent = 'เล่น'; simRender(live, cv, ro); };
+    rb.onclick = () => { const live = findItem(it.id) || it, R = simRuntime(live), cam = R.st.cam; R.st = S0.init(simParams(live)); if (cam) R.st.cam = cam; R.playing = false; R.ended = false; pb.textContent = 'เล่น'; simRender(live, cv, ro); };
   }
 }
 function insertSim(kind) {
@@ -4573,7 +4828,7 @@ function renderSimPicker() {
     b.innerHTML = '<canvas width="280" height="150"></canvas><b></b><span></span>';
     b.querySelector('b').textContent = S0.title; b.querySelector('span').textContent = S0.hint;
     const cv = b.querySelector('canvas'), c = cv.getContext('2d'), p = {}; for (const [pk, def] of Object.entries(S0.params)) p[pk] = def[1];
-    const st = S0.init(p); if (k === 'projectile') st.t = S0.calc(p).T * 0.45; if (k === 'collision') { st.x1 = -1; st.x2 = 1; }
+    const st = S0.init(p); if (S0.preview) S0.preview(st, p); if (k === 'projectile') st.t = S0.calc(p).T * 0.45; if (k === 'collision') { st.x1 = -1; st.x2 = 1; }
     c.setTransform(0.5, 0, 0, 0.5, 0, 0); c.fillStyle = '#FFFFFF'; c.fillRect(0, 0, 560, 300); S0.draw(c, 560, 300, st, p);
     b.onclick = () => { $('#simSheet').hidden = true; insertSim(k); };
     g.appendChild(b);
@@ -5423,7 +5678,7 @@ async function openExam() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1792997403';
+const BUILD = '1792998176';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
