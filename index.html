@@ -258,6 +258,8 @@ body.present #viewport { border-radius: 0; cursor: default; }
 .pwait { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 8; padding: 14px 18px; border-radius: 14px; background: var(--surface); color: var(--muted); font-size: 15px; box-shadow: var(--shadow); text-align: center; line-height: 1.6; }
 body.focus #app { padding-block: 0; padding-left: 0; padding-right: 0; }
 body.focus #viewport { border-radius: 0; }
+body.fs-ios .dock { top: 84px; }
+body.fs-ios .exitfull { top: 84px; }
 .exitfull { position: absolute; right: 12px; top: 12px; z-index: 6; width: 44px; height: 44px; border-radius: 12px; border: 0; background: var(--surface); color: var(--fg); box-shadow: var(--shadow); cursor: pointer; display: flex; align-items: center; justify-content: center; opacity: 0.85; }
 .exitfull svg { width: 20px; height: 20px; }
 .grip { width: 24px; height: 46px; display: flex; align-items: center; justify-content: center; cursor: grab; touch-action: none; color: var(--muted); border-radius: 10px; }
@@ -4017,8 +4019,11 @@ function setFocus(on) {
      so there we only hide the app bars; installed from the home screen the app already fills the screen */
   const ipad = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
   let standalone = false; try { standalone = !!(navigator.standalone || matchMedia('(display-mode: standalone)').matches || matchMedia('(display-mode: fullscreen)').matches); } catch (e) { /* ignore */ }
+  /* installed from the home screen the app already fills the screen; in Safari we still ask for browser fullscreen,
+     and keep the toolbar clear of iPad's own close button and its pull-down-to-shrink area at the top */
+  document.body.classList.toggle('fs-ios', on && ipad && !standalone);
   try {
-    if (on && (ipad || standalone)) { /* bars hidden by CSS only */ }
+    if (on && standalone) { /* bars hidden by CSS only */ }
     else if (on) { const req = de.requestFullscreen || de.webkitRequestFullscreen; if (req) { const r = req.call(de); if (r && r.catch) r.catch(() => {}); } }
     else if (document.fullscreenElement || document.webkitFullscreenElement) { const ex = document.exitFullscreen || document.webkitExitFullscreen; if (ex) { const r = ex.call(document); if (r && r.catch) r.catch(() => {}); } }
   } catch (e) { /* the bars still hide */ }
@@ -4040,7 +4045,8 @@ function setDockPos(fx, fy) {
   const d = $('#dock');
   if (fx == null) { d.style.left = ''; d.style.top = ''; d.style.bottom = ''; placeDock(); return; }
   const vw = vp.clientWidth, vh = vp.clientHeight;
-  const x = clamp(fx * vw, 6, Math.max(6, vw - d.offsetWidth - 6)), y = clamp(fy * vh, 6, Math.max(6, vh - d.offsetHeight - 6));
+  const ios = document.body.classList.contains('fs-ios');
+  const x = clamp(fx * vw, 6, Math.max(6, vw - d.offsetWidth - 6)), y = clamp(fy * vh, ios ? 84 : 6, Math.max(ios ? 84 : 6, vh - d.offsetHeight - 6));
   d.style.left = x + 'px'; d.style.top = y + 'px'; d.style.bottom = 'auto';
   placeDock();
 }
