@@ -1454,10 +1454,13 @@ function fit() {
 }
 function resizeCanvases(force) {
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
-  const res = Math.min(W * S.base * dpr * clamp(S.zoom, 1, 2.5), 3400) / W;
+  /* three page-size canvases take a lot of memory on iPad; keep them only as sharp as the screen needs.
+     The paper pattern is drawn at lower resolution: thin grid lines still look the same. */
+  const res = Math.min(W * S.base * dpr * clamp(S.zoom, 1, 2), 2800) / W;
   if (!force && Math.abs(res - S.res) / (S.res || 1) < 0.08) return;
-  S.res = res;
-  for (const c of [cBg, cInk, cLive]) { c.width = Math.round(W * res); c.height = Math.round(H * res); }
+  S.res = res; S.bgRes = res * 0.6;
+  for (const c of [cInk, cLive]) { c.width = Math.round(W * res); c.height = Math.round(H * res); }
+  cBg.width = Math.round(W * S.bgRes); cBg.height = Math.round(H * S.bgRes);
   drawBg(); drawInk();
 }
 const resizeLater = debounce(() => resizeCanvases(false), 220);
@@ -1493,7 +1496,7 @@ function paper(c, kind) {
 }
 function drawBg() {
   const c = cBg.getContext('2d');
-  c.setTransform(S.res, 0, 0, S.res, 0, 0);
+  c.setTransform(S.bgRes || S.res, 0, 0, S.bgRes || S.res, 0, 0);
   c.fillStyle = '#FFFFFF'; c.fillRect(0, 0, W, H);
   paper(c, (S.page && S.page.paper) || 'grid');
 }
@@ -1607,7 +1610,7 @@ function buildItemEl(it, forExport) {
   d.dataset.id = it.id;
   if (it.type === 'svg') { d.innerHTML = cleanSvg(it.svg) || ''; }
   else if (it.type === 'img') {
-    if (okAsset(it.asset) || okRemote(it.url)) { const im = document.createElement('img'); im.alt = 'ภาพที่แทรก'; im.draggable = false; d.appendChild(im); if (okAsset(it.asset)) setAssetSrc(im, it.asset); else { im.crossOrigin = 'anonymous'; im.src = it.url; } }
+    if (okAsset(it.asset) || okRemote(it.url)) { const im = document.createElement('img'); im.alt = 'ภาพที่แทรก'; im.draggable = false; im.decoding = 'async'; d.appendChild(im); if (okAsset(it.asset)) setAssetSrc(im, it.asset); else { im.crossOrigin = 'anonymous'; im.src = it.url; } }
   } else if (it.type === 'video') {
     if (forExport) { d.innerHTML = '<div style="aspect-ratio:16/9;background:#20262F;color:#FFFFFF;display:flex;align-items:center;justify-content:center;border-radius:6px;font-family:var(--ui)">วิดีโอ ดูได้ในแอป</div>'; }
     else if (okAsset(it.asset) || okRemote(it.url)) { const v = document.createElement('video'); v.controls = true; v.playsInline = true; v.preload = 'metadata'; d.appendChild(v); if (okAsset(it.asset)) setAssetSrc(v, it.asset); else { v.src = it.url; if (okRemote(it.poster)) v.poster = it.poster; } }
@@ -3299,10 +3302,10 @@ async function prepImage(file) {
     const w0 = im.naturalWidth, h0 = im.naturalHeight;
     if (!w0 || !h0) throw { code: 'unsupported_type' };
     if (keep) return { blob: file, type: file.type, ar: h0 / w0 };
-    const k = Math.min(1, 2000 / Math.max(w0, h0));
+    const k = Math.min(1, 1600 / Math.max(w0, h0));
     const cv = document.createElement('canvas'); cv.width = Math.round(w0 * k); cv.height = Math.round(h0 * k);
     const c = cv.getContext('2d'); c.fillStyle = '#FFFFFF'; c.fillRect(0, 0, cv.width, cv.height); c.drawImage(im, 0, 0, cv.width, cv.height);
-    const blob = await new Promise((res) => cv.toBlob(res, 'image/jpeg', 0.88));
+    const blob = await new Promise((res) => cv.toBlob(res, 'image/jpeg', 0.85));
     if (!blob) throw { code: 'unsupported_type' };
     return { blob, type: 'image/jpeg', ar: h0 / w0 };
   } catch (e) { throw (e && e.code) ? e : { code: 'unsupported_type' }; }
@@ -3428,6 +3431,15 @@ async function pageData(pid) {
   const strokes = []; for (const l of ls) for (const s of (l.strokes || [])) strokes.push({ s });
   return { page, strokes };
 }
+const thumbImgs = new Map();
+function thumbImg(id, u) {
+  if (thumbImgs.has(id)) return thumbImgs.get(id);
+  const p = new Promise((res) => { const im = new Image(); im.decoding = 'async'; im.onload = () => {
+    /* keep a small copy only: a full photo decoded for every thumbnail refresh is what makes the page heavy */
+    try { const k = Math.min(1, 240 / Math.max(im.naturalWidth, im.naturalHeight)); const cv = document.createElement('canvas'); cv.width = Math.max(1, Math.round(im.naturalWidth * k)); cv.height = Math.max(1, Math.round(im.naturalHeight * k)); cv.getContext('2d').drawImage(im, 0, 0, cv.width, cv.height); res(cv); } catch (e) { res(null); }
+  }; im.onerror = () => res(null); im.src = u; });
+  thumbImgs.set(id, p); return p;
+}
 async function drawThumb(pid, cv) {
   const { page, strokes } = await pageData(pid);
   const key = JSON.stringify([page && page.rev, page && page.paper, (page && page.items || []).length, strokes.length, strokes.length ? strokes[strokes.length - 1].s.id : '']);
@@ -3445,7 +3457,7 @@ async function drawThumb(pid, cv) {
       const ih = it.type === 'graph' ? 440 : it.type === 'sim' ? 560 : iw * (it.ar || 0.62);
       const u = it.asset && blobUrls.get(it.asset);
       c.fillStyle = it.type === 'video' ? '#2A313C' : '#E8ECF2'; c.fillRect(x, y, iw, ih);
-      if (u && it.type === 'img') { await new Promise((res) => { const im = new Image(); im.onload = () => { try { c.drawImage(im, x, y, iw, ih); } catch (e) { /* skip */ } res(); }; im.onerror = res; im.src = u; }); }
+      if (u && it.type === 'img') { const im = await thumbImg(it.asset, u); if (im) { try { c.drawImage(im, x, y, iw, ih); } catch (e) { /* skip */ } } }
       if (it.type === 'graph') { c.strokeStyle = '#2F4BB8'; c.lineWidth = 6; c.beginPath(); for (let i = 0; i <= 40; i++) { const t = i / 40; c.lineTo(x + 30 + t * (iw - 60), y + ih / 2 - Math.sin(t * Math.PI * 2) * ih * 0.3); } c.stroke(); }
     } else {
       const lines = String(it.md || '').split('\n').slice(0, 12), fs = it.fs || 24;
@@ -4389,58 +4401,82 @@ $('#bCalcClose').onclick = () => { $('#calc').hidden = true; setTimeout(fit, 0);
 /* ---------- teaching-media library sorted by level and chapter (Thai curriculum), plus a personal saved library ---------- */
 const CURRIC = {
   p: ['ประถม', [
-    ['แรงและการเคลื่อนที่', [['แรงผลักแรงดึง', 'push and pull force children'], ['แรงเสียดทาน', 'friction everyday'], ['แรงโน้มถ่วง', 'gravity falling objects']]],
-    ['แม่เหล็ก', [['ขั้วแม่เหล็ก', 'bar magnet poles'], ['เส้นแรงแม่เหล็ก', 'magnetic field iron filings'], ['เข็มทิศ', 'compass magnetic']]],
-    ['แสงและเงา', [['การเกิดเงา', 'shadow light source'], ['การสะท้อน', 'reflection mirror light'], ['สีของแสง', 'prism rainbow dispersion']]],
-    ['เสียง', [['การสั่น', 'vibration sound tuning fork'], ['เสียงสูงต่ำ', 'pitch frequency sound'], ['หูกับการได้ยิน', 'human ear anatomy']]],
-    ['ไฟฟ้าอย่างง่าย', [['วงจรไฟฟ้า', 'simple electric circuit battery bulb'], ['ตัวนำและฉนวน', 'conductor insulator'], ['ต่ออนุกรมขนาน', 'series parallel circuit']]],
-    ['โลกและอวกาศ', [['ข้างขึ้นข้างแรม', 'moon phases'], ['ระบบสุริยะ', 'solar system planets'], ['กลางวันกลางคืน', 'earth rotation day night']]]
+    ['ป.2 แสงกับการมองเห็น', [['การมองเห็นวัตถุ', 'light reflection eye seeing objects'], ['แหล่งกำเนิดแสง', 'light sources sun lamp'], ['อันตรายจากแสงจ้า', 'bright light eye protection']]],
+    ['ป.3 แรงสัมผัสและแรงไม่สัมผัส', [['แรงผลักแรงดึง', 'push and pull force'], ['การเปลี่ยนการเคลื่อนที่', 'force changes motion'], ['แรงแม่เหล็ก', 'magnet attract repel'], ['ขั้วแม่เหล็ก', 'bar magnet poles iron filings']]],
+    ['ป.3 พลังงานไฟฟ้า', [['แหล่งพลังงานไฟฟ้า', 'power station types'], ['การใช้ไฟฟ้าอย่างประหยัด', 'energy saving electricity'], ['พลังงานหมุนเวียน', 'renewable energy solar wind']]],
+    ['ป.4 แรงโน้มถ่วง มวล และน้ำหนัก', [['แรงโน้มถ่วงของโลก', 'gravity falling objects'], ['เครื่องชั่งสปริง', 'spring scale newton meter'], ['มวลและความเฉื่อย', 'inertia mass']]],
+    ['ป.4 แสงผ่านตัวกลาง', [['โปร่งใส โปร่งแสง ทึบแสง', 'transparent translucent opaque'], ['การเดินทางของแสง', 'light travels in straight lines'], ['การสะท้อนของแสง', 'mirror reflection']]],
+    ['ป.5 แรงลัพธ์และแรงเสียดทาน', [['การรวมแรง', 'resultant force tug of war'], ['แรงเสียดทาน', 'friction surfaces'], ['การลดแรงเสียดทาน', 'reduce friction lubrication wheels']]],
+    ['ป.5 เสียง', [['การเกิดเสียง', 'vibration sound tuning fork'], ['เสียงสูงเสียงต่ำ', 'pitch frequency sound'], ['เสียงดังเสียงค่อย', 'loudness amplitude decibel'], ['มลพิษทางเสียง', 'noise pollution ear protection']]],
+    ['ป.6 ไฟฟ้าสถิต', [['การขัดถูวัตถุ', 'static electricity balloon hair'], ['แรงไฟฟ้า', 'electrostatic attraction repulsion'], ['ฟ้าผ่า', 'lightning']]],
+    ['ป.6 วงจรไฟฟ้าอย่างง่าย', [['ส่วนประกอบวงจร', 'simple electric circuit battery bulb'], ['ต่ออนุกรม', 'series circuit bulbs'], ['ต่อขนาน', 'parallel circuit bulbs'], ['แม่เหล็กไฟฟ้า', 'electromagnet nail coil']]],
+    ['ป.6 การเกิดเงา', [['เงามืดและเงามัว', 'umbra penumbra shadow'], ['สุริยุปราคา จันทรุปราคา', 'solar lunar eclipse']]]
   ]],
   mt: ['ม.ต้น', [
-    ['การเคลื่อนที่', [['ระยะทางการกระจัด', 'distance displacement'], ['อัตราเร็วความเร็ว', 'speed velocity'], ['ความเร่ง', 'acceleration']]],
-    ['แรงและกฎของนิวตัน', [['แรงลัพธ์', 'resultant force vectors'], ['แรงเสียดทาน', 'friction force'], ['โมเมนต์คาน', 'lever moment seesaw']]],
-    ['งานและพลังงาน', [['งาน', 'work physics force distance'], ['พลังงานศักย์และจลน์', 'potential kinetic energy roller coaster'], ['เครื่องกลอย่างง่าย', 'simple machines pulley']]],
-    ['ความร้อน', [['การถ่ายโอนความร้อน', 'conduction convection radiation'], ['การขยายตัว', 'thermal expansion'], ['การเปลี่ยนสถานะ', 'phase change states of matter']]],
-    ['คลื่นและเสียง', [['คลื่นตามขวางตามยาว', 'transverse longitudinal wave'], ['การสะท้อนของเสียง', 'echo sound reflection'], ['มลพิษทางเสียง', 'decibel scale sound']]],
-    ['แสง', [['การหักเหของแสง', 'refraction of light'], ['เลนส์', 'convex concave lens'], ['ตาและการมองเห็น', 'human eye optics']]],
-    ['ไฟฟ้า', [['กฎของโอห์ม', "Ohm's law"], ['วงจรในบ้าน', 'household wiring circuit'], ['พลังงานไฟฟ้า', 'electric power energy meter']]]
+    ['ม.1 ความร้อน', [['อุณหภูมิและการวัด', 'thermometer temperature scale'], ['การถ่ายโอนความร้อน', 'conduction convection radiation'], ['การขยายตัวเมื่อได้รับความร้อน', 'thermal expansion bridge joint'], ['สมดุลความร้อน', 'thermal equilibrium mixing'], ['การเปลี่ยนสถานะ', 'latent heat phase change']]],
+    ['ม.2 แรงและการเคลื่อนที่', [['ปริมาณสเกลาร์และเวกเตอร์', 'scalar vector quantity'], ['อัตราเร็วและความเร็ว', 'speed velocity'], ['แรงลัพธ์', 'resultant force diagram'], ['แรงเสียดทาน', 'static kinetic friction']]],
+    ['ม.2 โมเมนต์ของแรง', [['คาน', 'lever classes'], ['โมเมนต์', 'moment of force seesaw'], ['เครื่องกลอย่างง่าย', 'simple machines pulley wheel axle']]],
+    ['ม.2 แรงในของไหล', [['ความดันของเหลว', 'liquid pressure depth'], ['แรงพยุง', 'buoyant force Archimedes'], ['ความดันอากาศ', 'atmospheric pressure barometer']]],
+    ['ม.2 สนามของแรง', [['สนามโน้มถ่วง', 'gravitational field'], ['สนามแม่เหล็ก', 'magnetic field lines'], ['สนามไฟฟ้า', 'electric field charges']]],
+    ['ม.2 งานและพลังงาน', [['งานและกำลัง', 'work and power'], ['พลังงานศักย์โน้มถ่วง', 'gravitational potential energy'], ['พลังงานจลน์', 'kinetic energy'], ['กฎการอนุรักษ์พลังงาน', 'conservation of energy roller coaster']]],
+    ['ม.3 ไฟฟ้า', [['กฎของโอห์ม', "Ohm's law"], ['ตัวต้านทานต่ออนุกรมขนาน', 'resistors series parallel'], ['พลังงานไฟฟ้าในบ้าน', 'household electricity meter'], ['ชิ้นส่วนอิเล็กทรอนิกส์', 'diode transistor LED electronics']]],
+    ['ม.3 คลื่นและแสง', [['คลื่นกล', 'transverse longitudinal wave'], ['คลื่นแม่เหล็กไฟฟ้า', 'electromagnetic spectrum'], ['การสะท้อนของแสง', 'plane mirror reflection'], ['การหักเหของแสง', 'refraction of light'], ['เลนส์และทัศนอุปกรณ์', 'convex lens magnifier camera'], ['ความสว่าง', 'illuminance lux']]],
+    ['ม.3 ระบบสุริยะและอวกาศ', [['แรงโน้มถ่วงกับระบบสุริยะ', 'solar system gravity orbit'], ['ฤดูกาล', 'seasons earth tilt'], ['เทคโนโลยีอวกาศ', 'space telescope satellite']]]
   ]],
-  mp: ['ม.ปลาย', [
-    ['1 ธรรมชาติและพัฒนาการทางฟิสิกส์', [['การวัดและความไม่แน่นอน', 'measurement uncertainty'], ['เวอร์เนียร์ ไมโครมิเตอร์', 'vernier caliper micrometer'], ['หน่วย SI', 'SI base units']]],
-    ['2 การเคลื่อนที่แนวตรง', [['กราฟการเคลื่อนที่', 'velocity time graph'], ['การตกอิสระ', 'free fall'], ['ความเร่งคงตัว', 'uniform acceleration']]],
-    ['3 แรงและกฎการเคลื่อนที่', [['กฎของนิวตัน', "Newton's laws of motion"], ['แผนภาพวัตถุอิสระ', 'free body diagram'], ['แรงเสียดทาน', 'friction coefficient']]],
-    ['4 สมดุลกล', [['ทอร์ก', 'torque'], ['ศูนย์กลางมวล', 'center of mass'], ['สมดุลสถิต', 'static equilibrium']]],
-    ['5 งานและพลังงาน', [['งานและพลังงาน', 'work energy theorem'], ['การอนุรักษ์พลังงาน', 'conservation of energy pendulum'], ['กำลัง', 'mechanical power']]],
-    ['6 โมเมนตัมและการชน', [['โมเมนตัม', 'momentum'], ['การชน', 'elastic inelastic collision'], ['ลูกตุ้มนิวตัน', "Newton's cradle"]]],
-    ['7 การเคลื่อนที่แนวโค้ง', [['โพรเจกไทล์', 'projectile motion'], ['การเคลื่อนที่แบบวงกลม', 'uniform circular motion'], ['วงโคจรดาวเทียม', 'satellite orbit']]],
-    ['8 การเคลื่อนที่แบบฮาร์มอนิก', [['SHM', 'simple harmonic motion'], ['ลูกตุ้มอย่างง่าย', 'simple pendulum'], ['มวลติดสปริง', 'mass spring oscillation']]],
-    ['9 คลื่น', [['คลื่นกล', 'mechanical wave'], ['การแทรกสอด', 'wave interference'], ['การเลี้ยวเบน', 'wave diffraction']]],
-    ['10 แสงเชิงฟิสิกส์', [['สลิตคู่', 'double slit experiment'], ['เกรตติง', 'diffraction grating'], ['โพลาไรเซชัน', 'polarization of light']]],
-    ['11 แสงเชิงรังสี', [['การหักเห', 'refraction Snell law'], ['การสะท้อนกลับหมด', 'total internal reflection'], ['ภาพจากเลนส์', 'lens ray diagram']]],
-    ['12 เสียง', [['คลื่นเสียง', 'sound wave compression'], ['ดอปเพลอร์', 'Doppler effect'], ['การสั่นพ้อง', 'resonance tube standing wave']]],
-    ['13 ไฟฟ้าสถิต', [['กฎของคูลอมบ์', "Coulomb's law"], ['สนามไฟฟ้า', 'electric field lines'], ['ตัวเก็บประจุ', 'capacitor']]],
-    ['14 ไฟฟ้ากระแส', [['วงจรไฟฟ้า', 'electric circuit diagram'], ['กฎของเคอร์ชอฟฟ์', 'Kirchhoff circuit laws'], ['แบตเตอรี่', 'electrochemical cell battery']]],
-    ['15 แม่เหล็กและไฟฟ้า', [['สนามแม่เหล็ก', 'magnetic field lines current'], ['การเหนี่ยวนำ', 'electromagnetic induction'], ['มอเตอร์และเครื่องกำเนิด', 'electric motor generator']]],
-    ['16 ความร้อนและแก๊ส', [['ทฤษฎีจลน์ของแก๊ส', 'kinetic theory of gases'], ['การเคลื่อนที่แบบบราวน์', 'Brownian motion'], ['กฎของแก๊ส', 'ideal gas law']]],
-    ['17 ของแข็งและของไหล', [['สภาพยืดหยุ่น', "Young's modulus stress strain"], ['แรงลอยตัว', 'buoyancy Archimedes'], ['หลักของแบร์นูลลี', 'Bernoulli principle']]],
-    ['18 คลื่นแม่เหล็กไฟฟ้า', [['สเปกตรัม', 'electromagnetic spectrum'], ['คลื่นแม่เหล็กไฟฟ้า', 'electromagnetic wave propagation'], ['การสื่อสาร', 'radio antenna']]],
-    ['19 ฟิสิกส์อะตอม', [['แบบจำลองอะตอม', 'Bohr model atom'], ['ปรากฏการณ์โฟโตอิเล็กทริก', 'photoelectric effect'], ['สเปกตรัมเส้น', 'emission spectrum hydrogen']]],
-    ['20 ฟิสิกส์นิวเคลียร์และอนุภาค', [['กัมมันตภาพรังสี', 'radioactive decay'], ['ฟิชชันฟิวชัน', 'nuclear fission fusion'], ['อนุภาคมูลฐาน', 'standard model elementary particles']]]
+  mpb: ['ม.ปลาย พื้นฐาน', [
+    ['การเคลื่อนที่และแรง', [['ความเร็ว ความเร่ง', 'velocity time graph'], ['กฎการเคลื่อนที่ของนิวตัน', "Newton's laws"], ['แรงกิริยาแรงปฏิกิริยา', "Newton's third law action reaction"]]],
+    ['การเคลื่อนที่แบบต่าง ๆ', [['แนวตรง', 'linear motion'], ['โพรเจกไทล์', 'projectile motion'], ['วงกลม', 'circular motion'], ['การสั่น', 'oscillation pendulum']]],
+    ['แรงโน้มถ่วงและดาวเทียม', [['ดาวเทียม', 'satellite orbit'], ['ดวงจันทร์', 'moon orbit tides']]],
+    ['ไฟฟ้าและแม่เหล็ก', [['สนามแม่เหล็กจากกระแส', 'magnetic field current right hand rule'], ['แรงต่อลวดและประจุ', 'force on current carrying wire'], ['มอเตอร์', 'electric motor'], ['เครื่องกำเนิดไฟฟ้า', 'generator electromagnetic induction']]],
+    ['แรงในนิวเคลียสและพลังงาน', [['แรงเข้มแรงอ่อน', 'strong weak nuclear force'], ['ฟิชชันฟิวชัน', 'nuclear fission fusion'], ['โรงไฟฟ้าและเซลล์สุริยะ', 'nuclear power plant solar cell']]],
+    ['คลื่นและเสียง', [['สมบัติคลื่น', 'wave reflection refraction diffraction'], ['การสั่นพ้อง', 'resonance natural frequency'], ['บีตและดอปเพลอร์', 'beats Doppler effect'], ['อัลตราซาวนด์', 'ultrasound imaging']]],
+    ['แสงสีและคลื่นแม่เหล็กไฟฟ้า', [['การมองเห็นสี', 'color vision cones'], ['การผสมแสงสี', 'additive color mixing RGB'], ['คลื่นแม่เหล็กไฟฟ้าในเทคโนโลยี', 'MRI CT scan'], ['แอนะล็อกและดิจิทัล', 'analog digital signal']]]
+  ]],
+  mp: ['ฟิสิกส์ ม.4-6', [
+    ['ธรรมชาติและพัฒนาการทางฟิสิกส์', [['การวัดและความไม่แน่นอน', 'measurement uncertainty'], ['เวอร์เนียร์ ไมโครมิเตอร์', 'vernier caliper micrometer'], ['หน่วย SI และคำอุปสรรค', 'SI base units prefixes'], ['ประวัติฟิสิกส์', 'history of physics Galileo Newton']]],
+    ['การเคลื่อนที่แนวตรง', [['ตำแหน่ง การกระจัด', 'displacement'], ['กราฟการเคลื่อนที่', 'velocity time graph'], ['ความเร่งคงตัว', 'uniform acceleration'], ['การตกอิสระ', 'free fall']]],
+    ['แรงและกฎการเคลื่อนที่', [['กฎของนิวตัน', "Newton's laws of motion"], ['แผนภาพวัตถุอิสระ', 'free body diagram'], ['แรงเสียดทาน', 'friction coefficient'], ['แรงโน้มถ่วงสากล', 'universal gravitation']]],
+    ['สมดุลกล', [['โมเมนต์และทอร์ก', 'torque'], ['ศูนย์กลางมวล', 'center of mass'], ['เสถียรภาพ', 'stability equilibrium'], ['สมดุลสถิต', 'static equilibrium ladder']]],
+    ['งานและพลังงาน', [['งาน', 'work force displacement'], ['พลังงานศักย์ยืดหยุ่น', 'elastic potential energy spring'], ['การอนุรักษ์พลังงาน', 'conservation of mechanical energy'], ['กำลัง', 'mechanical power']]],
+    ['โมเมนตัมและการชน', [['โมเมนตัมและการดล', 'momentum impulse'], ['การชนหนึ่งมิติ', 'elastic inelastic collision'], ['การชนสองมิติ', 'two dimensional collision'], ['ลูกตุ้มนิวตัน', "Newton's cradle"]]],
+    ['การเคลื่อนที่แนวโค้ง', [['โพรเจกไทล์', 'projectile motion'], ['การเคลื่อนที่แบบวงกลม', 'uniform circular motion centripetal'], ['การโคจร', 'satellite orbit Kepler']]],
+    ['การเคลื่อนที่แบบฮาร์มอนิกอย่างง่าย', [['SHM', 'simple harmonic motion'], ['ลูกตุ้มอย่างง่าย', 'simple pendulum'], ['มวลติดสปริง', 'mass spring oscillation'], ['การสั่นพ้อง', 'resonance']]],
+    ['คลื่น', [['คลื่นกล', 'mechanical wave'], ['การซ้อนทับ', 'wave superposition'], ['การแทรกสอด', 'wave interference ripple tank'], ['การเลี้ยวเบน', 'wave diffraction']]],
+    ['เสียง', [['สมบัติของเสียง', 'sound wave compression rarefaction'], ['ความเข้มเสียง', 'sound intensity level decibel'], ['การสั่นพ้องของอากาศในท่อ', 'resonance tube'], ['ดอปเพลอร์และคลื่นกระแทก', 'Doppler effect sonic boom']]],
+    ['ไฟฟ้าสถิต', [['กฎของคูลอมบ์', "Coulomb's law"], ['สนามไฟฟ้า', 'electric field lines'], ['ศักย์ไฟฟ้า', 'electric potential equipotential'], ['ตัวเก็บประจุ', 'capacitor']]],
+    ['ไฟฟ้ากระแส', [['กระแสไฟฟ้า', 'electric current drift velocity'], ['กฎของโอห์ม สภาพต้านทาน', 'resistivity Ohm law'], ['วงจรและเคอร์ชอฟฟ์', 'Kirchhoff circuit laws'], ['แบตเตอรี่และ emf', 'electromotive force internal resistance']]],
+    ['แม่เหล็กและไฟฟ้า', [['สนามแม่เหล็ก', 'magnetic field lines current'], ['แรงลอเรนซ์', 'Lorentz force charged particle'], ['การเหนี่ยวนำ', 'electromagnetic induction Faraday'], ['ไฟฟ้ากระแสสลับ หม้อแปลง', 'alternating current transformer']]],
+    ['ความร้อนและแก๊ส', [['ความร้อนและอุณหภูมิ', 'specific heat capacity'], ['กฎของแก๊ส', 'ideal gas law'], ['ทฤษฎีจลน์ของแก๊ส', 'kinetic theory of gases'], ['พลังงานภายใน', 'internal energy first law thermodynamics']]],
+    ['ของแข็งและของไหล', [['สภาพยืดหยุ่น', "Young's modulus stress strain"], ['ความดันในของไหล', 'hydrostatic pressure'], ['แรงพยุง', 'buoyancy Archimedes'], ['ความตึงผิว ความหนืด', 'surface tension viscosity'], ['แบร์นูลลี', 'Bernoulli principle']]],
+    ['คลื่นแม่เหล็กไฟฟ้า', [['การเกิดคลื่นแม่เหล็กไฟฟ้า', 'electromagnetic wave propagation'], ['สเปกตรัม', 'electromagnetic spectrum'], ['โพลาไรเซชัน', 'polarization of light']]],
+    ['แสงเชิงฟิสิกส์', [['สลิตคู่', 'double slit experiment'], ['สลิตเดี่ยว', 'single slit diffraction'], ['เกรตติง', 'diffraction grating'], ['ฟิล์มบาง', 'thin film interference']]],
+    ['แสงเชิงรังสี', [['การสะท้อนและกระจก', 'curved mirror ray diagram'], ['การหักเห', 'refraction Snell law'], ['การสะท้อนกลับหมด', 'total internal reflection'], ['เลนส์และทัศนอุปกรณ์', 'lens ray diagram microscope telescope']]],
+    ['ฟิสิกส์อะตอม', [['แบบจำลองอะตอม', 'Rutherford Bohr model'], ['สเปกตรัมเส้น', 'emission spectrum hydrogen'], ['โฟโตอิเล็กทริก', 'photoelectric effect'], ['ทวิภาวะของคลื่นและอนุภาค', 'wave particle duality electron diffraction']]],
+    ['ฟิสิกส์นิวเคลียร์และอนุภาค', [['กัมมันตภาพรังสี', 'radioactive decay alpha beta gamma'], ['ครึ่งชีวิต', 'half life decay curve'], ['ฟิชชันฟิวชัน', 'nuclear fission fusion'], ['อนุภาคมูลฐาน', 'standard model elementary particles']]]
   ]],
   olymp: ['สอวน. และ IJSO', [
-    ['กลศาสตร์ขั้นสูง', [['การเคลื่อนที่สัมพัทธ์', 'relative motion'], ['ระบบรอก', 'pulley system Atwood'], ['การหมุนของวัตถุแข็งเกร็ง', 'rigid body rotation moment of inertia']]],
-    ['ไฟฟ้าและแม่เหล็กขั้นสูง', [['วงจร RC', 'RC circuit charging'], ['แรงลอเรนซ์', 'Lorentz force charged particle'], ['กฎของฟาราเดย์', "Faraday's law"]]],
-    ['ทัศนศาสตร์', [['ระบบเลนส์หลายตัว', 'compound microscope telescope optics'], ['ฟิล์มบาง', 'thin film interference'], ['ปริซึม', 'prism dispersion']]],
-    ['ปฏิบัติการ', [['เครื่องมือวัด', 'laboratory measuring instruments'], ['การวิเคราะห์ข้อมูล', 'graph linear fit experiment'], ['การออกแบบการทดลอง', 'physics experiment setup']]]
+    ['กลศาสตร์ขั้นสูง', [['การเคลื่อนที่สัมพัทธ์', 'relative motion frames'], ['ระบบรอก', 'pulley system Atwood machine'], ['การหมุนของวัตถุแข็งเกร็ง', 'rigid body rotation moment of inertia'], ['การกลิ้ง', 'rolling motion without slipping']]],
+    ['ไฟฟ้าและแม่เหล็กขั้นสูง', [['วงจร RC', 'RC circuit charging'], ['วงจร RLC', 'RLC circuit resonance'], ['กฎของแอมแปร์', "Ampere's law"], ['กฎของฟาราเดย์', "Faraday's law"]]],
+    ['ทัศนศาสตร์', [['ระบบเลนส์หลายตัว', 'compound microscope telescope optics'], ['ปริซึม', 'prism dispersion minimum deviation'], ['ตา', 'human eye defects correction']]],
+    ['อุณหพลศาสตร์', [['กระบวนการแก๊ส', 'PV diagram thermodynamic processes'], ['เครื่องยนต์ความร้อน', 'heat engine efficiency'], ['การแผ่รังสี', 'black body radiation']]],
+    ['ปฏิบัติการ', [['เครื่องมือวัด', 'laboratory measuring instruments'], ['การวิเคราะห์ข้อมูล', 'linear graph experiment data'], ['การออกแบบการทดลอง', 'physics experiment setup']]]
   ]],
-  u: ['มหาวิทยาลัย', [
-    ['กลศาสตร์คลาสสิก', [['ลากรางจ์', 'Lagrangian mechanics'], ['การเคลื่อนที่ใต้แรงสู่ศูนย์กลาง', 'Kepler orbit central force'], ['การสั่นแบบคู่ควบ', 'coupled oscillators normal modes']]],
-    ['แม่เหล็กไฟฟ้า', [['สมการแมกซ์เวลล์', "Maxwell's equations"], ['คลื่นในตัวกลาง', 'electromagnetic wave polarization'], ['ศักย์และสนาม', 'electric potential equipotential']]],
-    ['กลศาสตร์ควอนตัม', [['ฟังก์ชันคลื่น', 'wave function particle in a box'], ['การทะลุผ่าน', 'quantum tunneling'], ['อะตอมไฮโดรเจน', 'hydrogen atom orbitals']]],
-    ['อุณหพลศาสตร์และกลศาสตร์สถิติ', [['วัฏจักรคาร์โนต์', 'Carnot cycle'], ['เอนโทรปี', 'entropy'], ['การกระจายของโบลต์ซมันน์', 'Maxwell Boltzmann distribution']]],
-    ['สัมพัทธภาพ', [['การยืดของเวลา', 'time dilation'], ['แผนภาพกาลอวกาศ', 'spacetime diagram light cone'], ['ความโค้งของกาลอวกาศ', 'spacetime curvature gravity']]],
-    ['ฟิสิกส์สถานะของแข็ง', [['โครงผลึก', 'crystal lattice'], ['แถบพลังงาน', 'band structure semiconductor'], ['สภาพนำยิ่งยวด', 'superconductivity Meissner effect']]],
-    ['ฟิสิกส์ดาราศาสตร์', [['หลุมดำ', 'black hole'], ['วิวัฒนาการของดาว', 'stellar evolution Hertzsprung Russell'], ['เอกภพขยายตัว', 'cosmic microwave background expansion universe']]]
+  u: ['มหาวิทยาลัย (หลักสูตรสากล)', [
+    ['ฟิสิกส์ทั่วไป กลศาสตร์', [['จลนศาสตร์แคลคูลัส', 'kinematics calculus'], ['กฎของนิวตันและพลศาสตร์', 'Newtonian dynamics'], ['การหมุนและโมเมนตัมเชิงมุม', 'angular momentum conservation'], ['ความโน้มถ่วง', 'gravitation Kepler laws']]],
+    ['ฟิสิกส์ทั่วไป ไฟฟ้าและแม่เหล็ก', [['กฎของเกาส์', "Gauss's law"], ['วงจรไฟฟ้า', 'DC circuits'], ['สนามแม่เหล็ก', 'magnetic field Biot Savart'], ['การเหนี่ยวนำ', 'Faraday law inductance']]],
+    ['การสั่นและคลื่น', [['ตัวสั่นแบบหน่วงและบังคับ', 'damped driven oscillator'], ['ตัวสั่นคู่ควบ', 'coupled oscillators normal modes'], ['สมการคลื่น', 'wave equation'], ['ฟูริเยร์', 'Fourier series']]],
+    ['ฟิสิกส์ยุคใหม่', [['สัมพัทธภาพพิเศษ', 'special relativity time dilation'], ['ทฤษฎีควอนตัมเริ่มต้น', 'blackbody photoelectric Compton'], ['แบบจำลองอะตอม', 'Bohr model spectra'], ['นิวเคลียร์เบื้องต้น', 'nuclear binding energy']]],
+    ['คณิตศาสตร์สำหรับฟิสิกส์', [['เวกเตอร์แคลคูลัส', 'vector calculus divergence curl'], ['สมการเชิงอนุพันธ์', 'differential equations physics'], ['พีชคณิตเชิงเส้น', 'linear algebra eigenvalues'], ['ฟังก์ชันพิเศษ', 'Legendre polynomials spherical harmonics']]],
+    ['กลศาสตร์คลาสสิก', [['ลากรางจ์', 'Lagrangian mechanics'], ['แฮมิลตัน', 'Hamiltonian phase space'], ['แรงสู่ศูนย์กลาง', 'central force orbit'], ['วัตถุแข็งเกร็ง', 'rigid body Euler equations'], ['ความโกลาหล', 'chaos double pendulum']]],
+    ['ทฤษฎีแม่เหล็กไฟฟ้า', [['ไฟฟ้าสถิตและศักย์', 'electrostatics boundary value'], ['สนามในสสาร', 'dielectric polarization magnetization'], ['สมการแมกซ์เวลล์', "Maxwell's equations"], ['คลื่นแม่เหล็กไฟฟ้าและการแผ่รังสี', 'electromagnetic radiation dipole']]],
+    ['กลศาสตร์ควอนตัม', [['สมการชเรอดิงเงอร์', 'Schrodinger equation'], ['บ่อศักย์และการทะลุผ่าน', 'potential well quantum tunneling'], ['ตัวสั่นฮาร์มอนิกควอนตัม', 'quantum harmonic oscillator'], ['อะตอมไฮโดรเจนและสปิน', 'hydrogen atom orbitals spin'], ['ทฤษฎีการรบกวน', 'perturbation theory']]],
+    ['อุณหพลศาสตร์และกลศาสตร์สถิติ', [['กฎอุณหพลศาสตร์', 'laws of thermodynamics'], ['เอนโทรปี', 'entropy'], ['การกระจายโบลต์ซมันน์', 'Maxwell Boltzmann distribution'], ['แก๊สควอนตัม', 'Bose Einstein Fermi Dirac'], ['การเปลี่ยนเฟส', 'phase transition Ising model']]],
+    ['ทัศนศาสตร์', [['ทัศนศาสตร์เชิงเรขาคณิต', 'geometrical optics'], ['การแทรกสอดและเลี้ยวเบน', 'Fraunhofer diffraction'], ['เลเซอร์', 'laser principle'], ['ทัศนศาสตร์ควอนตัม', 'quantum optics photon']]],
+    ['อิเล็กทรอนิกส์และปฏิบัติการ', [['วงจรแอนะล็อก', 'operational amplifier circuit'], ['วงจรดิจิทัล', 'logic gates'], ['การวิเคราะห์ข้อมูลและความคลาดเคลื่อน', 'error analysis data fitting'], ['ฟิสิกส์เชิงคำนวณ', 'computational physics simulation']]],
+    ['ฟิสิกส์สถานะของแข็ง', [['โครงผลึก', 'crystal lattice Bravais'], ['การเลี้ยวเบนรังสีเอกซ์', 'X-ray diffraction Bragg'], ['แถบพลังงานและสารกึ่งตัวนำ', 'band structure semiconductor'], ['สภาพนำยิ่งยวด', 'superconductivity Meissner effect']]],
+    ['ฟิสิกส์นิวเคลียร์และอนุภาค', [['โครงสร้างนิวเคลียส', 'nuclear structure shell model'], ['ปฏิกิริยานิวเคลียร์', 'nuclear reaction cross section'], ['แบบจำลองมาตรฐาน', 'standard model particles'], ['เครื่องเร่งอนุภาค', 'particle accelerator detector']]],
+    ['สัมพัทธภาพและจักรวาลวิทยา', [['กาลอวกาศ', 'spacetime diagram light cone'], ['สัมพัทธภาพทั่วไป', 'general relativity curvature'], ['หลุมดำ', 'black hole'], ['จักรวาลวิทยา', 'cosmic microwave background expansion universe']]],
+    ['ฟิสิกส์ดาราศาสตร์', [['วิวัฒนาการของดาว', 'stellar evolution Hertzsprung Russell'], ['ดาวนิวตรอน', 'neutron star pulsar'], ['ดาราจักร', 'galaxy rotation curve dark matter']]]
   ]]
 };
 const LIB = { level: store_ls.get('tp-liblevel') || 'mp', ch: 0, sub: 0, saved: new Set() };
@@ -4507,7 +4543,7 @@ async function renderSaved() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1792992445';
+const BUILD = '1792994397';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
