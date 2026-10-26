@@ -1557,6 +1557,7 @@ const AI = {
       const K = this.cfg.key, V = KEY_VENDORS[K.vendor] || KEY_VENDORS.other;
       if (!K.model && !V.model) { K.model = await pickModel(K.vendor, K.url, K.key); this.save(); }
       if (K.vendor === 'anthropic') return runAnthropic(K.key, K.model || V.model, prompt, o);
+      if (K.vendor === 'gemini' && task === 'read' && !o.effort) o = Object.assign({}, o, { effort: 'low' });
       return runOpenAI(K.url || V.url, K.key, K.model || V.model, prompt, o, true);
     }
     throw { code: 'ai_off' };
@@ -1583,8 +1584,11 @@ async function runOpenAI(base, key, model, prompt, o, toolsOk) {
   const tools = toolsOk && o.tools ? o.tools.map((t) => ({ type: 'function', function: { name: t.name, description: t.description, parameters: t.inputSchema } })) : undefined;
   const headers = { 'content-type': 'application/json' }; if (key) headers.authorization = 'Bearer ' + key;
   for (let turn = 0; turn < 14; turn++) {
-    const body = { model, messages: msgs, temperature: 0.3, max_tokens: 6000 }; if (tools) body.tools = tools;
-    const r = await aiFetch(base + '/chat/completions', { method: 'POST', headers, body: JSON.stringify(body), signal: o.signal });
+    const body = { model, messages: msgs, temperature: 0.3, max_tokens: o.maxTokens || 6000 }; if (tools) body.tools = tools;
+    if (o.effort && !o.noEffort) body.reasoning_effort = o.effort;
+    let r;
+    try { r = await aiFetch(base + '/chat/completions', { method: 'POST', headers, body: JSON.stringify(body), signal: o.signal }); }
+    catch (e) { if (body.reasoning_effort && /^http_400$/.test(e && e.code)) { o.noEffort = true; delete body.reasoning_effort; r = await aiFetch(base + '/chat/completions', { method: 'POST', headers, body: JSON.stringify(body), signal: o.signal }); } else throw e; }
     const ch = r.choices && r.choices[0], m = ch && ch.message;
     if (!m) throw { code: 'empty_completion' };
     if (tools && m.tool_calls && m.tool_calls.length) {
@@ -3068,10 +3072,10 @@ const MODEL_PREF = {
   typhoon: [/vl|vision/, /typhoon/],
   other: [/vl|vision|4o|gpt-|gemini|claude|llava|qwen/]
 };
-async function pickModel(vendor, url, key) {
+async function pickModel(vendor, url, key, strict) {
   const V = KEY_VENDORS[vendor] || KEY_VENDORS.other;
   let ids = [];
-  try { ids = await listModels(url || V.url, key, vendor); } catch (e) { if (V.model) return V.model; throw e; }
+  try { ids = await listModels(url || V.url, key, vendor); } catch (e) { if (V.model && !strict) return V.model; throw e; }
   ids = ids.filter((x) => !/embed|whisper|tts|dall-e|audio|realtime|moderation|search|transcribe|image-gen|davinci|babbage/i.test(x));
   for (const re of MODEL_PREF[vendor] || MODEL_PREF.other) { const m = ids.filter((x) => re.test(x)).sort().reverse()[0]; if (m) return m; }
   if (V.model) return V.model;
@@ -3082,16 +3086,14 @@ async function quickSetup() {
   const key = $('#qsKey').value.trim().replace(/^["']|["']$/g, '').replace(/^(Bearer|x-goog-api-key:)\s*/i, ''), out = $('#qsMsg');
   if (key.length < 20) { out.innerHTML = '<div class="note err">วางคีย์ที่คัดลอกมาให้ครบก่อน</div>'; return; }
   const guess = detectVendor(key), tries = guess === 'openai' ? ['openai', 'typhoon'] : guess ? [guess] : ['gemini', 'openai', 'typhoon', 'anthropic'];
-  const B = waitCard(out, 'กำลังเชื่อมต่อ' + (guess ? ' ' + KEY_VENDORS[guess].name.replace(/\s*\(.*\)/, '') : ''), ['ตรวจคีย์และหาโมเดลที่อ่านภาพได้', 'ส่งข้อความทดสอบให้ AI', 'บันทึกการตั้งค่า']);
+  const B = waitCard(out, 'กำลังเชื่อมต่อ' + (guess ? ' ' + KEY_VENDORS[guess].name.replace(/\s*\(.*\)/, '') : ''), ['ตรวจคีย์และเลือกโมเดลที่อ่านภาพได้', 'บันทึกการตั้งค่า']);
   let lastErr = null;
   for (const vendor of tries) {
     const V = KEY_VENDORS[vendor];
     try {
       B.step(0);
-      const model = await pickModel(vendor, '', key);
-      if (B.cancelled) return; B.step(1);
-      const r = vendor === 'anthropic' ? await runAnthropic(key, model, 'Reply with exactly: OK', {}) : await runOpenAI(V.url, key, model, 'Reply with exactly: OK', {}, false);
-      if (B.cancelled) return; B.step(2); B.stop();
+      const model = await pickModel(vendor, '', key, true);
+      if (B.cancelled) return; B.step(1); B.stop();
       AI.cfg.key = { vendor, url: '', model, key }; AI.cfg.use = { read: 'auto', gen: 'auto', draw: 'auto' }; AI.save();
       renderAISettings(); renderAIAvail();
       out.innerHTML = '<div class="note ok">เชื่อมต่อ ' + esc(V.name) + ' แล้ว (โมเดล ' + esc(model) + ') ใช้แปลงลายมือ สร้างสมการ สร้างโจทย์ และวาดรูปใหม่ได้ทันที</div>';
@@ -4462,9 +4464,11 @@ function bindAISettings() {
       setTimeout(() => B.step(1), 250);
       let r;
       if (kind === 'local') { if (!AI.localReady()) throw { code: 'cfg' }; r = await runOpenAI(C.local.url, '', C.local.model, prompt, {}, false); }
-      else { if (!AI.keyReady()) throw { code: 'cfg' }; const V = KEY_VENDORS[C.key.vendor] || KEY_VENDORS.other; if (!C.key.model && !V.model) { C.key.model = await pickModel(C.key.vendor, C.key.url, C.key.key); AI.save(); renderAISettings(); } r = C.key.vendor === 'anthropic' ? await runAnthropic(C.key.key, C.key.model || V.model, prompt, {}) : await runOpenAI(C.key.url || V.url, C.key.key, C.key.model || V.model, prompt, {}, false); }
+      else if (!AI.keyReady()) throw { code: 'cfg' };
+      else if (C.key.vendor === 'other') { r = await runOpenAI(C.key.url, C.key.key, C.key.model, prompt, { maxTokens: 8 }, false); r.text = 'เชื่อมต่อได้ AI ตอบว่า ' + r.text; }
+      else { const V = KEY_VENDORS[C.key.vendor] || KEY_VENDORS.other; const m = await pickModel(C.key.vendor, C.key.url, C.key.key, true); if (!C.key.model) { C.key.model = m; AI.save(); } r = { text: 'คีย์ใช้ได้ (ตรวจเร็ว ไม่ต้องรอ AI ตอบ) โมเดล ' + (C.key.model || m) }; }
       B.stop(); if (B.cancelled) return;
-      out.innerHTML = '<div class="note ok">เชื่อมต่อได้ AI ตอบว่า ' + esc(String(r.text || '').slice(0, 60)) + '</div>';
+      out.innerHTML = '<div class="note ok">' + (kind === 'local' ? 'เชื่อมต่อได้ AI ตอบว่า ' : '') + esc(String(r.text || '').slice(0, 90)) + '</div>';
     } catch (e) {
       B.stop(); if (B.cancelled) return;
       out.innerHTML = '<div class="note err">' + esc(e && e.code === 'cfg' ? (kind === 'local' ? 'กรอกที่อยู่และชื่อโมเดลของ AI ในเครื่องก่อน' : C.key.key ? 'ผู้ให้บริการนี้ต้องกรอกที่อยู่ API ในตั้งค่าเพิ่มเติม' : 'วางคีย์ API ก่อน') : e && e.code === 'no_model' ? 'คีย์ใช้ได้ แต่หาโมเดลที่เหมาะไม่เจอ พิมพ์ชื่อโมเดลเองในตั้งค่าเพิ่มเติม' : aiErr(e)) + '</div>';
@@ -6819,7 +6823,7 @@ async function pdfImport(newNb) {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793003309';
+const BUILD = '1793003366';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
