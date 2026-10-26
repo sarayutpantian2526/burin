@@ -809,7 +809,7 @@ body.student #bLive, body.student #bPresent { display: none; }
         </details>
         <button class="btn" id="kTest">ทดสอบการเชื่อมต่อ</button>
         <div id="kMsg"></div>
-        <div class="note">คีย์เก็บไว้ในเบราว์เซอร์ของเครื่องนี้เท่านั้น ไม่ซิงก์ไปเครื่องอื่นและไม่ถูกเก็บในสมุด</div>
+        <div class="switch"><span><b>ใช้คีย์นี้กับทุกเครื่องที่เข้าระบบบัญชีเดียวกัน</b><small id="kSyncNote">ใส่ครั้งเดียว iPad คอมพิวเตอร์ และทีวีใช้ได้หมด คีย์เก็บในคลาวด์ของบัญชีนี้ คนอื่นอ่านไม่ได้ ถ้าปิด คีย์อยู่เฉพาะเครื่องนี้</small></span><button class="tg" id="tgKSync" role="switch" aria-checked="true" aria-label="ใช้คีย์นี้กับทุกเครื่อง"><i></i></button></div>
       </div>
     </details>
     <h3>การเขียนและจอ</h3>
@@ -948,7 +948,7 @@ body.student #bLive, body.student #bPresent { display: none; }
     <label class="field"><span>คีย์ API <small id="qsWho">ระบบดูจากคีย์ว่าเป็นของผู้ให้บริการไหน</small></span><input id="qsKey" type="password" autocomplete="off" spellcheck="false" placeholder="วางคีย์ที่นี่"></label>
     <div class="row2"><button class="btn solid" id="qsGo">เชื่อมต่อ</button><button class="btn" id="qsMore">ตั้งค่าเอง หรือใช้ AI ในเครื่อง</button></div>
     <div id="qsMsg"></div>
-    <div class="note small">คีย์เก็บไว้ในเครื่องนี้เท่านั้น แต่ละเครื่องต้องใส่ครั้งเดียว แบบใช้ฟรีมีจำนวนครั้งต่อวันจำกัด และ Google อาจนำข้อมูลที่ส่งไปใช้ปรับปรุงบริการ ไม่ควรส่งข้อมูลส่วนตัวของนักเรียน</div>
+    <div class="note small">เมื่อเข้าระบบคลาวด์ ใส่คีย์ครั้งเดียวแล้วใช้ได้ทุกเครื่องของบัญชีนี้ (ปิดได้ในเมนู หัวข้อคีย์ API) แบบใช้ฟรีมีจำนวนครั้งต่อวันจำกัด และ Google อาจนำข้อมูลที่ส่งไปใช้ปรับปรุงบริการ ไม่ควรส่งข้อมูลส่วนตัวของนักเรียน</div>
   </div>
 </div>
 
@@ -1482,10 +1482,14 @@ const AI = {
   claude: null, claudeLimits: null, claudeState: 'checking',
   cfg: (() => {
     const d = { use: { read: 'auto', gen: 'auto', draw: 'auto' }, local: { url: 'http://localhost:11434/v1', model: '', vision: true, tools: true }, key: { vendor: 'gemini', url: '', model: '', key: '' } };
-    try { const v = JSON.parse(store_ls.get('tp-ai') || 'null'); if (v && typeof v === 'object') { d.use = Object.assign(d.use, v.use || {}); d.local = Object.assign(d.local, v.local || {}); d.key = Object.assign(d.key, v.key || {}); } } catch (e) { /* defaults */ }
+    try { const v = JSON.parse(store_ls.get('tp-ai') || 'null'); if (v && typeof v === 'object') { d.use = Object.assign(d.use, v.use || {}); d.local = Object.assign(d.local, v.local || {}); d.key = Object.assign(d.key, v.key || {}); d.at = +v.at || 0; } } catch (e) { /* defaults */ }
     return d;
   })(),
-  save() { store_ls.set('tp-ai', JSON.stringify(this.cfg)); },
+  save(fromCloud) {
+    if (!fromCloud) this.cfg.at = Date.now();
+    store_ls.set('tp-ai', JSON.stringify(this.cfg));
+    if (!fromCloud) aiCloudPush();
+  },
   localReady() { return !!(this.cfg.local.url && this.cfg.local.model); },
   keyReady() { const k = this.cfg.key, V = KEY_VENDORS[k.vendor] || KEY_VENDORS.other; return !!(k.key && (k.vendor === 'anthropic' || (k.url || V.url))); },
   src(task) {
@@ -4284,6 +4288,8 @@ function renderAISettings() {
   $('#tgLVision').setAttribute('aria-checked', C.local.vision ? 'true' : 'false');
   $('#tgLTools').setAttribute('aria-checked', C.local.tools ? 'true' : 'false');
   if (C.key.url && /\s|curl|\/models/.test(C.key.url)) { C.key.url = cleanApiUrl(C.key.url, C.key.vendor); AI.save(); }
+  $('#tgKSync').setAttribute('aria-checked', aiSyncOn() ? 'true' : 'false');
+  $('#tgKSync').closest('.switch').hidden = !(S.store && S.store.kind === 'cloud');
   const vs = $('#kVendor');
   if (!vs.options.length) for (const [k, v] of Object.entries(KEY_VENDORS)) { const o = document.createElement('option'); o.value = k; o.textContent = v.name; vs.appendChild(o); }
   vs.value = C.key.vendor in KEY_VENDORS ? C.key.vendor : 'anthropic';
@@ -4312,6 +4318,24 @@ async function fillModels(listId, msgId, fn) {
     for (const id of ids) { const o = document.createElement('option'); o.value = id; dl.appendChild(o); }
     out.innerHTML = '<div class="note ok">พบ ' + ids.length + ' โมเดล แตะช่องชื่อโมเดลเพื่อเลือก ' + esc(ids.filter((x) => /flash|vl|vision|sonnet|gpt-4|4o|5/.test(x)).slice(0, 4).join(', ')) + '</div>';
   } catch (e) { B.stop(); if (!B.cancelled) out.innerHTML = '<div class="note err">' + esc(e && e.code === 'cfg' ? 'ใส่คีย์ก่อน' : aiErr(e)) + '</div>'; }
+}
+
+/* the AI key follows the account: saved with the person's own cloud rows (only they can read them) */
+const aiSyncOn = () => store_ls.get('tp-ai-sync') !== '0';
+function aiCloudPush() {
+  if (!aiSyncOn() || !S.store || S.store.kind !== 'cloud' || S.student) return;
+  const C = AI.cfg; Promise.resolve(S.store.set('settings/ai', { key: C.key, use: C.use, at: C.at || Date.now() })).catch(() => {});
+}
+function aiCloudWatch() {
+  if (!S.store || S.store.kind !== 'cloud' || S.student) return;
+  S.store.watchDoc('settings/ai', (d) => {
+    if (!aiSyncOn()) return;
+    const C = AI.cfg;
+    if (!d || !d.key) { if (C.key && C.key.key) aiCloudPush(); return; }
+    if ((+d.at || 0) <= (C.at || 0)) { if ((C.at || 0) > (+d.at || 0) && C.key && C.key.key) aiCloudPush(); return; }
+    C.key = Object.assign({ vendor: 'gemini', url: '', model: '', key: '' }, d.key); C.use = Object.assign(C.use, d.use || {}); C.at = +d.at;
+    AI.save(true); renderAISettings(); renderAIAvail();
+  });
 }
 /* people often paste a whole curl example or a model URL: keep only what the app needs */
 function cleanApiUrl(v, vendor) {
@@ -4348,6 +4372,11 @@ function bindAISettings() {
       B.stop(); if (B.cancelled) return;
       out.innerHTML = '<div class="note err">' + esc(e && e.code === 'cfg' ? (kind === 'local' ? 'กรอกที่อยู่และชื่อโมเดลของ AI ในเครื่องก่อน' : C.key.key ? 'ผู้ให้บริการนี้ต้องกรอกที่อยู่ API ในตั้งค่าเพิ่มเติม' : 'วางคีย์ API ก่อน') : e && e.code === 'no_model' ? 'คีย์ใช้ได้ แต่หาโมเดลที่เหมาะไม่เจอ พิมพ์ชื่อโมเดลเองในตั้งค่าเพิ่มเติม' : aiErr(e)) + '</div>';
     }
+  };
+  $('#tgKSync').onclick = () => {
+    const on = !aiSyncOn(); store_ls.set('tp-ai-sync', on ? '1' : '0'); renderAISettings();
+    if (on) aiCloudPush();
+    else if (S.store && S.store.kind === 'cloud') { Promise.resolve(S.store.del('settings/ai')).catch(() => {}); toast('ลบคีย์ออกจากคลาวด์แล้ว เครื่องนี้ยังใช้คีย์ได้ เครื่องอื่นต้องใส่เอง', 3200); }
   };
   $('#lTest').onclick = () => test('local', '#lMsg');
   $('#kTest').onclick = () => test('key', '#kMsg');
@@ -6654,7 +6683,7 @@ async function pdfImport(newNb) {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793002646';
+const BUILD = '1793002887';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
@@ -7201,7 +7230,7 @@ async function boot() {
     : 'สมุดบันทึกไว้ในเบราว์เซอร์ของเครื่องนี้ รูปและวิดีโอก็เก็บในเครื่องนี้ หน้าต่างอื่นบนเครื่องเดียวกันเห็นตรงกันทันที รวมทั้งจอผู้ชม การซิงก์ข้ามเครื่อง เช่น iPad กับทีวี ต้องเปิดใน claude.ai หรือต่อฐานข้อมูลบนคลาวด์';
   if (S.student) { S.creatingFirst = true; document.body.classList.add('student'); }
   watchNotebooks();
-  if (!S.student) watchLiveDoc();
+  if (!S.student) { watchLiveDoc(); aiCloudWatch(); }
   if (mC && CLOUD.ready()) studentJoin(mC[1].toUpperCase());
   else if (mL && CLOUD.ready()) openLecture(mL[1].toLowerCase());
   let wantPresent = store_ls.get('tp-present') === '1';
