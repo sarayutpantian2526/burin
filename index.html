@@ -114,6 +114,9 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .item.svg svg { width: 100%; height: auto; display: block; }
 .item.editing { -webkit-user-select: text; user-select: text; -webkit-touch-callout: default; cursor: text; outline: 2px dashed #2F4BB8; background: rgba(229, 234, 250, 0.6); white-space: pre-wrap; font-family: var(--doc); }
 .item mjx-container { display: inline-block; }
+.item .tgrab { position: absolute; left: -22px; top: -22px; width: 40px; height: 40px; border-radius: 999px; border: 1px solid #C9D2E3; background: rgba(255,255,255,0.92); color: #5F6F94; display: grid; place-items: center; pointer-events: auto; cursor: grab; padding: 0; opacity: 0.75; touch-action: none; z-index: 2; }
+.item .tgrab svg { width: 22px; height: 22px; }
+.item.editing .tgrab, body.present .item .tgrab, #items.editable .item .tgrab { display: none; }
 .item .x, .x.edx { position: absolute; z-index: 3; right: -14px; top: -14px; width: 36px; height: 36px; border-radius: 999px; border: 0; background: #A8261B; color: #FFFFFF; font-size: 18px; cursor: pointer; pointer-events: auto; }
 
 /* dock */
@@ -186,7 +189,7 @@ body.tv .toast { bottom: 112px; }
 .selbar button[hidden] { display: none; }
 .selbar .count { display: none; }
 
-.toast { position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%); z-index: 7; padding: 10px 16px; border-radius: 12px; background: var(--chrome); color: var(--chrome-fg); font-size: 14px; box-shadow: var(--shadow); max-width: calc(100% - 40px); text-align: center; }
+.toast { position: fixed; left: 50%; bottom: max(20px, env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); z-index: 60; padding: 10px 16px; border-radius: 12px; background: var(--chrome); color: var(--chrome-fg); font-size: 14px; box-shadow: var(--shadow); max-width: calc(100% - 40px); text-align: center; }
 .loading { position: absolute; inset: 0; z-index: 8; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; background: var(--desk); color: var(--muted); }
 .loading b { color: var(--fg); font-size: 18px; }
 
@@ -285,6 +288,7 @@ body.focus .top, body.focus #pages { display: none !important; }
 .fonly { display: none; }
 body.focus .fonly { display: inline-flex; }
 body.present .top, body.present #pages, body.present #ai, body.present .dock, body.present .pagenav, body.present .addpage, body.present .exitfull, body.present .selbar, body.present .convbar, body.present .peek, body.present .pull, body.present .toast, body.present #sel { display: none !important; }
+body.present #toast { display: none !important; }
 body.present #app { padding: 0; }
 body.present #viewport { border-radius: 0; cursor: default; }
 .pexit { position: absolute; right: 16px; top: 16px; z-index: 9; min-height: 48px; padding: 0 18px; border-radius: 14px; border: 0; background: var(--chrome); color: var(--chrome-fg); font-size: 15px; font-weight: 600; cursor: pointer; box-shadow: var(--shadow); }
@@ -458,6 +462,9 @@ body.present .updbar { display: none !important; }
 .livepill button[aria-pressed="true"] { background: var(--ok); color: #FFFFFF; }
 .sqq { display: flex; flex-direction: column; gap: 8px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
 body.student #bLive, body.student #bPresent { display: none; }
+#qmBody textarea { min-height: 70px; }
+.pagenav .zsep { width: 1px; align-self: stretch; margin: 6px 2px; background: var(--line); }
+.pagenav #zNum { min-width: 56px; font-variant-numeric: tabular-nums; }
 .exttl { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .exttl h2 { margin-right: auto; }
 .exwho { flex-direction: row; align-items: center; gap: 6px; }
@@ -651,13 +658,14 @@ body.student #bLive, body.student #bPresent { display: none; }
       <div class="pagenav no-ink" role="group" aria-label="เปลี่ยนหน้า">
         <button id="pgPrev" aria-label="หน้าก่อน"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M12.5 4.5L7 10l5.5 5.5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
         <button class="num" id="pgNum" aria-label="ดูทุกหน้า">1 / 1</button>
+        <span class="zsep"></span><button id="zOut" aria-label="ย่อ">−</button><button class="num" id="zNum" aria-label="กลับขนาดพอดีหน้าจอ">100%</button><button id="zIn" aria-label="ขยาย">+</button>
         <button id="pgNext" aria-label="หน้าถัดไป"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7.5 4.5L13 10l-5.5 5.5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
       </div>
       <div class="pull no-ink" id="pull" hidden></div>
 
       <div class="selbar no-ink" id="selbar" role="toolbar" aria-label="ส่วนที่เลือก" hidden>
         <span class="count" id="selCount"></span>
-        <span class="sg" id="sgInk"><button id="sRead" class="main"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M3 15c2-3 3-7 4.5-7s.5 5 2 5 2-6 3.5-6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M13 4.5h6 M16 4.5v8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span>เป็นตัวพิมพ์</span></button><button id="sEq"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M3.5 8h6 M3.5 12.5h6 M13 6.5l5 7 M18 6.5l-5 7" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg><span>เป็นสมการ</span></button><button id="sGraph"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M4 3.5v14h14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M5.5 14c3-1 4-8 7-8s3 4 5 4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span>สร้างกราฟ</span></button><button id="sTidy"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M4 17l4-1 9-9-3-3-9 9z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M15.5 13.5l1 2 2 1-2 1-1 2-1-2-2-1 2-1z" fill="currentColor"/></svg><span>วาดใหม่</span></button><button id="sGen"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M11 3l1.8 4.6 4.7 1.9-4.7 1.9L11 16l-1.8-4.6L4.5 9.5l4.7-1.9z" fill="currentColor"/></svg><span>สร้างโจทย์</span></button><button id="sMedia"><svg viewBox="0 0 22 22" aria-hidden="true"><rect x="3" y="4.5" width="16" height="13" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M3.5 15l4.5-4.5 3.5 3.5 2-2 5 4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg><span>หาสื่อ</span></button></span>
+        <span class="sg" id="sgInk"><button id="sQuiz" class="main"><svg viewBox="0 0 22 22" aria-hidden="true"><rect x="3.5" y="3" width="15" height="16" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M7 8h8 M7 11.5h8 M7 15h5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span>สร้างโจทย์</span></button><button id="sRead" class="main"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M3 15c2-3 3-7 4.5-7s.5 5 2 5 2-6 3.5-6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M13 4.5h6 M16 4.5v8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span>เป็นตัวพิมพ์</span></button><button id="sEq"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M3.5 8h6 M3.5 12.5h6 M13 6.5l5 7 M18 6.5l-5 7" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg><span>เป็นสมการ</span></button><button id="sGraph"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M4 3.5v14h14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M5.5 14c3-1 4-8 7-8s3 4 5 4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span>สร้างกราฟ</span></button><button id="sTidy"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M4 17l4-1 9-9-3-3-9 9z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M15.5 13.5l1 2 2 1-2 1-1 2-1-2-2-1 2-1z" fill="currentColor"/></svg><span>วาดใหม่</span></button><button id="sGen"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M11 3l1.8 4.6 4.7 1.9-4.7 1.9L11 16l-1.8-4.6L4.5 9.5l4.7-1.9z" fill="currentColor"/></svg><span>สร้างโจทย์</span></button><button id="sMedia"><svg viewBox="0 0 22 22" aria-hidden="true"><rect x="3" y="4.5" width="16" height="13" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M3.5 15l4.5-4.5 3.5 3.5 2-2 5 4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg><span>หาสื่อ</span></button></span>
         <span class="sg" id="sgOrder"><button id="sFront"><svg viewBox="0 0 22 22" aria-hidden="true"><rect x="7" y="7" width="11" height="11" rx="2" fill="currentColor"/><rect x="3.5" y="3.5" width="11" height="11" rx="2" fill="none" stroke="currentColor" stroke-width="1.5" stroke-dasharray="2.5 2"/></svg><span>ขึ้นหน้าสุด</span></button><button id="sBack"><svg viewBox="0 0 22 22" aria-hidden="true"><rect x="3.5" y="3.5" width="11" height="11" rx="2" fill="currentColor"/><rect x="7" y="7" width="11" height="11" rx="2" fill="var(--chrome)" stroke="currentColor" stroke-width="1.5"/></svg><span>ไปหลังสุด</span></button></span>
         <span class="sg"><button id="sDup"><svg viewBox="0 0 22 22" aria-hidden="true"><rect x="7" y="7" width="11" height="11" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M4 14V5a1 1 0 0 1 1-1h9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span>ทำสำเนา</span></button><button id="sDel" class="danger"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M5 6.5h12 M9 6.5V4.5h4v2 M6.5 6.5l.8 11h7.4l.8-11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span>ลบ</span></button><button id="sClose"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M5 11.5l4 4 8-9" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg><span>เสร็จ</span></button></span>
         <button id="sBig" hidden>ขยาย</button><button id="sSmall" hidden>ย่อ</button>
@@ -845,6 +853,12 @@ body.student #bLive, body.student #bPresent { display: none; }
   </div>
 </div>
 
+<div class="sheet" id="qmSheet" hidden>
+  <div class="panel" role="dialog" aria-label="สร้างโจทย์จากส่วนที่เลือก">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><h2>สร้างโจทย์จากส่วนที่เลือก</h2><button class="btn" id="qmClose">ปิด</button></div>
+    <div id="qmBody" class="exbody"></div>
+  </div>
+</div>
 <div class="sheet" id="liveSheet" hidden>
   <div class="panel wide" role="dialog" aria-label="ห้องเรียนสด">
     <div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><h2>ห้องเรียนสด</h2><button class="btn" id="liveClose">ปิด</button></div>
@@ -1563,7 +1577,7 @@ const cBg = $('#cBg'), cInk = $('#cInk'), cLive = $('#cLive'), itemsEl = $('#ite
 /* ---------- toast & sync ---------- */
 let toastT = null;
 function toast(msg, ms) {
-  const t = $('#toast'); t.textContent = msg; t.hidden = false;
+  const t = $('#toast'); if (t.parentNode !== document.body) document.body.appendChild(t); t.textContent = msg; t.hidden = false;
   clearTimeout(toastT); toastT = setTimeout(() => { t.hidden = true; }, ms || 3200);
 }
 function setSync(s) {
@@ -1575,7 +1589,7 @@ function setSync(s) {
 /* ---------- geometry ---------- */
 function rubber(p) { return Math.sign(p) * Math.min(110, Math.abs(p) * 0.4); }
 const widthsLater = debounce(() => { if (typeof renderWidths === 'function') renderWidths(); }, 200);
-function applyT() { widthsLater(); wrapEl.style.transform = 'translate(' + S.tx + 'px,' + (S.ty + rubber(S.pull || 0)) + 'px) scale(' + S.zoom + ')'; if (S.watchers && !S.present) viewLater(); }
+function applyT() { const zn = document.getElementById('zNum'); if (zn) zn.textContent = Math.round(S.zoom * 100) + '%'; widthsLater(); wrapEl.style.transform = 'translate(' + S.tx + 'px,' + (S.ty + rubber(S.pull || 0)) + 'px) scale(' + S.zoom + ')'; if (S.watchers && !S.present) viewLater(); }
 function topY() { return S.tv ? 12 : 72; }
 function bounds() {
   const vw = vp.clientWidth, vh = vp.clientHeight;
@@ -1795,6 +1809,7 @@ function buildItemEl(it, forExport) {
   else if (it.type === 'sim') { buildSim(d, it, forExport); }
   else if (it.type === 'lab') { buildLab(d, it, forExport); }
   else d.innerHTML = mdToHtml(it.md || '');
+  if (!forExport && (!it.type || it.type === 'text' || it.type === 'img' || it.type === 'svg')) { const g = document.createElement('button'); g.type = 'button'; g.className = 'tgrab'; g.setAttribute('aria-label', 'จับเพื่อเลือก ย้าย หรือลบ'); g.innerHTML = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 2.5v15 M2.5 10h15 M10 2.5l-2.2 2.2 M10 2.5l2.2 2.2 M10 17.5l-2.2-2.2 M10 17.5l2.2-2.2 M2.5 10l2.2-2.2 M2.5 10l2.2 2.2 M17.5 10l-2.2-2.2 M17.5 10l-2.2 2.2" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>'; d.appendChild(g); }
   if ((it.type === 'img' || it.type === 'video') && it.credit) { const c = document.createElement('div'); c.className = 'credit'; c.textContent = String(it.credit).slice(0, 160); d.appendChild(c); }
   return d;
 }
@@ -1935,7 +1950,7 @@ vp.addEventListener('contextmenu', (e) => e.preventDefault());
 
 function onDown(e) {
   /* the grab bar of a video, and the title bar of a graph or simulation, pick the item up with any tool */
-  const grab = !S.present && e.target.closest('.item.live .vbar, .item.live .gh') && !e.target.closest('input,button,select,textarea');
+  const grab = !S.present && (e.target.closest('.item .tgrab') || (e.target.closest('.item.live .vbar, .item.live .gh') && !e.target.closest('input,button,select,textarea')));
   if (grab) {
     const el = e.target.closest('.item'), it = el && findItem(el.dataset.id);
     if (it) {
@@ -2169,7 +2184,7 @@ function moveGesture() {
   if (Math.abs(d - G.d0) > 10 || Math.hypot(m[0] - G.m0[0], m[1] - G.m0[1]) > 10) G.moved = true;
   if (!G.moved) return;
   if (G.sel) { doScaleF(G.sel, clamp(d / G.d0, 0.08, 12)); return; }
-  const z = clamp(G.z0 * d / G.d0, 0.5, 4);
+  const z = clamp(G.z0 * d / G.d0, 0.5, 6);
   S.zoom = z;
   S.tx = m[0] - (G.m0[0] - G.tx0) * z / G.z0;
   const vy = m[1] - (G.m0[1] - G.ty0) * z / G.z0;
@@ -2721,6 +2736,7 @@ function showSelbar() {
   $('#sRead').hidden = !n; $('#sTidy').hidden = !n; $('#sEq').hidden = !n;
   const textSel = S.sel.items.some((id) => { const it = (S.page.items || []).find((t) => t.id === id); return it && (!it.type || it.type === 'text'); });
   $('#sGraph').hidden = !(n || textSel);
+  $('#sQuiz').hidden = !(n || textSel);
   $('#sMedia').hidden = !(n || textSel);
   $('#sFront').hidden = $('#sBack').hidden = !(m && (S.page.items || []).length > 1);
   $('#sBig').hidden = $('#sSmall').hidden = true;
@@ -5486,7 +5502,7 @@ function exAnswer(i) {
 }
 function exGo(d) {
   const R = EX.run, x = R.items[R.i];
-  if (R.mode === 'exam' && x.pick < 0) x.sec += (now() - x.t0) / 1000;
+  if (x.pick < 0) x.sec += (now() - x.t0) / 1000;
   R.i = clamp(R.i + d, 0, R.items.length - 1); R.items[R.i].t0 = now();
   exRender();
 }
@@ -5498,9 +5514,7 @@ function exQToMd(x, withKey) {
 }
 function exPutOnPage(x, withKey) {
   if (!S.page) return;
-  const w = 620, [px, py] = viewSpot(w, 260);
-  addItem({ type: 'text', x: px, y: py, w, md: exQToMd(x, withKey) });
-  toast(withKey ? 'วางโจทย์พร้อมเฉลยลงหน้าแล้ว' : 'วางโจทย์ลงหน้าแล้ว', 1600);
+  placeText(exQToMd(x, withKey), null, 620).then((w) => toast((withKey ? 'วางโจทย์พร้อมเฉลย' : 'วางโจทย์') + (w === 'newpage' ? 'ในหน้าใหม่แล้ว เพราะหน้านี้เต็ม' : 'ในที่ว่างแล้ว'), 1800));
 }
 function exEl(tag, cls, html) { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; }
 function exChips(box, list, cur, on) {
@@ -5556,7 +5570,7 @@ function exRenderRun(body) {
   head.appendChild(exEl('span', 'exprog', 'ข้อ ' + (R.i + 1) + ' จาก ' + R.items.length));
   const tm = exEl('span', 'extime'); head.appendChild(tm);
   body.appendChild(head);
-  const bar = exEl('div', 'exbar'); for (let k = 0; k < R.items.length; k++) { const s = exEl('i'); const it = R.items[k]; if (k === R.i) s.className = 'cur'; else if (it.pick >= 0) s.className = R.mode === 'practice' ? (it.pick === it.key ? 'ok' : 'no') : 'did'; if (R.mode === 'exam') s.onclick = () => { exGo(k - R.i); }; bar.appendChild(s); } body.appendChild(bar);
+  const bar = exEl('div', 'exbar'); for (let k = 0; k < R.items.length; k++) { const s = exEl('i'); const it = R.items[k]; if (k === R.i) s.className = 'cur'; else if (it.pick >= 0) s.className = R.mode === 'practice' ? (it.pick === it.key ? 'ok' : 'no') : 'did'; s.onclick = () => { exGo(k - R.i); }; bar.appendChild(s); } body.appendChild(bar);
   body.appendChild(exEl('div', 'exch', esc(exTrackName(x.q.t) + ' : ' + exChName(x.q.t, x.q.ch)) + ' ' + '<span>' + ['', 'พื้นฐาน', 'กลาง', 'ท้าทาย'][x.q.d || 1] + '</span>'));
   const qd = exEl('div', 'exq', mdToHtml(x.q.q)); body.appendChild(qd);
   const opts = exEl('div', 'exopts');
@@ -5571,9 +5585,12 @@ function exRenderRun(body) {
   if (reveal) body.appendChild(exEl('div', 'note ' + (x.pick === x.key ? 'ok' : 'err'), '<b>' + (x.pick === x.key ? 'ถูกต้อง' : 'ยังไม่ถูก คำตอบคือ ' + L[x.key]) + '</b> ' + mdToHtml(x.q.e || '')));
   const nav = exEl('div', 'row2');
   const mk = (t, cls, f) => { const b = exEl('button', 'btn ' + cls, t); b.type = 'button'; b.onclick = f; nav.appendChild(b); return b; };
-  if (R.mode === 'exam' && R.i > 0) mk('ข้อก่อนหน้า', '', () => exGo(-1));
+  if (R.i > 0) mk('ข้อก่อนหน้า', '', () => exGo(-1));
   const last = R.i === R.items.length - 1;
-  if (R.mode === 'practice') { if (reveal) mk(last ? 'ดูผล' : 'ข้อต่อไป', 'solid', () => (last ? exFinish() : exGo(1))); }
+  if (R.mode === 'practice') {
+    if (reveal) mk(last ? 'ดูผล' : 'ข้อต่อไป', 'solid', () => (last ? exFinish() : exGo(1)));
+    else mk(last ? 'ดูผล' : 'ข้ามไปข้อต่อไป', '', () => (last ? exFinish() : exGo(1)));
+  }
   else mk(last ? 'ส่งคำตอบ' : 'ข้อต่อไป', 'solid', () => { if (!last) exGo(1); else { const left = R.items.filter((y) => y.pick < 0).length; if (left && !EX.confirmSend) { EX.confirmSend = true; toast('ยังไม่ได้ตอบ ' + left + ' ข้อ กดส่งอีกครั้งเพื่อยืนยัน', 2600); return; } EX.confirmSend = false; exFinish(); } });
   mk('วางโจทย์ลงหน้า', '', () => exPutOnPage(x, reveal));
   mk('เลิกทำ', '', () => { clearInterval(EX.tick); EX.run = null; exRender(); });
@@ -5807,7 +5824,7 @@ function itemP(qid) { let n = 0, ok = 0; for (const a of EX.att) for (const it o
 function effLevel(q) { const p = itemP(q.id); if (p == null) return q.d || 1; return p > 0.8 ? 1 : p >= 0.4 ? 2 : 3; }
 const GB = { picks: [], level: 'mix', n: 10, order: 'easy', useBank: true, useGen: true, useAI: false, built: null };
 function buildSet() {
-  const want = GB.picks; if (!want.length) { toast('เลือกอย่างน้อยหนึ่งบท', 2000); return null; }
+  const want = GB.picks; if (!want.length) { toast('เลือกอย่างน้อยหนึ่งบทก่อน', 2400); const t = $('#exBody .label'); if (t) t.scrollIntoView({ block: 'center', behavior: 'smooth' }); return null; }
   const inPick = (q) => want.some(([t, ch]) => q.t === t && q.ch === ch);
   let pool = GB.useBank ? exAllQs().filter(inPick) : [];
   if (GB.useGen) GEN.forEach((g, i) => { if (want.some(([t, ch]) => g[0] === t && g[1] === ch)) for (let k = 0; k < 3; k++) { const q = genQ(i); if (q) pool.push(q); } });
@@ -6245,7 +6262,7 @@ function renderStudentQuiz() {
     const send = exEl('button', 'btn solid', Q.sent ? 'ส่งคำตอบใหม่อีกครั้ง' : 'ส่งคำตอบ'); send.onclick = () => { liveSend('ans', { id: Q.id, sid: LIVE.sid, name: LIVE.name, ans: Q.pick }); Q.sent = true; toast('ส่งคำตอบแล้ว รอผู้สอนเฉลย', 2200); renderStudentQuiz(); }; row.appendChild(send);
     row.appendChild(exEl('span', 'exch', left ? 'ยังไม่ได้ตอบ ' + left + ' ข้อ' : 'ตอบครบแล้ว' + (Q.sent ? ' ส่งแล้ว แก้แล้วส่งใหม่ได้จนกว่าจะเฉลย' : '')));
   }
-  const pg = exEl('button', 'btn', 'คัดลอกโจทย์ลงสมุดของฉัน'); pg.onclick = () => { const md = Q.qs.map((q, i) => (i + 1) + '. ' + q.q + '\n' + q.c.map((c, o) => '  ' + L[o] + '. ' + c).join('\n') + (Q.keys ? '\nตอบ ' + L[Q.keys[q.id]] + (Q.why && Q.why[q.id] ? ' ' + Q.why[q.id] : '') : '')).join('\n\n'); const [x, y] = viewSpot(700, 400); addItem({ type: 'text', x, y, w: 700, md }); $('#sqSheet').hidden = true; }; row.appendChild(pg);
+  const pg = exEl('button', 'btn', 'คัดลอกโจทย์ลงสมุดของฉัน'); pg.onclick = () => { const md = Q.qs.map((q, i) => (i + 1) + '. ' + q.q + '\n' + q.c.map((c, o) => '  ' + L[o] + '. ' + c).join('\n') + (Q.keys ? '\nตอบ ' + L[Q.keys[q.id]] + (Q.why && Q.why[q.id] ? ' ' + Q.why[q.id] : '') : '')).join('\n\n'); placeText(md, null, 700); $('#sqSheet').hidden = true; }; row.appendChild(pg);
   box.appendChild(row);
   typeset(box);
 }
@@ -6261,8 +6278,173 @@ async function openLecture(id) {
   toast('ได้รับเลคเชอร์ ' + i + ' หน้าแล้ว เขียนจดทับได้เลย เปิดลิงก์เดิมอีกครั้งเพื่อรับฉบับใหม่ โน้ตของคุณยังอยู่', 4200);
 }
 
+/* ---------- free space on the page, so new boxes never cover writing or other boxes ---------- */
+function estTextH(md, w, fs) {
+  fs = fs || 24; const per = Math.max(12, Math.floor((w - 20) / (fs * 0.56)));
+  let lines = 0; for (const l of String(md || '').split('\n')) lines += Math.max(1, Math.ceil(l.replace(/\$[^$]*\$/g, 'xxxxxx').length / per));
+  return Math.round(lines * fs * 1.6 + 20 + (String(md).match(/\\frac|\\dfrac/g) || []).length * fs * 0.5);
+}
+function occupiedBoxes() {
+  const out = [];
+  for (const it of (S.page && S.page.items) || []) out.push(itemBox(it));
+  for (const r of allStrokes()) { const b = sbox(r.s); out.push([b[0], b[1], b[2], b[3]]); }
+  return out;
+}
+function freeSpot(w, h, near) {
+  const occ = occupiedBoxes(), m = 14;
+  const fits = (x, y) => x >= 6 && y >= 6 && x + w <= W - 6 && y + h <= H - 6 && !occ.some((b) => x < b[2] + m && x + w > b[0] - m && y < b[3] + m && y + h > b[1] - m);
+  const xs = []; if (near) xs.push(clamp(Math.round(near[0]), 6, W - w - 6)); xs.push(40, Math.round((W - w) / 2), W - w - 40);
+  const y0 = near ? Math.round(near[1]) : Math.round(viewSpot(w, h)[1]);
+  for (const x of xs) for (let y = clamp(y0, 6, H); y + h <= H - 6; y += 12) if (fits(x, y)) return [x, y];
+  for (const x of xs) for (let y = 6; y + h <= H - 6; y += 12) if (fits(x, y)) return [x, y];
+  return null;
+}
+/* put a text box where it fits; if this page is full, start a new page right after it */
+async function placeText(md, near, w, fs) {
+  w = w || 640; fs = fs || 20; const h = estTextH(md, w, fs);
+  const at = freeSpot(w, h, near);
+  if (at) { addItem({ type: 'text', x: at[0], y: at[1], w, md, fs }); return 'here'; }
+  if (!S.nb) return 'none';
+  const pid = 'p' + uid(), pages = (S.nb.pages || []).slice(); pages.splice(pages.indexOf(S.pid) + 1, 0, pid);
+  await S.store.set('pages/' + pid, { nb: S.nid, paper: (S.page && S.page.paper) || 'grid', items: [{ id: 'i' + uid(), by: DEV, type: 'text', x: 60, y: 60, w: Math.max(w, 820), md, fs }], rev: now() }).catch(onStoreError);
+  try { await S.store.update('notebooks/' + S.nid, { pages, updatedAt: now() }); S.nb = Object.assign({}, S.nb, { pages }); openPage(pid); renderPageList(); renderTitle(); } catch (e) { onStoreError(e); }
+  return 'newpage';
+}
+/* ---------- make questions from a selected part of the page ---------- */
+const QM = Object.assign({ level: 'mix', n: 5, order: 'easy', out: 'page', useAI: true, key: false }, (() => { try { return JSON.parse(store_ls.get('tp-qm') || '{}') || {}; } catch (e) { return {}; } })());
+function qmSave() { store_ls.set('tp-qm', JSON.stringify({ level: QM.level, n: QM.n, order: QM.order, out: QM.out, useAI: QM.useAI, key: QM.key })); }
+function detectFromText(tx, track) {
+  tx = String(tx || '').toLowerCase().replace(/\s+/g, '');
+  const sc = TOPIC_KW.map((kw, i) => [i, kw.reduce((n, w) => n + (tx.split(w.toLowerCase()).length - 1), 0)]).filter((x) => x[1] > 0).sort((a, b) => b[1] - a[1]).slice(0, 3);
+  return sc.map(([i]) => (track === 'ijso' ? (IJSO_OF[i] != null ? IJSO_OF[i] : -1) : i)).filter((c, k, a) => c >= 0 && a.indexOf(c) === k);
+}
+function shuffleChoices(q) { const o = q.c.map((_, i) => i).sort(() => Math.random() - 0.5); return Object.assign({}, q, { c: o.map((i) => q.c[i]), a: o.indexOf(q.a || 0) }); }
+function poolFor(picks, useBank, useGen) {
+  const inPick = (q) => picks.some(([t, ch]) => q.t === t && q.ch === ch);
+  const pool = useBank ? exAllQs().filter(inPick) : [];
+  if (useGen) GEN.forEach((g, i) => { if (picks.some(([t, ch]) => g[0] === t && g[1] === ch)) for (let k = 0; k < 3; k++) { const q = genQ(i); if (q) pool.push(q); } });
+  return pool;
+}
+function pickByLevel(pool, n, level, order, have) {
+  const lv = (q) => effLevel(q), out = (have || []).slice(), used = new Set(out.map((q) => q.id));
+  const quota = level === 'mix' ? { 1: 0.4, 2: 0.4, 3: 0.2 } : { [{ easy: 1, mid: 2, hard: 3 }[level]]: 1 };
+  const take = (L, k) => { if (k <= 0) return; const c = pool.filter((q) => lv(q) === L && !used.has(q.id)).sort(() => Math.random() - 0.5); for (const q of c.slice(0, k)) { used.add(q.id); out.push(q); } };
+  const room = n - out.length;
+  for (const [L, f] of Object.entries(quota)) take(+L, Math.round(room * f) - out.filter((q) => lv(q) === +L && !(have || []).includes(q)).length);
+  for (const L of level === 'hard' ? [2, 1] : level === 'easy' ? [2, 3] : [2, 1, 3]) if (out.length < n) take(L, n - out.length);
+  const res = out.slice(0, n);
+  if (order === 'easy') res.sort((a, b) => lv(a) - lv(b)); else res.sort(() => Math.random() - 0.5);
+  return res.map(shuffleChoices);
+}
+async function aiQuestionsFrom(text, picks, level, n) {
+  const names = picks.map(([t, c]) => exChName(t, c)).join(', ') || 'physics';
+  const lvl = { easy: 'easy', mid: 'medium', hard: 'hard', mix: 'mixed: about 40% easy, 40% medium, 20% hard' }[level];
+  const prompt = 'A Thai physics teacher wrote this on the board (topic: ' + names + '):\n"""' + String(text).slice(0, 2500) + '"""\n'
+    + 'Write ' + n + ' original multiple-choice questions in Thai that test exactly this content, reusing the teacher\'s situation, symbols and numbers where it makes sense. Difficulty: ' + lvl + '.\n'
+    + 'Each has exactly 4 choices, one correct. Use $...$ for math. Compute every answer step by step before writing it. Wrong choices should come from typical student mistakes.\n'
+    + 'Reply in exactly this format and nothing else, ' + n + ' times:\n@@Q 1, 2 or 3 for difficulty\n(question)\n@@RIGHT\n(correct choice)\n@@WRONG\n(wrong 1)\n(wrong 2)\n(wrong 3)\n@@WHY\n(short explanation in Thai)';
+  const res = await AI.run('gen', prompt, { cache: false });
+  const out = []; let cur = null; const [t0, c0] = picks[0] || ['olymp', 0];
+  for (const p of sections(res.text)) {
+    const tx = (p.text || '').trim();
+    if (p.key === 'Q') { cur = { id: 'a' + uid(), t: t0, ch: c0, d: clamp(parseInt(p.arg, 10) || 2, 1, 3), q: tx, c: [], a: 0, e: '', src: 'ai' }; out.push(cur); }
+    else if (cur && p.key === 'RIGHT') cur.c.unshift(tx);
+    else if (cur && p.key === 'WRONG') cur.c.push(...tx.split('\n').map((s) => s.replace(/^[-*\d.)\s]+(?=\S)/, '').trim()).filter(Boolean).slice(0, 3));
+    else if (cur && p.key === 'WHY') cur.e = tx;
+  }
+  const good = out.filter((q) => q.q && q.c.length >= 3);
+  if (!good.length) throw { code: 'empty_completion' };
+  return good;
+}
+async function readInkText(refs) {
+  const im = await inkBlob(refs, 14); if (!im) return '';
+  const res = await AI.run('read', 'This image is handwriting from a Thai physics teacher\'s notebook. Transcribe it faithfully: Thai text as written, math in LaTeX inside $...$. Reply with the transcription only.', { images: [im.blob] });
+  return String(res.text || '').trim();
+}
+function openQuizMaker() {
+  if (!S.sel) return;
+  const refs = S.sel.strokes.slice(), box = S.sel.box ? S.sel.box.slice() : null;
+  const typed = S.sel.items.map(findItem).filter((it) => it && (!it.type || it.type === 'text')).map((it) => it.md).join('\n');
+  let bb = box; for (const id of S.sel.items) { const it = findItem(id); if (it) { const b = itemBox(it); bb = bb ? [Math.min(bb[0], b[0]), Math.min(bb[1], b[1]), Math.max(bb[2], b[2]), Math.max(bb[3], b[3])] : b; } }
+  clearSel();
+  QM.text = typed; QM.box = bb; QM.reading = false; QM.err = '';
+  QM.track = S.nb && ['p', 'mt'].includes(S.nb.level) ? 'ijso' : 'olymp';
+  QM.picks = detectFromText(typed + ' ' + ((S.nb && S.nb.title) || ''), QM.track).map((c) => [QM.track, c]);
+  closeSheets(); $('#qmSheet').hidden = false; qmRender();
+  if (refs.length) {
+    if (!AI.ready('read')) { QM.err = 'อ่านลายมือต้องต่อ AI ก่อน (กดปุ่มด้านล่างเพื่อตั้งค่า) หรือพิมพ์เนื้อหาในช่องเอง แล้วเลือกบทด้านล่าง'; qmRender(); return; }
+    QM.reading = true; qmRender();
+    readInkText(refs).then((t) => {
+      QM.text = (typed ? typed + '\n' : '') + t; QM.reading = false;
+      if (!QM.manual) QM.picks = detectFromText(QM.text + ' ' + ((S.nb && S.nb.title) || ''), QM.track).map((c) => [QM.track, c]);
+      qmRender();
+    }).catch((e) => { QM.reading = false; QM.err = 'อ่านลายมือไม่สำเร็จ ' + aiErr(e); qmRender(); });
+  }
+}
+function qmRender() {
+  const body = $('#qmBody'); body.innerHTML = '';
+  const ta = exEl('textarea', ''); ta.id = 'qmText'; ta.rows = 3; ta.value = QM.text || ''; ta.placeholder = QM.reading ? 'กำลังอ่านลายมือ' : 'เนื้อหาที่ใช้ออกโจทย์ แก้หรือเพิ่มได้';
+  ta.oninput = () => { QM.text = ta.value; if (!QM.manual) { QM.picks = detectFromText(ta.value, QM.track).map((c) => [QM.track, c]); qmChips(); } };
+  const lab = exEl('label', 'field'); lab.appendChild(exEl('span', '', QM.reading ? 'กำลังอ่านลายมือที่เลือก' : 'เนื้อหาที่อ่านได้')); lab.appendChild(ta); body.appendChild(lab);
+  if (QM.err) { body.appendChild(exEl('div', 'note err', esc(QM.err))); if (!AI.anyReady()) { const b = exEl('button', 'btn', 'ต่อ AI'); b.onclick = openAISetup; body.appendChild(b); } }
+  const chBox = exEl('div', ''); chBox.id = 'qmCh'; body.appendChild(chBox); qmChips();
+  body.appendChild(exEl('span', 'label', 'ระดับ จำนวน และลำดับ'));
+  exChips(body, [['easy', 'ง่าย'], ['mid', 'กลาง'], ['hard', 'ยาก'], ['mix', 'คละ']], (v) => v === QM.level, (v) => { QM.level = v; qmSave(); qmRender(); });
+  exChips(body, [[3, '3 ข้อ'], [5, '5 ข้อ'], [10, '10 ข้อ']], (v) => v === QM.n, (v) => { QM.n = v; qmSave(); qmRender(); });
+  exChips(body, [['easy', 'ง่ายไปยาก'], ['rand', 'สุ่มลำดับ']], (v) => v === QM.order, (v) => { QM.order = v; qmSave(); qmRender(); });
+  body.appendChild(exEl('span', 'label', 'ให้ทำอะไรกับโจทย์'));
+  const outs = [['page', 'วางใต้ส่วนที่เลือก'], ['run', 'เปิดเป็นแบบฝึกทำทันที']]; if (LIVE.role === 'teacher' && LIVE.ready) outs.push(['live', 'ส่งให้ผู้เรียนในห้องสด']);
+  exChips(body, outs, (v) => v === QM.out, (v) => { QM.out = v; qmSave(); qmRender(); });
+  exChips(body, [['useAI', 'ให้ AI ออกโจทย์ให้ตรงกับเนื้อหานี้'], ['key', 'ใส่เฉลยไว้ท้ายโจทย์']], (v) => !!QM[v], (v) => { QM[v] = !QM[v]; qmSave(); qmRender(); });
+  const msg = exEl('div', ''); msg.id = 'qmMsg'; body.appendChild(msg);
+  const go = exEl('button', 'btn solid', 'สร้างโจทย์'); go.id = 'qmGo'; go.disabled = !!QM.reading; go.onclick = qmMake; body.appendChild(go);
+}
+function qmChips() {
+  const box = $('#qmCh'); if (!box) return; box.innerHTML = '';
+  box.appendChild(exEl('span', 'label', QM.picks.length ? 'บทที่ตรงกับเนื้อหา แตะเพื่อเปลี่ยน' : 'ยังจับบทไม่ได้ เลือกบทที่ตรงกับเนื้อหา'));
+  const tr = QM.track;
+  const shown = QM.showAll || !QM.picks.length ? CURRIC[tr][1].map((c, i) => i) : QM.picks.map((p) => p[1]);
+  exChips(box, shown.map((i) => [i, exChName(tr, i)]), (v) => QM.picks.some((p) => p[1] === v), (v) => { QM.manual = true; const k = QM.picks.findIndex((p) => p[1] === v); if (k >= 0) QM.picks.splice(k, 1); else QM.picks.push([tr, v]); qmChips(); });
+  const row = exEl('span', 'chips');
+  const more = exEl('button', 'chip', QM.showAll ? 'แสดงเฉพาะที่เลือก' : 'บทอื่น ผสมหลายบท'); more.onclick = () => { QM.showAll = !QM.showAll; qmChips(); }; row.appendChild(more);
+  const sw = exEl('button', 'chip', tr === 'olymp' ? 'ใช้บทของ IJSO' : 'ใช้บทของ สอวน.'); sw.onclick = () => { QM.track = tr === 'olymp' ? 'ijso' : 'olymp'; QM.picks = detectFromText(QM.text, QM.track).map((c) => [QM.track, c]); qmChips(); }; row.appendChild(sw);
+  box.appendChild(row);
+}
+async function qmMake() {
+  const msg = $('#qmMsg'), say = (h) => { msg.innerHTML = h; msg.scrollIntoView({ block: 'nearest' }); };
+  const useAI = QM.useAI && (QM.text || '').trim().length > 3 && AI.ready('gen');
+  if (!QM.picks.length && !useAI) { say('<div class="note err">เลือกบทอย่างน้อยหนึ่งบท หรือเปิดให้ AI ออกโจทย์จากเนื้อหา</div>'); return; }
+  $('#qmGo').disabled = true;
+  let qs = [];
+  if (useAI) {
+    say('<div class="note">AI กำลังออกโจทย์จากเนื้อหานี้ ระหว่างรอ กดใช้โจทย์จากคลังแทนได้</div>');
+    const skip = exEl('button', 'btn', 'ไม่รอ ใช้คลังและโจทย์สุ่มตัวเลข'); msg.appendChild(skip);
+    let skipped = false;
+    const ai = aiQuestionsFrom(QM.text, QM.picks, QM.level, QM.n).catch((e) => { if (!skipped) say('<div class="note err">AI ออกโจทย์ไม่สำเร็จ ' + esc(aiErr(e)) + ' ใช้โจทย์จากคลังแทน</div>'); return []; });
+    qs = await Promise.race([ai, new Promise((r) => { skip.onclick = () => { skipped = true; r([]); }; })]);
+  }
+  const fill = pickByLevel(poolFor(QM.picks, true, true), QM.n, QM.level, QM.order, qs.slice(0, QM.n));
+  qs = fill.length ? fill : qs.slice(0, QM.n).map(shuffleChoices);
+  $('#qmGo').disabled = false;
+  if (!qs.length) { say('<div class="note err">ไม่พบโจทย์ในบทที่เลือก ลองเลือกบทอื่นหรือระดับคละ</div>'); return; }
+  if (QM.out === 'page') {
+    const L = 'กขคง';
+    const md = '**แบบฝึก** ' + (QM.picks.map(([t, c]) => exChName(t, c)).join(', ') || '') + '\n\n' + qs.map((q, i) => (i + 1) + '. ' + q.q + '\n' + q.c.map((c, o) => L[o] + '. ' + c).join('\u00a0\u00a0\u00a0\u00a0')).join('\n\n')
+      + (QM.key ? '\n\n**เฉลย** ' + qs.map((q, i) => (i + 1) + '. ' + L[q.a || 0]).join('  ') : '');
+    const near = QM.box ? [QM.box[0], QM.box[3] + 16] : null;
+    const where = await placeText(md, near, 720, 20);
+    $('#qmSheet').hidden = true;
+    toast(where === 'newpage' ? 'หน้านี้เต็ม จึงวางโจทย์ ' + qs.length + ' ข้อในหน้าใหม่ถัดไป' : 'วางโจทย์ ' + qs.length + ' ข้อในที่ว่างใต้ส่วนที่เลือกแล้ว', 2600);
+    return;
+  }
+  const set = await exSaveSet(qs);
+  $('#qmSheet').hidden = true;
+  if (QM.out === 'live') liveSendSet(set);
+  else { await openExam(); EX.mode = 'practice'; exStart(qs, set.title); EX.run.setId = set.id; }
+}
+
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1792999058';
+const BUILD = '1793000090';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
@@ -6372,7 +6554,7 @@ function syncToggles() {
 }
 function hideLoading() { $('#loading').hidden = true; }
 function togglePages(v) { const el = $('#pages'); el.hidden = v === undefined ? !el.hidden : !v; $('#bPages').setAttribute('aria-pressed', el.hidden ? 'false' : 'true'); setTimeout(fit, 0); }
-function closeSheets() { $('#liveSheet').hidden = true; $('#sqSheet').hidden = true; $('#examSheet').hidden = true; $('#aiSetup').hidden = true; $('#labSheet').hidden = true; $('#simSheet').hidden = true; $('#mediaSheet').hidden = true; $('#menu').hidden = true; $('#exportSheet').hidden = true; $('#insSheet').hidden = true; }
+function closeSheets() { $('#qmSheet').hidden = true; $('#liveSheet').hidden = true; $('#sqSheet').hidden = true; $('#examSheet').hidden = true; $('#aiSetup').hidden = true; $('#labSheet').hidden = true; $('#simSheet').hidden = true; $('#mediaSheet').hidden = true; $('#menu').hidden = true; $('#exportSheet').hidden = true; $('#insSheet').hidden = true; }
 
 /* ---------- wiring ---------- */
 document.querySelectorAll('.tool[data-tool]').forEach((b) => {
@@ -6415,6 +6597,15 @@ $('#iVid').onclick = () => { closeSheets(); $('#fVid').value = ''; $('#fVid').cl
 $('#iGraph').onclick = () => { closeSheets(); openGraphSheet(null); };
 $('#bExam').onclick = openExam;
 $('#bLive').onclick = openLive;
+function zoomTo(z) {
+  const r = vp.getBoundingClientRect(), mx = r.width / 2, my = r.height / 2; z = clamp(z, 0.5, 6);
+  S.tx = mx - (mx - S.tx) * z / S.zoom; S.ty = my - (my - S.ty) * z / S.zoom; S.zoom = z; S.pull = 0;
+  clampT(); applyT(); resizeLater();
+}
+$('#zIn').onclick = () => zoomTo(S.zoom * 1.4);
+$('#zOut').onclick = () => zoomTo(S.zoom / 1.4);
+$('#zNum').onclick = () => zoomTo(1);
+$('#qmClose').onclick = () => { $('#qmSheet').hidden = true; };
 $('#liveClose').onclick = () => { $('#liveSheet').hidden = true; };
 $('#jGo').onclick = () => { const n = $('#jName').value.trim(); if (!n) { $('#jName').focus(); return; } LIVE.name = n; store_ls.set('tp-sname', n); studentJoin(LIVE.code); };
 $('#jName').onkeydown = (e) => { if (e.key === 'Enter') $('#jGo').click(); };
@@ -6711,7 +6902,7 @@ $('#tgTV').onclick = () => { S.tv = !S.tv; store_ls.set('tp-tv', S.tv ? '1' : '0
 $('#bAI').onclick = () => { const el = $('#ai'); el.hidden = !el.hidden; $('#bAI').setAttribute('aria-pressed', el.hidden ? 'false' : 'true'); setTimeout(fit, 0); };
 $('#bAIClose').onclick = () => { $('#ai').hidden = true; $('#bAI').setAttribute('aria-pressed', 'false'); setTimeout(fit, 0); };
 $('#bGenPage').onclick = () => generate(false);
-$('#sEq').onclick = eqSelection; $('#sRead').onclick = readSelection; $('#sTidy').onclick = tidySelection; $('#sGen').onclick = () => generate(true);
+$('#sQuiz').onclick = openQuizMaker; $('#sEq').onclick = eqSelection; $('#sRead').onclick = readSelection; $('#sTidy').onclick = tidySelection; $('#sGen').onclick = () => generate(true);
 $('#sFront').onclick = () => restackSel(true); $('#sBack').onclick = () => restackSel(false);
 $('#sDup').onclick = dupSel;
 $('#sDel').onclick = deleteSel; $('#sClose').onclick = clearSel;
@@ -6725,7 +6916,7 @@ vp.addEventListener('wheel', (e) => {
   e.preventDefault();
   if (e.ctrlKey || e.metaKey) {
     const r = vp.getBoundingClientRect(), mx = e.clientX - r.left, my = e.clientY - r.top;
-    const z = clamp(S.zoom * Math.exp(-e.deltaY * 0.01), 0.5, 4);
+    const z = clamp(S.zoom * Math.exp(-e.deltaY * 0.01), 0.5, 6);
     S.tx = mx - (mx - S.tx) * z / S.zoom; S.ty = my - (my - S.ty) * z / S.zoom; S.zoom = z;
     resizeLater(); clampT();
   } else {
