@@ -338,6 +338,9 @@ body.tv .peek.big { width: 660px; }
 /* media and graph items live on white paper, so their colors are fixed */
 .item.media { padding: 0; }
 .item.media img, .item.media video { width: 100%; height: auto; display: block; border-radius: 6px; background: #EEF1F5; }
+.item .vbar { display: flex; align-items: center; gap: 6px; height: 34px; padding: 0 10px; margin-bottom: 4px; border-radius: 8px; background: #2A313C; color: #DCE2EA; font-family: var(--ui); font-size: 12px; cursor: grab; touch-action: none; }
+.item .vbar svg { width: 16px; height: 16px; flex: none; }
+.item.graph .gh { cursor: grab; touch-action: none; }
 .item.media.loading img:not([src]), .item.media.missing img:not([src]) { min-height: 120px; }
 .item.media.loading::after, .item.media.missing::after { position: absolute; left: 0; right: 0; top: 46px; text-align: center; font-family: var(--ui); font-size: 15px; color: #6B7686; pointer-events: none; }
 .item.media.loading::after { content: 'กำลังโหลดรูป'; }
@@ -1613,7 +1616,7 @@ function buildItemEl(it, forExport) {
     if (okAsset(it.asset) || okRemote(it.url)) { const im = document.createElement('img'); im.alt = 'ภาพที่แทรก'; im.draggable = false; im.decoding = 'async'; d.appendChild(im); if (okAsset(it.asset)) setAssetSrc(im, it.asset); else { im.crossOrigin = 'anonymous'; im.src = it.url; } }
   } else if (it.type === 'video') {
     if (forExport) { d.innerHTML = '<div style="aspect-ratio:16/9;background:#20262F;color:#FFFFFF;display:flex;align-items:center;justify-content:center;border-radius:6px;font-family:var(--ui)">วิดีโอ ดูได้ในแอป</div>'; }
-    else if (okAsset(it.asset) || okRemote(it.url)) { const v = document.createElement('video'); v.controls = true; v.playsInline = true; v.preload = 'metadata'; d.appendChild(v); if (okAsset(it.asset)) setAssetSrc(v, it.asset); else { v.src = it.url; if (okRemote(it.poster)) v.poster = it.poster; } }
+    else if (okAsset(it.asset) || okRemote(it.url)) { const bar = document.createElement('div'); bar.className = 'vbar'; bar.innerHTML = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 7h12 M4 10h12 M4 13h12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span>วิดีโอ แตะแถบนี้เพื่อเลือก ย้าย หรือลบ</span>'; d.appendChild(bar); const v = document.createElement('video'); v.controls = true; v.playsInline = true; v.preload = 'metadata'; d.appendChild(v); if (okAsset(it.asset)) setAssetSrc(v, it.asset); else { v.src = it.url; if (okRemote(it.poster)) v.poster = it.poster; } }
   } else if (it.type === 'graph') { buildGraph(d, it, forExport); }
   else if (it.type === 'sim') { buildSim(d, it, forExport); }
   else d.innerHTML = mdToHtml(it.md || '');
@@ -1754,6 +1757,20 @@ vp.addEventListener('pointercancel', onUp);
 vp.addEventListener('contextmenu', (e) => e.preventDefault());
 
 function onDown(e) {
+  /* the grab bar of a video, and the title bar of a graph or simulation, pick the item up with any tool */
+  const grab = !S.present && e.target.closest('.item.live .vbar, .item.live .gh') && !e.target.closest('input,button,select,textarea');
+  if (grab) {
+    const el = e.target.closest('.item'), it = el && findItem(el.dataset.id);
+    if (it) {
+      e.preventDefault(); closePops();
+      try { vp.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+      const [x, y] = toLogical(e.clientX, e.clientY);
+      const pt = { id: e.pointerId, type: e.pointerType, sx: e.clientX, sy: e.clientY, lx: e.clientX, ly: e.clientY, t0: now(), moved: 0, mode: 'move', last: [x, y], dx: 0, dy: 0 };
+      P.set(e.pointerId, pt);
+      if (!(S.sel && S.sel.items.length === 1 && S.sel.items[0] === it.id)) selectItem(it);
+      return;
+    }
+  }
   if (e.target.closest('.no-ink') && !(S.tool === 'lasso' && e.target.closest('.item.live') && !e.target.closest('input,button,video'))) return;
   if (S.present) { e.preventDefault(); presentTap(); return; }
   closePops();
@@ -4568,7 +4585,7 @@ async function renderSaved() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1792994677';
+const BUILD = '1792995094';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
