@@ -488,6 +488,16 @@ body.student #bLive, body.student #bPresent { display: none; }
 .busy .bhint:empty { display: none; }
 .busy .bcancel { align-self: flex-start; }
 @media (prefers-reduced-motion: reduce) { .busy .spin, .busy .bar i, .busy .bs li.now::before { animation: none; } }
+.kadv summary { cursor: pointer; font-size: 14px; padding: 6px 0; }
+.kadv summary small { color: var(--muted); margin-left: 6px; }
+.kadv[open] { display: flex; flex-direction: column; gap: 10px; }
+#qsWho { color: var(--muted); font-weight: 400; margin-left: 6px; }
+.nbedit { display: flex; flex-direction: column; gap: 10px; padding: 12px; border: 1.5px solid var(--accent); border-radius: 14px; background: var(--surface); }
+.nbedit .covers { display: flex; flex-wrap: wrap; gap: 6px; align-items: flex-end; padding-bottom: 4px; }
+.nbedit .csw { width: 34px; height: 34px; border-radius: 10px; border: 2px solid transparent; cursor: pointer; }
+.nbedit .csw[aria-pressed="true"] { border-color: var(--fg); box-shadow: 0 0 0 2px var(--surface) inset; }
+.btn.danger { color: var(--danger); }
+#tTitle { cursor: pointer; }
 .exttl { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .exttl h2 { margin-right: auto; }
 .exwho { flex-direction: row; align-items: center; gap: 6px; }
@@ -791,10 +801,12 @@ body.student #bLive, body.student #bPresent { display: none; }
     <details class="aicfg" id="cfgKey">
       <summary><b>คีย์ API ของคุณเอง</b><small>จ่ายตามที่ใช้กับผู้ให้บริการโดยตรง</small></summary>
       <div class="aibody">
+        <label class="field"><span>คีย์ API</span><input id="kKey" type="password" autocomplete="off" spellcheck="false" placeholder="วางคีย์ที่นี่ ระบบเลือกผู้ให้บริการให้เอง"></label>
         <label class="field"><span>ผู้ให้บริการ</span><select id="kVendor"></select></label>
+        <details class="kadv" id="kAdv"><summary>ตั้งค่าเพิ่มเติม <small id="kAdvNote">ไม่ต้องแก้ก็ได้</small></summary>
         <label class="field" id="kUrlF"><span>ที่อยู่ API</span><input id="kUrl" autocomplete="off" spellcheck="false"></label>
         <label class="field"><span>ชื่อโมเดล</span><span class="mrow"><input id="kModel" list="kModelList" autocomplete="off" spellcheck="false"><button class="btn" type="button" id="kModels">ดึงรายชื่อ</button></span><datalist id="kModelList"></datalist></label>
-        <label class="field"><span>คีย์ API</span><input id="kKey" type="password" autocomplete="off" spellcheck="false" placeholder="วางคีย์ที่นี่"></label>
+        </details>
         <button class="btn" id="kTest">ทดสอบการเชื่อมต่อ</button>
         <div id="kMsg"></div>
         <div class="note">คีย์เก็บไว้ในเบราว์เซอร์ของเครื่องนี้เท่านั้น ไม่ซิงก์ไปเครื่องอื่นและไม่ถูกเก็บในสมุด</div>
@@ -932,8 +944,9 @@ body.student #bLive, body.student #bPresent { display: none; }
       <li>กด Create API key แล้วกดคัดลอกคีย์</li>
       <li>วางคีย์ในช่องด้านล่าง แล้วกด เชื่อมต่อ</li>
     </ol>
-    <label class="field"><span>คีย์ Gemini</span><input id="qsKey" type="password" autocomplete="off" spellcheck="false" placeholder="วางคีย์ที่นี่"></label>
-    <div class="row2"><button class="btn solid" id="qsGo">เชื่อมต่อ</button><button class="btn" id="qsMore">ใช้แบบอื่น เช่น AI ในเครื่อง หรือคีย์ Claude</button></div>
+    <div class="note small">มีคีย์ของ Claude, OpenAI หรือ Typhoon อยู่แล้ว วางคีย์นั้นได้เลย ไม่ต้องตั้งค่าอื่น ระบบเลือกโมเดลที่อ่านภาพได้ให้เอง</div>
+    <label class="field"><span>คีย์ API <small id="qsWho">ระบบดูจากคีย์ว่าเป็นของผู้ให้บริการไหน</small></span><input id="qsKey" type="password" autocomplete="off" spellcheck="false" placeholder="วางคีย์ที่นี่"></label>
+    <div class="row2"><button class="btn solid" id="qsGo">เชื่อมต่อ</button><button class="btn" id="qsMore">ตั้งค่าเอง หรือใช้ AI ในเครื่อง</button></div>
     <div id="qsMsg"></div>
     <div class="note small">คีย์เก็บไว้ในเครื่องนี้เท่านั้น แต่ละเครื่องต้องใส่ครั้งเดียว แบบใช้ฟรีมีจำนวนครั้งต่อวันจำกัด และ Google อาจนำข้อมูลที่ส่งไปใช้ปรับปรุงบริการ ไม่ควรส่งข้อมูลส่วนตัวของนักเรียน</div>
   </div>
@@ -1474,7 +1487,7 @@ const AI = {
   })(),
   save() { store_ls.set('tp-ai', JSON.stringify(this.cfg)); },
   localReady() { return !!(this.cfg.local.url && this.cfg.local.model); },
-  keyReady() { const k = this.cfg.key, V = KEY_VENDORS[k.vendor] || KEY_VENDORS.other; return !!(k.key && (k.vendor === 'anthropic' || ((k.url || V.url) && (k.model || V.model)))); },
+  keyReady() { const k = this.cfg.key, V = KEY_VENDORS[k.vendor] || KEY_VENDORS.other; return !!(k.key && (k.vendor === 'anthropic' || (k.url || V.url))); },
   src(task) {
     const s = this.cfg.use[task] || 'auto';
     if (s !== 'auto') return s;
@@ -1500,6 +1513,7 @@ const AI = {
     if (s === 'local') { const L = this.cfg.local; return runOpenAI(L.url, '', L.model, prompt, L.vision ? o : Object.assign({}, o, { images: null }), L.tools); }
     if (s === 'key') {
       const K = this.cfg.key, V = KEY_VENDORS[K.vendor] || KEY_VENDORS.other;
+      if (!K.model && !V.model) { K.model = await pickModel(K.vendor, K.url, K.key); this.save(); }
       if (K.vendor === 'anthropic') return runAnthropic(K.key, K.model || V.model, prompt, o);
       return runOpenAI(K.url || V.url, K.key, K.model || V.model, prompt, o, true);
     }
@@ -2997,22 +3011,53 @@ function waitCard(el, title, steps, opt) {
   return { step(i) { cur = i; paint(); }, stop, get cancelled() { return cancelled; }, get dead() { return dead; } };
 }
 function openAISetup() { closeSheets(); $('#qsMsg').innerHTML = ''; $('#qsKey').value = ''; $('#aiSetup').hidden = false; }
+function detectVendor(key) {
+  key = String(key || '').trim();
+  if (/^sk-ant-/.test(key)) return 'anthropic';
+  if (/^(AIza|AQ\.)/.test(key)) return 'gemini';
+  if (/^sk-/.test(key)) return 'openai';
+  return null;
+}
+/* pick a model that can read pictures when the person left the name empty */
+const MODEL_PREF = {
+  gemini: [/^gemini-flash-latest$/, /^gemini-[\d.]+-flash$/, /flash(?!.*(image|tts|live|audio|lite))/],
+  anthropic: [/sonnet/, /opus/, /haiku/],
+  openai: [/^gpt-5(\.\d+)?-mini$/, /^gpt-4\.1-mini$/, /^gpt-4o-mini$/, /^gpt-5(\.\d+)?$/, /^gpt-4\.1$/, /^gpt-4o$/],
+  typhoon: [/vl|vision/, /typhoon/],
+  other: [/vl|vision|4o|gpt-|gemini|claude|llava|qwen/]
+};
+async function pickModel(vendor, url, key) {
+  const V = KEY_VENDORS[vendor] || KEY_VENDORS.other;
+  let ids = [];
+  try { ids = await listModels(url || V.url, key, vendor); } catch (e) { if (V.model) return V.model; throw e; }
+  ids = ids.filter((x) => !/embed|whisper|tts|dall-e|audio|realtime|moderation|search|transcribe|image-gen|davinci|babbage/i.test(x));
+  for (const re of MODEL_PREF[vendor] || MODEL_PREF.other) { const m = ids.filter((x) => re.test(x)).sort().reverse()[0]; if (m) return m; }
+  if (V.model) return V.model;
+  if (ids[0]) return ids[0];
+  throw { code: 'no_model' };
+}
 async function quickSetup() {
-  const key = $('#qsKey').value.trim(), out = $('#qsMsg');
+  const key = $('#qsKey').value.trim().replace(/^["']|["']$/g, '').replace(/^(Bearer|x-goog-api-key:)\s*/i, ''), out = $('#qsMsg');
   if (key.length < 20) { out.innerHTML = '<div class="note err">วางคีย์ที่คัดลอกมาให้ครบก่อน</div>'; return; }
-  const B = waitCard(out, 'กำลังเชื่อมต่อ Gemini', ['ตรวจคีย์และหาโมเดลที่ใช้ได้', 'ส่งข้อความทดสอบให้ AI', 'บันทึกการตั้งค่า']);
-  const V = KEY_VENDORS.gemini;
-  try {
-    let model = V.model;
-    try { const ids = await listModels(V.url, key, 'gemini'); const pick = ids.find((x) => x === 'gemini-flash-latest') || ids.find((x) => /^gemini-[\d.]+-flash$/.test(x)) || ids.find((x) => /flash/.test(x) && !/image|tts|live|audio|lite/.test(x)); if (pick) model = pick; } catch (e) { /* keep the alias */ }
-    if (B.cancelled) return; B.step(1);
-    const r = await runOpenAI(V.url, key, model, 'Reply with exactly: OK', {}, false);
-    if (B.cancelled) return; B.step(2); B.stop();
-    AI.cfg.key = { vendor: 'gemini', url: '', model, key }; AI.cfg.use = { read: 'auto', gen: 'auto', draw: 'auto' }; AI.save();
-    renderAISettings(); renderAIAvail();
-    out.innerHTML = '<div class="note ok">เชื่อมต่อแล้ว (' + esc(model) + ') ใช้แปลงลายมือ สร้างสมการ สร้างโจทย์ และวาดรูปใหม่ได้ทันที</div>';
-    setTimeout(() => { $('#aiSetup').hidden = true; }, 1600);
-  } catch (e) { B.stop(); if (!B.cancelled) out.innerHTML = '<div class="note err">' + esc(aiErr(e)) + '</div>'; }
+  const guess = detectVendor(key), tries = guess === 'openai' ? ['openai', 'typhoon'] : guess ? [guess] : ['gemini', 'openai', 'typhoon', 'anthropic'];
+  const B = waitCard(out, 'กำลังเชื่อมต่อ' + (guess ? ' ' + KEY_VENDORS[guess].name.replace(/\s*\(.*\)/, '') : ''), ['ตรวจคีย์และหาโมเดลที่อ่านภาพได้', 'ส่งข้อความทดสอบให้ AI', 'บันทึกการตั้งค่า']);
+  let lastErr = null;
+  for (const vendor of tries) {
+    const V = KEY_VENDORS[vendor];
+    try {
+      B.step(0);
+      const model = await pickModel(vendor, '', key);
+      if (B.cancelled) return; B.step(1);
+      const r = vendor === 'anthropic' ? await runAnthropic(key, model, 'Reply with exactly: OK', {}) : await runOpenAI(V.url, key, model, 'Reply with exactly: OK', {}, false);
+      if (B.cancelled) return; B.step(2); B.stop();
+      AI.cfg.key = { vendor, url: '', model, key }; AI.cfg.use = { read: 'auto', gen: 'auto', draw: 'auto' }; AI.save();
+      renderAISettings(); renderAIAvail();
+      out.innerHTML = '<div class="note ok">เชื่อมต่อ ' + esc(V.name) + ' แล้ว (โมเดล ' + esc(model) + ') ใช้แปลงลายมือ สร้างสมการ สร้างโจทย์ และวาดรูปใหม่ได้ทันที</div>';
+      setTimeout(() => { $('#aiSetup').hidden = true; }, 1800);
+      return;
+    } catch (e) { lastErr = e; if (B.cancelled) return; }
+  }
+  B.stop(); out.innerHTML = '<div class="note err">' + esc(lastErr && lastErr.code === 'no_model' ? 'คีย์ใช้ได้ แต่หาโมเดลที่เหมาะไม่เจอ ตั้งชื่อโมเดลเองที่ ตั้งค่าเอง' : aiErr(lastErr)) + '</div>';
 }
 function inkBlob(refs, pad) {
   const list = refs ? refs.map(findStroke).filter(Boolean).map((s) => ({ s })) : allStrokes();
@@ -4024,7 +4069,9 @@ $('#pkClose').onclick = () => { peekStop(); $('#peek').hidden = true; };
 
 function renderLibrary() {
   renderTabs();
-  const el = $('#nbList'); if (!el) return; el.innerHTML = '';
+  const el = $('#nbList'); if (!el) return;
+  if (S.nbEditing && el.querySelector('.nbedit')) return; /* do not wipe a name being typed when another device syncs */
+  S.nbEditing = null; el.innerHTML = '';
   if (!S.nbs.length) { el.innerHTML = '<div class="note">ยังไม่มีสมุด สร้างเล่มแรกด้านล่าง</div>'; return; }
   for (const nb of S.nbs) {
     const b = document.createElement('button'); b.className = 'nbrow'; b.type = 'button';
@@ -4039,9 +4086,45 @@ function renderLibrary() {
     const pk = document.createElement('button'); pk.className = 'btn'; pk.type = 'button'; pk.textContent = 'ดูคู่กัน';
     pk.setAttribute('aria-label', 'เปิด ' + (nb.title || 'สมุด') + ' ดูคู่กับหน้าที่เขียนอยู่');
     pk.onclick = () => { closeSheets(); openPeek(nb.id); };
-    row.append(b, pk);
+    const ed = document.createElement('button'); ed.className = 'btn'; ed.type = 'button'; ed.textContent = 'แก้ไข';
+    ed.setAttribute('aria-label', 'แก้ชื่อ ระดับ หรือสีปกของ ' + (nb.title || 'สมุด'));
+    ed.onclick = () => editNotebookRow(row, nb);
+    row.append(b, ed, pk);
     el.appendChild(row);
+    if (S.editNb === nb.id) { S.editNb = null; editNotebookRow(row, nb); }
   }
+}
+function editNotebookRow(row, nb) {
+  const f = document.createElement('div'); f.className = 'nbedit';
+  f.innerHTML = '<label class="field"><span>ชื่อสมุด</span><input maxlength="80"></label><div class="row2"><label class="field"><span>ระดับ</span><select></select></label><span class="covers"></span></div><div class="row2"><button class="btn solid" type="button">บันทึก</button><button class="btn" type="button">ยกเลิก</button><button class="btn danger" type="button">ลบสมุดเล่มนี้</button></div><div class="nbmsg"></div>';
+  const inp = f.querySelector('input'), sel = f.querySelector('select'), [bSave, bCancel, bDel] = f.querySelectorAll('.row2 .btn');
+  inp.value = nb.title || '';
+  for (const [k, n] of LEVELS) { const o = document.createElement('option'); o.value = k; o.textContent = n; sel.appendChild(o); }
+  sel.value = nb.level || 'mp';
+  let color = COVERS.includes(nb.color) ? nb.color : COVERS[0];
+  const cv = f.querySelector('.covers');
+  for (const c of COVERS) { const s2 = document.createElement('button'); s2.type = 'button'; s2.className = 'csw'; s2.style.background = c; s2.setAttribute('aria-label', 'สีปก'); s2.setAttribute('aria-pressed', c === color ? 'true' : 'false'); s2.onclick = () => { color = c; cv.querySelectorAll('.csw').forEach((x) => x.setAttribute('aria-pressed', x === s2 ? 'true' : 'false')); }; cv.appendChild(s2); }
+  const save = async () => {
+    const title = inp.value.trim() || 'สมุด';
+    try { await S.store.update('notebooks/' + nb.id, { title, level: sel.value, color, updatedAt: now() }); if (S.nid === nb.id) { S.nb = Object.assign({}, S.nb, { title, level: sel.value, color }); renderTitle(); } toast('บันทึกแล้ว', 1200); } catch (e) { onStoreError(e); }
+    S.nbEditing = null; renderLibrary();
+  };
+  bSave.onclick = save; inp.onkeydown = (e) => { if (e.key === 'Enter') save(); if (e.key === 'Escape') { S.nbEditing = null; renderLibrary(); } };
+  bCancel.onclick = () => { S.nbEditing = null; renderLibrary(); };
+  let armed = false;
+  bDel.onclick = async () => {
+    if (!armed) { armed = true; bDel.textContent = 'แตะอีกครั้งเพื่อยืนยันการลบ'; f.querySelector('.nbmsg').innerHTML = '<div class="note err">ลบแล้วกู้คืนไม่ได้ ทุกหน้าและลายมือในเล่มนี้จะหายไป</div>'; setTimeout(() => { armed = false; if (bDel.isConnected) bDel.textContent = 'ลบสมุดเล่มนี้'; }, 4000); return; }
+    try {
+      for (const pid of nb.pages || []) { const ls = await S.store.list('pages/' + pid + '/layers').catch(() => []); for (const l of ls) await S.store.del('pages/' + pid + '/layers/' + l.id).catch(() => {}); await S.store.del('pages/' + pid).catch(() => {}); }
+      S.nbEditing = null;
+      await S.store.del('notebooks/' + nb.id);
+      closeTab(nb.id);
+      if (S.nid === nb.id) { S.nid = null; S.pid = null; const next = S.nbs.find((x) => x.id !== nb.id); if (next) openNotebook(next.id); }
+      toast('ลบสมุดแล้ว', 1600);
+    } catch (e) { onStoreError(e); }
+  };
+  row.replaceWith(f); f.dataset.nb = nb.id; S.nbEditing = nb.id;
+  setTimeout(() => { inp.focus({ preventScroll: true }); inp.select(); }, 30);
 }
 function closePops() {
   for (const id of ['#popShape', '#popColors', '#popEraser', '#popLaser', '#popWidth']) $(id).hidden = true;
@@ -4206,9 +4289,12 @@ function renderAISettings() {
   vs.value = C.key.vendor in KEY_VENDORS ? C.key.vendor : 'anthropic';
   const V = KEY_VENDORS[vs.value];
   $('#kUrlF').hidden = vs.value === 'anthropic';
-  $('#kUrlF').querySelector('span').textContent = vs.value === 'other' ? 'ที่อยู่ API' : 'ที่อยู่ API (เว้นว่างไว้ได้ ระบบใช้ค่าที่ถูกต้องให้เอง)';
+  $('#kUrlF').querySelector('span').textContent = vs.value === 'other' ? 'ที่อยู่ API (ต้องกรอก)' : 'ที่อยู่ API (เว้นว่างได้ ระบบใช้ค่าที่ถูกต้องให้เอง)';
+  const mNeed = vs.value === 'other';
+  $('#kAdvNote').textContent = mNeed ? 'ต้องกรอกที่อยู่ API สำหรับผู้ให้บริการนี้' : 'ไม่ต้องแก้ก็ได้ เว้นว่างแล้วระบบเลือกให้';
+  if (mNeed) $('#kAdv').open = true;
   $('#kUrl').value = C.key.url || ''; $('#kUrl').placeholder = V.url || 'https://.../v1';
-  $('#kModel').value = C.key.model || ''; $('#kModel').placeholder = V.model || 'ชื่อโมเดลที่อ่านภาพได้';
+  $('#kModel').value = C.key.model || ''; $('#kModel').placeholder = V.model ? V.model + ' (ใช้ค่านี้ถ้าเว้นว่าง)' : 'เว้นว่างได้ ระบบเลือกโมเดลที่อ่านภาพได้ให้';
   $('#kKey').value = C.key.key || '';
 }
 async function listModels(base, key, vendor) {
@@ -4242,7 +4328,7 @@ function bindAISettings() {
   const upd = () => { AI.save(); renderAISettings(); renderAIAvail(); };
   const onIn = (id, fn) => { $(id).addEventListener('change', () => { fn($(id).value.trim()); upd(); }); };
   onIn('#lUrl', (v) => { C.local.url = v; }); onIn('#lModel', (v) => { C.local.model = v; });
-  onIn('#kUrl', (v) => { C.key.url = cleanApiUrl(v, C.key.vendor); }); onIn('#kModel', (v) => { C.key.model = v.replace(/^models\//, ''); }); onIn('#kKey', (v) => { C.key.key = v.replace(/^["'\s]+|["'\s]+$/g, '').replace(/^(Bearer|x-goog-api-key:)\s*/i, ''); });
+  onIn('#kUrl', (v) => { C.key.url = cleanApiUrl(v, C.key.vendor); }); onIn('#kModel', (v) => { C.key.model = v.replace(/^models\//, ''); }); onIn('#kKey', (v) => { C.key.key = v.replace(/^["'\s]+|["'\s]+$/g, '').replace(/^(Bearer|x-goog-api-key:)\s*/i, ''); const g = detectVendor(C.key.key); if (g && g !== C.key.vendor && !(g === 'openai' && C.key.vendor === 'typhoon')) { C.key.vendor = g; C.key.url = ''; C.key.model = ''; } });
   $('#kVendor').onchange = () => { C.key.vendor = $('#kVendor').value; C.key.url = ''; C.key.model = ''; upd(); };
   $('#lPreOllama').onclick = () => { C.local.url = 'http://localhost:11434/v1'; upd(); };
   $('#lPreLms').onclick = () => { C.local.url = 'http://localhost:1234/v1'; upd(); };
@@ -4255,12 +4341,12 @@ function bindAISettings() {
       setTimeout(() => B.step(1), 250);
       let r;
       if (kind === 'local') { if (!AI.localReady()) throw { code: 'cfg' }; r = await runOpenAI(C.local.url, '', C.local.model, prompt, {}, false); }
-      else { if (!AI.keyReady()) throw { code: 'cfg' }; const V = KEY_VENDORS[C.key.vendor] || KEY_VENDORS.other; r = C.key.vendor === 'anthropic' ? await runAnthropic(C.key.key, C.key.model || V.model, prompt, {}) : await runOpenAI(C.key.url || V.url, C.key.key, C.key.model || V.model, prompt, {}, false); }
+      else { if (!AI.keyReady()) throw { code: 'cfg' }; const V = KEY_VENDORS[C.key.vendor] || KEY_VENDORS.other; if (!C.key.model && !V.model) { C.key.model = await pickModel(C.key.vendor, C.key.url, C.key.key); AI.save(); renderAISettings(); } r = C.key.vendor === 'anthropic' ? await runAnthropic(C.key.key, C.key.model || V.model, prompt, {}) : await runOpenAI(C.key.url || V.url, C.key.key, C.key.model || V.model, prompt, {}, false); }
       B.stop(); if (B.cancelled) return;
       out.innerHTML = '<div class="note ok">เชื่อมต่อได้ AI ตอบว่า ' + esc(String(r.text || '').slice(0, 60)) + '</div>';
     } catch (e) {
       B.stop(); if (B.cancelled) return;
-      out.innerHTML = '<div class="note err">' + esc(e && e.code === 'cfg' ? 'กรอกที่อยู่ ชื่อโมเดล และคีย์ให้ครบก่อน' : aiErr(e)) + '</div>';
+      out.innerHTML = '<div class="note err">' + esc(e && e.code === 'cfg' ? (kind === 'local' ? 'กรอกที่อยู่และชื่อโมเดลของ AI ในเครื่องก่อน' : C.key.key ? 'ผู้ให้บริการนี้ต้องกรอกที่อยู่ API ในตั้งค่าเพิ่มเติม' : 'วางคีย์ API ก่อน') : e && e.code === 'no_model' ? 'คีย์ใช้ได้ แต่หาโมเดลที่เหมาะไม่เจอ พิมพ์ชื่อโมเดลเองในตั้งค่าเพิ่มเติม' : aiErr(e)) + '</div>';
     }
   };
   $('#lTest').onclick = () => test('local', '#lMsg');
@@ -6568,7 +6654,7 @@ async function pdfImport(newNb) {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793002298';
+const BUILD = '1793002646';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
@@ -6749,7 +6835,8 @@ $('#exAddOk').onclick = () => {
   EX.who = n; store_ls.set('tp-exwho', n); $('#exAdd').hidden = true; exRenderWho(); if (!EX.run) exRender();
 };
 $('#exNew').onkeydown = (e) => { if (e.key === 'Enter') $('#exAddOk').click(); };
-$('#qsGo').onclick = quickSetup; $('#qsClose').onclick = () => { $('#aiSetup').hidden = true; };
+$('#qsGo').onclick = quickSetup;
+$('#qsKey').addEventListener('input', () => { const g = detectVendor($('#qsKey').value); $('#qsWho').textContent = g ? 'ดูจากคีย์แล้ว เป็นของ ' + KEY_VENDORS[g].name.replace(/\s*\(.*\)/, '') + (g === 'openai' ? ' หรือ Typhoon' : '') : 'ระบบดูจากคีย์ว่าเป็นของผู้ให้บริการไหน'; }); $('#qsClose').onclick = () => { $('#aiSetup').hidden = true; };
 $('#qsMore').onclick = () => { $('#aiSetup').hidden = true; $('#menu').hidden = false; const c = $('#cfgKey'); if (c) { c.open = true; setTimeout(() => c.scrollIntoView({ block: 'center' }), 50); } };
 $('#iLab').onclick = () => { closeSheets(); renderLabPicker(); $('#labSheet').hidden = false; };
 $('#bLabClose').onclick = () => { $('#labSheet').hidden = true; };
@@ -6935,6 +7022,8 @@ $('#bDelPage').onclick = () => { $('#delConfirm').hidden = false; };
 $('#bDelNo').onclick = () => { $('#delConfirm').hidden = true; };
 $('#bDelYes').onclick = () => { $('#delConfirm').hidden = true; deletePage(); };
 $('#bMenu').onclick = () => { renderLibrary(); $('#menu').hidden = false; };
+$('#tTitle').title = 'แตะเพื่อแก้ชื่อสมุด';
+$('#tTitle').onclick = () => { if (!S.nid || S.present || S.student) return; S.editNb = S.nid; renderLibrary(); $('#menu').hidden = false; };
 $('#bMenuClose').onclick = closeSheets;
 $('#menu').addEventListener('click', (e) => { if (e.target.id === 'menu') closeSheets(); });
 $('#exportSheet').addEventListener('click', (e) => { if (e.target.id === 'exportSheet') closeSheets(); });
