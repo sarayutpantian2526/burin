@@ -306,7 +306,8 @@ body.tv .grip { height: 68px; width: 32px; }
 .esz { width: 52px; height: 52px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); cursor: pointer; display: flex; align-items: center; justify-content: center; }
 .esz span { display: block; border-radius: 999px; border: 2px solid var(--fg); }
 .esz[aria-pressed="true"] { border: 2px solid var(--accent); background: var(--accent-soft); }
-.logo { width: 44px; height: 44px; flex: none; border-radius: 12px; border: 0; padding: 0; cursor: pointer; background: var(--accent); color: var(--accent-fg); display: flex; align-items: center; justify-content: center; }
+.logo { width: 44px; height: 44px; flex: none; border-radius: 12px; border: 0; padding: 0; cursor: pointer; background: radial-gradient(circle at 28% 18%, rgba(255,255,255,0.36), rgba(255,255,255,0) 55%), linear-gradient(145deg, #4C6BE0, #2F4BB8 55%, #1B2C78); color: #FFFFFF; display: flex; align-items: center; justify-content: center; box-shadow: inset 0 1px 0 rgba(255,255,255,0.35), inset 0 -2px 4px rgba(14,26,85,0.35), 0 2px 6px rgba(27,44,120,0.35); }
+.logo svg { filter: drop-shadow(0 1px 1px rgba(11,20,64,0.45)); }
 .logo svg { width: 30px; height: 30px; }
 .tabs { display: flex; align-items: center; gap: 4px; min-width: 0; overflow: hidden; flex: 0 0 auto; }
 .top.compact .tabs { flex: 0 1 auto; }
@@ -4363,7 +4364,7 @@ $('#cIn').addEventListener('keydown', (e) => { if (e.key === 'Enter' && (e.metaK
 $('#bCalcClose').onclick = () => { $('#calc').hidden = true; setTimeout(fit, 0); };
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1792992147';
+const BUILD = '1792992330';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
