@@ -530,6 +530,15 @@ body.student #bLive, body.student #bPresent { display: none; }
 #aiFloat { position: fixed; left: 50%; bottom: max(76px, env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); z-index: 55; display: flex; flex-direction: column; gap: 8px; width: min(420px, calc(100% - 24px)); }
 #aiFloat .busy { background: var(--surface); box-shadow: var(--shadow); }
 body.present #aiFloat { display: none; }
+.consent { display: flex; gap: 10px; align-items: flex-start; padding: 12px; border-radius: 14px; border: 1.5px solid var(--warn); background: var(--warn-soft); cursor: pointer; }
+.consent input { width: 22px; height: 22px; flex: none; margin-top: 2px; }
+.consent > span { display: flex; flex-direction: column; gap: 6px; font-size: 13px; line-height: 1.5; }
+.consent b { font-size: 14px; }
+.qsopt { display: flex; flex-direction: column; gap: 8px; padding: 12px; border: 1px solid var(--line); border-radius: 14px; }
+.qsopt > span { font-size: 13px; color: var(--muted); line-height: 1.5; }
+.qsopt summary { cursor: pointer; }
+.qsopt summary small { color: var(--muted); }
+details.qsopt[open] { gap: 10px; }
 .exttl { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .exttl h2 { margin-right: auto; }
 .exwho { flex-direction: row; align-items: center; gap: 6px; }
@@ -969,18 +978,28 @@ body.present #aiFloat { display: none; }
 
 <div class="sheet" id="aiSetup" hidden>
   <div class="panel" role="dialog" aria-label="ตั้งค่าผู้ช่วย AI">
-    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><h2>ต่อผู้ช่วย AI ก่อนใช้งาน</h2><button class="btn" id="qsClose">ไว้ทีหลัง</button></div>
-    <div class="note">การแปลงลายมือเป็นตัวพิมพ์และสมการ การสร้างโจทย์ และการวาดรูปใหม่ ต้องใช้ AI ที่อ่านภาพได้ ทางที่ง่ายและใช้ฟรีคือ Google Gemini ใช้บัญชี Google ที่มีอยู่แล้ว</div>
-    <ol class="qsteps">
-      <li>เปิด <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a> แล้วเข้าระบบด้วยบัญชี Google</li>
-      <li>กด Create API key แล้วกดคัดลอกคีย์</li>
-      <li>วางคีย์ในช่องด้านล่าง แล้วกด เชื่อมต่อ</li>
-    </ol>
-    <div class="note small">มีคีย์ของ Claude, OpenAI หรือ Typhoon อยู่แล้ว วางคีย์นั้นได้เลย ไม่ต้องตั้งค่าอื่น ระบบเลือกโมเดลที่อ่านภาพได้ให้เอง</div>
-    <label class="field"><span>คีย์ API <small id="qsWho">ระบบดูจากคีย์ว่าเป็นของผู้ให้บริการไหน</small></span><input id="qsKey" type="password" autocomplete="off" spellcheck="false" placeholder="วางคีย์ที่นี่"></label>
-    <div class="row2"><button class="btn solid" id="qsGo">เชื่อมต่อ</button><button class="btn" id="qsMore">ตั้งค่าเอง หรือใช้ AI ในเครื่อง</button></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><h2>เชื่อมต่อ AI ของคุณ</h2><button class="btn" id="qsClose">ไว้ทีหลัง</button></div>
+    <div class="note">การแปลงลายมือเป็นตัวพิมพ์และสมการ การสร้างโจทย์ และการวาดรูปใหม่ ใช้ AI ของผู้ใช้เอง Burin ไม่มี AI ของตัวเองและไม่เก็บค่าบริการ</div>
+    <label class="consent"><input type="checkbox" id="qsAgree"><span><b>ก่อนเชื่อมต่อ โปรดรับทราบและยินยอม</b>
+      <span>คุณภาพของงาน เช่น ความแม่นยำในการอ่านลายมือภาษาไทย ความถูกต้องของโจทย์และเฉลย และความเร็ว ขึ้นกับ AI และโมเดลที่คุณเชื่อมต่อ ผลลัพธ์อาจผิดได้ ควรตรวจก่อนใช้สอน</span>
+      <span>ภาพลายมือและข้อความที่สั่งงานจะถูกส่งไปประมวลผลที่ผู้ให้บริการ AI นั้นโดยตรง ตามนโยบายของผู้ให้บริการ ไม่ควรส่งข้อมูลส่วนตัวของผู้เรียน</span>
+      <span>ค่าใช้จ่าย (ถ้ามี) และโควตา เป็นของบัญชีคุณกับผู้ให้บริการ</span></span></label>
+    <div class="qsopt"><b>ทางที่ง่ายที่สุด เข้าระบบแล้วกดอนุญาต ไม่ต้องคัดลอกคีย์</b>
+      <span>ใช้บัญชี OpenRouter ซึ่งเป็นช่องทางเดียวที่เข้าถึง AI หลายเจ้า เช่น Gemini, Claude, GPT สมัครด้วยบัญชี Google ได้ บางโมเดลใช้ฟรีแบบจำกัดจำนวนครั้ง โมเดลที่อ่านลายมือได้ดีส่วนใหญ่ต้องเติมเครดิตในบัญชี OpenRouter ก่อน</span>
+      <button class="btn solid qneed" id="qsOR" disabled>เชื่อมต่อด้วยบัญชี OpenRouter</button>
+      <div id="qsORPaste" hidden><label class="field"><span>ถ้าหน้าอนุญาตแสดงรหัสให้คัดลอก วางรหัสนั้นที่นี่</span><span class="mrow"><input id="qsORCode" autocomplete="off" spellcheck="false"><button class="btn" id="qsORGo" type="button">ยืนยัน</button></span></label></div>
+    </div>
+    <details class="qsopt" id="qsKeyBox"><summary><b>หรือวางคีย์ API ที่มีอยู่</b> <small>Gemini ใช้ฟรีได้ หรือคีย์ Claude, OpenAI, Typhoon</small></summary>
+      <ol class="qsteps">
+        <li>ขอคีย์ Gemini ฟรีที่ <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a> กด Create API key แล้วคัดลอก</li>
+        <li>วางคีย์ในช่องด้านล่าง แล้วกด เชื่อมต่อ ระบบดูจากคีย์ว่าเป็นของเจ้าไหนและเลือกโมเดลให้เอง</li>
+      </ol>
+      <label class="field"><span>คีย์ API <small id="qsWho">ระบบดูจากคีย์ว่าเป็นของผู้ให้บริการไหน</small></span><input id="qsKey" type="password" autocomplete="off" spellcheck="false" placeholder="วางคีย์ที่นี่"></label>
+      <button class="btn solid qneed" id="qsGo" disabled>เชื่อมต่อ</button>
+    </details>
     <div id="qsMsg"></div>
-    <div class="note small">เมื่อเข้าระบบคลาวด์ ใส่คีย์ครั้งเดียวแล้วใช้ได้ทุกเครื่องของบัญชีนี้ (ปิดได้ในเมนู หัวข้อคีย์ API) แบบใช้ฟรีมีจำนวนครั้งต่อวันจำกัด และ Google อาจนำข้อมูลที่ส่งไปใช้ปรับปรุงบริการ ไม่ควรส่งข้อมูลส่วนตัวของนักเรียน</div>
+    <div class="row2"><button class="btn" id="qsMore">ตั้งค่าเอง หรือใช้ AI ในเครื่อง</button></div>
+    <div class="note small">เมื่อเข้าระบบคลาวด์ของ Burin เชื่อมต่อครั้งเดียวแล้วใช้ได้ทุกเครื่องของบัญชีนี้ (ปิดได้ในเมนู หัวข้อคีย์ API) ถ้าเปิด Burin ใน claude.ai ระบบใช้ Claude ของคุณได้ทันทีโดยไม่ต้องเชื่อมต่อ</div>
   </div>
 </div>
 
@@ -1515,6 +1534,7 @@ const KEY_VENDORS = {
   gemini: { name: 'Google Gemini (มีแบบใช้ฟรี)', url: 'https://generativelanguage.googleapis.com/v1beta/openai', model: 'gemini-flash-latest' },
   anthropic: { name: 'Claude (Anthropic)', url: 'https://api.anthropic.com/v1', model: 'claude-sonnet-5-5' },
   openai: { name: 'OpenAI', url: 'https://api.openai.com/v1', model: '' },
+  openrouter: { name: 'OpenRouter (หลายเจ้าในบัญชีเดียว)', url: 'https://openrouter.ai/api/v1', model: '' },
 
   typhoon: { name: 'Typhoon (ไทย)', url: 'https://api.opentyphoon.ai/v1', model: '' },
   other: { name: 'อื่น ๆ ที่รองรับรูปแบบ OpenAI', url: '', model: '' }
@@ -1523,7 +1543,7 @@ const AI = {
   claude: null, claudeLimits: null, claudeState: 'checking',
   cfg: (() => {
     const d = { use: { read: 'auto', gen: 'auto', draw: 'auto' }, local: { url: 'http://localhost:11434/v1', model: '', vision: true, tools: true }, key: { vendor: 'gemini', url: '', model: '', key: '' } };
-    try { const v = JSON.parse(store_ls.get('tp-ai') || 'null'); if (v && typeof v === 'object') { d.use = Object.assign(d.use, v.use || {}); d.local = Object.assign(d.local, v.local || {}); d.key = Object.assign(d.key, v.key || {}); d.at = +v.at || 0; } } catch (e) { /* defaults */ }
+    try { const v = JSON.parse(store_ls.get('tp-ai') || 'null'); if (v && typeof v === 'object') { d.use = Object.assign(d.use, v.use || {}); d.local = Object.assign(d.local, v.local || {}); d.key = Object.assign(d.key, v.key || {}); d.at = +v.at || 0; d.consentAt = +v.consentAt || 0; } } catch (e) { /* defaults */ }
     return d;
   })(),
   save(fromCloud) {
@@ -3070,7 +3090,42 @@ function floatWait(title, steps, onCancel) {
   B.close = () => { B.stop(); slot.remove(); };
   return B;
 }
-function openAISetup() { closeSheets(); $('#qsMsg').innerHTML = ''; $('#qsKey').value = ''; $('#aiSetup').hidden = false; }
+
+/* consent first, then connect with an OpenRouter account (OAuth with PKCE: the person logs in and approves, no key to copy) */
+function b64url(buf) { return btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); }
+async function orStart() {
+  if (!$('#qsAgree').checked) return;
+  AI.cfg.consentAt = Date.now(); AI.save();
+  const ver = b64url(crypto.getRandomValues(new Uint8Array(48))), st = b64url(crypto.getRandomValues(new Uint8Array(12)));
+  const ch = b64url(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(ver)));
+  store_ls.set('tp-or', JSON.stringify({ ver, st, at: Date.now() }));
+  const standalone = (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone;
+  const base = 'https://openrouter.ai/auth?code_challenge=' + ch + '&code_challenge_method=S256&state=' + st + '&key_label=' + encodeURIComponent('Burin');
+  if (standalone) {
+    /* an app opened from the home screen cannot receive the redirect back: show the code and let the person paste it */
+    window.open(base, '_blank'); $('#qsORPaste').hidden = false;
+    $('#qsMsg').innerHTML = '<div class="note">เข้าระบบ OpenRouter ในหน้าที่เปิดขึ้น กดอนุญาต แล้วคัดลอกรหัสที่แสดงมาวางในช่องด้านบน</div>';
+  } else location.href = base + '&callback_url=' + encodeURIComponent(location.origin + location.pathname);
+}
+async function orFinish(code, state) {
+  let saved = null; try { saved = JSON.parse(store_ls.get('tp-or') || 'null'); } catch (e) { saved = null; }
+  if (!saved || (state && state !== saved.st) || Date.now() - saved.at > 15 * 60000) { toast('การเชื่อมต่อ OpenRouter หมดเวลาหรือไม่ตรงกัน ลองกดเชื่อมต่อใหม่', 4000); return; }
+  closeSheets(); $('#aiSetup').hidden = false; $('#qsAgree').checked = true; syncAgree();
+  const out = $('#qsMsg'), B = waitCard(out, 'กำลังเชื่อมต่อบัญชี OpenRouter', ['รับคีย์จาก OpenRouter', 'เลือกโมเดลที่อ่านภาพได้', 'บันทึกการตั้งค่า']);
+  try {
+    const r = await aiFetch('https://openrouter.ai/api/v1/auth/keys', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ code: code.trim(), code_verifier: saved.ver, code_challenge_method: 'S256' }) });
+    if (!r.key) throw { code: 'bad_key' };
+    store_ls.set('tp-or', '');
+    B.step(1); let model = '';
+    try { model = await pickModel('openrouter', '', r.key, true); } catch (e) { model = ''; }
+    B.step(2); B.stop();
+    AI.cfg.key = { vendor: 'openrouter', url: '', model, key: r.key }; AI.cfg.use = { read: 'auto', gen: 'auto', draw: 'auto' }; AI.save();
+    renderAISettings(); renderAIAvail();
+    out.innerHTML = '<div class="note ok">เชื่อมต่อบัญชี OpenRouter แล้ว' + (model ? ' ใช้โมเดล ' + esc(model) : '') + ' เปลี่ยนโมเดลได้ที่เมนู หัวข้อคีย์ API ตั้งค่าเพิ่มเติม ถ้าใช้งานแล้วขึ้นว่าเครดิตไม่พอ ให้เติมเครดิตในบัญชี OpenRouter หรือเลือกโมเดลที่ลงท้ายด้วย :free</div>';
+  } catch (e) { B.stop(); out.innerHTML = '<div class="note err">เชื่อมต่อไม่สำเร็จ ' + esc(aiErr(e)) + '</div>'; }
+}
+function syncAgree() { const ok = $('#qsAgree').checked; document.querySelectorAll('#aiSetup .qneed').forEach((b) => { b.disabled = !ok; }); }
+function openAISetup() { closeSheets(); $('#qsMsg').innerHTML = ''; $('#qsKey').value = ''; $('#qsORPaste').hidden = true; $('#qsAgree').checked = !!AI.cfg.consentAt; syncAgree(); $('#aiSetup').hidden = false; }
 /* busy servers (503, 500, overloaded): wait and try again, then try a sister model; keep the one that worked */
 const busyErr = (e) => e && (/^http_5\d\d$/.test(e.code) || (e.code === 'rate_limited' && /overload|unavailable|try again/i.test(e.message || '')) || /overload|unavailable|high demand/i.test((e && e.message) || ''));
 const sleepAbort = (ms, sig) => new Promise((res, rej) => { const t = setTimeout(res, ms); if (sig) sig.addEventListener('abort', () => { clearTimeout(t); rej({ code: 'cancelled' }); }, { once: true }); });
@@ -3102,6 +3157,7 @@ const MODEL_PREF = {
   anthropic: [/sonnet/, /opus/, /haiku/],
   openai: [/^gpt-5(\.\d+)?-mini$/, /^gpt-4\.1-mini$/, /^gpt-4o-mini$/, /^gpt-5(\.\d+)?$/, /^gpt-4\.1$/, /^gpt-4o$/],
   typhoon: [/vl|vision/, /typhoon/],
+  openrouter: [/^google\/gemini-[\d.]+-flash$/, /^google\/gemini.*flash(?!.*(lite|image|thinking))/, /^anthropic\/claude.*sonnet/, /^openai\/gpt-[45].*mini/, /^google\/gemini.*:free$/, /vl.*:free$/],
   other: [/vl|vision|4o|gpt-|gemini|claude|llava|qwen/]
 };
 async function pickModel(vendor, url, key, strict) {
@@ -3115,6 +3171,7 @@ async function pickModel(vendor, url, key, strict) {
   throw { code: 'no_model' };
 }
 async function quickSetup() {
+  if (!$('#qsAgree').checked) return; AI.cfg.consentAt = AI.cfg.consentAt || Date.now();
   const key = $('#qsKey').value.trim().replace(/^["']|["']$/g, '').replace(/^(Bearer|x-goog-api-key:)\s*/i, ''), out = $('#qsMsg');
   if (key.length < 20) { out.innerHTML = '<div class="note err">วางคีย์ที่คัดลอกมาให้ครบก่อน</div>'; return; }
   const guess = detectVendor(key), tries = guess === 'openai' ? ['openai', 'typhoon'] : guess ? [guess] : ['gemini', 'openai', 'typhoon', 'anthropic'];
@@ -6868,7 +6925,7 @@ async function pdfImport(newNb) {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793003600';
+const BUILD = '1793004057';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
@@ -7050,6 +7107,9 @@ $('#exAddOk').onclick = () => {
 };
 $('#exNew').onkeydown = (e) => { if (e.key === 'Enter') $('#exAddOk').click(); };
 $('#qsGo').onclick = quickSetup;
+$('#qsAgree').onchange = syncAgree;
+$('#qsOR').onclick = orStart;
+$('#qsORGo').onclick = () => { const c = $('#qsORCode').value.trim(); if (c) orFinish(c, null); };
 $('#qsKey').addEventListener('input', () => { const g = detectVendor($('#qsKey').value); $('#qsWho').textContent = g ? 'ดูจากคีย์แล้ว เป็นของ ' + KEY_VENDORS[g].name.replace(/\s*\(.*\)/, '') + (g === 'openai' ? ' หรือ Typhoon' : '') : 'ระบบดูจากคีย์ว่าเป็นของผู้ให้บริการไหน'; }); $('#qsClose').onclick = () => { $('#aiSetup').hidden = true; };
 $('#qsMore').onclick = () => { $('#aiSetup').hidden = true; $('#menu').hidden = false; const c = $('#cfgKey'); if (c) { c.open = true; setTimeout(() => c.scrollIntoView({ block: 'center' }), 50); } };
 $('#iLab').onclick = () => { closeSheets(); renderLabPicker(); $('#labSheet').hidden = false; };
@@ -7430,6 +7490,7 @@ async function boot() {
     }).catch(() => { AI.claude = null; AI.claudeState = 'none'; renderAIAvail(); });
   } else { AI.claudeState = 'none'; setupRoom(CLOUD.state === 'on' ? makeCloudRoom(CLOUD.client, CLOUD.user) : makeLocalRoom()); renderAIAvail(); }
   renderAISettings(); renderCloud();
+  try { const qp = new URLSearchParams(location.search); if (qp.get('code') && store_ls.get('tp-or')) { const c = qp.get('code'), st = qp.get('state'); history.replaceState(null, '', location.pathname + location.hash); setTimeout(() => orFinish(c, st), 600); } } catch (e) { /* no query */ }
   if (CLOUD.state === 'signedout' && !S.present && !S.student) openAuth();
   setTimeout(() => { if (!S.pid) { const l = $('#loading'); l.querySelector('span').textContent = 'ยังเชื่อมต่อไม่ได้ ตรวจอินเทอร์เน็ตแล้วเปิดหน้านี้ใหม่'; } }, 12000);
 }
