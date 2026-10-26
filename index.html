@@ -1453,7 +1453,7 @@ const AI = {
   })(),
   save() { store_ls.set('tp-ai', JSON.stringify(this.cfg)); },
   localReady() { return !!(this.cfg.local.url && this.cfg.local.model); },
-  keyReady() { const k = this.cfg.key; return !!(k.key && (k.vendor === 'anthropic' || ((k.url || KEY_VENDORS[k.vendor].url) && k.model))); },
+  keyReady() { const k = this.cfg.key, V = KEY_VENDORS[k.vendor] || KEY_VENDORS.other; return !!(k.key && (k.vendor === 'anthropic' || ((k.url || V.url) && (k.model || V.model)))); },
   src(task) {
     const s = this.cfg.use[task] || 'auto';
     if (s !== 'auto') return s;
@@ -4155,6 +4155,7 @@ function renderAISettings() {
   $('#lUrl').value = C.local.url || ''; $('#lModel').value = C.local.model || '';
   $('#tgLVision').setAttribute('aria-checked', C.local.vision ? 'true' : 'false');
   $('#tgLTools').setAttribute('aria-checked', C.local.tools ? 'true' : 'false');
+  if (C.key.url && /\s|curl|\/models/.test(C.key.url)) { C.key.url = cleanApiUrl(C.key.url, C.key.vendor); AI.save(); }
   const vs = $('#kVendor');
   if (!vs.options.length) for (const [k, v] of Object.entries(KEY_VENDORS)) { const o = document.createElement('option'); o.value = k; o.textContent = v.name; vs.appendChild(o); }
   vs.value = C.key.vendor in KEY_VENDORS ? C.key.vendor : 'anthropic';
@@ -4181,6 +4182,14 @@ async function fillModels(listId, msgId, fn) {
     out.innerHTML = '<div class="note ok">พบ ' + ids.length + ' โมเดล แตะช่องชื่อโมเดลเพื่อเลือก ' + esc(ids.filter((x) => /flash|vl|vision|sonnet|gpt-4|4o|5/.test(x)).slice(0, 4).join(', ')) + '</div>';
   } catch (e) { out.innerHTML = '<div class="note err">' + esc(e && e.code === 'cfg' ? 'ใส่คีย์ก่อน' : aiErr(e)) + '</div>'; }
 }
+/* people often paste a whole curl example or a model URL: keep only what the app needs */
+function cleanApiUrl(v, vendor) {
+  const m = String(v || '').match(/https?:\/\/[^\s"'\\]+/); if (!m) return '';
+  const u = m[0];
+  const V = KEY_VENDORS[vendor];
+  if (V && V.url && new URL(V.url).host === new URL(u).host) return '';
+  return u.replace(/\/(chat\/completions|models)(\/.*)?$/, '').replace(/\/+$/, '');
+}
 function bindAISettings() {
   $('#kModels').onclick = () => fillModels('#kModelList', '#kMsg', () => { const K = AI.cfg.key, V = KEY_VENDORS[K.vendor] || KEY_VENDORS.other; if (!K.key) throw { code: 'cfg' }; return listModels(K.url || V.url, K.key, K.vendor); });
   $('#lModels').onclick = () => fillModels('#lModelList', '#lMsg', () => listModels(AI.cfg.local.url, '', 'local'));
@@ -4188,7 +4197,7 @@ function bindAISettings() {
   const upd = () => { AI.save(); renderAISettings(); renderAIAvail(); };
   const onIn = (id, fn) => { $(id).addEventListener('change', () => { fn($(id).value.trim()); upd(); }); };
   onIn('#lUrl', (v) => { C.local.url = v; }); onIn('#lModel', (v) => { C.local.model = v; });
-  onIn('#kUrl', (v) => { C.key.url = v; }); onIn('#kModel', (v) => { C.key.model = v; }); onIn('#kKey', (v) => { C.key.key = v; });
+  onIn('#kUrl', (v) => { C.key.url = cleanApiUrl(v, C.key.vendor); }); onIn('#kModel', (v) => { C.key.model = v.replace(/^models\//, ''); }); onIn('#kKey', (v) => { C.key.key = v.replace(/^["'\s]+|["'\s]+$/g, '').replace(/^(Bearer|x-goog-api-key:)\s*/i, ''); });
   $('#kVendor').onchange = () => { C.key.vendor = $('#kVendor').value; C.key.url = ''; C.key.model = ''; upd(); };
   $('#lPreOllama').onclick = () => { C.local.url = 'http://localhost:11434/v1'; upd(); };
   $('#lPreLms').onclick = () => { C.local.url = 'http://localhost:1234/v1'; upd(); };
@@ -6508,7 +6517,7 @@ async function pdfImport(newNb) {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793001998';
+const BUILD = '1793002074';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
