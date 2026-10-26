@@ -429,6 +429,17 @@ body.present .updbar { display: none !important; }
 .item.lab .lout .lres { flex-basis: 100%; padding: 8px 10px; border-radius: 10px; background: #EEF2FF; }
 .item.lab .lout .lres b { color: #1F3A8A; font-size: 16px; }
 .mrow { display: flex; gap: 6px; }
+.exlist { margin: 0; padding-left: 22px; display: flex; flex-direction: column; gap: 8px; font-size: 15px; }
+.exlist p { display: inline; margin: 0; }
+.exlist small { color: var(--muted); margin-left: 6px; }
+.lv { display: inline-block; min-width: 38px; text-align: center; padding: 1px 8px; border-radius: 999px; font-size: 12px; font-weight: 700; }
+.lv.l1 { background: var(--ok-soft); color: var(--ok); }
+.lv.l2 { background: var(--accent-soft); color: var(--accent); }
+.lv.l3 { background: var(--warn-soft); color: var(--warn); }
+.extab { width: 100%; border-collapse: collapse; font-size: 14px; }
+.extab th, .extab td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.extab td small { display: block; color: var(--muted); font-size: 11px; }
+#exTabs { flex-wrap: wrap; }
 .exttl { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .exttl h2 { margin-right: auto; }
 .exwho { flex-direction: row; align-items: center; gap: 6px; }
@@ -506,7 +517,7 @@ body.present .updbar { display: none !important; }
 
 <div id="app">
   <div class="top" role="toolbar" aria-label="แถบหลัก">
-    <button class="logo" id="bMenu" aria-label="Burin เมนูและสมุดทั้งหมด" title="Burin : Board for Understanding, Reasoning, Inquiry and Notes"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M9 6.5h8.2c3.6 0 5.8 1.9 5.8 4.8 0 2-1.1 3.4-2.8 4 2.3.5 3.8 2.2 3.8 4.6 0 3.3-2.5 5.6-6.4 5.6H9z M13.2 10.2v4.5h3.4c1.6 0 2.5-.9 2.5-2.3 0-1.4-.9-2.2-2.5-2.2z M13.2 18v5.3h3.9c1.8 0 2.8-1 2.8-2.7 0-1.6-1-2.6-2.8-2.6z" fill="currentColor" fill-rule="evenodd"/><path d="M24.5 4.5l3 3-4.2 4.2-2.2-.8-.8-2.2z" fill="currentColor" opacity="0.75"/></svg></button>
+    <button class="logo" id="bMenu" aria-label="Burin เมนูและสมุดทั้งหมด" title="Burin : Board for Understanding, Reasoning, Inquiry and Notes"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M9 6.5h8.2c3.6 0 5.8 1.9 5.8 4.8 0 2-1.1 3.4-2.8 4 2.3.5 3.8 2.2 3.8 4.6 0 3.3-2.5 5.6-6.4 5.6H9z M13.2 10.2v4.5h3.4c1.6 0 2.5-.9 2.5-2.3 0-1.4-.9-2.2-2.5-2.2z M13.2 18v5.3h3.9c1.8 0 2.8-1 2.8-2.7 0-1.6-1-2.6-2.8-2.6z" fill="currentColor" fill-rule="evenodd"/><g transform="translate(23.6 8.6) rotate(-45) scale(0.86)"><path d="M2.8 -1.45H9.6V1.45H2.8z" fill="#F6C343"/><path d="M2.8 0.5H9.6V1.45H2.8z" fill="#E0A82A"/><path d="M9.6 -1.45h1.2v2.9h-1.2z" fill="#C9CFDA"/><path d="M10.8 -1.45h1a.6 .6 0 0 1 .6 .6v1.7a.6 .6 0 0 1-.6 .6h-1z" fill="#F28CA0"/><path d="M0 0L2.8 -1.45V1.45z" fill="#F1D3A6"/><path d="M0 0L1.05 -.55V.55z" fill="#26282E"/></g></svg></button>
     <button class="btn icon" id="bPages" aria-label="หน้าในสมุด" aria-pressed="false"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="2.5" y="3.5" width="15" height="13" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M7.5 3.5v13" stroke="currentColor" stroke-width="1.6"/></svg></button>
     <div class="title"><b id="tTitle">กำลังเปิดสมุด</b><span id="tSub"></span></div>
     <div class="tabs" id="tabs" role="group" aria-label="สมุดที่เปิดค้างไว้ แตะเพื่อสลับ แตะค้างเพื่อเปิดดูคู่กัน"></div>
@@ -642,7 +653,7 @@ body.present .updbar { display: none !important; }
       <div class="toast no-ink" id="toast" hidden></div>
       <input type="file" id="fImg" accept="image/*" hidden>
       <input type="file" id="fVid" accept="video/mp4,video/webm,video/quicktime,video/*" hidden>
-      <div class="loading no-ink" id="loading"><span class="logo" style="width:64px;height:64px;border-radius:18px" aria-hidden="true"><svg viewBox="0 0 32 32" style="width:42px;height:42px"><path d="M9 6.5h8.2c3.6 0 5.8 1.9 5.8 4.8 0 2-1.1 3.4-2.8 4 2.3.5 3.8 2.2 3.8 4.6 0 3.3-2.5 5.6-6.4 5.6H9z M13.2 10.2v4.5h3.4c1.6 0 2.5-.9 2.5-2.3 0-1.4-.9-2.2-2.5-2.2z M13.2 18v5.3h3.9c1.8 0 2.8-1 2.8-2.7 0-1.6-1-2.6-2.8-2.6z" fill="currentColor" fill-rule="evenodd"/><path d="M24.5 4.5l3 3-4.2 4.2-2.2-.8-.8-2.2z" fill="currentColor" opacity="0.75"/></svg></span><span>กำลังเปิดสมุด</span></div>
+      <div class="loading no-ink" id="loading"><span class="logo" style="width:64px;height:64px;border-radius:18px" aria-hidden="true"><svg viewBox="0 0 32 32" style="width:42px;height:42px"><path d="M9 6.5h8.2c3.6 0 5.8 1.9 5.8 4.8 0 2-1.1 3.4-2.8 4 2.3.5 3.8 2.2 3.8 4.6 0 3.3-2.5 5.6-6.4 5.6H9z M13.2 10.2v4.5h3.4c1.6 0 2.5-.9 2.5-2.3 0-1.4-.9-2.2-2.5-2.2z M13.2 18v5.3h3.9c1.8 0 2.8-1 2.8-2.7 0-1.6-1-2.6-2.8-2.6z" fill="currentColor" fill-rule="evenodd"/><g transform="translate(23.6 8.6) rotate(-45) scale(0.86)"><path d="M2.8 -1.45H9.6V1.45H2.8z" fill="#F6C343"/><path d="M2.8 0.5H9.6V1.45H2.8z" fill="#E0A82A"/><path d="M9.6 -1.45h1.2v2.9h-1.2z" fill="#C9CFDA"/><path d="M10.8 -1.45h1a.6 .6 0 0 1 .6 .6v1.7a.6 .6 0 0 1-.6 .6h-1z" fill="#F28CA0"/><path d="M0 0L2.8 -1.45V1.45z" fill="#F1D3A6"/><path d="M0 0L1.05 -.55V.55z" fill="#26282E"/></g></svg></span><span>กำลังเปิดสมุด</span></div>
       <section class="peek no-ink" id="peek" hidden aria-label="ดูคู่กัน">
         <header id="peekHead">
           <div class="t"><b id="peekTitle"></b><span id="peekSub"></span></div>
@@ -817,7 +828,7 @@ body.present .updbar { display: none !important; }
 <div class="sheet" id="examSheet" hidden>
   <div class="panel wide" role="dialog" aria-label="ฝึกโจทย์แข่งขัน">
     <div class="exttl"><h2>ฝึกโจทย์แข่งขัน</h2><label class="field exwho"><span>ผู้ฝึก</span><select id="exWho"></select></label><span id="exAdd" hidden class="mrow"><input id="exNew" placeholder="ชื่อผู้ฝึก" maxlength="40"><button class="btn" id="exAddOk" type="button">เพิ่ม</button></span><button class="btn" id="exClose">ปิด</button></div>
-    <div class="seg" id="exTabs" role="group" aria-label="ส่วนของการฝึก"><button data-t="practice">ฝึกและสอบ</button><button data-t="stats">ผลและจุดอ่อน</button><button data-t="bank">คลังโจทย์</button></div>
+    <div class="seg" id="exTabs" role="group" aria-label="ส่วนของการฝึก"><button data-t="build">จากหน้านี้</button><button data-t="practice">ฝึกและสอบ</button><button data-t="stats">ผลและจุดอ่อน</button><button data-t="analysis">วิเคราะห์ข้อสอบ</button><button data-t="bank">คลังโจทย์</button></div>
     <div id="exBody" class="exbody"></div>
   </div>
 </div>
@@ -5348,7 +5359,7 @@ const EXAM_BANK = {
 };
 
 /* ---------- competition prep: practice, scores and weak topics ---------- */
-const EX = { who: store_ls.get('tp-exwho') || 'ตัวฉัน', people: [], att: [], own: [], tab: 'practice', track: store_ls.get('tp-extrack') || 'olymp', chs: new Set(), n: 10, mode: 'practice', run: null, loaded: false };
+const EX = { who: store_ls.get('tp-exwho') || 'ตัวฉัน', people: [], att: [], own: [], tab: 'build', sets: [], anSet: null, track: store_ls.get('tp-extrack') || 'olymp', chs: new Set(), n: 10, mode: 'practice', run: null, loaded: false };
 const exTrackName = (t) => (CURRIC[t] ? CURRIC[t][0] : t);
 const exChName = (t, ch) => (CURRIC[t] && CURRIC[t][1][ch] ? CURRIC[t][1][ch][0] : 'บทที่ ' + (ch + 1));
 function exAllQs() {
@@ -5362,7 +5373,8 @@ function exAllQs() {
 }
 async function exLoad() {
   try {
-    const [pp, aa, qq] = await Promise.all([S.store.get('exp/people'), S.store.list('exa'), S.store.list('exq')]);
+    const [pp, aa, qq, ss] = await Promise.all([S.store.get('exp/people'), S.store.list('exa'), S.store.list('exq'), S.store.list('exs')]);
+    EX.sets = (ss || []).map((x) => Object.assign({}, x));
     EX.people = (pp && pp.names) || [];
     EX.att = (aa || []).sort((a, b) => (a.at || 0) - (b.at || 0));
     EX.own = qq || [];
@@ -5415,8 +5427,8 @@ function exStartWeak() {
 async function exFinish() {
   const R = EX.run; if (!R || R.done) return;
   R.done = true; clearInterval(EX.tick);
-  const items = R.items.map((x) => [x.q.id, x.q.t + ':' + x.q.ch, x.pick === x.key ? 1 : 0, Math.round(x.sec)]);
-  const rec = { who: EX.who, at: now(), title: R.title, mode: R.mode, n: items.length, ok: items.filter((x) => x[2]).length, sec: Math.round((now() - R.t0) / 1000), items };
+  const items = R.items.map((x) => [x.q.id, x.q.t + ':' + x.q.ch, x.pick === x.key ? 1 : 0, Math.round(x.sec), x.pick >= 0 ? x.order[x.pick] : -1]);
+  const rec = { who: EX.who, at: now(), setId: R.setId || null, title: R.title, mode: R.mode, n: items.length, ok: items.filter((x) => x[2]).length, sec: Math.round((now() - R.t0) / 1000), items };
   EX.att.push(rec);
   await S.store.set('exa/' + rec.at.toString(36) + uid().slice(0, 4), rec).catch(() => toast('บันทึกคะแนนไม่สำเร็จ จะลองใหม่เมื่อต่อเน็ต', 2600));
   exRender();
@@ -5462,8 +5474,10 @@ function exRender() {
   $('#exTabs').hidden = !!(EX.run);
   $('#exTabs').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', b.dataset.t === EX.tab ? 'true' : 'false'));
   if (EX.run) return exRenderRun(body);
-  if (EX.tab === 'practice') exRenderSetup(body);
+  if (EX.tab === 'build') exRenderBuild(body);
+  else if (EX.tab === 'practice') exRenderSetup(body);
   else if (EX.tab === 'stats') exRenderStats(body);
+  else if (EX.tab === 'analysis') exRenderAnalysis(body);
   else exRenderBank(body);
 }
 function exRenderSetup(body) {
@@ -5677,8 +5691,236 @@ async function openExam() {
   exRenderWho(); exRender();
 }
 
+/* ---------- exercises from the current page: fresh-number templates, topic detection, worksheets, item analysis ---------- */
+const nf = (x, sig) => { if (!isFinite(x)) return '?'; const a = Math.abs(x); if (a !== 0 && (a >= 1e5 || a < 1e-3)) { const e = Math.floor(Math.log10(a)), m = x / Math.pow(10, e); return (+m.toPrecision(sig || 3)) + '\\times10^{' + e + '}'; } return String(+x.toPrecision(sig || 3)); };
+const pickR = (a, b, st) => { const n = Math.round((b - a) / st); return +(a + st * Math.floor(Math.random() * (n + 1))).toFixed(6); };
+/* each template: [track, chapter, difficulty, make] ; make returns [question, right, [wrong...], why] with numbers already in */
+const GEN = [
+  ['olymp', 1, 1, () => { const h = pickR(5, 45, 5), v = pickR(4, 20, 1), t = Math.sqrt(2 * h / 10); return ['ขว้างวัตถุในแนวระดับด้วยอัตราเร็ว ' + v + ' m/s จากที่สูง ' + h + ' m ($g=10$ m/s²) วัตถุตกห่างจากจุดใต้ตำแหน่งขว้างเท่าใด', '$' + nf(v * t) + '$ m', ['$' + nf(v * 2 * h / 10) + '$ m', '$' + nf(v * Math.sqrt(h / 10)) + '$ m', '$' + nf(t) + '$ m'], 'เวลาตก $t=\\sqrt{2h/g}=' + nf(t) + '$ s ระยะ $=vt$']; }],
+  ['olymp', 1, 2, () => { const v = pickR(10, 30, 1), th = pickR(20, 70, 5), s = Math.sin(th * Math.PI / 180), H = v * v * s * s / 20; return ['ยิงวัตถุด้วยอัตราเร็ว ' + v + ' m/s ทำมุม ' + th + '° กับแนวระดับ ($g=10$ m/s²) วัตถุขึ้นได้สูงสุดเท่าใด', '$' + nf(H) + '$ m', ['$' + nf(v * v * s / 20) + '$ m', '$' + nf(v * v * s * s / 10) + '$ m', '$' + nf(v * v / 20) + '$ m'], '$H=\\dfrac{v^2\\sin^2\\theta}{2g}$']; }],
+  ['olymp', 1, 1, () => { const u = pickR(0, 10, 1), v = u + pickR(4, 20, 2), t = pickR(2, 8, 1); return ['รถเร่งอย่างสม่ำเสมอจาก ' + u + ' m/s เป็น ' + v + ' m/s ในเวลา ' + t + ' s ระหว่างนั้นรถเคลื่อนที่ได้ระยะเท่าใด', '$' + nf((u + v) / 2 * t) + '$ m', ['$' + nf(v * t) + '$ m', '$' + nf((v - u) / 2 * t) + '$ m', '$' + nf(u * t) + '$ m'], '$s=\\dfrac{u+v}{2}t$']; }],
+  ['olymp', 2, 2, () => { const th = pickR(25, 45, 5), mu = pickR(0.1, 0.3, 0.05), s = Math.sin(th * Math.PI / 180), c = Math.cos(th * Math.PI / 180); return ['ก้อนวัตถุไถลลงพื้นเอียงทำมุม ' + th + '° สัมประสิทธิ์ความเสียดทานจลน์ ' + mu + ' ($g=10$ m/s²) ความเร่งของวัตถุเท่าใด', '$' + nf(10 * (s - mu * c)) + '$ m/s²', ['$' + nf(10 * s) + '$ m/s²', '$' + nf(10 * (s + mu * c)) + '$ m/s²', '$' + nf(10 * Math.abs(c - mu * s)) + '$ m/s²'], '$a=g(\\sin\\theta-\\mu_k\\cos\\theta)$']; }],
+  ['olymp', 2, 2, () => { const m1 = pickR(1, 6, 1), m2 = pickR(1, 6, 1), F = pickR(6, 30, 2); return ['ออกแรง ' + F + ' N ผลักกล่อง ' + m1 + ' kg ซึ่งดันกล่อง ' + m2 + ' kg ที่วางชิดกันบนพื้นลื่น แรงที่กล่องแรกกระทำต่อกล่องที่สองเท่าใด', '$' + nf(F * m2 / (m1 + m2)) + '$ N', ['$' + nf(F) + '$ N', '$' + nf(F * m1 / (m1 + m2)) + '$ N', '$' + nf(F / 2 === F * m2 / (m1 + m2) ? F / 3 : F / 2) + '$ N'], 'ความเร่งร่วม $a=F/(m_1+m_2)$ แรงต่อกล่องที่สอง $=m_2a$']; }],
+  ['olymp', 2, 3, () => { const r = pickR(0.5, 3, 0.5); return ['ลูกบอลผูกเชือกยาว ' + r + ' m แกว่งเป็นวงกลมในแนวดิ่ง ($g=10$ m/s²) อัตราเร็วน้อยที่สุดที่จุดสูงสุดที่เชือกยังตึงเท่าใด', '$' + nf(Math.sqrt(10 * r)) + '$ m/s', ['$' + nf(Math.sqrt(20 * r)) + '$ m/s', '$' + nf(Math.sqrt(50 * r)) + '$ m/s', '$' + nf(10 * r) + '$ m/s'], 'ที่จุดสูงสุดเมื่อแรงตึงเป็นศูนย์ $mg=mv^2/r$']; }],
+  ['olymp', 3, 2, () => { const m1 = pickR(1, 5, 1), v1 = pickR(2, 10, 1), m2 = pickR(1, 5, 1); return ['มวล ' + m1 + ' kg เคลื่อนที่ ' + v1 + ' m/s ชนแล้วติดไปกับมวล ' + m2 + ' kg ที่หยุดนิ่ง ความเร็วหลังชนเท่าใด', '$' + nf(m1 * v1 / (m1 + m2)) + '$ m/s', ['$' + nf(v1 / 2) + '$ m/s', '$' + nf(m1 * v1 / m2) + '$ m/s', '$' + nf(v1 * Math.sqrt(m1 / (m1 + m2))) + '$ m/s'], 'อนุรักษ์โมเมนตัม $m_1v_1=(m_1+m_2)v$ ส่วนพลังงานจลน์ไม่อนุรักษ์ในการชนแบบติดกัน']; }],
+  ['olymp', 3, 3, () => { const m = pickR(0.5, 3, 0.5), h = pickR(0.5, 3, 0.5), k = pickR(200, 1000, 100); return ['วัตถุ ' + m + ' kg ไถลลงจากที่สูง ' + h + ' m บนรางลื่น แล้วชนสปริง $k=' + k + '$ N/m บนพื้นราบ สปริงหดได้มากที่สุดเท่าใด ($g=10$ m/s²)', '$' + nf(Math.sqrt(2 * m * 10 * h / k)) + '$ m', ['$' + nf(m * 10 * h / k) + '$ m', '$' + nf(Math.sqrt(m * 10 * h / k)) + '$ m', '$' + nf(2 * m * 10 * h / k) + '$ m'], '$mgh=\\tfrac12kx^2$']; }],
+  ['olymp', 4, 2, () => { const M = pickR(1, 8, 1), R = pickR(0.1, 0.5, 0.1), t = pickR(1, 10, 1); return ['จานกลมตันมวล ' + M + ' kg รัศมี ' + R + ' m หมุนรอบแกนกลางได้อิสระ ได้รับทอร์ก ' + t + ' N m ความเร่งเชิงมุมเท่าใด', '$' + nf(2 * t / (M * R * R)) + '$ rad/s²', ['$' + nf(t / (M * R * R)) + '$ rad/s²', '$' + nf(t / (M * R)) + '$ rad/s²', '$' + nf(4 * t / (M * R * R)) + '$ rad/s²'], '$I=\\tfrac12MR^2$ และ $\\tau=I\\alpha$']; }],
+  ['olymp', 6, 2, () => { const h = pickR(200, 2000, 100), r = 6.37e6 + h * 1e3, v = Math.sqrt(3.986e14 / r); return ['ดาวเทียมโคจรเป็นวงกลมสูงจากผิวโลก ' + h + ' km (รัศมีโลก $6.37\\times10^6$ m, $GM=3.99\\times10^{14}$ m³/s²) อัตราเร็วในวงโคจรเท่าใด', '$' + nf(v / 1000) + '$ km/s', ['$' + nf(v * Math.SQRT2 / 1000) + '$ km/s', '$' + nf(Math.sqrt(3.986e14 / (h * 1e3)) / 1000) + '$ km/s', '$' + nf(Math.sqrt(3.986e14 / 6.37e6) / 1000 * 1.1) + '$ km/s'], '$v=\\sqrt{GM/r}$ โดย $r$ วัดจากจุดศูนย์กลางโลก']; }],
+  ['olymp', 7, 1, () => { const V = pickR(0.5, 5, 0.5); return ['วัตถุปริมาตร ' + V + ' L จมอยู่ในน้ำทั้งก้อน ($\\rho=1000$ kg/m³, $g=10$ m/s²) แรงลอยตัวเท่าใด', '$' + nf(V * 10) + '$ N', ['$' + nf(V * 10000) + '$ N', '$' + nf(V) + '$ N', '$' + nf(V * 100) + '$ N'], '$F_B=\\rho gV$ โดย 1 L $=10^{-3}$ m³']; }],
+  ['olymp', 8, 1, () => { const m = pickR(0.2, 2, 0.2), k = pickR(20, 200, 10); return ['มวล ' + m + ' kg ติดสปริง $k=' + k + '$ N/m สั่นแบบฮาร์มอนิกอย่างง่าย คาบเท่าใด', '$' + nf(2 * Math.PI * Math.sqrt(m / k)) + '$ s', ['$' + nf(Math.sqrt(m / k)) + '$ s', '$' + nf(2 * Math.PI * Math.sqrt(k / m)) + '$ s', '$' + nf(2 * Math.PI * m / k) + '$ s'], '$T=2\\pi\\sqrt{m/k}$']; }],
+  ['olymp', 8, 2, () => { const L = pickR(0.5, 2, 0.1), T = pickR(20, 200, 10), mu = pickR(0.002, 0.02, 0.002), v = Math.sqrt(T / mu); return ['เชือกยาว ' + L + ' m ตรึงปลายทั้งสอง แรงตึง ' + T + ' N มวลต่อความยาว ' + mu + ' kg/m ความถี่มูลฐานเท่าใด', '$' + nf(v / (2 * L)) + '$ Hz', ['$' + nf(v / L) + '$ Hz', '$' + nf(v / (4 * L)) + '$ Hz', '$' + nf(T / mu / (2 * L)) + '$ Hz'], '$v=\\sqrt{T/\\mu}$ และ $f_1=v/2L$']; }],
+  ['olymp', 9, 1, () => { const q1 = pickR(1, 9, 1), q2 = pickR(1, 9, 1), r = pickR(2, 20, 2); return ['ประจุ ' + q1 + ' μC และ ' + q2 + ' μC อยู่ห่างกัน ' + r + ' cm ($k=9\\times10^9$ N m²/C²) แรงระหว่างประจุเท่าใด', '$' + nf(9e9 * q1 * q2 * 1e-12 / Math.pow(r / 100, 2)) + '$ N', ['$' + nf(9e9 * q1 * q2 * 1e-12 / (r / 100)) + '$ N', '$' + nf(9e9 * q1 * q2 * 1e-12 / Math.pow(r, 2)) + '$ N', '$' + nf(9e9 * q1 * q2 * 1e-6 / Math.pow(r / 100, 2)) + '$ N'], '$F=kq_1q_2/r^2$ แปลงหน่วยเป็น C และ m ก่อน']; }],
+  ['olymp', 10, 1, () => { const R1 = pickR(2, 10, 1), R2 = pickR(4, 12, 2), V = pickR(6, 24, 3), Rp = R2 / 2; return ['ตัวต้านทาน ' + R1 + ' Ω ต่ออนุกรมกับตัวต้านทาน ' + R2 + ' Ω สองตัวที่ต่อขนานกัน ต่อเข้ากับแบตเตอรี่ ' + V + ' V (ไม่คิดความต้านทานภายใน) กระแสจากแบตเตอรี่เท่าใด', '$' + nf(V / (R1 + Rp)) + '$ A', ['$' + nf(V / (R1 + 2 * R2)) + '$ A', '$' + nf(V / R1) + '$ A', '$' + nf(V / (R1 + R2)) + '$ A'], 'ส่วนขนาน $=' + nf(Rp) + '$ Ω รวม $=' + nf(R1 + Rp) + '$ Ω']; }],
+  ['olymp', 10, 2, () => { const E = pickR(6, 24, 1.5), r = pickR(0.5, 2, 0.5), R = pickR(2, 10, 1), I = E / (R + r); return ['แบตเตอรี่อีเอ็มเอฟ ' + E + ' V ความต้านทานภายใน ' + r + ' Ω ต่อกับตัวต้านทาน ' + R + ' Ω ความต่างศักย์ที่ขั้วแบตเตอรี่เท่าใด', '$' + nf(I * R) + '$ V', ['$' + nf(E) + '$ V', '$' + nf(I * r) + '$ V', '$' + nf(E - E / R * r) + '$ V'], '$I=\\mathcal E/(R+r)$ แล้ว $V=IR$']; }],
+  ['olymp', 11, 1, () => { const B = pickR(0.1, 1, 0.1), L = pickR(0.2, 1, 0.1), v = pickR(1, 10, 1); return ['แท่งตัวนำยาว ' + L + ' m เคลื่อนที่ ' + v + ' m/s ตั้งฉากกับสนามแม่เหล็ก ' + B + ' T อีเอ็มเอฟเหนี่ยวนำเท่าใด', '$' + nf(B * L * v) + '$ V', ['$' + nf(B * v / L) + '$ V', '$' + nf(B * L / v) + '$ V', '$' + nf(L * v) + '$ V'], '$\\mathcal E=BLv$']; }],
+  ['olymp', 11, 2, () => { const v = pickR(1, 9, 1), B = pickR(0.1, 1, 0.1), r = 1.673e-27 * v * 1e5 / (1.602e-19 * B); return ['โปรตอนเคลื่อนที่ $' + v + '\\times10^{5}$ m/s ตั้งฉากกับสนามแม่เหล็ก ' + B + ' T ($m_p=1.67\\times10^{-27}$ kg, $e=1.60\\times10^{-19}$ C) รัศมีวงโคจรเท่าใด', '$' + nf(r * 100) + '$ cm', ['$' + nf(r * 200) + '$ cm', '$' + nf(r * 50) + '$ cm', '$' + nf(9.109e-31 * v * 1e5 / (1.602e-19 * B) * 100) + '$ cm'], '$r=mv/qB$']; }],
+  ['olymp', 12, 2, () => { const f = pickR(5, 20, 1), s = f + pickR(2, 20, 1), si = 1 / (1 / f - 1 / s); return ['วางวัตถุห่างเลนส์นูนความยาวโฟกัส ' + f + ' cm เป็นระยะ ' + s + ' cm ภาพเกิดห่างเลนส์เท่าใด', '$' + nf(si) + '$ cm', ['$' + nf(1 / (1 / f + 1 / s)) + '$ cm', '$' + nf(s - f) + '$ cm', '$' + nf(f * s / (f + s) * 2) + '$ cm'], '$\\dfrac1f=\\dfrac1s+\\dfrac1{s\'}$']; }],
+  ['olymp', 12, 1, () => { const a = pickR(20, 60, 5), n = pickR(1.3, 1.6, 0.05), b = Math.asin(Math.sin(a * Math.PI / 180) / n) * 180 / Math.PI; return ['แสงเดินทางจากอากาศเข้าสู่ตัวกลางดรรชนีหักเห ' + n + ' ด้วยมุมตกกระทบ ' + a + '° มุมหักเหเท่าใด', '$' + nf(b) + '°$', ['$' + nf(a / n) + '°$', '$' + nf(Math.asin(Math.min(1, Math.sin(a * Math.PI / 180) * n * 0.8)) * 180 / Math.PI) + '°$', '$' + nf(90 - b) + '°$'], '$\\sin\\theta_1=n\\sin\\theta_2$']; }],
+  ['olymp', 13, 1, () => { const Th = pickR(400, 900, 50), Tc = pickR(250, 350, 10); return ['เครื่องยนต์คาร์โนต์ทำงานระหว่างแหล่งร้อน ' + Th + ' K และแหล่งเย็น ' + Tc + ' K ประสิทธิภาพเท่าใด', '$' + nf((1 - Tc / Th) * 100) + '\\%$', ['$' + nf(Tc / Th * 100) + '\\%$', '$' + nf((Th - Tc) / Tc * 100 > 100 ? 99 : (Th - Tc) / Tc * 100) + '\\%$', '$' + nf((1 - (Tc - 273) / (Th - 273)) * 100) + '\\%$'], '$\\eta=1-T_C/T_H$ ใช้อุณหภูมิเคลวิน']; }],
+  ['olymp', 15, 2, () => { const v = pickR(0.5, 0.95, 0.05), t0 = pickR(2, 20, 2), g = 1 / Math.sqrt(1 - v * v); return ['นาฬิกาบนยานที่เคลื่อนที่ด้วย $' + v + 'c$ เดินไป ' + t0 + ' s ผู้สังเกตบนโลกวัดช่วงเวลานี้ได้เท่าใด', '$' + nf(t0 * g) + '$ s', ['$' + nf(t0 / g) + '$ s', '$' + nf(t0 * (1 + v)) + '$ s', '$' + nf(t0 / (1 - v * v)) + '$ s'], '$\\Delta t=\\gamma\\Delta t_0$, $\\gamma=' + nf(g) + '$']; }],
+  ['olymp', 16, 1, () => { const l = pickR(300, 700, 20); return ['โฟตอนความยาวคลื่น ' + l + ' nm มีพลังงานเท่าใด ($hc=1240$ eV nm)', '$' + nf(1240 / l) + '$ eV', ['$' + nf(l / 1240) + '$ eV', '$' + nf(1240 / l * 2) + '$ eV', '$' + nf(12.4 / l) + '$ eV'], '$E=hc/\\lambda$']; }],
+  ['ijso', 1, 1, () => { const d = pickR(20, 120, 10), v1 = pickR(20, 60, 10), v2 = v1 * 2; return ['เดินทาง ' + d + ' km แรกด้วย ' + v1 + ' km/h และอีก ' + d + ' km ด้วย ' + v2 + ' km/h อัตราเร็วเฉลี่ยตลอดทางเท่าใด', '$' + nf(2 * d / (d / v1 + d / v2)) + '$ km/h', ['$' + nf((v1 + v2) / 2) + '$ km/h', '$' + nf(v2) + '$ km/h', '$' + nf(v1) + '$ km/h'], 'ระยะรวมหารด้วยเวลารวม']; }],
+  ['ijso', 2, 1, () => { const F = pickR(4, 40, 2), m = pickR(1, 10, 1); return ['แรงลัพธ์ ' + F + ' N กระทำต่อวัตถุ ' + m + ' kg ความเร่งเท่าใด', '$' + nf(F / m) + '$ m/s²', ['$' + nf(F * m) + '$ m/s²', '$' + nf(m / F) + '$ m/s²', '$' + nf(F / m / 10) + '$ m/s²'], '$a=F/m$']; }],
+  ['ijso', 3, 1, () => { const m = pickR(2, 20, 1), h = pickR(1, 10, 1), t = pickR(2, 10, 1); return ['ยกกล่อง ' + m + ' kg ขึ้นสูง ' + h + ' m ในเวลา ' + t + ' s ด้วยอัตราเร็วคงที่ ($g=10$ m/s²) กำลังเฉลี่ยเท่าใด', '$' + nf(m * 10 * h / t) + '$ W', ['$' + nf(m * 10 * h) + '$ W', '$' + nf(m * h / t) + '$ W', '$' + nf(m * 10 * h * t) + '$ W'], '$P=mgh/t$']; }],
+  ['ijso', 4, 1, () => { const F = pickR(100, 900, 50), A = pickR(0.01, 0.1, 0.01); return ['แรง ' + F + ' N กดลงบนพื้นที่ ' + A + ' m² ความดันเท่าใด', '$' + nf(F / A) + '$ Pa', ['$' + nf(F * A) + '$ Pa', '$' + nf(A / F) + '$ Pa', '$' + nf(F / A / 10) + '$ Pa'], '$P=F/A$']; }],
+  ['ijso', 5, 2, () => { const m1 = pickR(1, 4, 0.5), T1 = pickR(60, 90, 5), m2 = pickR(1, 4, 0.5), T2 = pickR(10, 30, 5); return ['ผสมน้ำ ' + m1 + ' kg อุณหภูมิ ' + T1 + ' °C กับน้ำ ' + m2 + ' kg อุณหภูมิ ' + T2 + ' °C ไม่มีความร้อนสูญเสีย อุณหภูมิสุดท้ายเท่าใด', '$' + nf((m1 * T1 + m2 * T2) / (m1 + m2)) + '$ °C', ['$' + nf((T1 + T2) / 2 === (m1 * T1 + m2 * T2) / (m1 + m2) ? (T1 + T2) / 2 + 5 : (T1 + T2) / 2) + '$ °C', '$' + nf((m1 * T2 + m2 * T1) / (m1 + m2) === (m1 * T1 + m2 * T2) / (m1 + m2) ? T1 - 5 : (m1 * T2 + m2 * T1) / (m1 + m2)) + '$ °C', '$' + nf(T1 - T2) + '$ °C'], 'ความร้อนที่ให้เท่ากับความร้อนที่รับ $m_1c(T_1-T)=m_2c(T-T_2)$']; }],
+  ['ijso', 6, 1, () => { const f = pickR(50, 500, 50), l = pickR(0.5, 4, 0.5); return ['คลื่นเสียงความถี่ ' + f + ' Hz ความยาวคลื่น ' + l + ' m มีอัตราเร็วเท่าใด', '$' + nf(f * l) + '$ m/s', ['$' + nf(f / l) + '$ m/s', '$' + nf(l / f) + '$ m/s', '$' + nf(f + l) + '$ m/s'], '$v=f\\lambda$']; }],
+  ['ijso', 7, 1, () => { const P = pickR(500, 3000, 100), h = pickR(1, 8, 1), c = pickR(3, 6, 0.5); return ['เครื่องใช้ไฟฟ้า ' + P + ' W เปิดวันละ ' + h + ' ชั่วโมง ค่าไฟหน่วยละ ' + c + ' บาท 30 วันเสียค่าไฟเท่าใด', '$' + nf(P / 1000 * h * 30 * c, 4) + '$ บาท', ['$' + nf(P * h * 30 * c, 4) + '$ บาท', '$' + nf(P / 1000 * h * c, 4) + '$ บาท', '$' + nf(P / 1000 * 30 * c, 4) + '$ บาท'], 'พลังงาน (kWh) $=P(\\text{kW})\\times t(\\text{h})$']; }]
+];
+function genQ(i) {
+  const [t, ch, d, mk] = GEN[i];
+  for (let k = 0; k < 6; k++) {
+    const [q, right, wrong, e] = mk();
+    const c = [right]; for (const w of wrong) if (!c.includes(w)) c.push(w);
+    if (c.length >= 3) return { id: 'g' + i + '-' + uid().slice(0, 6), t, ch, d, q, c, a: 0, e, src: 'gen' };
+  }
+  return null;
+}
+/* chapter keywords (Thai words, symbols and formulas) for the olympiad chapters */
+const TOPIC_KW = [
+  ['มิติ', 'ประมาณ', 'อันดับขนาด', 'เลขนัยสำคัญ'], ['ความเร็ว', 'ความเร่ง', 'การกระจัด', 'โพรเจกไทล์', 'ตกอิสระ', 'จลนศาสตร์', 'v=u+at', 's=ut'], ['แรง', 'นิวตัน', 'แรงเสียดทาน', 'พื้นเอียง', 'แรงตึง', 'f=ma', 'แรงสู่ศูนย์กลาง', 'วงกลม'],
+  ['งาน', 'พลังงาน', 'โมเมนตัม', 'การชน', 'ดล', 'mgh', 'กำลัง', 'สปริง'], ['การหมุน', 'ทอร์ก', 'โมเมนต์ความเฉื่อย', 'กลิ้ง', 'เชิงมุม', 'τ', 'ω'], ['สมดุล', 'โมเมนต์', 'คาน', 'จุดหมุน', 'สถิตยศาสตร์'],
+  ['ดาวเทียม', 'วงโคจร', 'เคปเลอร์', 'ความโน้มถ่วง', 'ดาวเคราะห์', 'gm/r'], ['ของไหล', 'ความดัน', 'แรงลอยตัว', 'อาร์คิมีดีส', 'แบร์นูลลี', 'ความหนาแน่น', 'ρ'], ['การสั่น', 'คาบ', 'ฮาร์มอนิก', 'ลูกตุ้ม', 'คลื่น', 'ความถี่', 'เสียง', 'ดอปเพลอร์', 'λ'],
+  ['ประจุ', 'สนามไฟฟ้า', 'คูลอมบ์', 'ศักย์ไฟฟ้า', 'ตัวเก็บประจุ', 'ไฟฟ้าสถิต'], ['กระแส', 'ความต้านทาน', 'วงจร', 'โอห์ม', 'แบตเตอรี่', 'อีเอ็มเอฟ', 'v=ir', 'อนุกรม', 'ขนาน'], ['สนามแม่เหล็ก', 'เหนี่ยวนำ', 'ฟลักซ์', 'ฟาราเดย์', 'เลนซ์', 'แม่เหล็ก'],
+  ['แสง', 'เลนส์', 'กระจก', 'หักเห', 'สะท้อน', 'สลิต', 'แทรกสอด', 'เลี้ยวเบน', 'โพลาไรซ์', 'สเนลล์'], ['ความร้อน', 'อุณหภูมิ', 'แก๊ส', 'อุณหพลศาสตร์', 'คาร์โนต์', 'pv=nrt', 'เอนโทรปี'], ['โบลต์ซมันน์', 'สถิติ', 'การแจกแจง', 'พลังงานจลน์เฉลี่ย', 'kt'],
+  ['สัมพัทธภาพ', 'ไอน์สไตน์', 'γ', 'การยืดของเวลา', 'การหดของความยาว', 'mc^2', 'mc²'], ['ควอนตัม', 'โฟตอน', 'โฟโตอิเล็กทริก', 'เดอบรอยล์', 'อะตอม', 'ไฮโดรเจน', 'พลังค์', 'hf'], ['การทดลอง', 'ความคลาดเคลื่อน', 'ความไม่แน่นอน', 'กราฟ', 'ความชัน']
+];
+const IJSO_OF = { 0: 0, 1: 1, 2: 2, 3: 3, 7: 4, 13: 5, 8: 6, 12: 6, 9: 7, 10: 7, 11: 7, 15: 8, 16: 8, 6: 8, 17: 9 };
+function pageText() {
+  const parts = [(S.nb && S.nb.title) || ''];
+  for (const it of (S.page && S.page.items) || []) { if (it.md) parts.push(it.md); if (it.expr) parts.push(it.expr); if (it.kind && SIMS[it.kind]) parts.push(SIMS[it.kind].title); if (it.title) parts.push(it.title); if (it.fn) parts.push(it.fn); }
+  return parts.join(' ').toLowerCase().replace(/\s+/g, '');
+}
+function detectTopics() {
+  const tx = pageText(), track = S.nb && ['p', 'mt'].includes(S.nb.level) ? 'ijso' : 'olymp';
+  const sc = TOPIC_KW.map((kw, i) => [i, kw.reduce((n, w) => n + (tx.split(w.toLowerCase()).length - 1), 0)]).filter((x) => x[1] > 0).sort((a, b) => b[1] - a[1]).slice(0, 3);
+  const chs = sc.map(([i]) => (track === 'ijso' ? (IJSO_OF[i] != null ? IJSO_OF[i] : -1) : i)).filter((c, k, a) => c >= 0 && a.indexOf(c) === k);
+  return { track, chs, text: tx };
+}
+/* empirical difficulty (proportion correct) once enough answers exist, otherwise the written level */
+function itemP(qid) { let n = 0, ok = 0; for (const a of EX.att) for (const it of a.items || []) if (it[0] === qid) { n++; ok += it[2]; } return n >= 5 ? ok / n : null; }
+function effLevel(q) { const p = itemP(q.id); if (p == null) return q.d || 1; return p > 0.8 ? 1 : p >= 0.4 ? 2 : 3; }
+const GB = { picks: [], level: 'mix', n: 10, order: 'easy', useBank: true, useGen: true, useAI: false, built: null };
+function buildSet() {
+  const want = GB.picks; if (!want.length) { toast('เลือกอย่างน้อยหนึ่งบท', 2000); return null; }
+  const inPick = (q) => want.some(([t, ch]) => q.t === t && q.ch === ch);
+  let pool = GB.useBank ? exAllQs().filter(inPick) : [];
+  if (GB.useGen) GEN.forEach((g, i) => { if (want.some(([t, ch]) => g[0] === t && g[1] === ch)) for (let k = 0; k < 3; k++) { const q = genQ(i); if (q) pool.push(q); } });
+  const lv = (q) => effLevel(q);
+  const quota = GB.level === 'mix' ? { 1: 0.4, 2: 0.4, 3: 0.2 } : { [{ easy: 1, mid: 2, hard: 3 }[GB.level]]: 1 };
+  const out = [], used = new Set();
+  const take = (L, k) => { const c = pool.filter((q) => lv(q) === L && !used.has(q.id)).sort(() => Math.random() - 0.5); for (const q of c.slice(0, k)) { used.add(q.id); out.push(q); } };
+  /* spread across the chosen chapters, then fill from neighbours in difficulty */
+  for (const [L, f] of Object.entries(quota)) take(+L, Math.round(GB.n * f));
+  for (const L of GB.level === 'hard' ? [2, 1] : GB.level === 'easy' ? [2, 3] : [2, 1, 3]) if (out.length < GB.n) take(L, GB.n - out.length);
+  if (GB.order === 'easy') out.sort((a, b) => lv(a) - lv(b)); else out.sort(() => Math.random() - 0.5);
+  return out.slice(0, GB.n);
+}
+function exRenderBuild(body) {
+  const det = detectTopics();
+  if (!GB.inited) { GB.inited = true; GB.picks = det.chs.map((c) => [det.track, c]); }
+  body.appendChild(exEl('div', 'note', det.chs.length ? 'หน้านี้น่าจะเกี่ยวกับ ' + det.chs.map((c) => esc(exChName(det.track, c))).join(', ') + ' (อ่านจากชื่อสมุด ข้อความ สมการ กราฟ และแบบจำลองบนหน้า ถ้ามีลายมือ แปลงเป็นตัวพิมพ์ก่อนจะจับหัวข้อได้แม่นขึ้น)' : 'ยังจับหัวข้อจากหน้านี้ไม่ได้ เลือกบทเองด้านล่าง หรือแปลงลายมือเป็นตัวพิมพ์ก่อน'));
+  body.appendChild(exEl('span', 'label', 'บทที่ใช้ แตะเพื่อเพิ่มหรือเอาออก ผสมหลายบทได้'));
+  const tr = GB.tr || det.track;
+  exChips(body, ['olymp', 'ijso'].map((t) => [t, exTrackName(t)]), (v) => v === tr, (v) => { GB.tr = v; exRender(); });
+  exChips(body, CURRIC[tr][1].map((c, i) => [i, c[0]]), (v) => GB.picks.some(([t, ch]) => t === tr && ch === v), (v) => { const k = GB.picks.findIndex(([t, ch]) => t === tr && ch === v); if (k >= 0) GB.picks.splice(k, 1); else GB.picks.push([tr, v]); exRender(); });
+  if (GB.picks.length) body.appendChild(exEl('div', 'exch', 'เลือกแล้ว: ' + GB.picks.map(([t, c]) => esc(exChName(t, c))).join(', ')));
+  body.appendChild(exEl('span', 'label', 'ระดับความยาก'));
+  exChips(body, [['easy', 'ง่าย'], ['mid', 'กลาง'], ['hard', 'ยาก'], ['mix', 'คละ ง่าย 40 กลาง 40 ยาก 20']], (v) => v === GB.level, (v) => { GB.level = v; exRender(); });
+  body.appendChild(exEl('span', 'label', 'จำนวนข้อและลำดับ'));
+  exChips(body, [[5, '5 ข้อ'], [10, '10 ข้อ'], [15, '15 ข้อ'], [20, '20 ข้อ']], (v) => v === GB.n, (v) => { GB.n = v; exRender(); });
+  exChips(body, [['easy', 'เรียงจากง่ายไปยาก'], ['rand', 'สุ่มลำดับ']], (v) => v === GB.order, (v) => { GB.order = v; exRender(); });
+  body.appendChild(exEl('span', 'label', 'แหล่งโจทย์'));
+  exChips(body, [['useBank', 'คลังโจทย์'], ['useGen', 'สุ่มตัวเลขใหม่ทุกครั้ง'], ['useAI', 'AI เขียนเพิ่มตามที่บรรยาย']], (v) => GB[v], (v) => { GB[v] = !GB[v]; exRender(); });
+  const row = exEl('div', 'row2');
+  const go = exEl('button', 'btn solid', 'สร้างชุดแบบฝึก'); go.onclick = () => { GB.built = buildSet(); exRender(); if (GB.built && GB.useAI) exAIFromPage(); }; row.appendChild(go);
+  body.appendChild(row);
+  body.appendChild(exEl('div', 'note', 'คลังโจทย์และโจทย์สุ่มตัวเลขสร้างในเครื่องทันที ไม่ต้องรอเน็ตหรือ AI ส่วน AI จะส่งโจทย์ที่ตรงกับสิ่งที่บรรยายมาเพิ่มภายหลัง ระดับความยากใช้ค่าที่ตั้งไว้ก่อน เมื่อมีผู้ตอบข้อนั้นครบ 5 คนขึ้นไป ระบบใช้ค่าความยากจริง (สัดส่วนผู้ตอบถูก) แทน'));
+  if (GB.built) exRenderBuilt(body);
+}
+function exRenderBuilt(body) {
+  const qs = GB.built; const L = ['', 'ง่าย', 'กลาง', 'ยาก'];
+  body.appendChild(exEl('h3', '', 'ชุดแบบฝึก ' + qs.length + ' ข้อ'));
+  if (!qs.length) { body.appendChild(exEl('div', 'note err', 'ไม่พบโจทย์ตามเงื่อนไข ลองเลือกระดับคละหรือเพิ่มบท')); return; }
+  const ol = exEl('ol', 'exlist');
+  qs.forEach((q) => { const li = exEl('li', '', '<span class="lv l' + effLevel(q) + '">' + L[effLevel(q)] + '</span> ' + mdToHtml(q.q) + ' <small>' + esc(exChName(q.t, q.ch)) + (q.src === 'gen' ? ' สุ่มตัวเลข' : q.src === 'ai' ? ' AI' : '') + '</small>'); ol.appendChild(li); });
+  body.appendChild(ol);
+  const aiBox = exEl('div', ''); aiBox.id = 'gbAI'; body.appendChild(aiBox);
+  const row = exEl('div', 'row2');
+  const b1 = exEl('button', 'btn solid', 'เริ่มทำ'); b1.onclick = async () => { const set = await exSaveSet(qs); EX.mode = 'practice'; exStart(qs, set.title); EX.run.setId = set.id; }; row.appendChild(b1);
+  const b2 = exEl('button', 'btn', 'วางเป็นใบงานหน้าใหม่'); b2.onclick = () => exWorksheet(qs, false); row.appendChild(b2);
+  const b3 = exEl('button', 'btn', 'ใบงานพร้อมเฉลย'); b3.onclick = () => exWorksheet(qs, true); row.appendChild(b3);
+  if (typeof liveSendSet === 'function') { const b4 = exEl('button', 'btn', 'ส่งให้ผู้เรียนในห้องสด'); b4.onclick = async () => { const set = await exSaveSet(qs); liveSendSet(set); }; row.appendChild(b4); }
+  body.appendChild(row);
+  typeset(body);
+}
+async function exAIFromPage() {
+  const box = () => $('#gbAI'); if (!needAI('gen')) return;
+  const det = detectTopics(); const names = GB.picks.map(([t, c]) => exChName(t, c)).join(', ');
+  if (box()) box().innerHTML = '<div class="note">AI กำลังเขียนโจทย์เพิ่มจากเนื้อหาในหน้านี้</div>';
+  const lvl = { easy: 'easy', mid: 'medium', hard: 'hard', mix: 'one easy, one medium, one hard' }[GB.level];
+  const prompt = 'A Thai physics teacher just lectured on: ' + names + '. Text on the board: "' + det.text.slice(0, 1500) + '".\nWrite 3 original multiple-choice questions in Thai that use the same situation, numbers or examples the teacher wrote where possible. Difficulty: ' + lvl + '.\n'
+    + 'Each has exactly 4 choices, one correct. Use $...$ for math. Compute every answer carefully before writing it. Wrong choices should come from typical student mistakes.\n'
+    + 'Reply in exactly this format and nothing else, 3 times:\n@@Q 1, 2 or 3 for difficulty\n(question)\n@@RIGHT\n(correct choice)\n@@WRONG\n(wrong 1)\n(wrong 2)\n(wrong 3)\n@@WHY\n(short explanation in Thai)';
+  try {
+    const res = await AI.run('gen', prompt, { cache: false });
+    const out = []; let cur = null;
+    for (const p of sections(res.text)) {
+      const tx = (p.text || '').trim();
+      if (p.key === 'Q') { const [t, ch] = GB.picks[0] || [det.track, 0]; cur = { id: 'a' + uid(), t, ch, d: clamp(parseInt(p.arg, 10) || 2, 1, 3), q: tx, c: [], a: 0, e: '', src: 'ai' }; out.push(cur); }
+      else if (cur && p.key === 'RIGHT') cur.c.unshift(tx);
+      else if (cur && p.key === 'WRONG') cur.c.push(...tx.split('\n').map((s) => s.replace(/^[-*\d.)\s]+(?=\S)/, '').trim()).filter(Boolean).slice(0, 3));
+      else if (cur && p.key === 'WHY') cur.e = tx;
+    }
+    const good = out.filter((q) => q.q && q.c.length >= 3);
+    if (!good.length) throw { code: 'empty_completion' };
+    if (!GB.built) return;
+    GB.built = GB.built.concat(good);
+    if (GB.order === 'easy') GB.built.sort((a, b) => effLevel(a) - effLevel(b));
+    if (!$('#examSheet').hidden && !EX.run && EX.tab === 'build') { exRender(); if (box()) box().innerHTML = '<div class="note ok">AI เพิ่มโจทย์ ' + good.length + ' ข้อ (ตรวจตัวเลขก่อนใช้)</div>'; }
+  } catch (e) { if (box()) box().innerHTML = '<div class="note err">' + esc(aiErr(e)) + '</div>'; }
+}
+async function exSaveSet(qs) {
+  const id = 's' + now().toString(36) + uid().slice(0, 3);
+  const title = 'ชุด ' + [...new Set(qs.map((q) => exChName(q.t, q.ch)))].slice(0, 2).join(' + ') + ' ' + new Date().toLocaleDateString('th-TH', { day: 'numeric', month: 'short' });
+  const set = { id, title, at: now(), qs: qs.map((q) => ({ id: q.id, t: q.t, ch: q.ch, d: q.d, q: q.q, c: q.c, a: q.a || 0, e: q.e || '', src: q.src })) };
+  EX.sets = EX.sets || []; EX.sets.push(set);
+  await S.store.set('exs/' + id, Object.assign({}, set, { id: undefined })).catch(() => {});
+  return set;
+}
+async function exWorksheet(qs, withKey) {
+  if (!S.nb) return;
+  const L = 'กขคง';
+  const mk = (q, i) => { const order = q.c.map((_, k) => k); return (i + 1) + '. ' + q.q + '\n\n' + order.map((o, k) => '\u00a0\u00a0' + L[k] + '. ' + q.c[o]).join('\n'); };
+  const per = 5, items = [];
+  for (let i = 0; i < qs.length; i += per) {
+    const md = (i === 0 ? '## แบบฝึก ' + GB.picks.map(([t, c]) => exChName(t, c)).join(', ') + '\nชื่อ ........................................ เลขที่ ........\n\n' : '') + qs.slice(i, i + per).map((q, k) => mk(q, i + k)).join('\n\n');
+    items.push([{ id: 'i' + uid(), by: DEV, type: 'text', x: 60, y: 60, w: 880, md }]);
+  }
+  if (withKey) items.push([{ id: 'i' + uid(), by: DEV, type: 'text', x: 60, y: 60, w: 880, md: '## เฉลย\n\n' + qs.map((q, i) => (i + 1) + '. ' + L[q.a || 0] + '  ' + (q.e || '')).join('\n\n') }]);
+  const pages = (S.nb.pages || []).slice(); let at = pages.indexOf(S.pid); let first = null;
+  for (const its of items) {
+    const pid = 'p' + uid(); first = first || pid;
+    await S.store.set('pages/' + pid, { nb: S.nid, paper: 'lined', items: its, rev: now() }).catch(onStoreError);
+    pages.splice(++at, 0, pid);
+  }
+  try { await S.store.update('notebooks/' + S.nid, { pages, updatedAt: now() }); S.nb = Object.assign({}, S.nb, { pages }); openPage(first); renderPageList(); renderTitle(); } catch (e) { onStoreError(e); }
+  $('#examSheet').hidden = true;
+  toast('วางใบงาน ' + items.length + ' หน้าแล้ว ผู้เรียนเขียนตอบบนหน้าได้เลย', 2600);
+}
+/* ---------- item analysis (classical test theory) ---------- */
+function analyseSet(set) {
+  const atts = EX.att.filter((a) => a.setId === set.id);
+  const byWho = new Map(); for (const a of atts) byWho.set(a.who, a); /* latest attempt per learner */
+  const rows = [...byWho.values()];
+  const k = set.qs.length, N = rows.length;
+  const resp = rows.map((a) => { const m = {}; for (const it of a.items || []) m[it[0]] = it; return { who: a.who, m, total: (a.items || []).reduce((s, it) => s + it[2], 0) }; });
+  resp.sort((a, b) => b.total - a.total);
+  const g = N >= 10 ? Math.max(1, Math.round(N * 0.27)) : Math.floor(N / 2);
+  const up = resp.slice(0, g), lo = resp.slice(N - g);
+  const items = set.qs.map((q) => {
+    const sc = (r) => (r.m[q.id] ? r.m[q.id][2] : 0);
+    const p = N ? resp.reduce((s, r) => s + sc(r), 0) / N : 0;
+    const r = g ? up.reduce((s, x) => s + sc(x), 0) / g - lo.reduce((s, x) => s + sc(x), 0) / g : null;
+    const dist = q.c.map((_, o) => resp.filter((x) => x.m[q.id] && x.m[q.id][4] === o).length);
+    const blank = resp.filter((x) => !x.m[q.id] || x.m[q.id][4] == null || x.m[q.id][4] < 0).length;
+    return { q, p, r, dist, blank };
+  });
+  const mean = N ? resp.reduce((s, r) => s + r.total, 0) / N : 0;
+  const v = N > 1 ? resp.reduce((s, r) => s + (r.total - mean) ** 2, 0) / N : 0;
+  const kr20 = k > 1 && v > 0 ? k / (k - 1) * (1 - items.reduce((s, it) => s + it.p * (1 - it.p), 0) / v) : null;
+  return { N, k, g, mean, sd: Math.sqrt(v), kr20, items };
+}
+function pLabel(p) { return p > 0.8 ? 'ง่ายมาก' : p >= 0.6 ? 'ค่อนข้างง่าย' : p >= 0.4 ? 'ปานกลาง' : p >= 0.2 ? 'ค่อนข้างยาก' : 'ยากมาก'; }
+function rLabel(r) { return r == null ? '' : r >= 0.4 ? 'ดีมาก' : r >= 0.3 ? 'ดี' : r >= 0.2 ? 'พอใช้ ควรปรับปรุง' : r >= 0 ? 'ต่ำ ควรแก้หรือตัด' : 'ติดลบ ตรวจเฉลย'; }
+function exRenderAnalysis(body) {
+  const sets = (EX.sets || []).slice().sort((a, b) => b.at - a.at);
+  body.appendChild(exEl('div', 'note', 'วิเคราะห์ข้อสอบตามทฤษฎีการทดสอบแบบดั้งเดิม ใช้ชุดแบบฝึกเดียวกันที่ผู้เรียนหลายคนทำ (คำตอบล่าสุดของแต่ละคน) ค่าความยาก p คือสัดส่วนผู้ตอบถูก ที่เหมาะสมอยู่ระหว่าง 0.20 ถึง 0.80 อำนาจจำแนก r คือผลต่างสัดส่วนตอบถูกของกลุ่มสูงกับกลุ่มต่ำ (กลุ่มละ 27% เมื่อมี 10 คนขึ้นไป ถ้าน้อยกว่าใช้ครึ่งบนกับครึ่งล่าง) ตั้งแต่ 0.20 ขึ้นไปใช้ได้ ความเที่ยงของทั้งชุดใช้ KR-20'));
+  const withData = sets.filter((s) => EX.att.some((a) => a.setId === s.id));
+  if (!withData.length) { body.appendChild(exEl('div', 'note', 'ยังไม่มีชุดที่มีผู้ทำ สร้างชุดจากแท็บ "จากหน้านี้" แล้วให้ผู้เรียนทำ ผ่านห้องเรียนสดหรือสลับชื่อผู้ฝึกบนเครื่องนี้')); return; }
+  const cur = withData.find((s) => s.id === EX.anSet) || withData[0]; EX.anSet = cur.id;
+  exChips(body, withData.map((s) => [s.id, s.title]), (v) => v === cur.id, (v) => { EX.anSet = v; exRender(); });
+  const A = analyseSet(cur), L = 'กขคง';
+  body.appendChild(exEl('div', 'exsum', '<div><b>' + A.N + '</b><span>ผู้ทำ</span></div><div><b>' + A.mean.toFixed(2) + '</b><span>คะแนนเฉลี่ย จาก ' + A.k + '</span></div><div><b>' + A.sd.toFixed(2) + '</b><span>ส่วนเบี่ยงเบนมาตรฐาน</span></div><div><b>' + (A.kr20 == null ? 'ยังคำนวณไม่ได้' : A.kr20.toFixed(2)) + '</b><span>ความเที่ยง KR-20 ' + (A.kr20 == null ? '' : A.kr20 >= 0.7 ? 'ใช้ได้' : 'ต่ำกว่า 0.70') + '</span></div>'));
+  if (A.N < 5) body.appendChild(exEl('div', 'note err', 'มีผู้ทำ ' + A.N + ' คน ค่าที่ได้ยังไม่เสถียร ควรมีอย่างน้อย 20 คนจึงใช้ตัดสินคุณภาพข้อสอบได้'));
+  const tb = exEl('table', 'extab');
+  tb.innerHTML = '<thead><tr><th>ข้อ</th><th>p</th><th>r</th><th>การเลือกตัวเลือก (ตัวหนาคือเฉลย)</th><th>สรุป</th></tr></thead>';
+  const tbody = document.createElement('tbody');
+  A.items.forEach((it, i) => {
+    const notes = [];
+    if (it.p > 0.8) notes.push('ง่ายเกิน'); if (it.p < 0.2) notes.push('ยากเกิน');
+    if (it.r != null && it.r < 0.2) notes.push('จำแนกต่ำ');
+    it.dist.forEach((n, o) => { if (o !== (it.q.a || 0) && A.N >= 5 && n / A.N < 0.05) notes.push('ตัวลวง ' + L[o] + ' ไม่มีคนเลือก'); });
+    const tr = document.createElement('tr');
+    tr.innerHTML = '<td>' + (i + 1) + '</td><td>' + it.p.toFixed(2) + '<small>' + pLabel(it.p) + '</small></td><td>' + (it.r == null ? '-' : it.r.toFixed(2) + '<small>' + rLabel(it.r) + '</small>') + '</td><td>' + it.dist.map((n, o) => (o === (it.q.a || 0) ? '<b>' : '') + L[o] + ' ' + n + (o === (it.q.a || 0) ? '</b>' : '')).join('  ') + (it.blank ? '  ไม่ตอบ ' + it.blank : '') + '</td><td>' + (notes.join(', ') || 'ใช้ได้') + '</td>';
+    tr.title = it.q.q; tbody.appendChild(tr);
+  });
+  tb.appendChild(tbody); body.appendChild(tb);
+  body.appendChild(exEl('div', 'note', 'ตัวเลือก ก ถึง ง ในตารางเรียงตามที่บันทึกในชุด ผู้เรียนแต่ละคนเห็นตัวเลือกสลับลำดับ ระบบแปลงกลับให้แล้ว'));
+}
+
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1792998176';
+const BUILD = '1792998538';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
