@@ -73,7 +73,10 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 #app { height: 100%; box-sizing: border-box; display: flex; flex-direction: column; gap: 8px; padding-block: 8px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
 
 /* top bar */
-.top { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; }
+.top { display: flex; flex-wrap: nowrap; align-items: center; gap: 6px 8px; min-width: 0; }
+.top > .btn, .top > .pill, .top > .logo { flex: none; }
+.top.compact .lbl { display: none; }
+.top.compact #syncT { display: none; }
 .top .title { flex: 1 1 160px; min-width: 0; display: flex; flex-direction: column; line-height: 1.3; padding: 0 6px; }
 .top .title b { font-size: 16px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .top .title span { font-size: 12px; color: var(--muted); }
@@ -272,7 +275,8 @@ body.tv .grip { height: 68px; width: 32px; }
 .esz[aria-pressed="true"] { border: 2px solid var(--accent); background: var(--accent-soft); }
 .logo { width: 44px; height: 44px; flex: none; border-radius: 12px; border: 0; padding: 0; cursor: pointer; background: var(--accent); color: var(--accent-fg); display: flex; align-items: center; justify-content: center; }
 .logo svg { width: 30px; height: 30px; }
-.tabs { display: flex; align-items: center; gap: 4px; min-width: 0; overflow: hidden; flex: 0 1 auto; }
+.tabs { display: flex; align-items: center; gap: 4px; min-width: 0; overflow: hidden; flex: 0 0 auto; }
+.top.compact .tabs { flex: 0 1 auto; }
 .tabchip { height: 36px; max-width: 130px; padding: 0 10px 0 6px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); display: inline-flex; align-items: center; gap: 6px; cursor: pointer; font-size: 13px; color: var(--muted); flex: none; -webkit-touch-callout: none; }
 .tabchip i { width: 14px; height: 18px; border-radius: 2px 5px 5px 2px; flex: none; box-shadow: inset 3px 0 0 rgba(0, 0, 0, 0.18); }
 .tabchip span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -300,6 +304,10 @@ body.tv .peek.big { width: 660px; }
 /* media and graph items live on white paper, so their colors are fixed */
 .item.media { padding: 0; }
 .item.media img, .item.media video { width: 100%; height: auto; display: block; border-radius: 6px; background: #EEF1F5; }
+.item.media.loading img:not([src]), .item.media.missing img:not([src]) { min-height: 120px; }
+.item.media.loading::after, .item.media.missing::after { position: absolute; left: 0; right: 0; top: 46px; text-align: center; font-family: var(--ui); font-size: 15px; color: #6B7686; pointer-events: none; }
+.item.media.loading::after { content: 'กำลังโหลดรูป'; }
+.item.media.missing::after { content: 'โหลดไฟล์นี้ไม่ได้ ตรวจที่เมนู ซิงก์ข้ามเครื่อง'; }
 .item.live { pointer-events: auto; }
 .item.graph { padding: 8px 12px 12px; background: #FFFFFF; border: 1px solid #D6DCE4; border-radius: 12px; font-family: var(--ui); font-size: 15px; line-height: 1.4; color: #14181F; box-shadow: 0 2px 8px rgba(20, 26, 34, 0.08); }
 .gh { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-weight: 600; font-size: 15px; margin-bottom: 4px; }
@@ -326,6 +334,12 @@ body.tv .convbar { bottom: 112px; }
 .mtopic { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 8px; flex-wrap: wrap; }
 #mAutoOut h3, #mLocal h3 { margin-top: 14px; }
 .note.small { font-size: 12px; }
+.diag { display: flex; flex-direction: column; gap: 6px; font-size: 14px; }
+.diag div { padding: 8px 10px; border-radius: 10px; background: var(--surface-2); }
+.diag b { margin-right: 6px; }
+.diag .ok b { color: #1D7350; }
+.diag .bad b { color: #B42318; }
+.diag small { display: block; color: var(--muted); font-size: 12px; margin-top: 2px; word-break: break-word; }
 .item .credit { font-family: var(--ui); font-size: 11px; line-height: 1.35; color: #6B7686; padding: 3px 2px 0; }
 .insgrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
 .insb { min-height: 96px; border-radius: 16px; border: 1px solid var(--line); background: var(--surface); cursor: pointer; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 4px; padding: 12px 14px; text-align: left; }
@@ -521,6 +535,7 @@ body.tv .convbar { bottom: 112px; }
       <h3>ซิงก์ข้ามเครื่อง</h3>
       <div class="note" id="cloudNote"></div>
       <div class="row2" id="cloudBtns"></div>
+      <div id="cloudDiag"></div>
       <details class="aicfg" id="cloudCfg">
         <summary><b>ตั้งค่าการเชื่อม Supabase</b><small>ใส่ครั้งเดียวต่อเครื่อง หรือใส่ไว้ในไฟล์ config.js ให้ทุกเครื่องใช้ร่วมกัน</small></summary>
         <div class="aibody">
@@ -845,7 +860,16 @@ function setAssetSrc(el, id) {
   if (!okAsset(id)) return;
   if (blobUrls.has(id)) { el.src = blobUrls.get(id); return; }
   if (id[0] !== 'L' && id[0] !== 'S') { el.src = '/_blob/' + id; return; }
-  getAssetBlob(id).then((b) => { if (!b) return; const u = blobUrls.get(id) || URL.createObjectURL(b); blobUrls.set(id, u); el.src = u; }).catch(() => {});
+  const box = el.parentNode;
+  if (box) box.classList.add('loading');
+  let tries = 0;
+  const attempt = () => getAssetBlob(id).then((b) => {
+    if (blobUrls.has(id)) { el.src = blobUrls.get(id); if (box) box.classList.remove('loading', 'missing'); return; }
+    if (b) { const u = URL.createObjectURL(b); blobUrls.set(id, u); el.src = u; if (box) box.classList.remove('loading', 'missing'); return; }
+    if (++tries < 5) setTimeout(attempt, [1500, 4000, 9000, 20000][tries - 1]);
+    else if (box) { box.classList.remove('loading'); box.classList.add('missing'); }
+  }).catch(() => { if (++tries < 5) setTimeout(attempt, 4000); });
+  attempt();
 }
 function makeLocalRoom() {
   if (!('BroadcastChannel' in window)) return null;
@@ -928,7 +952,7 @@ async function makeCloudStore(sb, user) {
   };
   const subs = new Set(); let notifyT = 0;
   const notify = () => { if (notifyT) return; notifyT = setTimeout(() => { notifyT = 0; subs.forEach((f) => { try { f(); } catch (e) { console.error(e); } }); }, 0); };
-  let flushing = false, retryT = 0, offline = false;
+  let flushing = false, retryT = 0, offline = false, rtStatus = 'CONNECTING';
   const pend = () => Object.keys(pending).length;
   const status = () => setSync(offline ? 'offline' : pend() ? 'saving' : 'saved');
   async function flush() {
@@ -1001,7 +1025,7 @@ async function makeCloudStore(sb, user) {
       if (r.data == null) { fetchOne(r.path); return; }
       cacheSet(r.path, r.data); notify();
     })
-    .subscribe((s) => { if (s === 'SUBSCRIBED') pull().catch(() => { offline = true; status(); }); });
+    .subscribe((s) => { rtStatus = s; if (s === 'SUBSCRIBED') pull().catch(() => { offline = true; status(); }); });
   window.addEventListener('online', () => { flush(); pull().catch(() => {}); });
   document.addEventListener('visibilitychange', () => { if (!document.hidden) { flush(); pull().catch(() => {}); } });
   if (!Object.keys(data).length) {
@@ -1013,7 +1037,7 @@ async function makeCloudStore(sb, user) {
   const one = (k) => (data[k] ? Object.assign({ id: k.split('/').pop() }, clone(data[k])) : null);
   const many = (path) => Object.keys(data).filter((k) => parent(k) === path).map(one);
   return {
-    kind: 'cloud', pending: pend,
+    kind: 'cloud', pending: pend, rt: () => rtStatus, isOffline: () => offline,
     watchCollection(path, cb) { const f = () => cb(many(path), meta); subs.add(f); setTimeout(f, 0); return () => subs.delete(f); },
     watchDoc(path, cb) { const f = () => cb(one(path), meta); subs.add(f); setTimeout(f, 0); return () => subs.delete(f); },
     async get(path) { return one(path); },
@@ -1024,15 +1048,43 @@ async function makeCloudStore(sb, user) {
     flush
   };
 }
+/* files are kept on this device first, so a picture shows on the page at once;
+   the copy for other devices goes up to Supabase now, or later from a retry queue if the network or storage fails */
 function makeCloudAssets(sb, user) {
+  const QK = 'tp-uq-' + user.id;
+  const readQ = () => { try { const v = JSON.parse(store_ls.get(QK) || '[]'); return Array.isArray(v) ? v : []; } catch (e) { return []; } };
+  const push = async (id, blob, type) => {
+    const { error } = await sb.storage.from('burin').upload(user.id + '/' + id, blob, { contentType: type || blob.type || 'application/octet-stream', upsert: true });
+    if (error) throw error;
+  };
+  let busy = false;
+  async function retry() {
+    if (busy) return; busy = true;
+    try {
+      const left = [];
+      for (const it of readQ()) {
+        try { const b = await IDB.get('blobs', it.id); if (!b) continue; await push(it.id, b, it.type); }
+        catch (e) { CLOUD.lastFileErr = String((e && e.message) || e); left.push(it); }
+      }
+      store_ls.set(QK, JSON.stringify(left));
+    } finally { busy = false; }
+  }
+  window.addEventListener('online', retry);
+  setInterval(retry, 60000); setTimeout(retry, 4000);
   return {
-    kind: 'cloud',
+    kind: 'cloud', queued: () => readQ().length, retry,
     async upload(blob, o) {
-      const id = 'S' + uid() + uid();
-      const { error } = await sb.storage.from('burin').upload(user.id + '/' + id, blob, { contentType: (o && o.type) || blob.type || 'application/octet-stream', upsert: false });
-      if (error) throw { code: /size|large|exceed/i.test(error.message || '') ? 'too_large' : 'upload_failed', message: error.message };
-      IDB.put('blobs', id, blob).catch(() => {});
-      return { id };
+      const id = 'S' + uid() + uid(), type = (o && o.type) || blob.type || 'application/octet-stream';
+      try { await IDB.put('blobs', id, blob); } catch (e) { /* the cloud copy still works */ }
+      blobUrls.set(id, URL.createObjectURL(blob));
+      try { await push(id, blob, type); return { id }; }
+      catch (e) {
+        const m = String((e && e.message) || e);
+        if (/size|large|exceed/i.test(m)) { blobUrls.delete(id); throw { code: 'too_large', message: m }; }
+        CLOUD.lastFileErr = m;
+        const q = readQ(); q.push({ id, type }); store_ls.set(QK, JSON.stringify(q));
+        return { id, queued: true, message: m };
+      }
     }
   };
 }
@@ -1288,7 +1340,14 @@ function releasePull() {
   else if (p >= lim && i > 0) stepPage(-1, true);
 }
 const wheelRelease = debounce(releasePull, 220);
+/* the top bar stays on one line: when it runs out of room, buttons show icons only */
+function fitTop() {
+  const t = document.querySelector('.top'); if (!t) return;
+  t.classList.remove('compact');
+  if (t.scrollWidth > t.clientWidth + 1) t.classList.add('compact');
+}
 function fit() {
+  fitTop();
   if (S.present) { presentFit(); return; }
   const vw = vp.clientWidth || 800;
   S.base = Math.max(0.25, Math.min((vw - 24) / W, S.tv ? 2.4 : 1.3));
@@ -1444,13 +1503,13 @@ function buildItemEl(it, forExport) {
   d.dataset.id = it.id;
   if (it.type === 'svg') { d.innerHTML = cleanSvg(it.svg) || ''; }
   else if (it.type === 'img') {
-    if (okAsset(it.asset) || okRemote(it.url)) { const im = document.createElement('img'); if (okAsset(it.asset)) setAssetSrc(im, it.asset); else { im.crossOrigin = 'anonymous'; im.src = it.url; } im.alt = 'ภาพที่แทรก'; im.draggable = false; d.appendChild(im); }
+    if (okAsset(it.asset) || okRemote(it.url)) { const im = document.createElement('img'); im.alt = 'ภาพที่แทรก'; im.draggable = false; d.appendChild(im); if (okAsset(it.asset)) setAssetSrc(im, it.asset); else { im.crossOrigin = 'anonymous'; im.src = it.url; } }
   } else if (it.type === 'video') {
     if (forExport) { d.innerHTML = '<div style="aspect-ratio:16/9;background:#20262F;color:#FFFFFF;display:flex;align-items:center;justify-content:center;border-radius:6px;font-family:var(--ui)">วิดีโอ ดูได้ในแอป</div>'; }
-    else if (okAsset(it.asset) || okRemote(it.url)) { const v = document.createElement('video'); if (okAsset(it.asset)) setAssetSrc(v, it.asset); else { v.src = it.url; if (okRemote(it.poster)) v.poster = it.poster; } v.controls = true; v.playsInline = true; v.preload = 'metadata'; d.appendChild(v); }
-  }
-  if ((it.type === 'img' || it.type === 'video') && it.credit) { const c = document.createElement('div'); c.className = 'credit'; c.textContent = String(it.credit).slice(0, 160); d.appendChild(c); } else if (it.type === 'graph') { buildGraph(d, it, forExport); }
+    else if (okAsset(it.asset) || okRemote(it.url)) { const v = document.createElement('video'); v.controls = true; v.playsInline = true; v.preload = 'metadata'; d.appendChild(v); if (okAsset(it.asset)) setAssetSrc(v, it.asset); else { v.src = it.url; if (okRemote(it.poster)) v.poster = it.poster; } }
+  } else if (it.type === 'graph') { buildGraph(d, it, forExport); }
   else d.innerHTML = mdToHtml(it.md || '');
+  if ((it.type === 'img' || it.type === 'video') && it.credit) { const c = document.createElement('div'); c.className = 'credit'; c.textContent = String(it.credit).slice(0, 160); d.appendChild(c); }
   return d;
 }
 itemsEl.addEventListener('pointerdown', (e) => {
@@ -3020,7 +3079,7 @@ function assetErr(e) {
   if (c === 'unsupported_type') return 'ไม่รองรับไฟล์ชนิดนี้ ใช้รูป JPG หรือ PNG และวิดีโอ MP4';
   if (c === 'quota_or_state') return 'พื้นที่เก็บไฟล์ของแอปเต็มแล้ว';
   if (c === 'rate_limited') return 'อัปโหลดถี่เกินไป รอสักครู่แล้วลองใหม่';
-  return 'แทรกไฟล์ไม่สำเร็จ ลองอีกครั้ง' + (c ? ' (รหัส ' + c + ')' : '');
+  return 'แทรกไฟล์ไม่สำเร็จ ลองอีกครั้ง' + (c ? ' (รหัส ' + c + ')' : '') + (e && e.message ? ' ' + String(e.message).slice(0, 80) : '');
 }
 async function prepImage(file) {
   const keep = file.type === 'image/gif' || ((file.type === 'image/png' || file.type === 'image/webp') && file.size < 3e6);
@@ -3050,7 +3109,7 @@ async function insertImage(file) {
     const w = 480, h = Math.round(w * p.ar);
     const [x, y] = viewSpot(w, h);
     addItem({ type: 'img', asset: r.id, x, y, w, ar: Math.round(p.ar * 1000) / 1000 });
-    toast('แทรกรูปแล้ว ใช้บ่วงเลือกเพื่อย้าย ขยาย หรือย่อ', 3000);
+    toast(r.queued ? 'แทรกรูปแล้ว แต่ยังส่งขึ้นคลาวด์ไม่ได้ เครื่องอื่นจะเห็นเมื่อส่งสำเร็จ (' + String(r.message || '').slice(0, 60) + ')' : 'แทรกรูปแล้ว ใช้บ่วงเลือกเพื่อย้าย ขยาย หรือย่อ', r.queued ? 6000 : 3000);
   } catch (e) { toast(assetErr(e), 4500); }
 }
 async function insertVideo(file) {
@@ -3074,7 +3133,7 @@ async function insertVideo(file) {
     const w = 560, h = Math.round(w * ar);
     const [x, y] = viewSpot(w, h);
     addItem({ type: 'video', asset: r.id, x, y, w, ar: Math.round(ar * 1000) / 1000 });
-    toast('แทรกวิดีโอแล้ว', 2500);
+    toast(r.queued ? 'แทรกวิดีโอแล้ว แต่ยังส่งขึ้นคลาวด์ไม่ได้ เครื่องอื่นจะเห็นเมื่อส่งสำเร็จ' : 'แทรกวิดีโอแล้ว', r.queued ? 6000 : 2500);
   } catch (e) { toast(assetErr(e), 5000); }
 }
 
@@ -3190,6 +3249,7 @@ function holdable(el, onTap, onHold) {
   el.addEventListener('click', (e) => { if (held) { e.preventDefault(); held = false; return; } onTap(e); });
 }
 function renderTabs() {
+  setTimeout(fitTop, 0);
   const el = $('#tabs'); el.innerHTML = '';
   for (const nid of S.tabs) {
     if (nid === S.nid) continue;
@@ -3745,6 +3805,32 @@ async function doAuth(signup) {
     setTimeout(() => location.reload(), 400);
   } catch (e) { say(authErr(e), 'err'); }
 }
+async function runDiag() {
+  const out = $('#cloudDiag'), sb = CLOUD.client, me = CLOUD.user && CLOUD.user.id;
+  const rows = [];
+  const show = () => { out.innerHTML = '<div class="diag">' + rows.map((r) => '<div class="' + (r[1] === true ? 'ok' : r[1] === false ? 'bad' : '') + '"><b>' + esc(r[1] === true ? 'ผ่าน' : r[1] === false ? 'ไม่ผ่าน' : 'กำลังตรวจ') + '</b> ' + esc(r[0]) + (r[2] ? '<small>' + esc(r[2]) + '</small>' : '') + '</div>').join('') + '</div>'; };
+  const step = async (name, fn) => { const r = [name, null, '']; rows.push(r); show(); try { const msg = await fn(); r[1] = true; r[2] = msg || ''; } catch (e) { r[1] = false; r[2] = String((e && e.message) || e).slice(0, 160); } show(); };
+  if (!sb || !me) { out.innerHTML = '<div class="note err">ยังไม่ได้เข้าระบบ</div>'; return; }
+  await step('อ่านสมุดจากคลาวด์', async () => { const { count, error } = await sb.from('docs').select('path', { count: 'exact', head: true }).eq('owner', me); if (error) throw error; return 'มีข้อมูล ' + (count || 0) + ' รายการ'; });
+  await step('บันทึกลงคลาวด์', async () => {
+    const { error } = await sb.from('docs').upsert({ owner: me, path: 'diag/test', parent: 'diag', data: { t: now() }, updated_at: new Date().toISOString() }, { onConflict: 'owner,path' }); if (error) throw error;
+    const d = await sb.from('docs').delete().eq('owner', me).eq('path', 'diag/test'); if (d.error) throw d.error;
+  });
+  await step('ส่งไฟล์รูปขึ้นที่เก็บไฟล์', async () => {
+    const path = me + '/diag-test.txt';
+    const u = await sb.storage.from('burin').upload(path, new Blob(['burin ' + now()], { type: 'text/plain' }), { contentType: 'text/plain', upsert: true }); if (u.error) throw u.error;
+    const g = await sb.storage.from('burin').download(path); if (g.error) throw g.error;
+    await sb.storage.from('burin').remove([path]);
+  });
+  await step('ซิงก์ทันทีระหว่างเครื่อง', async () => { const st = S.store && S.store.rt ? S.store.rt() : ''; if (st !== 'SUBSCRIBED') throw new Error('สถานะ ' + st); return ''; });
+  await step('งานที่รอส่งขึ้นคลาวด์', async () => {
+    const a = await getAssets(); const files = a && a.queued ? a.queued() : 0, docs = S.store && S.store.pending ? S.store.pending() : 0;
+    if (files && a.retry) await a.retry();
+    const files2 = a && a.queued ? a.queued() : 0;
+    if (files2 || docs) throw new Error('สมุดรอส่ง ' + docs + ' รายการ ไฟล์รอส่ง ' + files2 + ' ไฟล์' + (CLOUD.lastFileErr ? ' สาเหตุล่าสุด: ' + CLOUD.lastFileErr : ''));
+    return 'ไม่มีงานค้าง';
+  });
+}
 function renderCloud() {
   const box = $('#cloudBox');
   const inClaude = !!(window.claude && window.claude.use);
@@ -3755,6 +3841,7 @@ function renderCloud() {
   if (st === 'on') {
     $('#cloudNote').textContent = 'เข้าระบบอยู่ในชื่อ ' + ((CLOUD.user && CLOUD.user.email) || '') + ' สมุดซิงก์กับทุกเครื่องที่เข้าระบบด้วยบัญชีนี้';
     add('ย้ายสมุดในเครื่องขึ้นคลาวด์', async () => { toast('กำลังย้ายสมุดขึ้นคลาวด์', 9000); const n = await migrateLocalToCloud(); toast(n ? 'ย้ายสมุด ' + n + ' เล่มขึ้นคลาวด์แล้ว' : 'ไม่มีสมุดในเครื่องที่ต้องย้าย', 3500); });
+    add('ตรวจการเชื่อมต่อ', runDiag, true);
     add('ออกจากระบบ', async () => { try { if (S.store.flush) await S.store.flush(); await CLOUD.client.auth.signOut(); } catch (e) { /* ignore */ } location.reload(); });
   } else if (st === 'signedout') {
     $('#cloudNote').textContent = 'ยังไม่ได้เข้าระบบ ตอนนี้สมุดบันทึกไว้ในเครื่องนี้เท่านั้น';
