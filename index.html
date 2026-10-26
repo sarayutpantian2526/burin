@@ -1829,8 +1829,8 @@ function onDown(e) {
 }
 function beginTool(pt, e) {
   const [x, y] = toLogical(e.clientX, e.clientY);
-  if ((S.tool === 'pen' || S.tool === 'hl') && S.sel && S.sel.items.length && nearHandle(S.sel.box, x, y) >= 0) { startScale(pt, nearHandle(S.sel.box, x, y)); return; }
-  if ((S.tool === 'pen' || S.tool === 'hl') && S.sel && S.sel.items.length && inBox(S.sel.box, x, y)) {
+  if ((S.tool === 'pen' || S.tool === 'hl') && S.sel && S.sel.box && nearHandle(S.sel.box, x, y) >= 0) { startScale(pt, nearHandle(S.sel.box, x, y)); return; }
+  if ((S.tool === 'pen' || S.tool === 'hl') && S.sel && S.sel.box && inBox(S.sel.box, x, y)) {
     /* a picture or box picked by pressing and holding: drag it with the pen too */
     pt.mode = 'move'; pt.last = [x, y]; pt.dx = 0; pt.dy = 0; return;
   }
@@ -1844,10 +1844,12 @@ function beginTool(pt, e) {
     armHold(pt, x, y);
     /* press and hold on a picture, graph or text box (without moving) to pick it up */
     const hit = itemAt(x, y);
-    if (hit) pt.itemT = setTimeout(() => {
+    const shp = hit ? null : (() => { const r = strokeAt(x, y); return r && r.length && (findStroke(r[0]) || {}).g ? r : null; })();
+    if (hit || shp) pt.itemT = setTimeout(() => {
       if (P.get(pt.id) !== pt || pt.mode !== 'draw' || pt.moved > 10) return;
       clearTimeout(pt.holdT); clearLive();
-      selectItem(hit); pt.mode = 'move'; pt.last = [x, y]; pt.dx = 0; pt.dy = 0;
+      if (hit) selectItem(hit); else selectStrokes(shp);
+      pt.mode = 'move'; pt.last = [x, y]; pt.dx = 0; pt.dy = 0;
       toast('เลือกแล้ว ลากเพื่อย้าย ลากมุมเพื่อปรับขนาด', 2200);
     }, 480);
   } else if (S.tool === 'eraser') {
@@ -1857,13 +1859,18 @@ function beginTool(pt, e) {
     if (S.sel && nearHandle(S.sel.box, x, y) >= 0) { startScale(pt, nearHandle(S.sel.box, x, y)); }
     else if (S.sel && inBox(S.sel.box, x, y)) { pt.mode = 'move'; pt.last = [x, y]; pt.dx = 0; pt.dy = 0; if (!S.sel.strokes.length && S.sel.items.length === 1 && itemsAt(x, y).length > 1) pt.cyc = [x, y]; }
     else {
-      const hit = itemAt(x, y);
+      const hit = itemAt(x, y), sh = hit ? null : strokeAt(x, y);
       if (hit) { selectItem(hit); pt.mode = 'move'; pt.last = [x, y]; pt.dx = 0; pt.dy = 0; }
+      else if (sh) { pt.pick = sh; clearSel(); pt.mode = 'lasso'; pt.poly = [[x, y]]; }
       else { clearSel(); pt.mode = 'lasso'; pt.poly = [[x, y]]; }
     }
   } else if (S.tool === 'laser') {
     pt.mode = 'laser'; pt.lz = [[x, y]]; drawLasers(); emitLaserPt(x, y, true);
   } else if (S.tool === 'shape') {
+    if (S.sel && nearHandle(S.sel.box, x, y) >= 0) { startScale(pt, nearHandle(S.sel.box, x, y)); return; }
+    if (S.sel && inBox(S.sel.box, x, y)) { pt.mode = 'move'; pt.last = [x, y]; pt.dx = 0; pt.dy = 0; return; }
+    const hit = strokeAt(x, y);
+    if (hit) { selectStrokes(hit); pt.mode = 'move'; pt.last = [x, y]; pt.dx = 0; pt.dy = 0; return; }
     if (S.sel) clearSel();
     pt.mode = 'shape'; pt.a = [x, y]; pt.b = [x, y];
   } else if (S.tool === 'text') {
@@ -1968,7 +1975,7 @@ function onUp(e) {
   } else if (pt.mode === 'erase' || pt.mode === 'palm') {
     clearLive();
   } else if (pt.mode === 'lasso') {
-    finishLasso(pt.poly);
+    if (pt.pick && pt.moved < 12) { selDraw(); selectStrokes(pt.pick); } else finishLasso(pt.poly);
   } else if (pt.mode === 'move') {
     if (S.sel && S.sel.items.length && S.page) S.page = Object.assign({}, S.page, { items: S.page.items.map((it) => S.sel.items.includes(it.id) ? Object.assign({}, it, { x: Math.round(it.x), y: Math.round(it.y) }) : it) });
     if (pt.cyc && Math.abs(pt.dx) + Math.abs(pt.dy) < 2 && pt.moved < 10) { cycleItemAt(pt.cyc[0], pt.cyc[1]); return; }
@@ -2321,9 +2328,37 @@ function commitShape(pt) {
   clearLive();
   if (!list.length) return;
   const before = { [DEV]: clone(S.mine) };
-  for (const s of list) S.mine.push(s);
+  /* the strokes of one shape (a vector and its arrowhead, a triangle and its angle mark) belong together */
+  const g = 'g' + uid();
+  for (const s of list) { s.g = g; S.mine.push(s); }
   pushUndo({ t: 'layers', before, after: { [DEV]: clone(S.mine) } });
-  saveMine(); drawInk(); emitInk(null);
+  saveMine(); emitInk(null);
+  /* a new shape stays selected, so it can be moved, resized or deleted straight away */
+  selectStrokes(list.map((st) => ({ layer: DEV, id: st.id })));
+}
+/* the ink stroke under a point (pen lines count when the point is on the line), with its whole shape group */
+function strokeAt(x, y) {
+  const tol = 10 / ((S.base || 1) * (S.zoom || 1));
+  let best = null, bd = 1e9;
+  for (const r of allStrokes()) {
+    const b = sbox(r.s), pad = tol + r.s.w;
+    if (x < b[0] - pad || x > b[2] + pad || y < b[1] - pad || y > b[3] + pad) continue;
+    const p = r.s.p;
+    for (let i = 3; i < p.length; i += 3) {
+      const ax = p[i - 3] / 10, ay = p[i - 2] / 10, bx = p[i] / 10, by = p[i + 1] / 10, dx = bx - ax, dy = by - ay, L2 = dx * dx + dy * dy;
+      const t = L2 ? clamp(((x - ax) * dx + (y - ay) * dy) / L2, 0, 1) : 0, d = Math.hypot(x - ax - t * dx, y - ay - t * dy);
+      if (d < bd) { bd = d; best = r; }
+    }
+    if (p.length === 3) { const d = Math.hypot(x - p[0] / 10, y - p[1] / 10); if (d < bd) { bd = d; best = r; } }
+  }
+  if (!best || bd > tol + best.s.w) return null;
+  if (!best.s.g) return [{ layer: best.layer, id: best.s.id }];
+  return allStrokes().filter((r) => r.s.g === best.s.g).map((r) => ({ layer: r.layer, id: r.s.id }));
+}
+function selDraw() { selEl.innerHTML = ''; }
+function selectStrokes(refs) {
+  S.sel = { strokes: refs, items: [], box: null };
+  S.sel.box = selBox(S.sel); drawInk(); drawSelBox(); showSelbar();
 }
 
 /* resize a lasso selection from its corner handle, or with the buttons */
@@ -4781,7 +4816,7 @@ async function renderSaved() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1792995286';
+const BUILD = '1792996330';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
