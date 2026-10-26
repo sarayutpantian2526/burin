@@ -358,7 +358,12 @@ body.tv .convbar { bottom: 112px; }
 .sheet .panel.wide { width: min(860px, 100%); }
 .insb.wide { grid-column: 1 / -1; }
 .mgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; margin-top: 8px; }
-.mcard { display: flex; flex-direction: column; gap: 6px; padding: 0; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); cursor: pointer; overflow: hidden; text-align: left; }
+.mcwrap { position: relative; }
+.mstar { position: absolute; right: 6px; top: 6px; width: 34px; height: 34px; border-radius: 999px; border: 0; background: rgba(20, 24, 31, 0.55); color: #FFFFFF; display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 0; }
+.mstar svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linejoin: round; }
+.mstar[aria-pressed="true"] { background: #F5C542; color: #5A4300; }
+.mstar[aria-pressed="true"] svg { fill: currentColor; }
+.mcard { width: 100%; display: flex; flex-direction: column; gap: 6px; padding: 0; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); cursor: pointer; overflow: hidden; text-align: left; }
 .mcard.busy { opacity: 0.5; pointer-events: none; }
 .mthumb { position: relative; display: block; aspect-ratio: 4 / 3; background: #EEF1F5; }
 .mthumb img { width: 100%; height: 100%; object-fit: contain; display: block; }
@@ -690,8 +695,14 @@ body.present .updbar { display: none !important; }
 <div class="sheet" id="mediaSheet" hidden>
   <div class="panel wide" role="dialog" aria-label="สื่อประกอบ">
     <div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><h2>สื่อประกอบ</h2><button class="btn" id="mClose">ปิด</button></div>
-    <div class="seg" id="mTabs" role="group" aria-label="แหล่งสื่อ"><button data-t="auto">จัดชุดให้อัตโนมัติ</button><button data-t="web">ค้นจากเว็บ</button><button data-t="local">จากเครื่องนี้</button></div>
+    <div class="seg" id="mTabs" role="group" aria-label="แหล่งสื่อ"><button data-t="lib">ตามบทเรียน</button><button data-t="auto">จัดชุดให้อัตโนมัติ</button><button data-t="web">ค้นจากเว็บ</button><button data-t="local">จากเครื่องนี้</button></div>
     <div class="row2" id="mKinds" role="group" aria-label="ชนิดสื่อ"><button class="chip" data-k="all">ทั้งหมด</button><button class="chip" data-k="img">รูปและแผนภาพ</button><button class="chip" data-k="gif">GIF</button><button class="chip" data-k="video">วิดีโอ</button></div>
+    <div id="mLib" hidden>
+      <div class="chips" id="libLevels" role="group" aria-label="ระดับชั้น"></div>
+      <label class="field" style="margin-top:8px"><span>บทเรียน</span><select id="libCh"></select></label>
+      <div class="chips" id="libSubs" role="group" aria-label="หัวข้อย่อย" style="margin-top:8px"></div>
+      <div id="libOut"></div>
+    </div>
     <div id="mAuto">
       <div class="note">อ่านสิ่งที่เขียนบนหน้านี้ (หรือส่วนที่วงไว้) แล้วจัดชุดรูป แผนภาพ GIF และวิดีโอจาก Wikimedia Commons ให้ แตะสื่อเพื่อแทรก</div>
       <div class="mtopic"><b id="mTopic"></b><button class="btn" id="mAgain">อ่านหน้าอีกครั้ง</button></div>
@@ -703,10 +714,12 @@ body.present .updbar { display: none !important; }
     </div>
     <div id="mLocal" hidden>
       <div class="row2"><button class="btn" id="mPickImg">เลือกรูปหรือ GIF จากเครื่อง</button><button class="btn" id="mPickVid">เลือกวิดีโอจากเครื่อง</button></div>
+      <h3>คลังของฉัน (ที่กดดาวเก็บไว้)</h3>
+      <div id="mSaved"></div>
       <h3>เคยใช้ในสมุด</h3>
       <div id="mMine"></div>
     </div>
-    <div class="note small">สื่อจาก Wikimedia Commons ใช้สอนได้ฟรี แอปจะใส่ชื่อผู้สร้างและสัญญาอนุญาตไว้ใต้สื่อให้เอง</div>
+    <div class="note small">สื่อจาก Wikimedia Commons ใช้สอนได้ฟรี แอปจะใส่ชื่อผู้สร้างและสัญญาอนุญาตไว้ใต้สื่อให้เอง แตะรูปดาวเพื่อเก็บสื่อเข้าคลังของฉัน ใช้ได้ทุกเครื่อง</div>
   </div>
 </div>
 
@@ -3909,8 +3922,14 @@ async function searchMedia(qs, kinds, per) {
   return out;
 }
 function mediaCard(m) {
+  const wrap = document.createElement('div'); wrap.className = 'mcwrap';
   const b = document.createElement('button'); b.className = 'mcard'; b.type = 'button';
   b.setAttribute('aria-label', 'แทรก ' + m.name);
+  const st = document.createElement('button'); st.className = 'mstar'; st.type = 'button'; st.setAttribute('aria-label', 'เก็บเข้าคลังของฉัน'); st.title = 'เก็บเข้าคลังของฉัน';
+  st.innerHTML = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 2.8l2.2 4.6 5 .6-3.7 3.4 1 5-4.5-2.5-4.5 2.5 1-5L2.8 8l5-.6z"/></svg>';
+  st.setAttribute('aria-pressed', LIB.saved.has(libKey(m)) ? 'true' : 'false');
+  st.onclick = (e) => { e.stopPropagation(); toggleSave(m, st); };
+  wrap.append(b, st);
   const tag = m.kind === 'gif' ? 'GIF' : m.kind === 'video' ? 'วิดีโอ' : m.kind === 'drawing' ? 'แผนภาพ' : m.kind === 'mine' ? 'เคยใช้' : 'รูป';
   b.innerHTML = '<span class="mthumb"><img alt="" loading="lazy"><i>' + esc(tag) + '</i></span><span class="mname"></span>';
   const im = b.querySelector('img');
@@ -3918,7 +3937,7 @@ function mediaCard(m) {
   if (m.kind === 'mine' && m.type === 'video') { im.remove(); b.querySelector('.mthumb').insertAdjacentHTML('afterbegin', '<b class="mvid">วิดีโอ</b>'); }
   b.querySelector('.mname').textContent = m.name;
   b.onclick = () => insertMedia(m, b);
-  return b;
+  return wrap;
 }
 function mediaGrid(list, empty) {
   const g = document.createElement('div'); g.className = 'mgrid';
@@ -3971,9 +3990,10 @@ function kindsFor(k) { return k === 'img' ? ['bitmap', 'drawing'] : k === 'gif' 
 function renderMediaTab() {
   document.querySelectorAll('#mTabs button').forEach((b) => b.setAttribute('aria-pressed', b.dataset.t === MD.tab ? 'true' : 'false'));
   document.querySelectorAll('#mKinds button').forEach((b) => b.setAttribute('aria-pressed', b.dataset.k === MD.kind ? 'true' : 'false'));
-  $('#mLocal').hidden = MD.tab !== 'local'; $('#mWeb').hidden = MD.tab !== 'web'; $('#mAuto').hidden = MD.tab !== 'auto';
+  $('#mLocal').hidden = MD.tab !== 'local'; $('#mWeb').hidden = MD.tab !== 'web'; $('#mAuto').hidden = MD.tab !== 'auto'; $('#mLib').hidden = MD.tab !== 'lib';
   $('#mKinds').hidden = MD.tab === 'local';
-  if (MD.tab === 'local') loadMine();
+  if (MD.tab === 'local') { renderSaved(); loadMine(); }
+  if (MD.tab === 'lib') renderLib();
   if (MD.tab === 'auto' && !MD.lastAuto) autoMedia();
 }
 async function loadMine() {
@@ -4042,19 +4062,22 @@ async function autoMedia() {
   if (want === 'all' || want === 'gif') block('ภาพเคลื่อนไหว GIF', gifs, 'ไม่พบ GIF ที่ตรงหัวข้อ');
   if (want === 'all' || want === 'video') block('วิดีโอ', vids, 'ไม่พบวิดีโอที่ตรงหัวข้อ');
 }
-function openMedia(tab) {
+async function openMedia(tab) {
   closeSheets(); MD.tab = tab || MD.tab; MD.lastAuto = null;
-  $('#mediaSheet').hidden = false; renderMediaTab();
+  $('#mediaSheet').hidden = false;
+  await loadSaved();
+  renderMediaTab();
 }
 document.querySelectorAll('#mTabs button').forEach((b) => { b.onclick = () => { MD.tab = b.dataset.t; renderMediaTab(); }; });
 document.querySelectorAll('#mKinds button').forEach((b) => { b.onclick = () => { MD.kind = b.dataset.k; renderMediaTab(); if (MD.tab === 'web' && $('#mQuery').value.trim()) webMedia(); if (MD.tab === 'auto') autoMedia(); }; });
+/* the kind filter (pictures, GIF, video) also re-runs the chapter search; renderMediaTab already does it for the library tab */
 $('#mGo').onclick = webMedia;
 $('#mQuery').addEventListener('keydown', (e) => { if (e.key === 'Enter') webMedia(); });
 $('#mAgain').onclick = () => autoMedia();
 $('#mPickImg').onclick = () => { $('#mediaSheet').hidden = true; $('#fImg').value = ''; $('#fImg').click(); };
 $('#mPickVid').onclick = () => { $('#mediaSheet').hidden = true; $('#fVid').value = ''; $('#fVid').click(); };
 $('#mClose').onclick = () => { $('#mediaSheet').hidden = true; };
-$('#iMedia').onclick = () => openMedia('auto');
+$('#iMedia').onclick = () => openMedia('lib');
 $('#sMedia').onclick = () => openMedia('auto');
 
 /* ---------- live physics simulations placed on the page ---------- */
@@ -4363,8 +4386,128 @@ $('#cClear').onclick = () => { $('#cIn').value = ''; $('#cOut').innerHTML = ''; 
 $('#cIn').addEventListener('keydown', (e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); runCalc(); } });
 $('#bCalcClose').onclick = () => { $('#calc').hidden = true; setTimeout(fit, 0); };
 
+/* ---------- teaching-media library sorted by level and chapter (Thai curriculum), plus a personal saved library ---------- */
+const CURRIC = {
+  p: ['ประถม', [
+    ['แรงและการเคลื่อนที่', [['แรงผลักแรงดึง', 'push and pull force children'], ['แรงเสียดทาน', 'friction everyday'], ['แรงโน้มถ่วง', 'gravity falling objects']]],
+    ['แม่เหล็ก', [['ขั้วแม่เหล็ก', 'bar magnet poles'], ['เส้นแรงแม่เหล็ก', 'magnetic field iron filings'], ['เข็มทิศ', 'compass magnetic']]],
+    ['แสงและเงา', [['การเกิดเงา', 'shadow light source'], ['การสะท้อน', 'reflection mirror light'], ['สีของแสง', 'prism rainbow dispersion']]],
+    ['เสียง', [['การสั่น', 'vibration sound tuning fork'], ['เสียงสูงต่ำ', 'pitch frequency sound'], ['หูกับการได้ยิน', 'human ear anatomy']]],
+    ['ไฟฟ้าอย่างง่าย', [['วงจรไฟฟ้า', 'simple electric circuit battery bulb'], ['ตัวนำและฉนวน', 'conductor insulator'], ['ต่ออนุกรมขนาน', 'series parallel circuit']]],
+    ['โลกและอวกาศ', [['ข้างขึ้นข้างแรม', 'moon phases'], ['ระบบสุริยะ', 'solar system planets'], ['กลางวันกลางคืน', 'earth rotation day night']]]
+  ]],
+  mt: ['ม.ต้น', [
+    ['การเคลื่อนที่', [['ระยะทางการกระจัด', 'distance displacement'], ['อัตราเร็วความเร็ว', 'speed velocity'], ['ความเร่ง', 'acceleration']]],
+    ['แรงและกฎของนิวตัน', [['แรงลัพธ์', 'resultant force vectors'], ['แรงเสียดทาน', 'friction force'], ['โมเมนต์คาน', 'lever moment seesaw']]],
+    ['งานและพลังงาน', [['งาน', 'work physics force distance'], ['พลังงานศักย์และจลน์', 'potential kinetic energy roller coaster'], ['เครื่องกลอย่างง่าย', 'simple machines pulley']]],
+    ['ความร้อน', [['การถ่ายโอนความร้อน', 'conduction convection radiation'], ['การขยายตัว', 'thermal expansion'], ['การเปลี่ยนสถานะ', 'phase change states of matter']]],
+    ['คลื่นและเสียง', [['คลื่นตามขวางตามยาว', 'transverse longitudinal wave'], ['การสะท้อนของเสียง', 'echo sound reflection'], ['มลพิษทางเสียง', 'decibel scale sound']]],
+    ['แสง', [['การหักเหของแสง', 'refraction of light'], ['เลนส์', 'convex concave lens'], ['ตาและการมองเห็น', 'human eye optics']]],
+    ['ไฟฟ้า', [['กฎของโอห์ม', "Ohm's law"], ['วงจรในบ้าน', 'household wiring circuit'], ['พลังงานไฟฟ้า', 'electric power energy meter']]]
+  ]],
+  mp: ['ม.ปลาย', [
+    ['1 ธรรมชาติและพัฒนาการทางฟิสิกส์', [['การวัดและความไม่แน่นอน', 'measurement uncertainty'], ['เวอร์เนียร์ ไมโครมิเตอร์', 'vernier caliper micrometer'], ['หน่วย SI', 'SI base units']]],
+    ['2 การเคลื่อนที่แนวตรง', [['กราฟการเคลื่อนที่', 'velocity time graph'], ['การตกอิสระ', 'free fall'], ['ความเร่งคงตัว', 'uniform acceleration']]],
+    ['3 แรงและกฎการเคลื่อนที่', [['กฎของนิวตัน', "Newton's laws of motion"], ['แผนภาพวัตถุอิสระ', 'free body diagram'], ['แรงเสียดทาน', 'friction coefficient']]],
+    ['4 สมดุลกล', [['ทอร์ก', 'torque'], ['ศูนย์กลางมวล', 'center of mass'], ['สมดุลสถิต', 'static equilibrium']]],
+    ['5 งานและพลังงาน', [['งานและพลังงาน', 'work energy theorem'], ['การอนุรักษ์พลังงาน', 'conservation of energy pendulum'], ['กำลัง', 'mechanical power']]],
+    ['6 โมเมนตัมและการชน', [['โมเมนตัม', 'momentum'], ['การชน', 'elastic inelastic collision'], ['ลูกตุ้มนิวตัน', "Newton's cradle"]]],
+    ['7 การเคลื่อนที่แนวโค้ง', [['โพรเจกไทล์', 'projectile motion'], ['การเคลื่อนที่แบบวงกลม', 'uniform circular motion'], ['วงโคจรดาวเทียม', 'satellite orbit']]],
+    ['8 การเคลื่อนที่แบบฮาร์มอนิก', [['SHM', 'simple harmonic motion'], ['ลูกตุ้มอย่างง่าย', 'simple pendulum'], ['มวลติดสปริง', 'mass spring oscillation']]],
+    ['9 คลื่น', [['คลื่นกล', 'mechanical wave'], ['การแทรกสอด', 'wave interference'], ['การเลี้ยวเบน', 'wave diffraction']]],
+    ['10 แสงเชิงฟิสิกส์', [['สลิตคู่', 'double slit experiment'], ['เกรตติง', 'diffraction grating'], ['โพลาไรเซชัน', 'polarization of light']]],
+    ['11 แสงเชิงรังสี', [['การหักเห', 'refraction Snell law'], ['การสะท้อนกลับหมด', 'total internal reflection'], ['ภาพจากเลนส์', 'lens ray diagram']]],
+    ['12 เสียง', [['คลื่นเสียง', 'sound wave compression'], ['ดอปเพลอร์', 'Doppler effect'], ['การสั่นพ้อง', 'resonance tube standing wave']]],
+    ['13 ไฟฟ้าสถิต', [['กฎของคูลอมบ์', "Coulomb's law"], ['สนามไฟฟ้า', 'electric field lines'], ['ตัวเก็บประจุ', 'capacitor']]],
+    ['14 ไฟฟ้ากระแส', [['วงจรไฟฟ้า', 'electric circuit diagram'], ['กฎของเคอร์ชอฟฟ์', 'Kirchhoff circuit laws'], ['แบตเตอรี่', 'electrochemical cell battery']]],
+    ['15 แม่เหล็กและไฟฟ้า', [['สนามแม่เหล็ก', 'magnetic field lines current'], ['การเหนี่ยวนำ', 'electromagnetic induction'], ['มอเตอร์และเครื่องกำเนิด', 'electric motor generator']]],
+    ['16 ความร้อนและแก๊ส', [['ทฤษฎีจลน์ของแก๊ส', 'kinetic theory of gases'], ['การเคลื่อนที่แบบบราวน์', 'Brownian motion'], ['กฎของแก๊ส', 'ideal gas law']]],
+    ['17 ของแข็งและของไหล', [['สภาพยืดหยุ่น', "Young's modulus stress strain"], ['แรงลอยตัว', 'buoyancy Archimedes'], ['หลักของแบร์นูลลี', 'Bernoulli principle']]],
+    ['18 คลื่นแม่เหล็กไฟฟ้า', [['สเปกตรัม', 'electromagnetic spectrum'], ['คลื่นแม่เหล็กไฟฟ้า', 'electromagnetic wave propagation'], ['การสื่อสาร', 'radio antenna']]],
+    ['19 ฟิสิกส์อะตอม', [['แบบจำลองอะตอม', 'Bohr model atom'], ['ปรากฏการณ์โฟโตอิเล็กทริก', 'photoelectric effect'], ['สเปกตรัมเส้น', 'emission spectrum hydrogen']]],
+    ['20 ฟิสิกส์นิวเคลียร์และอนุภาค', [['กัมมันตภาพรังสี', 'radioactive decay'], ['ฟิชชันฟิวชัน', 'nuclear fission fusion'], ['อนุภาคมูลฐาน', 'standard model elementary particles']]]
+  ]],
+  olymp: ['สอวน. และ IJSO', [
+    ['กลศาสตร์ขั้นสูง', [['การเคลื่อนที่สัมพัทธ์', 'relative motion'], ['ระบบรอก', 'pulley system Atwood'], ['การหมุนของวัตถุแข็งเกร็ง', 'rigid body rotation moment of inertia']]],
+    ['ไฟฟ้าและแม่เหล็กขั้นสูง', [['วงจร RC', 'RC circuit charging'], ['แรงลอเรนซ์', 'Lorentz force charged particle'], ['กฎของฟาราเดย์', "Faraday's law"]]],
+    ['ทัศนศาสตร์', [['ระบบเลนส์หลายตัว', 'compound microscope telescope optics'], ['ฟิล์มบาง', 'thin film interference'], ['ปริซึม', 'prism dispersion']]],
+    ['ปฏิบัติการ', [['เครื่องมือวัด', 'laboratory measuring instruments'], ['การวิเคราะห์ข้อมูล', 'graph linear fit experiment'], ['การออกแบบการทดลอง', 'physics experiment setup']]]
+  ]],
+  u: ['มหาวิทยาลัย', [
+    ['กลศาสตร์คลาสสิก', [['ลากรางจ์', 'Lagrangian mechanics'], ['การเคลื่อนที่ใต้แรงสู่ศูนย์กลาง', 'Kepler orbit central force'], ['การสั่นแบบคู่ควบ', 'coupled oscillators normal modes']]],
+    ['แม่เหล็กไฟฟ้า', [['สมการแมกซ์เวลล์', "Maxwell's equations"], ['คลื่นในตัวกลาง', 'electromagnetic wave polarization'], ['ศักย์และสนาม', 'electric potential equipotential']]],
+    ['กลศาสตร์ควอนตัม', [['ฟังก์ชันคลื่น', 'wave function particle in a box'], ['การทะลุผ่าน', 'quantum tunneling'], ['อะตอมไฮโดรเจน', 'hydrogen atom orbitals']]],
+    ['อุณหพลศาสตร์และกลศาสตร์สถิติ', [['วัฏจักรคาร์โนต์', 'Carnot cycle'], ['เอนโทรปี', 'entropy'], ['การกระจายของโบลต์ซมันน์', 'Maxwell Boltzmann distribution']]],
+    ['สัมพัทธภาพ', [['การยืดของเวลา', 'time dilation'], ['แผนภาพกาลอวกาศ', 'spacetime diagram light cone'], ['ความโค้งของกาลอวกาศ', 'spacetime curvature gravity']]],
+    ['ฟิสิกส์สถานะของแข็ง', [['โครงผลึก', 'crystal lattice'], ['แถบพลังงาน', 'band structure semiconductor'], ['สภาพนำยิ่งยวด', 'superconductivity Meissner effect']]],
+    ['ฟิสิกส์ดาราศาสตร์', [['หลุมดำ', 'black hole'], ['วิวัฒนาการของดาว', 'stellar evolution Hertzsprung Russell'], ['เอกภพขยายตัว', 'cosmic microwave background expansion universe']]]
+  ]]
+};
+const LIB = { level: store_ls.get('tp-liblevel') || 'mp', ch: 0, sub: 0, saved: new Set() };
+function libTopicName() { const L = CURRIC[LIB.level]; const ch = L && L[1][LIB.ch]; return ch ? L[0] + ' : ' + ch[0] + ' : ' + ch[1][LIB.sub][0] : ''; }
+function renderLib() {
+  const lv = $('#libLevels'); lv.innerHTML = '';
+  for (const [k, v] of Object.entries(CURRIC)) {
+    const b = document.createElement('button'); b.className = 'chip'; b.type = 'button'; b.textContent = v[0];
+    b.setAttribute('aria-pressed', k === LIB.level ? 'true' : 'false');
+    b.onclick = () => { LIB.level = k; LIB.ch = 0; LIB.sub = 0; store_ls.set('tp-liblevel', k); renderLib(); };
+    lv.appendChild(b);
+  }
+  const L = CURRIC[LIB.level];
+  const sel = $('#libCh'); sel.innerHTML = '';
+  L[1].forEach((ch, i) => { const o = document.createElement('option'); o.value = String(i); o.textContent = ch[0]; if (i === LIB.ch) o.selected = true; sel.appendChild(o); });
+  sel.onchange = () => { LIB.ch = +sel.value; LIB.sub = 0; renderLib(); };
+  const subs = $('#libSubs'); subs.innerHTML = '';
+  L[1][LIB.ch][1].forEach((sb, i) => {
+    const b = document.createElement('button'); b.className = 'chip'; b.type = 'button'; b.textContent = sb[0];
+    b.setAttribute('aria-pressed', i === LIB.sub ? 'true' : 'false');
+    b.onclick = () => { LIB.sub = i; renderLib(); };
+    subs.appendChild(b);
+  });
+  libSearch();
+}
+async function libSearch() {
+  const out = $('#libOut');
+  if (webBlocked()) { out.innerHTML = '<div class="note warn">ขณะเปิดใน claude.ai หน้านี้ดึงสื่อจากเว็บไม่ได้ ใช้ได้เมื่อเปิดแอปจากเว็บของคุณเอง</div>'; return; }
+  const my = ++MD.busy, q = CURRIC[LIB.level][1][LIB.ch][1][LIB.sub][1];
+  out.innerHTML = '<div class="note">กำลังจัดชุดสื่อสำหรับ ' + esc(CURRIC[LIB.level][1][LIB.ch][1][LIB.sub][0]) + '</div>';
+  const want = MD.kind;
+  const [imgs, gifs, vids] = await Promise.all([
+    want === 'all' || want === 'img' ? searchMedia([q], ['drawing', 'bitmap'], 8) : [],
+    want === 'all' || want === 'gif' ? searchMedia([q], ['gif'], 8) : [],
+    want === 'all' || want === 'video' ? searchMedia([q], ['video'], 6) : []
+  ]);
+  if (my !== MD.busy) return;
+  out.innerHTML = '';
+  const topic = libTopicName();
+  const block = (title, list, empty) => { const h = document.createElement('h3'); h.textContent = title + (list.length ? ' (' + list.length + ')' : ''); out.appendChild(h); out.appendChild(mediaGrid(list.slice(0, 12).map((m) => Object.assign(m, { topic })), empty)); };
+  if (want === 'all' || want === 'img') block('รูปและแผนภาพ', imgs, 'ไม่พบรูปในหัวข้อนี้');
+  if (want === 'all' || want === 'gif') block('ภาพเคลื่อนไหว GIF', gifs, 'ไม่พบ GIF ในหัวข้อนี้');
+  if (want === 'all' || want === 'video') block('วิดีโอ', vids, 'ไม่พบวิดีโอในหัวข้อนี้');
+}
+/* personal library: saved media sync with the notebooks */
+const libKey = (m) => 'lib/m' + Array.from(String(m.url || m.asset || '')).reduce((h, ch) => ((h * 31 + ch.charCodeAt(0)) >>> 0), 7).toString(36);
+async function loadSaved() { try { const l = await S.store.list('lib'); LIB.saved = new Set(l.map((d) => 'lib/' + d.id)); return l; } catch (e) { return []; } }
+async function toggleSave(m, btn) {
+  const k = libKey(m);
+  if (LIB.saved.has(k)) { await S.store.del(k).catch(() => {}); LIB.saved.delete(k); btn.setAttribute('aria-pressed', 'false'); toast('เอาออกจากคลังของฉันแล้ว', 1400); }
+  else {
+    const keep = { kind: m.kind, name: m.name, url: m.url, play: m.play, thumb: m.thumb, size: m.size, w: m.w, h: m.h, credit: m.credit, page: m.page, asset: m.asset, type: m.type, ar: m.ar };
+    await S.store.set(k, { m: keep, topic: m.topic || 'อื่น ๆ', at: now() }).catch(() => {});
+    LIB.saved.add(k); btn.setAttribute('aria-pressed', 'true'); toast('เก็บเข้าคลังของฉันแล้ว ' + (m.topic ? '(' + m.topic.split(' : ').pop() + ')' : ''), 1600);
+  }
+}
+async function renderSaved() {
+  const box = $('#mSaved'); const list = await loadSaved();
+  box.innerHTML = '';
+  if (!list.length) { box.innerHTML = '<div class="note">ยังไม่มีสื่อที่เก็บไว้ แตะรูปดาวบนสื่อใดก็ได้เพื่อเก็บไว้ใช้ซ้ำ จะจัดกลุ่มตามบทเรียนให้เอง</div>'; return; }
+  const groups = {};
+  for (const d of list.sort((a, b) => (b.at || 0) - (a.at || 0))) (groups[d.topic || 'อื่น ๆ'] = groups[d.topic || 'อื่น ๆ'] || []).push(Object.assign({}, d.m, { topic: d.topic }));
+  for (const [t, ms] of Object.entries(groups)) { const h = document.createElement('h3'); h.textContent = t + ' (' + ms.length + ')'; box.appendChild(h); box.appendChild(mediaGrid(ms)); }
+}
+
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1792992330';
+const BUILD = '1792992445';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
