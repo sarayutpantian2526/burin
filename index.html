@@ -424,6 +424,10 @@ body.present .updbar { display: none !important; }
 .item.lab .lout i { font-style: normal; color: #6B7686; }
 .item.lab .lout .lres { flex-basis: 100%; padding: 8px 10px; border-radius: 10px; background: #EEF2FF; }
 .item.lab .lout .lres b { color: #1F3A8A; font-size: 16px; }
+.mrow { display: flex; gap: 6px; }
+.qsteps { margin: 0; padding-left: 22px; display: flex; flex-direction: column; gap: 6px; font-size: 15px; line-height: 1.5; }
+.qsteps a { color: var(--accent); font-weight: 600; }
+.mrow input { flex: 1; min-width: 0; }
 .insgrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
 .insb { min-height: 96px; border-radius: 16px; border: 1px solid var(--line); background: var(--surface); cursor: pointer; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 4px; padding: 12px 14px; text-align: left; }
 .insb b { font-size: 16px; }
@@ -561,13 +565,14 @@ body.present .updbar { display: none !important; }
 
       <div class="selbar no-ink" id="selbar" role="toolbar" aria-label="ส่วนที่เลือก" hidden>
         <span class="count" id="selCount"></span>
-        <span class="sg" id="sgInk"><button id="sRead" class="main"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M3 15c2-3 3-7 4.5-7s.5 5 2 5 2-6 3.5-6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M13 4.5h6 M16 4.5v8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span>เป็นตัวพิมพ์</span></button><button id="sGraph"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M4 3.5v14h14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M5.5 14c3-1 4-8 7-8s3 4 5 4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span>สร้างกราฟ</span></button><button id="sTidy"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M4 17l4-1 9-9-3-3-9 9z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M15.5 13.5l1 2 2 1-2 1-1 2-1-2-2-1 2-1z" fill="currentColor"/></svg><span>วาดใหม่</span></button><button id="sGen"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M11 3l1.8 4.6 4.7 1.9-4.7 1.9L11 16l-1.8-4.6L4.5 9.5l4.7-1.9z" fill="currentColor"/></svg><span>สร้างโจทย์</span></button><button id="sMedia"><svg viewBox="0 0 22 22" aria-hidden="true"><rect x="3" y="4.5" width="16" height="13" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M3.5 15l4.5-4.5 3.5 3.5 2-2 5 4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg><span>หาสื่อ</span></button></span>
+        <span class="sg" id="sgInk"><button id="sRead" class="main"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M3 15c2-3 3-7 4.5-7s.5 5 2 5 2-6 3.5-6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M13 4.5h6 M16 4.5v8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span>เป็นตัวพิมพ์</span></button><button id="sEq"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M3.5 8h6 M3.5 12.5h6 M13 6.5l5 7 M18 6.5l-5 7" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg><span>เป็นสมการ</span></button><button id="sGraph"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M4 3.5v14h14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M5.5 14c3-1 4-8 7-8s3 4 5 4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span>สร้างกราฟ</span></button><button id="sTidy"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M4 17l4-1 9-9-3-3-9 9z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M15.5 13.5l1 2 2 1-2 1-1 2-1-2-2-1 2-1z" fill="currentColor"/></svg><span>วาดใหม่</span></button><button id="sGen"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M11 3l1.8 4.6 4.7 1.9-4.7 1.9L11 16l-1.8-4.6L4.5 9.5l4.7-1.9z" fill="currentColor"/></svg><span>สร้างโจทย์</span></button><button id="sMedia"><svg viewBox="0 0 22 22" aria-hidden="true"><rect x="3" y="4.5" width="16" height="13" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M3.5 15l4.5-4.5 3.5 3.5 2-2 5 4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg><span>หาสื่อ</span></button></span>
         <span class="sg" id="sgOrder"><button id="sFront"><svg viewBox="0 0 22 22" aria-hidden="true"><rect x="7" y="7" width="11" height="11" rx="2" fill="currentColor"/><rect x="3.5" y="3.5" width="11" height="11" rx="2" fill="none" stroke="currentColor" stroke-width="1.5" stroke-dasharray="2.5 2"/></svg><span>ขึ้นหน้าสุด</span></button><button id="sBack"><svg viewBox="0 0 22 22" aria-hidden="true"><rect x="3.5" y="3.5" width="11" height="11" rx="2" fill="currentColor"/><rect x="7" y="7" width="11" height="11" rx="2" fill="var(--chrome)" stroke="currentColor" stroke-width="1.5"/></svg><span>ไปหลังสุด</span></button></span>
         <span class="sg"><button id="sDup"><svg viewBox="0 0 22 22" aria-hidden="true"><rect x="7" y="7" width="11" height="11" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M4 14V5a1 1 0 0 1 1-1h9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span>ทำสำเนา</span></button><button id="sDel" class="danger"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M5 6.5h12 M9 6.5V4.5h4v2 M6.5 6.5l.8 11h7.4l.8-11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span>ลบ</span></button><button id="sClose"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M5 11.5l4 4 8-9" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg><span>เสร็จ</span></button></span>
         <button id="sBig" hidden>ขยาย</button><button id="sSmall" hidden>ย่อ</button>
       </div>
       <div class="convbar no-ink" id="convbar" hidden>
-        <span>แตะที่ลายมือเพื่อแปลงเป็นตัวพิมพ์</span>
+        <span id="convHint">แตะที่ลายมือเพื่อแปลงเป็นตัวพิมพ์</span>
+        <button id="cEq" aria-pressed="false">โหมดสมการ</button>
         <button id="cAll">แปลงทั้งหน้า</button>
         <button id="cAuto" aria-pressed="false">แปลงอัตโนมัติขณะเขียน</button>
         <button id="cDone">เสร็จ</button>
@@ -650,7 +655,7 @@ body.present .updbar { display: none !important; }
       <div class="aibody">
         <div class="row2"><button class="btn" id="lPreOllama">Ollama</button><button class="btn" id="lPreLms">LM Studio</button></div>
         <label class="field"><span>ที่อยู่ของ AI</span><input id="lUrl" placeholder="http://localhost:11434/v1" autocomplete="off" spellcheck="false"></label>
-        <label class="field"><span>ชื่อโมเดล</span><input id="lModel" placeholder="เช่น qwen2.5vl:7b หรือ gemma3:12b" autocomplete="off" spellcheck="false"></label>
+        <label class="field"><span>ชื่อโมเดล</span><span class="mrow"><input id="lModel" list="lModelList" placeholder="เช่น qwen2.5vl:7b หรือ gemma3:12b" autocomplete="off" spellcheck="false"><button class="btn" type="button" id="lModels">ดึงรายชื่อ</button></span><datalist id="lModelList"></datalist></label>
         <div class="switch"><span><b>โมเดลอ่านภาพได้</b><small>ต้องเปิดไว้จึงจะอ่านลายมือและวาดรูปใหม่ได้ ใช้โมเดลที่มีคำว่า vl หรือ vision</small></span><button class="tg" id="tgLVision" role="switch" aria-checked="true" aria-label="โมเดลอ่านภาพได้"><i></i></button></div>
         <div class="switch"><span><b>ให้ AI ใช้เครื่องคิดเลข</b><small>ช่วยให้ตัวเลขในเฉลยถูกต้อง ปิดไว้ถ้าโมเดลไม่รองรับการเรียกเครื่องมือ</small></span><button class="tg" id="tgLTools" role="switch" aria-checked="true" aria-label="ให้ AI ใช้เครื่องคิดเลข"><i></i></button></div>
         <button class="btn" id="lTest">ทดสอบการเชื่อมต่อ</button>
@@ -663,7 +668,7 @@ body.present .updbar { display: none !important; }
       <div class="aibody">
         <label class="field"><span>ผู้ให้บริการ</span><select id="kVendor"></select></label>
         <label class="field" id="kUrlF"><span>ที่อยู่ API</span><input id="kUrl" autocomplete="off" spellcheck="false"></label>
-        <label class="field"><span>ชื่อโมเดล</span><input id="kModel" autocomplete="off" spellcheck="false"></label>
+        <label class="field"><span>ชื่อโมเดล</span><span class="mrow"><input id="kModel" list="kModelList" autocomplete="off" spellcheck="false"><button class="btn" type="button" id="kModels">ดึงรายชื่อ</button></span><datalist id="kModelList"></datalist></label>
         <label class="field"><span>คีย์ API</span><input id="kKey" type="password" autocomplete="off" spellcheck="false" placeholder="วางคีย์ที่นี่"></label>
         <button class="btn" id="kTest">ทดสอบการเชื่อมต่อ</button>
         <div id="kMsg"></div>
@@ -744,6 +749,22 @@ body.present .updbar { display: none !important; }
       <div id="mMine"></div>
     </div>
     <div class="note small">สื่อจาก Wikimedia Commons ใช้สอนได้ฟรี แอปจะใส่ชื่อผู้สร้างและสัญญาอนุญาตไว้ใต้สื่อให้เอง แตะรูปดาวเพื่อเก็บสื่อเข้าคลังของฉัน ใช้ได้ทุกเครื่อง</div>
+  </div>
+</div>
+
+<div class="sheet" id="aiSetup" hidden>
+  <div class="panel" role="dialog" aria-label="ตั้งค่าผู้ช่วย AI">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><h2>ต่อผู้ช่วย AI ก่อนใช้งาน</h2><button class="btn" id="qsClose">ไว้ทีหลัง</button></div>
+    <div class="note">การแปลงลายมือเป็นตัวพิมพ์และสมการ การสร้างโจทย์ และการวาดรูปใหม่ ต้องใช้ AI ที่อ่านภาพได้ ทางที่ง่ายและใช้ฟรีคือ Google Gemini ใช้บัญชี Google ที่มีอยู่แล้ว</div>
+    <ol class="qsteps">
+      <li>เปิด <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a> แล้วเข้าระบบด้วยบัญชี Google</li>
+      <li>กด Create API key แล้วกดคัดลอกคีย์</li>
+      <li>วางคีย์ในช่องด้านล่าง แล้วกด เชื่อมต่อ</li>
+    </ol>
+    <label class="field"><span>คีย์ Gemini</span><input id="qsKey" type="password" autocomplete="off" spellcheck="false" placeholder="วางคีย์ที่นี่"></label>
+    <div class="row2"><button class="btn solid" id="qsGo">เชื่อมต่อ</button><button class="btn" id="qsMore">ใช้แบบอื่น เช่น AI ในเครื่อง หรือคีย์ Claude</button></div>
+    <div id="qsMsg"></div>
+    <div class="note small">คีย์เก็บไว้ในเครื่องนี้เท่านั้น แต่ละเครื่องต้องใส่ครั้งเดียว แบบใช้ฟรีมีจำนวนครั้งต่อวันจำกัด และ Google อาจนำข้อมูลที่ส่งไปใช้ปรับปรุงบริการ ไม่ควรส่งข้อมูลส่วนตัวของนักเรียน</div>
   </div>
 </div>
 
@@ -1263,16 +1284,17 @@ async function migrateLocalToCloud() {
 /* ----- AI sources: Claude in claude.ai, AI on the user's own computer, or the user's own API key ----- */
 const AI_TASKS = [['read', 'อ่านลายมือและสมการ', 'แปลงลายมือเป็นตัวพิมพ์ และอ่านสมการเพื่อสร้างกราฟ'], ['gen', 'สร้างโจทย์และตัวอย่าง', 'ตัวอย่าง โจทย์ฝึก และข้อสอบจากหน้าที่กำลังสอน'], ['draw', 'วาดรูปใหม่ตามหลักฟิสิกส์', 'เปลี่ยนภาพร่างเป็นภาพที่ถูกต้อง']];
 const KEY_VENDORS = {
+  gemini: { name: 'Google Gemini (มีแบบใช้ฟรี)', url: 'https://generativelanguage.googleapis.com/v1beta/openai', model: 'gemini-flash-latest' },
   anthropic: { name: 'Claude (Anthropic)', url: 'https://api.anthropic.com/v1', model: 'claude-sonnet-5-5' },
   openai: { name: 'OpenAI', url: 'https://api.openai.com/v1', model: '' },
-  gemini: { name: 'Google Gemini', url: 'https://generativelanguage.googleapis.com/v1beta/openai', model: '' },
+
   typhoon: { name: 'Typhoon (ไทย)', url: 'https://api.opentyphoon.ai/v1', model: '' },
   other: { name: 'อื่น ๆ ที่รองรับรูปแบบ OpenAI', url: '', model: '' }
 };
 const AI = {
   claude: null, claudeLimits: null, claudeState: 'checking',
   cfg: (() => {
-    const d = { use: { read: 'auto', gen: 'auto', draw: 'auto' }, local: { url: 'http://localhost:11434/v1', model: '', vision: true, tools: true }, key: { vendor: 'anthropic', url: '', model: '', key: '' } };
+    const d = { use: { read: 'auto', gen: 'auto', draw: 'auto' }, local: { url: 'http://localhost:11434/v1', model: '', vision: true, tools: true }, key: { vendor: 'gemini', url: '', model: '', key: '' } };
     try { const v = JSON.parse(store_ls.get('tp-ai') || 'null'); if (v && typeof v === 'object') { d.use = Object.assign(d.use, v.use || {}); d.local = Object.assign(d.local, v.local || {}); d.key = Object.assign(d.key, v.key || {}); } } catch (e) { /* defaults */ }
     return d;
   })(),
@@ -1393,7 +1415,7 @@ const S = {
   tool: 'pen', width: clamp(parseInt(store_ls.get('tp-width') || '1', 10) || 0, 0, 2),
   widths: (() => { try { const v = JSON.parse(store_ls.get('tp-widths') || 'null'); if (Array.isArray(v) && v.length === 3 && v.every((x) => isFinite(x) && x > 0.3 && x < 30)) return v.map(Number); } catch (e) { /* defaults */ } return WIDTHS.slice(); })(),
   tabs: (() => { try { const v = JSON.parse(store_ls.get('tp-tabs') || '[]'); return Array.isArray(v) ? v.filter((x) => typeof x === 'string').slice(0, 6) : []; } catch (e) { return []; } })(),
-  eraserSize: clamp(parseInt(store_ls.get('tp-esize') || '1', 10) || 0, 0, 2), eraseMode: store_ls.get('tp-emode') === 'part' ? 'part' : 'stroke',
+  eraserSize: clamp(parseInt(store_ls.get('tp-esize') || '1', 10) || 0, 0, 2), eraseMode: store_ls.get('tp-emode') === 'stroke' ? 'stroke' : 'part',
   laserMode: store_ls.get('tp-laser') === 'line' ? 'line' : 'dot',
   shapeKind: store_ls.get('tp-shapekind') || 'line',
   scribble: store_ls.get('tp-scribble') !== '0', shapeSnap: store_ls.get('tp-shape') !== '0', focus: false,
@@ -2047,8 +2069,17 @@ function sbox(s) {
   b = [x0, y0, x1, y1]; boxCache.set(s, b); return b;
 }
 function eraseAt(x, y, r, pt) {
-  if (pt.mode === 'erase' && S.eraseMode === 'part') { erasePart(x, y, r, pt); return; }
-  let hit = false; const touched = new Set();
+  /* walk from the last eraser position so a quick swipe leaves no gaps */
+  const touched = new Set(), last = pt.eLast, steps = last ? Math.min(60, Math.ceil(Math.hypot(x - last[0], y - last[1]) / Math.max(2, r * 0.5))) : 1;
+  for (let k = 1; k <= steps; k++) {
+    const t = k / steps, ex = last ? last[0] + (x - last[0]) * t : x, ey = last ? last[1] + (y - last[1]) * t : y;
+    if (pt.mode === 'erase' && S.eraseMode === 'part') erasePart(ex, ey, r, pt, touched); else eraseWhole(ex, ey, r, pt, touched);
+  }
+  pt.eLast = [x, y];
+  if (touched.size) { drawInk(); saveLayers(touched); }
+}
+function eraseWhole(x, y, r, pt, touched) {
+  let hit = false;
   const lists = [[DEV, S.mine], ...Object.entries(S.others)];
   for (const [lid, arr] of lists) {
     for (let i = arr.length - 1; i >= 0; i--) {
@@ -2059,24 +2090,46 @@ function eraseAt(x, y, r, pt) {
       if (near) { arr.splice(i, 1); pt.removed.push({ layer: lid, stroke: s }); hit = true; touched.add(lid); }
     }
   }
-  if (hit) { drawInk(); saveLayers(touched); }
+  return hit;
+}
+/* add points along long straight runs (shapes, fast lines) so the eraser can cut between them */
+function densify(p, step) {
+  const out = []; const n = p.length / 3;
+  for (let j = 0; j < n; j++) {
+    if (j) {
+      const ax = p[j * 3 - 3], ay = p[j * 3 - 2], bx = p[j * 3], by = p[j * 3 + 1], d = Math.hypot(bx - ax, by - ay) / 10;
+      const m = Math.min(200, Math.floor(d / step));
+      for (let q = 1; q < m; q++) { const t = q / m; out.push(Math.round(ax + (bx - ax) * t), Math.round(ay + (by - ay) * t), p[j * 3 + 2]); }
+    }
+    out.push(p[j * 3], p[j * 3 + 1], p[j * 3 + 2]);
+  }
+  return out;
 }
 
 const ERASE_R = [8, 16, 34];
 /* rub away only the touched part of each stroke; the rest splits into new strokes */
-function erasePart(x, y, r, pt) {
-  let hit = false; const touched = new Set();
+function erasePart(x, y, r, pt, touched) {
+  let hit = false;
   for (const [lid, arr] of [[DEV, S.mine], ...Object.entries(S.others)]) {
     for (let i = arr.length - 1; i >= 0; i--) {
       const s = arr[i], rr = r + s.w / 2, b = sbox(s);
       if (x < b[0] - rr || x > b[2] + rr || y < b[1] - rr || y > b[3] + rr) continue;
-      const n = s.p.length / 3, keep = new Array(n); let any = false;
-      for (let j = 0; j < n; j++) { const dx = s.p[j * 3] / 10 - x, dy = s.p[j * 3 + 1] / 10 - y; keep[j] = dx * dx + dy * dy >= rr * rr; if (!keep[j]) any = true; }
+      let near = false;
+      for (let j = 0; j + 3 < s.p.length; j += 3) {
+        const ax = s.p[j] / 10, ay = s.p[j + 1] / 10, bx = s.p[j + 3] / 10, by = s.p[j + 4] / 10, vx = bx - ax, vy = by - ay, L = vx * vx + vy * vy;
+        const t = L ? Math.max(0, Math.min(1, ((x - ax) * vx + (y - ay) * vy) / L)) : 0, dx = ax + vx * t - x, dy = ay + vy * t - y;
+        if (dx * dx + dy * dy < rr * rr) { near = true; break; }
+      }
+      if (!near && s.p.length === 3) { const dx = s.p[0] / 10 - x, dy = s.p[1] / 10 - y; near = dx * dx + dy * dy < rr * rr; }
+      if (!near) continue;
+      const P2 = densify(s.p, Math.max(1, rr / 3));
+      const n = P2.length / 3, keep = new Array(n); let any = false;
+      for (let j = 0; j < n; j++) { const dx = P2[j * 3] / 10 - x, dy = P2[j * 3 + 1] / 10 - y; keep[j] = dx * dx + dy * dy >= rr * rr; if (!keep[j]) any = true; }
       if (!any) continue;
       if (!pt.snap[lid]) pt.snap[lid] = clone(arr);
       const pieces = []; let cur = [];
       for (let j = 0; j < n; j++) {
-        if (keep[j]) cur.push(s.p[j * 3], s.p[j * 3 + 1], s.p[j * 3 + 2]);
+        if (keep[j]) cur.push(P2[j * 3], P2[j * 3 + 1], P2[j * 3 + 2]);
         else { if (cur.length >= 6) pieces.push(cur); cur = []; }
       }
       if (cur.length >= 6) pieces.push(cur);
@@ -2084,7 +2137,7 @@ function erasePart(x, y, r, pt) {
       hit = true; touched.add(lid);
     }
   }
-  if (hit) { drawInk(); saveLayers(touched); }
+  return hit;
 }
 function drawCursor(x, y, r) {
   const c = cLive.getContext('2d');
@@ -2123,7 +2176,10 @@ function armHold(pt, x, y) {
   if (pt.holdRef && Math.hypot(x - pt.holdRef[0], y - pt.holdRef[1]) < 3.5) return;
   pt.holdRef = [x, y];
   clearTimeout(pt.holdT);
-  pt.holdT = setTimeout(() => trySnap(pt), 520);
+  const f = pt.stroke.p; let L = 0;
+  for (let i = 3; i < f.length && L < 400; i += 3) L += Math.hypot(f[i] - f[i - 3], f[i + 1] - f[i - 2]) / 10;
+  if (L < 40) return; /* a dot or the tail of a small letter is never a shape */
+  pt.holdT = setTimeout(() => trySnap(pt), 950);
 }
 function strokePts(flat) { const out = []; for (let i = 0; i < flat.length; i += 3) out.push([flat[i] / 10, flat[i + 1] / 10]); return out; }
 function rdp(pts, eps) {
@@ -2537,7 +2593,7 @@ function showSelbar() {
   const n = S.sel.strokes.length, m = S.sel.items.length;
   $('#selCount').textContent = 'เลือก ' + (n ? n + ' เส้น' : '') + (n && m ? ' ' : '') + (m ? m + ' กล่อง' : '');
   $('#selbar').hidden = false;
-  $('#sRead').hidden = !n; $('#sTidy').hidden = !n;
+  $('#sRead').hidden = !n; $('#sTidy').hidden = !n; $('#sEq').hidden = !n;
   const textSel = S.sel.items.some((id) => { const it = (S.page.items || []).find((t) => t.id === id); return it && (!it.type || it.type === 'text'); });
   $('#sGraph').hidden = !(n || textSel);
   $('#sMedia').hidden = !(n || textSel);
@@ -2734,8 +2790,26 @@ function sections(text) {
 function sec(list, key) { const s = list.find((x) => x.key === key); return s ? (s.text || s.arg) : ''; }
 function needAI(task) {
   if (task ? AI.ready(task) : AI.anyReady()) return true;
-  toast(AI.claudeState === 'checking' ? 'กำลังเชื่อมต่อผู้ช่วย AI รอสักครู่' : 'ยังไม่ได้เลือกแหล่ง AI สำหรับงานนี้ ตั้งค่าได้ที่เมนู หัวข้อผู้ช่วย AI', 4500);
+  if (AI.claudeState === 'checking') { toast('กำลังเชื่อมต่อผู้ช่วย AI รอสักครู่', 3000); return false; }
+  if (!AI.anyReady()) { openAISetup(); return false; }
+  toast('งานนี้ยังไม่ได้เลือกแหล่ง AI ตั้งค่าได้ที่เมนู หัวข้อผู้ช่วย AI', 4500);
   return false;
+}
+function openAISetup() { closeSheets(); $('#qsMsg').innerHTML = ''; $('#qsKey').value = ''; $('#aiSetup').hidden = false; }
+async function quickSetup() {
+  const key = $('#qsKey').value.trim(), out = $('#qsMsg');
+  if (key.length < 20) { out.innerHTML = '<div class="note err">วางคีย์ที่คัดลอกมาให้ครบก่อน</div>'; return; }
+  out.innerHTML = '<div class="note">กำลังทดสอบ</div>';
+  const V = KEY_VENDORS.gemini;
+  try {
+    let model = V.model;
+    try { const ids = await listModels(V.url, key, 'gemini'); const pick = ids.find((x) => x === 'gemini-flash-latest') || ids.find((x) => /^gemini-[\d.]+-flash$/.test(x)) || ids.find((x) => /flash/.test(x) && !/image|tts|live|audio|lite/.test(x)); if (pick) model = pick; } catch (e) { /* keep the alias */ }
+    const r = await runOpenAI(V.url, key, model, 'Reply with exactly: OK', {}, false);
+    AI.cfg.key = { vendor: 'gemini', url: '', model, key }; AI.cfg.use = { read: 'auto', gen: 'auto', draw: 'auto' }; AI.save();
+    renderAISettings(); renderAIAvail();
+    out.innerHTML = '<div class="note ok">เชื่อมต่อแล้ว (' + esc(model) + ') ใช้แปลงลายมือ สร้างสมการ สร้างโจทย์ และวาดรูปใหม่ได้ทันที</div>';
+    setTimeout(() => { $('#aiSetup').hidden = true; }, 1600);
+  } catch (e) { out.innerHTML = '<div class="note err">' + esc(aiErr(e)) + '</div>'; }
 }
 function inkBlob(refs, pad) {
   const list = refs ? refs.map(findStroke).filter(Boolean).map((s) => ({ s })) : allStrokes();
@@ -2810,14 +2884,15 @@ const autoConvert = debounce(() => {
   const gs = inkGroups().filter((g) => g.refs.some((r) => q.has(r.id)));
   if (gs.length) convertGroups(gs);
 }, 1900);
-async function convertGroups(groups) {
+async function convertGroups(groups, eq) {
+  if (eq === undefined) eq = !!S.convEq;
   if (!groups.length || !needAI('read')) return;
   if (AI.limits('read') && !AI.limits('read').images) { toast('มุมมองนี้ส่งภาพให้ AI อ่านไม่ได้ ลองเปิดใน claude.ai'); return; }
   const lim = AI.limits('read') && AI.limits('read').images ? AI.limits('read').images.maxCount || 4 : 4;
   const per = clamp(lim, 1, 6);
-  for (let i = 0; i < groups.length; i += per) await convertBatch(groups.slice(i, i + per));
+  for (let i = 0; i < groups.length; i += per) await convertBatch(groups.slice(i, i + per), eq);
 }
-async function convertBatch(gs) {
+async function convertBatch(gs, eq) {
   const imgs = [];
   for (const g of gs) { const im = await inkBlob(g.refs, 14); if (im) imgs.push({ g, im }); }
   if (!imgs.length) return;
@@ -2825,7 +2900,13 @@ async function convertBatch(gs) {
   drawSelBox();
   toast(imgs.length > 1 ? 'กำลังแปลง ' + imgs.length + ' ส่วน' : 'กำลังแปลงเป็นตัวพิมพ์', 6000);
   const N = imgs.length;
-  const prompt = 'You will see ' + N + ' image' + (N > 1 ? 's' : '') + ', numbered 1 to ' + N + ' in the order attached. Each is one block of handwriting from a Thai physics teacher\'s notebook (Thai text, equations, units or a small sketch).\n'
+  const prompt = eq ? 'You will see ' + N + ' image' + (N > 1 ? 's' : '') + ', numbered 1 to ' + N + ' in the order attached. Each is a handwritten equation or derivation from a Thai physics teacher\'s notebook.\n'
+    + 'Transcribe each into LaTeX, faithfully: do not solve, simplify or correct anything. One equation per line, without $ signs. Use \\frac, \\sqrt, subscripts and superscripts, vectors as \\vec{}, Greek letters, units with \\,\\mathrm{}. Put any Thai words inside \\text{}.\n'
+    + 'If a block is a drawing rather than an equation, mark it SKIP.\n'
+    + 'Reply in exactly this format and nothing else:\n'
+    + Array.from({ length: N }, (_, i) => '@@BLOCK ' + (i + 1) + '\n(LaTeX of image ' + (i + 1) + ', one equation per line)').join('\n')
+    + '\nFor a drawing, write the marker line as "@@BLOCK k SKIP" with nothing under it.'
+    : 'You will see ' + N + ' image' + (N > 1 ? 's' : '') + ', numbered 1 to ' + N + ' in the order attached. Each is one block of handwriting from a Thai physics teacher\'s notebook (Thai text, equations, units or a small sketch).\n'
     + 'Transcribe each block faithfully. Do not solve, simplify or correct anything. When unclear, choose the most likely reading in a physics context.\n'
     + 'Write every piece of math as LaTeX between $ signs, for example $v = u + at$, $t = \\sqrt{2h/g}$, $v_0^2 \\sin 2\\theta$. Keep Thai words in Thai. Keep the original line breaks.\n'
     + 'If a block is mainly a drawing or diagram rather than writing, mark it SKIP.\n'
@@ -2841,7 +2922,8 @@ async function convertBatch(gs) {
       const raw = p ? p.text : (N === 1 && !parts.length ? String(res.text || '').trim() : '');
       if (!p && !raw) { skipped++; return; }
       if ((p && /skip/i.test(p.arg)) || !raw) { skipped++; return; }
-      replaceGroup(x.g, raw); done++;
+      const out = eq ? raw.split('\n').map((l) => l.trim().replace(/^\$+|\$+$/g, '').replace(/^\\\[|\\\]$/g, '').trim()).filter(Boolean).map((l) => '$$' + l + '$$').join('\n') : raw;
+      replaceGroup(x.g, out); done++;
     });
     toast(done ? 'แปลงแล้ว ' + done + ' ส่วน' + (skipped ? ' ข้ามภาพวาด ' + skipped + ' ส่วน' : '') + ' แตะสองนิ้วเพื่อย้อนกลับ' : 'ส่วนนี้เป็นภาพวาด จึงไม่ได้แปลง', 3200);
   } catch (e) { toast(aiErr(e), 4500); }
@@ -2879,6 +2961,12 @@ async function readSelection() {
   const g = { refs: S.sel.strokes.slice(), box: S.sel.box.slice() };
   clearSel();
   convertGroups([g]);
+}
+async function eqSelection() {
+  if (!S.sel || !S.sel.strokes.length) { toast('วงรอบลายมือที่เป็นสมการก่อน'); return; }
+  const g = { refs: S.sel.strokes.slice(), box: S.sel.box.slice() };
+  clearSel();
+  convertGroups([g], true);
 }
 async function readSelectionPanel() {
   if (!S.sel || !S.sel.strokes.length) { toast('วงรอบลายมือก่อน'); return; }
@@ -3918,7 +4006,25 @@ function renderAISettings() {
   $('#kModel').value = C.key.model || ''; $('#kModel').placeholder = V.model || 'ชื่อโมเดลที่อ่านภาพได้';
   $('#kKey').value = C.key.key || '';
 }
+async function listModels(base, key, vendor) {
+  const H = {};
+  let url = String(base || '').replace(/\/+$/, '') + '/models';
+  if (vendor === 'anthropic') { url = 'https://api.anthropic.com/v1/models'; H['x-api-key'] = key; H['anthropic-version'] = '2023-06-01'; H['anthropic-dangerous-direct-browser-access'] = 'true'; }
+  else if (key) H.authorization = 'Bearer ' + key;
+  const r = await aiFetch(url, { headers: H });
+  return ((r.data || r.models || []).map((m) => String(m.id || m.name || '').replace(/^models\//, '')).filter(Boolean)).sort();
+}
+async function fillModels(listId, msgId, fn) {
+  const out = $(msgId); out.innerHTML = '<div class="note">กำลังดึงรายชื่อโมเดล</div>';
+  try {
+    const ids = await fn(); const dl = $(listId); dl.innerHTML = '';
+    for (const id of ids) { const o = document.createElement('option'); o.value = id; dl.appendChild(o); }
+    out.innerHTML = '<div class="note ok">พบ ' + ids.length + ' โมเดล แตะช่องชื่อโมเดลเพื่อเลือก ' + esc(ids.filter((x) => /flash|vl|vision|sonnet|gpt-4|4o|5/.test(x)).slice(0, 4).join(', ')) + '</div>';
+  } catch (e) { out.innerHTML = '<div class="note err">' + esc(e && e.code === 'cfg' ? 'ใส่คีย์ก่อน' : aiErr(e)) + '</div>'; }
+}
 function bindAISettings() {
+  $('#kModels').onclick = () => fillModels('#kModelList', '#kMsg', () => { const K = AI.cfg.key, V = KEY_VENDORS[K.vendor] || KEY_VENDORS.other; if (!K.key) throw { code: 'cfg' }; return listModels(K.url || V.url, K.key, K.vendor); });
+  $('#lModels').onclick = () => fillModels('#lModelList', '#lMsg', () => listModels(AI.cfg.local.url, '', 'local'));
   const C = AI.cfg;
   const upd = () => { AI.save(); renderAISettings(); renderAIAvail(); };
   const onIn = (id, fn) => { $(id).addEventListener('change', () => { fn($(id).value.trim()); upd(); }); };
@@ -4816,7 +4922,7 @@ async function renderSaved() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1792996330';
+const BUILD = '1792996754';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
@@ -4926,7 +5032,7 @@ function syncToggles() {
 }
 function hideLoading() { $('#loading').hidden = true; }
 function togglePages(v) { const el = $('#pages'); el.hidden = v === undefined ? !el.hidden : !v; $('#bPages').setAttribute('aria-pressed', el.hidden ? 'false' : 'true'); setTimeout(fit, 0); }
-function closeSheets() { $('#labSheet').hidden = true; $('#simSheet').hidden = true; $('#mediaSheet').hidden = true; $('#menu').hidden = true; $('#exportSheet').hidden = true; $('#insSheet').hidden = true; }
+function closeSheets() { $('#aiSetup').hidden = true; $('#labSheet').hidden = true; $('#simSheet').hidden = true; $('#mediaSheet').hidden = true; $('#menu').hidden = true; $('#exportSheet').hidden = true; $('#insSheet').hidden = true; }
 
 /* ---------- wiring ---------- */
 document.querySelectorAll('.tool[data-tool]').forEach((b) => {
@@ -4952,6 +5058,7 @@ $('#pgNext').onclick = () => { const [i, n] = pageIndex(); if (i >= n - 1) addPa
 $('#pgNum').onclick = () => togglePages();
 $('#bAddBelow').onclick = () => addPage();
 $('#bConvert').onclick = () => { if (!S.convMode && !needAI('read')) return; setConvMode(!S.convMode); };
+$('#cEq').onclick = () => { S.convEq = !S.convEq; $('#cEq').setAttribute('aria-pressed', S.convEq ? 'true' : 'false'); $('#convHint').textContent = S.convEq ? 'แตะที่สมการที่เขียนเพื่อแปลงเป็นสมการตัวพิมพ์' : 'แตะที่ลายมือเพื่อแปลงเป็นตัวพิมพ์'; };
 $('#cAll').onclick = () => { const gs = inkGroups(); if (!gs.length) { toast('หน้านี้ยังไม่มีลายมือ'); return; } convertGroups(gs); };
 $('#cAuto').onclick = () => {
   S.autoConv = !S.autoConv; store_ls.set('tp-autoconv', S.autoConv ? '1' : '0');
@@ -4966,6 +5073,8 @@ $('#graphSheet').addEventListener('click', (e) => { if (e.target.id === 'graphSh
 $('#iImg').onclick = () => { closeSheets(); $('#fImg').value = ''; $('#fImg').click(); };
 $('#iVid').onclick = () => { closeSheets(); $('#fVid').value = ''; $('#fVid').click(); };
 $('#iGraph').onclick = () => { closeSheets(); openGraphSheet(null); };
+$('#qsGo').onclick = quickSetup; $('#qsClose').onclick = () => { $('#aiSetup').hidden = true; };
+$('#qsMore').onclick = () => { $('#aiSetup').hidden = true; $('#menu').hidden = false; const c = $('#cfgKey'); if (c) { c.open = true; setTimeout(() => c.scrollIntoView({ block: 'center' }), 50); } };
 $('#iLab').onclick = () => { closeSheets(); renderLabPicker(); $('#labSheet').hidden = false; };
 $('#bLabClose').onclick = () => { $('#labSheet').hidden = true; };
 $('#iSim').onclick = () => { closeSheets(); renderSimPicker(); $('#simSheet').hidden = false; };
@@ -5234,7 +5343,7 @@ $('#tgTV').onclick = () => { S.tv = !S.tv; store_ls.set('tp-tv', S.tv ? '1' : '0
 $('#bAI').onclick = () => { const el = $('#ai'); el.hidden = !el.hidden; $('#bAI').setAttribute('aria-pressed', el.hidden ? 'false' : 'true'); setTimeout(fit, 0); };
 $('#bAIClose').onclick = () => { $('#ai').hidden = true; $('#bAI').setAttribute('aria-pressed', 'false'); setTimeout(fit, 0); };
 $('#bGenPage').onclick = () => generate(false);
-$('#sRead').onclick = readSelection; $('#sTidy').onclick = tidySelection; $('#sGen').onclick = () => generate(true);
+$('#sEq').onclick = eqSelection; $('#sRead').onclick = readSelection; $('#sTidy').onclick = tidySelection; $('#sGen').onclick = () => generate(true);
 $('#sFront').onclick = () => restackSel(true); $('#sBack').onclick = () => restackSel(false);
 $('#sDup').onclick = dupSel;
 $('#sDel').onclick = deleteSel; $('#sClose').onclick = clearSel;
