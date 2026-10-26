@@ -286,6 +286,9 @@ body.focus #viewport { border-radius: 0; }
 body.fs-ios .dock { left: 96px; }
 .exitfull { position: absolute; right: 12px; top: 12px; z-index: 6; width: 44px; height: 44px; border-radius: 12px; border: 0; background: var(--surface); color: var(--fg); box-shadow: var(--shadow); cursor: pointer; display: flex; align-items: center; justify-content: center; opacity: 0.85; }
 .exitfull svg { width: 20px; height: 20px; }
+#fingerTg .fx { display: none; }
+#fingerTg[aria-pressed="false"] .fx { display: inline; }
+#fingerTg[aria-pressed="true"] { background: var(--chrome); color: var(--chrome-fg); }
 .grip { width: 24px; height: 46px; display: flex; align-items: center; justify-content: center; cursor: grab; touch-action: none; color: var(--muted); border-radius: 10px; }
 .grip svg { width: 12px; height: 20px; fill: currentColor; }
 .grip:active { cursor: grabbing; background: var(--surface-2); }
@@ -431,6 +434,7 @@ body.tv .convbar { bottom: 112px; }
         <button class="tool" data-tool="lasso" aria-label="บ่วงเลือก" aria-pressed="false"><svg viewBox="0 0 22 22"><ellipse cx="11" cy="9" rx="7.5" ry="5.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-dasharray="3 2.2"/><path d="M7 13.5c-1.2 2.3-.2 4.5 2.2 5.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button>
         <button class="tool" data-tool="shape" aria-label="รูปทรงเรขาคณิต" aria-pressed="false"><svg viewBox="0 0 22 22"><rect x="3" y="10" width="8.5" height="8.5" rx="1" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="15" cy="7.5" r="4.5" fill="none" stroke="currentColor" stroke-width="1.6"/></svg></button>
         <button class="tool" data-tool="text" aria-label="ข้อความพิมพ์" aria-pressed="false"><svg viewBox="0 0 22 22"><path d="M5 5.5h12 M11 5.5v12 M8.5 17.5h5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button>
+        <button class="tool" id="fingerTg" aria-label="นิ้ววาดได้" aria-pressed="false" title="แตะเพื่อสลับ: นิ้วใช้เลื่อนหน้า หรือ นิ้ววาดได้"><svg viewBox="0 0 22 22"><path d="M8 11V4.8a1.4 1.4 0 0 1 2.8 0V10 M10.8 9.6V3.6a1.4 1.4 0 0 1 2.8 0v6 M13.6 9.8V5a1.4 1.4 0 0 1 2.8 0v7.4c0 3.6-2.3 6.6-5.8 6.6-2.6 0-4-1.2-5.2-3.2L3.7 12.6a1.3 1.3 0 0 1 2-1.6L8 13.2" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path class="fx" d="M3.5 19.5L19 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button>
         <button class="tool" data-tool="laser" aria-label="เลเซอร์" aria-pressed="false"><svg viewBox="0 0 22 22"><circle cx="11" cy="11" r="3.2" fill="#E5483C"/><path d="M11 2.5v3 M11 16.5v3 M2.5 11h3 M16.5 11h3 M5 5l2 2 M15 15l2 2 M5 17l2-2 M15 7l2-2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button>
         </span>
         <span class="sep fonly"></span>
@@ -505,6 +509,8 @@ body.tv .convbar { bottom: 112px; }
         <button id="sBig" hidden>ขยาย</button>
         <button id="sSmall" hidden>ย่อ</button>
         <button id="sGen">สร้างโจทย์จากส่วนนี้</button>
+        <button id="sFront" hidden>นำขึ้นหน้าสุด</button>
+        <button id="sBack" hidden>ส่งไปหลังสุด</button>
         <button id="sDel">ลบ</button>
         <button id="sClose">เสร็จ</button>
       </div>
@@ -1303,7 +1309,7 @@ const S = {
   recent: (() => { const r = readList('tp-recent', DEFAULT_RECENT); return (r.length ? r : DEFAULT_RECENT).concat(DEFAULT_RECENT.filter((c) => !r.includes(c))).slice(0, 4); })(),
   myColors: readList('tp-mycolors', []).slice(0, 12),
   color: null, hlColor: store_ls.get('tp-hl') || '#F5C542',
-  finger: store_ls.get('tp-finger') !== '0', fingerManual: store_ls.get('tp-finger') !== null,
+  finger: store_ls.get('tp-finger') !== null ? store_ls.get('tp-finger') !== '0' : store_ls.get('tp-pen-seen') !== '1', fingerManual: store_ls.get('tp-finger') !== null,
   palm: store_ls.get('tp-palm') !== '0', tv: store_ls.get('tp-tv') === '1',
   follow: false, presenting: false, live: null,
   mode: 'teacher', level: store_ls.get('tp-level') || 'mp',
@@ -1511,14 +1517,24 @@ let editing = null;
 function renderItems() {
   if (editing) return;
   if (typeof refreshCurThumb === 'function') refreshCurThumb();
-  itemsEl.innerHTML = '';
-  let needMath = false;
+  /* reuse the element of every item whose content did not change; only its position and width are updated.
+     Pictures and videos are then not reloaded each time something on the page is saved or moved. */
+  const old = new Map();
+  for (const el of [...itemsEl.children]) { if (el.dataset && el.dataset.id && el._sig) old.set(el.dataset.id, el); else el.remove(); }
+  let needMath = false; const fresh = []; let i = 0;
   for (const it of visibleItems()) {
     if (it.type === 'graph' && !window.math) needMath = true;
-    itemsEl.appendChild(buildItemEl(it, false));
+    const sig = JSON.stringify(Object.assign({}, it, { x: 0, y: 0, w: 0 }));
+    let el = old.get(it.id);
+    if (el && el._sig === sig) { old.delete(it.id); el.style.left = it.x + 'px'; el.style.top = it.y + 'px'; el.style.width = (it.w || 600) + 'px'; }
+    else { el = buildItemEl(it, false); el._sig = sig; fresh.push(el); }
+    if (itemsEl.children[i] !== el) itemsEl.insertBefore(el, itemsEl.children[i] || null);
+    i++;
   }
-  typeset(itemsEl);
-  if (needMath) loadLib('math').then(() => { if (window.math) renderItems(); }).catch(() => {});
+  for (const el of old.values()) el.remove();
+  while (itemsEl.children.length > i) itemsEl.lastChild.remove();
+  for (const el of fresh) typeset(el);
+  if (needMath) loadLib('math').then(() => { if (!window.math) return; for (const el of itemsEl.querySelectorAll('.item.graph')) el._sig = null; renderItems(); }).catch(() => {});
 }
 const okAsset = (id) => /^[A-Za-z0-9_-]{8,80}$/.test(String(id || ''));
 function buildItemEl(it, forExport) {
@@ -1565,6 +1581,7 @@ function commitEdit() {
   if (!editing) return;
   const d = itemsEl.querySelector('[data-id="' + editing.id + '"]');
   const ed = editing; editing = null;
+  if (d) d._sig = null;
   if (!d || !S.page) { itemsEl.querySelectorAll('.edx').forEach((b) => b.remove()); renderItems(); return; }
   itemsEl.querySelectorAll('.edx').forEach((b) => b.remove());
   const text = d.innerText.replace(/ /g, ' ').replace(/\n{3,}/g, '\n\n').trim();
@@ -1685,7 +1702,8 @@ function onDown(e) {
   P.set(e.pointerId, pt);
   if (e.pointerType === 'pen') {
     S.lastPen = t; S.penDown++;
-    if (S.finger && !S.fingerManual && !S.tv) { S.finger = false; syncToggles(); toast('พบปากกา นิ้วจะใช้เลื่อนและซูมแทน เปลี่ยนได้ที่เมนู', 4200); }
+    if (store_ls.get('tp-pen-seen') !== '1') store_ls.set('tp-pen-seen', '1');
+    if (S.finger && !S.fingerManual && !S.tv) { S.finger = false; syncToggles(); toast('พบปากกา นิ้วจะใช้เลื่อนและซูมแทน สลับได้ที่ปุ่มรูปมือบนแถบเครื่องมือ', 4200); }
   }
   if (e.pointerType === 'touch') {
     const big = (e.width || 0) > 45 || (e.height || 0) > 45;
@@ -1725,7 +1743,7 @@ function beginTool(pt, e) {
     eraseAt(x, y, pt.r, pt); drawCursor(x, y, pt.r);
   } else if (S.tool === 'lasso') {
     if (S.sel && nearHandle(S.sel.box, x, y)) { startScale(pt); }
-    else if (S.sel && inBox(S.sel.box, x, y)) { pt.mode = 'move'; pt.last = [x, y]; pt.dx = 0; pt.dy = 0; }
+    else if (S.sel && inBox(S.sel.box, x, y)) { pt.mode = 'move'; pt.last = [x, y]; pt.dx = 0; pt.dy = 0; if (!S.sel.strokes.length && S.sel.items.length === 1 && itemsAt(x, y).length > 1) pt.cyc = [x, y]; }
     else {
       const hit = itemAt(x, y);
       if (hit) { selectItem(hit); pt.mode = 'move'; pt.last = [x, y]; pt.dx = 0; pt.dy = 0; }
@@ -1789,7 +1807,7 @@ function onMove(e) {
     const [x, y] = toLogical(e.clientX, e.clientY);
     const dx = x - pt.last[0], dy = y - pt.last[1]; pt.last = [x, y];
     pt.dx += dx; pt.dy += dy;
-    moveRefs(S.sel, dx, dy, null); S.sel.box = shiftBox(S.sel.box, dx, dy); drawInk(); drawSelBox(); moveItemEls();
+    moveRefs(S.sel, dx, dy, null); S.sel.box = shiftBox(S.sel.box, dx, dy); if (S.sel.strokes.length) drawInk(); drawSelBox(); moveItemEls();
   } else if (pt.mode === 'shape') {
     const [x, y] = toLogical(e.clientX, e.clientY); pt.b = [x, y]; previewShape(pt);
   } else if (pt.mode === 'scale') {
@@ -1840,6 +1858,8 @@ function onUp(e) {
   } else if (pt.mode === 'lasso') {
     finishLasso(pt.poly);
   } else if (pt.mode === 'move') {
+    if (S.sel && S.sel.items.length && S.page) S.page = Object.assign({}, S.page, { items: S.page.items.map((it) => S.sel.items.includes(it.id) ? Object.assign({}, it, { x: Math.round(it.x), y: Math.round(it.y) }) : it) });
+    if (pt.cyc && Math.abs(pt.dx) + Math.abs(pt.dy) < 2 && pt.moved < 10) { cycleItemAt(pt.cyc[0], pt.cyc[1]); return; }
     if (Math.abs(pt.dx) + Math.abs(pt.dy) > 0.5) {
       const touched = new Set(S.sel.strokes.map((r) => r.layer));
       pushUndo({ t: 'move', refs: { strokes: S.sel.strokes, items: S.sel.items }, dx: pt.dx, dy: pt.dy });
@@ -2280,10 +2300,27 @@ function finishLasso(poly) {
 }
 function findStroke(r) { const arr = r.layer === DEV ? S.mine : (S.others[r.layer] || []); return arr.find((s) => s.id === r.id); }
 /* the topmost picture, graph, video or text box under a point */
-function itemAt(x, y) {
-  const its = visibleItems();
-  for (let i = its.length - 1; i >= 0; i--) { const b = itemBox(its[i]); if (x >= b[0] && x <= b[2] && y >= b[1] && y <= b[3]) return its[i]; }
-  return null;
+function itemsAt(x, y) {
+  const its = visibleItems(), out = [];
+  for (let i = its.length - 1; i >= 0; i--) { const b = itemBox(its[i]); if (x >= b[0] && x <= b[2] && y >= b[1] && y <= b[3]) out.push(its[i]); }
+  return out;
+}
+function itemAt(x, y) { return itemsAt(x, y)[0] || null; }
+function cycleItemAt(x, y) {
+  const list = itemsAt(x, y); if (list.length < 2 || !S.sel) return;
+  const i = list.findIndex((it) => it.id === S.sel.items[0]);
+  const next = list[(i + 1) % list.length];
+  selectItem(next);
+  toast('เลือกชิ้นที่อยู่ข้างใต้แล้ว แตะซ้ำเพื่อเลือกชิ้นถัดไป', 1800);
+}
+function restackSel(toFront) {
+  if (!S.sel || !S.sel.items.length || !S.page) return;
+  const before = clone(S.page.items || []);
+  const picked = before.filter((it) => S.sel.items.includes(it.id)), rest = before.filter((it) => !S.sel.items.includes(it.id));
+  const keep = clone(S.sel);
+  setItems(toFront ? rest.concat(picked) : picked.concat(rest), before);
+  S.sel = keep; S.sel.box = selBox(S.sel); drawSelBox(); showSelbar();
+  toast(toFront ? 'นำขึ้นหน้าสุดแล้ว' : 'ส่งไปหลังสุดแล้ว', 1400);
 }
 function selectItem(it) {
   S.sel = { strokes: [], items: [it.id], box: null };
@@ -2322,7 +2359,7 @@ function moveRefs(refs, dx, dy, touched) {
     if (touched) touched.add(r.layer);
   }
   if (refs.items && refs.items.length && S.page) {
-    const items = S.page.items.map((it) => refs.items.includes(it.id) ? Object.assign({}, it, { x: Math.round(it.x + dx), y: Math.round(it.y + dy) }) : it);
+    const items = S.page.items.map((it) => refs.items.includes(it.id) ? Object.assign({}, it, { x: it.x + dx, y: it.y + dy }) : it);
     S.page = Object.assign({}, S.page, { items });
     if (touched) { savePage(); renderItems(); }
   }
@@ -2335,6 +2372,7 @@ function showSelbar() {
   const textSel = S.sel.items.some((id) => { const it = (S.page.items || []).find((t) => t.id === id); return it && (!it.type || it.type === 'text'); });
   $('#sGraph').hidden = !(n || textSel);
   $('#sMedia').hidden = !(n || textSel);
+  $('#sFront').hidden = $('#sBack').hidden = !(m && (S.page.items || []).length > 1);
   $('#sBig').hidden = $('#sSmall').hidden = !(n || m);
 }
 function clearSel() { S.sel = null; drawSelBox(); $('#selbar').hidden = true; drawInk(); }
@@ -4003,7 +4041,7 @@ $('#aPass').addEventListener('keydown', (e) => { if (e.key === 'Enter') doAuth(f
 
 function syncToggles() {
   const set = (id, v) => $(id).setAttribute('aria-checked', v ? 'true' : 'false');
-  set('#tgFinger', S.finger); set('#tgPalm', S.palm); set('#tgTV', S.tv); set('#tgShape', S.shapeSnap); set('#tgScribble', S.scribble);
+  set('#tgFinger', S.finger); { const f = $('#fingerTg'); f.setAttribute('aria-pressed', S.finger ? 'true' : 'false'); f.setAttribute('aria-label', S.finger ? 'นิ้ววาดได้อยู่ แตะเพื่อให้นิ้วใช้เลื่อนหน้า' : 'นิ้วใช้เลื่อนหน้าอยู่ แตะเพื่อให้นิ้ววาดได้'); } set('#tgPalm', S.palm); set('#tgTV', S.tv); set('#tgShape', S.shapeSnap); set('#tgScribble', S.scribble);
   document.body.classList.toggle('tv', S.tv);
 }
 function hideLoading() { $('#loading').hidden = true; }
@@ -4226,6 +4264,7 @@ $('#bNewNb').onclick = async () => {
   catch (e) { onStoreError(e); }
   $('#bNewNb').disabled = false;
 };
+$('#fingerTg').onclick = () => { S.finger = !S.finger; S.fingerManual = true; store_ls.set('tp-finger', S.finger ? '1' : '0'); syncToggles(); toast(S.finger ? 'นิ้ววาดได้' : 'นิ้วใช้เลื่อนและซูม ปากกาเขียนอย่างเดียว', 1800); };
 $('#tgFinger').onclick = () => { S.finger = !S.finger; S.fingerManual = true; store_ls.set('tp-finger', S.finger ? '1' : '0'); syncToggles(); };
 $('#tgPalm').onclick = () => { S.palm = !S.palm; store_ls.set('tp-palm', S.palm ? '1' : '0'); syncToggles(); };
 $('#tgShape').onclick = () => { S.shapeSnap = !S.shapeSnap; store_ls.set('tp-shape', S.shapeSnap ? '1' : '0'); syncToggles(); };
@@ -4312,6 +4351,7 @@ $('#bAI').onclick = () => { const el = $('#ai'); el.hidden = !el.hidden; $('#bAI
 $('#bAIClose').onclick = () => { $('#ai').hidden = true; $('#bAI').setAttribute('aria-pressed', 'false'); setTimeout(fit, 0); };
 $('#bGenPage').onclick = () => generate(false);
 $('#sRead').onclick = readSelection; $('#sTidy').onclick = tidySelection; $('#sGen').onclick = () => generate(true);
+$('#sFront').onclick = () => restackSel(true); $('#sBack').onclick = () => restackSel(false);
 $('#sDel').onclick = deleteSel; $('#sClose').onclick = clearSel;
 $('#bExport').onclick = () => { $('#expMsg').innerHTML = ''; $('#exportSheet').hidden = false; };
 $('#bExpClose').onclick = closeSheets;
