@@ -102,7 +102,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 #viewport { flex: 1; min-width: 0; position: relative; overflow: hidden; border-radius: var(--r); background: var(--desk); touch-action: none; }
 #wrap { position: absolute; left: 0; top: 0; transform-origin: 0 0; will-change: transform; }
 #page { position: relative; background: #FFFFFF; box-shadow: 0 10px 34px rgba(20, 26, 34, 0.16); border-radius: 4px; }
-#page canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+#page > canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 #items { position: absolute; left: 0; top: 0; width: 1000px; height: 1414px; transform-origin: 0 0; pointer-events: none; }
 #items.editable .item { pointer-events: auto; cursor: text; }
 #sel { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
@@ -198,7 +198,7 @@ body.tv .toast { bottom: 112px; }
 @media (max-width: 900px) {
   .drawer { position: absolute; top: 0; bottom: 0; z-index: 9; box-shadow: var(--shadow); }
   #pages { left: 0; }
-  #ai { right: 0; width: min(380px, 100%); }
+  #ai, #calc { right: 0; width: min(380px, 100%); }
   .top .lbl { display: none; }
   .top { flex-wrap: nowrap; }
   .top .title { flex: 1 1 60px; }
@@ -374,6 +374,27 @@ body.tv .convbar { bottom: 112px; }
 .diag .bad b { color: #B42318; }
 .diag small { display: block; color: var(--muted); font-size: 12px; margin-top: 2px; word-break: break-word; }
 .item .credit { font-family: var(--ui); font-size: 11px; line-height: 1.35; color: #6B7686; padding: 3px 2px 0; }
+.simgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+.simpick { display: flex; flex-direction: column; gap: 4px; padding: 8px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); cursor: pointer; text-align: left; color: var(--fg); }
+.simpick canvas { width: 100%; height: auto; border-radius: 8px; border: 1px solid var(--line); background: #FFFFFF; }
+.simpick b { font-size: 15px; }
+.simpick span { font-size: 12px; color: var(--muted); line-height: 1.35; }
+.item.sim .simcv { width: 100%; height: auto; aspect-ratio: 560 / 300; display: block; border-radius: 8px; background: #FFFFFF; border: 1px solid #E1E6EC; }
+.item.sim .sbtns { display: flex; gap: 6px; }
+.item.sim .sro { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 6px 2px 0; font-size: 14px; font-variant-numeric: tabular-nums; }
+.item.sim .sro i { font-style: normal; color: #6B7686; }
+.item.sim .shint { font-size: 13px; color: #6B7686; margin: 4px 2px 0; }
+.cin { width: 100%; box-sizing: border-box; min-height: 120px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); color: var(--fg); font: 15px/1.6 ui-monospace, Menlo, Consolas, monospace; padding: 10px 12px; resize: vertical; -webkit-user-select: text; user-select: text; }
+.cout { display: flex; flex-direction: column; gap: 6px; }
+.crow { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 10px; background: var(--surface-2); font-size: 14px; }
+.crow .ce { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.crow .ce code { font: 13px ui-monospace, Menlo, Consolas, monospace; color: var(--muted); display: block; }
+.crow .ce b { font-size: 16px; font-variant-numeric: tabular-nums; }
+.crow.err .ce b { color: #B42318; font-size: 13px; font-weight: 500; }
+.crow button { flex: none; min-height: 36px; padding: 0 10px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); color: var(--fg); font-size: 12px; cursor: pointer; }
+#calc code { font-size: 12px; background: var(--surface-2); padding: 1px 5px; border-radius: 6px; }
+.updbar { position: absolute; left: 50%; top: 12px; transform: translateX(-50%); z-index: 9; min-height: 40px; padding: 0 16px; border-radius: 999px; border: 0; background: var(--accent); color: #FFFFFF; font-size: 14px; font-weight: 600; box-shadow: var(--shadow); cursor: pointer; }
+body.present .updbar { display: none !important; }
 .insgrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
 .insb { min-height: 96px; border-radius: 16px; border: 1px solid var(--line); background: var(--surface); cursor: pointer; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 4px; padding: 12px 14px; text-align: left; }
 .insb b { font-size: 16px; }
@@ -498,6 +519,7 @@ body.tv .convbar { bottom: 112px; }
         </div>
       </div>
 
+      <button class="updbar no-ink" id="updBar" hidden>มีเวอร์ชันใหม่ แตะเพื่ออัปเดต</button>
       <button class="pexit no-ink" id="presentExit" hidden>ออกจากจอผู้ชม</button>
       <div class="pwait no-ink" id="presentWait" hidden>จอผู้ชมพร้อมแล้ว<br>เปิดสมุดบนเครื่องที่ใช้เขียน แล้วหน้านั้นจะขึ้นที่นี่</div>
       <button class="exitfull no-ink" id="bExitFull" hidden aria-label="ออกจากเต็มหน้าจอ"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7.5 3v4.5H3 M17 7.5h-4.5V3 M12.5 17v-4.5H17 M3 12.5h4.5V17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
@@ -538,6 +560,19 @@ body.tv .convbar { bottom: 112px; }
       </section>
     </div>
 
+    <aside class="drawer wide" id="calc" hidden aria-label="เครื่องคิดเลขฟิสิกส์">
+      <header><span>เครื่องคิดเลขฟิสิกส์</span><button class="btn icon" id="bCalcClose" aria-label="ปิด"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 5l10 10 M15 5L5 15" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button></header>
+      <div class="body">
+        <div class="note">พิมพ์ทีละบรรทัด ใส่หน่วยได้ ตั้งตัวแปรได้ เช่น<br><code>v0 = 20 m/s</code><br><code>t = 2 * v0 * sin(30 deg) / g</code><br><code>v0 to km/h</code></div>
+        <textarea id="cIn" class="cin" spellcheck="false" autocapitalize="off" autocorrect="off" rows="5" aria-label="สิ่งที่จะคำนวณ"></textarea>
+        <div class="row2"><button class="btn solid" id="cGo">คำนวณ</button><button class="btn" id="cClear">ล้าง</button></div>
+        <div id="cOut" class="cout"></div>
+        <span class="label">ค่าคงที่ แตะเพื่อใส่</span>
+        <div class="chips" id="cConst"></div>
+        <span class="label">หน่วย</span>
+        <div class="chips" id="cUnits"></div>
+      </div>
+    </aside>
     <aside class="drawer wide" id="ai" hidden aria-label="ผู้ช่วยสร้างโจทย์">
       <header><span>ผู้ช่วยในห้องเรียน</span><button class="btn icon" id="bAIClose" aria-label="ปิด"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 5l10 10 M15 5L5 15" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button></header>
       <div class="body" id="aiBody">
@@ -643,6 +678,8 @@ body.tv .convbar { bottom: 112px; }
       <button class="insb" id="iImg"><b>รูปภาพ</b><span>จากคลังภาพ กล้อง หรือไฟล์ วางจากคลิปบอร์ดหรือลากมาวางก็ได้</span></button>
       <button class="insb" id="iVid"><b>วิดีโอ</b><span>ไฟล์ MP4 ขนาดไม่เกิน 20 MB</span></button>
       <button class="insb" id="iGraph"><b>กราฟจากสมการ</b><span>พิมพ์สมการ แล้วปรับค่าตัวแปรด้วยแถบเลื่อน</span></button>
+      <button class="insb" id="iSim"><b>แบบจำลองการทดลอง</b><span>โพรเจกไทล์ ลูกตุ้ม สปริง พื้นเอียง การชน คลื่นนิ่ง ปรับค่าแล้วกดเล่น</span></button>
+      <button class="insb" id="iCalc"><b>เครื่องคิดเลขฟิสิกส์</b><span>คิดพร้อมหน่วยและค่าคงที่ แล้วแทรกผลลงหน้า</span></button>
       <button class="insb" id="iText"><b>กล่องข้อความ</b><span>แตะบนหน้าแล้วพิมพ์ เขียนสมการใน $...$ ได้</span></button>
     </div>
     <div class="note">มีสมการที่เขียนด้วยมือแล้ว ใช้บ่วงวงสมการนั้น แล้วกด "สร้างกราฟ" ระบบจะอ่านสมการและตั้งแถบเลื่อนให้เอง</div>
@@ -669,6 +706,14 @@ body.tv .convbar { bottom: 112px; }
       <div id="mMine"></div>
     </div>
     <div class="note small">สื่อจาก Wikimedia Commons ใช้สอนได้ฟรี แอปจะใส่ชื่อผู้สร้างและสัญญาอนุญาตไว้ใต้สื่อให้เอง</div>
+  </div>
+</div>
+
+<div class="sheet" id="simSheet" hidden>
+  <div class="panel wide" role="dialog" aria-label="แบบจำลองการทดลอง">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><h2>แบบจำลองการทดลอง</h2><button class="btn" id="bSimClose">ปิด</button></div>
+    <div class="note">แตะเพื่อวางลงหน้ากระดาษ ทุกแบบจำลองคำนวณตามสมการฟิสิกส์จริง ปรับค่าได้ด้วยแถบเลื่อน เวกเตอร์ความเร็วเป็นสีน้ำเงิน แรงเป็นสีส้ม</div>
+    <div class="simgrid" id="simGrid"></div>
   </div>
 </div>
 
@@ -1542,7 +1587,7 @@ function buildItemEl(it, forExport) {
   const d = document.createElement('div');
   const media = it.type === 'img' || it.type === 'video';
   d.className = 'item' + (it.teacher ? ' teacher' : '') + (it.type === 'svg' ? ' svg' : '') + (media ? ' media' : '')
-    + (it.type === 'graph' ? ' graph' : '') + ((it.type === 'graph' || it.type === 'video') && !forExport ? ' live no-ink' : '');
+    + (it.type === 'graph' || it.type === 'sim' ? ' graph' : '') + (it.type === 'sim' ? ' sim' : '') + ((it.type === 'graph' || it.type === 'video' || it.type === 'sim') && !forExport ? ' live no-ink' : '');
   d.style.left = it.x + 'px'; d.style.top = it.y + 'px'; d.style.width = (it.w || 600) + 'px';
   if (it.fs) d.style.fontSize = clamp(+it.fs || 24, 12, 80) + 'px';
   d.dataset.id = it.id;
@@ -1553,6 +1598,7 @@ function buildItemEl(it, forExport) {
     if (forExport) { d.innerHTML = '<div style="aspect-ratio:16/9;background:#20262F;color:#FFFFFF;display:flex;align-items:center;justify-content:center;border-radius:6px;font-family:var(--ui)">วิดีโอ ดูได้ในแอป</div>'; }
     else if (okAsset(it.asset) || okRemote(it.url)) { const v = document.createElement('video'); v.controls = true; v.playsInline = true; v.preload = 'metadata'; d.appendChild(v); if (okAsset(it.asset)) setAssetSrc(v, it.asset); else { v.src = it.url; if (okRemote(it.poster)) v.poster = it.poster; } }
   } else if (it.type === 'graph') { buildGraph(d, it, forExport); }
+  else if (it.type === 'sim') { buildSim(d, it, forExport); }
   else d.innerHTML = mdToHtml(it.md || '');
   if ((it.type === 'img' || it.type === 'video') && it.credit) { const c = document.createElement('div'); c.className = 'credit'; c.textContent = String(it.credit).slice(0, 160); d.appendChild(c); }
   return d;
@@ -2625,7 +2671,7 @@ function aiErr(e) {
   if (code === 'prompt_too_large') return 'เนื้อหาในหน้ายาวเกินไป วงเฉพาะส่วนที่ต้องการแล้วลองใหม่';
   return 'เชื่อมต่อ AI ไม่สำเร็จ ลองอีกครั้ง' + (code ? ' (รหัส ' + code + ')' : (e && e.message ? ' (' + String(e.message).slice(0, 80) + ')' : ''));
 }
-function openAI() { $('#ai').hidden = false; $('#bAI').setAttribute('aria-pressed', 'true'); }
+function openAI() { $('#calc').hidden = true; $('#ai').hidden = false; $('#bAI').setAttribute('aria-pressed', 'true'); }
 function aiCard(html) { const d = document.createElement('div'); d.className = 'card'; d.innerHTML = html; $('#aiOut').prepend(d); return d; }
 function busyCard(title) {
   const ctl = new AbortController();
@@ -3381,8 +3427,8 @@ async function drawThumb(pid, cv) {
   paper(c, (page && page.paper) || 'grid');
   for (const it of ((page && page.items) || [])) {
     const x = it.x || 0, y = it.y || 0, iw = it.w || 600;
-    if (it.type === 'img' || it.type === 'video' || it.type === 'graph' || it.type === 'svg') {
-      const ih = it.type === 'graph' ? 440 : iw * (it.ar || 0.62);
+    if (it.type === 'img' || it.type === 'video' || it.type === 'graph' || it.type === 'svg' || it.type === 'sim') {
+      const ih = it.type === 'graph' ? 440 : it.type === 'sim' ? 560 : iw * (it.ar || 0.62);
       const u = it.asset && blobUrls.get(it.asset);
       c.fillStyle = it.type === 'video' ? '#2A313C' : '#E8ECF2'; c.fillRect(x, y, iw, ih);
       if (u && it.type === 'img') { await new Promise((res) => { const im = new Image(); im.onload = () => { try { c.drawImage(im, x, y, iw, ih); } catch (e) { /* skip */ } res(); }; im.onerror = res; im.src = u; }); }
@@ -4010,6 +4056,329 @@ $('#mClose').onclick = () => { $('#mediaSheet').hidden = true; };
 $('#iMedia').onclick = () => openMedia('auto');
 $('#sMedia').onclick = () => openMedia('auto');
 
+/* ---------- live physics simulations placed on the page ---------- */
+const VC = '#2F4BB8', FC = '#C2571A', INK = '#14181F', SOFT = '#9AA4B2';
+function simArrow(c, x0, y0, x1, y1, col, lw) {
+  const L = Math.hypot(x1 - x0, y1 - y0); if (L < 2) return;
+  const a = Math.atan2(y1 - y0, x1 - x0), h = Math.min(12, L * 0.35);
+  c.strokeStyle = col; c.fillStyle = col; c.lineWidth = lw || 2.4; c.lineCap = 'round';
+  c.beginPath(); c.moveTo(x0, y0); c.lineTo(x1 - Math.cos(a) * h * 0.6, y1 - Math.sin(a) * h * 0.6); c.stroke();
+  c.beginPath(); c.moveTo(x1, y1); c.lineTo(x1 - h * Math.cos(a - 0.42), y1 - h * Math.sin(a - 0.42)); c.lineTo(x1 - h * Math.cos(a + 0.42), y1 - h * Math.sin(a + 0.42)); c.closePath(); c.fill();
+}
+function simLabel(c, t, x, y, col, size, align) { c.fillStyle = col || INK; c.font = (size || 15) + 'px Sarabun, sans-serif'; c.textAlign = align || 'left'; c.textBaseline = 'middle'; c.fillText(t, x, y); }
+const f2 = (v) => (Math.abs(v) < 0.005 ? '0' : (Math.round(v * 100) / 100).toString());
+const SIMS = {
+  projectile: {
+    title: 'โพรเจกไทล์', hint: 'ความเร็วแนวราบคงที่ ความเร็วแนวดิ่งเปลี่ยนตาม g',
+    params: { v0: ['ความเร็วต้น (m/s)', 20, 1, 40, 0.5], th: ['มุมยิง (องศา)', 45, 0, 90, 1], g: ['g (m/s²)', 9.8, 1, 20, 0.1], h: ['ความสูงเริ่มต้น (m)', 0, 0, 30, 0.5] },
+    calc(p) {
+      const a = p.th * Math.PI / 180, vx = p.v0 * Math.cos(a), vy = p.v0 * Math.sin(a);
+      const T = (vy + Math.sqrt(vy * vy + 2 * p.g * p.h)) / p.g;
+      return { vx, vy, T, R: vx * T, H: p.h + vy * vy / (2 * p.g) };
+    },
+    init() { return { t: 0, trail: [] }; },
+    step(s, p, dt) { const k = this.calc(p); s.t = Math.min(s.t + dt, k.T); return s.t >= k.T; },
+    draw(c, w, h, s, p) {
+      const k = this.calc(p), pad = 34, sx = (w - 2 * pad) / Math.max(1, k.R * 1.05), sy = (h - 2 * pad) / Math.max(1, k.H * 1.15), sc = Math.min(sx, sy);
+      const X = (x) => pad + x * sc, Y = (y) => h - pad - y * sc;
+      c.strokeStyle = INK; c.lineWidth = 2; c.beginPath(); c.moveTo(pad - 10, Y(0)); c.lineTo(w - 10, Y(0)); c.stroke();
+      if (p.h > 0) { c.fillStyle = '#E8ECF2'; c.fillRect(X(0) - 14, Y(p.h), 14, Y(0) - Y(p.h)); }
+      c.setLineDash([4, 5]); c.strokeStyle = SOFT; c.lineWidth = 1.5; c.beginPath();
+      for (let i = 0; i <= 80; i++) { const t = k.T * i / 80; c.lineTo(X(k.vx * t), Y(p.h + k.vy * t - 0.5 * p.g * t * t)); } c.stroke(); c.setLineDash([]);
+      for (let i = 1; i <= 6; i++) { const t = k.T * i / 7; if (t > s.t) break; c.fillStyle = 'rgba(47,75,184,0.35)'; c.beginPath(); c.arc(X(k.vx * t), Y(p.h + k.vy * t - 0.5 * p.g * t * t), 4, 0, 6.283); c.fill(); }
+      const t = s.t, x = k.vx * t, y = p.h + k.vy * t - 0.5 * p.g * t * t, vy = k.vy - p.g * t, vs = Math.min(w, h) * 0.22 / Math.max(1, p.v0);
+      const bx = X(x), by = Y(y);
+      simArrow(c, bx, by, bx + k.vx * vs, by, VC); simArrow(c, bx, by, bx, by - vy * vs, VC); simArrow(c, bx, by, bx + k.vx * vs, by - vy * vs, '#7C8BC9', 1.6);
+      c.fillStyle = INK; c.beginPath(); c.arc(bx, by, 7, 0, 6.283); c.fill();
+      simLabel(c, 'vx', bx + k.vx * vs + 6, by - 9, VC, 14); simLabel(c, 'vy', bx + 6, by - vy * vs - 4, VC, 14);
+    },
+    readouts(s, p) { const k = this.calc(p), t = s.t; return [['t', f2(t) + ' s'], ['x', f2(k.vx * t) + ' m'], ['y', f2(p.h + k.vy * t - 0.5 * p.g * t * t) + ' m'], ['vx', f2(k.vx) + ' m/s'], ['vy', f2(k.vy - p.g * t) + ' m/s'], ['พิสัย', f2(k.R) + ' m'], ['สูงสุด', f2(k.H) + ' m'], ['เวลาลอย', f2(k.T) + ' s']]; }
+  },
+  pendulum: {
+    title: 'ลูกตุ้มอย่างง่าย', hint: 'มุมเล็กคาบเกือบไม่ขึ้นกับแอมพลิจูด มุมใหญ่คาบยาวขึ้น',
+    params: { L: ['ความยาวเชือก (m)', 1, 0.2, 3, 0.05], a0: ['มุมเริ่มต้น (องศา)', 20, 2, 80, 1], g: ['g (m/s²)', 9.8, 1, 20, 0.1], b: ['การหน่วง', 0, 0, 1, 0.02] },
+    init(p) { return { t: 0, th: p.a0 * Math.PI / 180, w: 0, trace: [] }; },
+    step(s, p, dt) { const n = 8, h = dt / n; for (let i = 0; i < n; i++) { const a = -(p.g / p.L) * Math.sin(s.th) - p.b * s.w; s.w += a * h; s.th += s.w * h; } s.t += dt; return false; },
+    draw(c, w, h, s, p) {
+      const px = w / 2, py = 26, Lp = Math.min(h - 70, (h - 70) * p.L / 3 + 60);
+      c.strokeStyle = INK; c.lineWidth = 3; c.beginPath(); c.moveTo(px - 60, py); c.lineTo(px + 60, py); c.stroke();
+      c.setLineDash([3, 5]); c.strokeStyle = SOFT; c.lineWidth = 1.2; c.beginPath(); c.moveTo(px, py); c.lineTo(px, py + Lp + 20); c.stroke();
+      const a0 = p.a0 * Math.PI / 180; c.beginPath(); c.arc(px, py, Lp, Math.PI / 2 - a0, Math.PI / 2 + a0); c.stroke(); c.setLineDash([]);
+      const bx = px + Lp * Math.sin(s.th), by = py + Lp * Math.cos(s.th);
+      c.strokeStyle = INK; c.lineWidth = 2; c.beginPath(); c.moveTo(px, py); c.lineTo(bx, by); c.stroke();
+      const v = s.w * p.L, sc = 26; simArrow(c, bx, by, bx + Math.cos(s.th) * v * sc, by - Math.sin(s.th) * v * sc, VC);
+      simArrow(c, bx, by, bx, by + 46, FC, 2); simLabel(c, 'mg', bx + 6, by + 40, FC, 14);
+      c.fillStyle = '#3E4A5C'; c.beginPath(); c.arc(bx, by, 13, 0, 6.283); c.fill();
+    },
+    readouts(s, p) { return [['t', f2(s.t) + ' s'], ['θ', f2(s.th * 180 / Math.PI) + '°'], ['ω', f2(s.w) + ' rad/s'], ['คาบมุมเล็ก', f2(2 * Math.PI * Math.sqrt(p.L / p.g)) + ' s']]; }
+  },
+  spring: {
+    title: 'มวลติดสปริง', hint: 'การเคลื่อนที่แบบฮาร์มอนิกอย่างง่าย กราฟ x กับ t เป็นรูปไซน์',
+    params: { m: ['มวล (kg)', 1, 0.1, 5, 0.1], k: ['ค่านิจสปริง (N/m)', 20, 2, 100, 1], A: ['แอมพลิจูด (m)', 0.5, 0.05, 1, 0.05], b: ['การหน่วง (kg/s)', 0, 0, 3, 0.05] },
+    init(p) { return { t: 0, x: p.A, v: 0, hist: [] }; },
+    step(s, p, dt) { const n = 8, h = dt / n; for (let i = 0; i < n; i++) { const a = (-p.k * s.x - p.b * s.v) / p.m; s.v += a * h; s.x += s.v * h; } s.t += dt; s.hist.push([s.t, s.x]); if (s.hist.length > 600) s.hist.shift(); return false; },
+    draw(c, w, h, s, p) {
+      const top = 70, wall = 30, eq = w * 0.42, sc = (w * 0.25) / 1, bx = eq + s.x * sc;
+      c.fillStyle = '#E8ECF2'; c.fillRect(wall - 14, top - 40, 14, 80); c.strokeStyle = INK; c.lineWidth = 2; c.beginPath(); c.moveTo(wall, top - 40); c.lineTo(wall, top + 40); c.moveTo(wall, top + 26); c.lineTo(w - 20, top + 26); c.stroke();
+      c.lineWidth = 2; c.beginPath(); c.moveTo(wall, top); const coils = 12, sw = bx - 26 - wall;
+      for (let i = 0; i <= coils * 2; i++) c.lineTo(wall + sw * i / (coils * 2), top + (i % 2 ? -11 : 11) * (i && i < coils * 2 ? 1 : 0)); c.lineTo(bx - 26, top); c.stroke();
+      c.fillStyle = '#3E4A5C'; c.fillRect(bx - 26, top - 24, 52, 50);
+      c.setLineDash([3, 4]); c.strokeStyle = SOFT; c.beginPath(); c.moveTo(eq, top - 34); c.lineTo(eq, top + 34); c.stroke(); c.setLineDash([]);
+      simLabel(c, 'x = 0', eq, top - 44, SOFT, 12, 'center');
+      simArrow(c, bx, top - 34, bx + s.v * sc * 0.25, top - 34, VC); simArrow(c, bx, top + 6, bx - p.k * s.x / p.m * sc * 0.02, top + 6, FC, 2);
+      const gy = h - 70, gh = 56, gx0 = 40, gx1 = w - 20, span = 6;
+      c.strokeStyle = SOFT; c.lineWidth = 1; c.beginPath(); c.moveTo(gx0, gy); c.lineTo(gx1, gy); c.moveTo(gx0, gy - gh); c.lineTo(gx0, gy + gh); c.stroke();
+      simLabel(c, 'x', gx0 - 14, gy - gh + 6, SOFT, 12); simLabel(c, 't', gx1 - 4, gy + 12, SOFT, 12);
+      c.strokeStyle = VC; c.lineWidth = 2; c.beginPath(); const t0 = Math.max(0, s.t - span);
+      for (const [t, x] of s.hist) if (t >= t0) c.lineTo(gx0 + (t - t0) / span * (gx1 - gx0), gy - x / Math.max(0.05, p.A) * gh); c.stroke();
+    },
+    readouts(s, p) { return [['t', f2(s.t) + ' s'], ['x', f2(s.x) + ' m'], ['v', f2(s.v) + ' m/s'], ['คาบ', f2(2 * Math.PI * Math.sqrt(p.m / p.k)) + ' s'], ['พลังงาน', f2(0.5 * p.k * s.x * s.x + 0.5 * p.m * s.v * s.v) + ' J']]; }
+  },
+  incline: {
+    title: 'วัตถุบนพื้นเอียง', hint: 'ไถลเมื่อ tan θ มากกว่าสัมประสิทธิ์แรงเสียดทาน',
+    params: { th: ['มุมเอียง (องศา)', 30, 0, 60, 1], mu: ['สัมประสิทธิ์แรงเสียดทาน', 0.3, 0, 1, 0.01], m: ['มวล (kg)', 2, 0.5, 10, 0.5], g: ['g (m/s²)', 9.8, 1, 20, 0.1] },
+    calc(p) { const a = p.th * Math.PI / 180, N = p.m * p.g * Math.cos(a), dn = p.m * p.g * Math.sin(a), slides = Math.tan(a) > p.mu + 1e-9; const f = slides ? p.mu * N : dn; return { a, N, dn, f, slides, acc: slides ? (dn - f) / p.m : 0 }; },
+    init() { return { t: 0, s: 0, v: 0 }; },
+    step(s, p, dt) { const k = this.calc(p); s.v += k.acc * dt; s.s += s.v * dt; s.t += dt; return s.s > 0.92 * 3 || !k.slides; },
+    draw(c, w, h, s, p) {
+      const k = this.calc(p), x0 = 40, y0 = h - 40, Lp = Math.min(w - 90, (h - 80) / Math.max(0.2, Math.sin(k.a)));
+      const xt = x0 + Lp * Math.cos(k.a), yt = y0 - Lp * Math.sin(k.a);
+      c.fillStyle = '#E8ECF2'; c.beginPath(); c.moveTo(x0, y0); c.lineTo(xt, y0); c.lineTo(xt, yt); c.closePath(); c.fill();
+      c.strokeStyle = INK; c.lineWidth = 2; c.beginPath(); c.moveTo(x0 - 10, y0); c.lineTo(w - 10, y0); c.moveTo(x0, y0); c.lineTo(xt, yt); c.lineTo(xt, y0); c.stroke();
+      c.beginPath(); c.arc(x0, y0, 36, -k.a, 0); c.stroke(); simLabel(c, 'θ', x0 + 44, y0 - 10, INK, 14);
+      const along = 1 - Math.min(0.92, s.s / 3), cx = x0 + Lp * along * Math.cos(k.a), cy = y0 - Lp * along * Math.sin(k.a);
+      c.save(); c.translate(cx, cy); c.rotate(-k.a); c.fillStyle = '#3E4A5C'; c.fillRect(-22, -36, 44, 36); c.restore();
+      const mx = cx - Math.sin(k.a) * 18, my = cy - Math.cos(k.a) * 18, sc = 2.2;
+      simArrow(c, mx, my, mx, my + p.m * p.g * sc, FC, 2.2); simLabel(c, 'mg', mx + 6, my + p.m * p.g * sc, FC, 13);
+      simArrow(c, mx, my, mx - Math.sin(k.a) * k.N * sc, my - Math.cos(k.a) * k.N * sc, FC, 2.2); simLabel(c, 'N', mx - Math.sin(k.a) * k.N * sc - 14, my - Math.cos(k.a) * k.N * sc, FC, 13);
+      if (k.f > 0.01) { simArrow(c, mx, my, mx + Math.cos(k.a) * k.f * sc, my - Math.sin(k.a) * k.f * sc, FC, 2.2); simLabel(c, 'f', mx + Math.cos(k.a) * k.f * sc + 6, my - Math.sin(k.a) * k.f * sc - 6, FC, 13); }
+      if (s.v > 0.01) simArrow(c, cx, cy - 50, cx - Math.cos(k.a) * s.v * 12, cy - 50 + Math.sin(k.a) * s.v * 12, VC);
+    },
+    readouts(s, p) { const k = this.calc(p); return [['สถานะ', k.slides ? 'ไถลลง' : 'หยุดนิ่ง'], ['a', f2(k.acc) + ' m/s²'], ['v', f2(s.v) + ' m/s'], ['mg sin θ', f2(k.dn) + ' N'], ['N', f2(k.N) + ' N'], ['f', f2(k.f) + ' N'], ['tan θ', f2(Math.tan(k.a))]]; }
+  },
+  collision: {
+    title: 'การชนในหนึ่งมิติ', hint: 'โมเมนตัมรวมคงที่เสมอ พลังงานจลน์คงที่เฉพาะการชนแบบยืดหยุ่น (e = 1)',
+    params: { m1: ['มวล 1 (kg)', 2, 0.5, 10, 0.5], v1: ['ความเร็ว 1 (m/s)', 3, -6, 6, 0.5], m2: ['มวล 2 (kg)', 1, 0.5, 10, 0.5], v2: ['ความเร็ว 2 (m/s)', -1, -6, 6, 0.5], e: ['สัมประสิทธิ์การกลับคืน e', 1, 0, 1, 0.05] },
+    init(p) { return { t: 0, x1: -2.2, x2: 2.2, u1: p.v1, u2: p.v2, hit: false }; },
+    step(s, p, dt) {
+      s.x1 += s.u1 * dt; s.x2 += s.u2 * dt; s.t += dt;
+      const r1 = 0.15 + 0.06 * Math.cbrt(p.m1), r2 = 0.15 + 0.06 * Math.cbrt(p.m2);
+      if (!s.hit && s.x2 - s.x1 <= r1 + r2 && s.u1 > s.u2) {
+        const M = p.m1 + p.m2, P = p.m1 * s.u1 + p.m2 * s.u2;
+        const n1 = (P - p.m2 * p.e * (s.u1 - s.u2)) / M, n2 = (P + p.m1 * p.e * (s.u1 - s.u2)) / M;
+        s.u1 = n1; s.u2 = n2; s.hit = true;
+      }
+      return Math.abs(s.x1) > 3.6 && Math.abs(s.x2) > 3.6;
+    },
+    draw(c, w, h, s, p) {
+      const mid = w / 2, sc = (w - 60) / 7.2, y = h * 0.42;
+      c.strokeStyle = INK; c.lineWidth = 2; c.beginPath(); c.moveTo(20, y + 34); c.lineTo(w - 20, y + 34); c.stroke();
+      const cart = (x, m, col, v, name) => { const r = (0.15 + 0.06 * Math.cbrt(m)) * sc; const cx = mid + x * sc; c.fillStyle = col; c.fillRect(cx - r, y + 34 - r * 1.4, 2 * r, r * 1.4); simLabel(c, name, cx, y + 34 - r * 0.7, '#FFFFFF', 13, 'center'); simArrow(c, cx, y + 34 - r * 1.4 - 14, cx + v * 18, y + 34 - r * 1.4 - 14, VC); };
+      cart(s.x1, p.m1, '#3E4A5C', s.u1, 'm₁'); cart(s.x2, p.m2, '#8C2F39', s.u2, 'm₂');
+      const P0 = p.m1 * p.v1 + p.m2 * p.v2, P = p.m1 * s.u1 + p.m2 * s.u2, K0 = 0.5 * p.m1 * p.v1 * p.v1 + 0.5 * p.m2 * p.v2 * p.v2, K = 0.5 * p.m1 * s.u1 * s.u1 + 0.5 * p.m2 * s.u2 * s.u2;
+      const by = h - 46, bw = (w - 80) / 2, bar = (x, val, max, col, t) => { c.fillStyle = '#E8ECF2'; c.fillRect(x, by, bw - 20, 16); c.fillStyle = col; c.fillRect(x, by, (bw - 20) * Math.max(0, Math.min(1, Math.abs(val) / Math.max(1e-6, max))), 16); simLabel(c, t, x, by - 12, INK, 13); };
+      bar(40, P, Math.max(Math.abs(P0), 1e-6) * 1.2, VC, 'โมเมนตัมรวม ' + f2(P) + ' kg·m/s'); bar(40 + bw, K, K0 * 1.2, FC, 'พลังงานจลน์รวม ' + f2(K) + ' J');
+    },
+    readouts(s, p) { return [['v₁', f2(s.u1) + ' m/s'], ['v₂', f2(s.u2) + ' m/s'], ['ชนแล้ว', s.hit ? 'ใช่' : 'ยัง']]; }
+  },
+  wave: {
+    title: 'คลื่นนิ่งบนเส้นเชือก', hint: 'ปลายตรึงทั้งสองข้าง ความยาวคลื่น λ = 2L/n',
+    params: { n: ['ฮาร์มอนิกที่ n', 2, 1, 6, 1], L: ['ความยาวเชือก (m)', 1.2, 0.3, 3, 0.1], v: ['อัตราเร็วคลื่น (m/s)', 12, 2, 40, 1], A: ['แอมพลิจูด (cm)', 2, 0.5, 4, 0.5] },
+    init() { return { t: 0 }; },
+    step(s, p, dt) { s.t += dt * 0.25; return false; },
+    draw(c, w, h, s, p) {
+      const x0 = 30, x1 = w - 30, y = h / 2 - 10, amp = (h * 0.32) * p.A / 4, n = Math.round(p.n), f = n * p.v / (2 * p.L), om = 2 * Math.PI * f;
+      c.fillStyle = INK; c.fillRect(x0 - 8, y - 40, 8, 80); c.fillRect(x1, y - 40, 8, 80);
+      c.setLineDash([4, 5]); c.strokeStyle = SOFT; c.lineWidth = 1.2;
+      for (const sg of [1, -1]) { c.beginPath(); for (let i = 0; i <= 200; i++) { const u = i / 200; c.lineTo(x0 + u * (x1 - x0), y - sg * amp * Math.sin(n * Math.PI * u)); } c.stroke(); }
+      c.setLineDash([]); c.strokeStyle = VC; c.lineWidth = 3; c.beginPath();
+      for (let i = 0; i <= 200; i++) { const u = i / 200; c.lineTo(x0 + u * (x1 - x0), y - amp * Math.sin(n * Math.PI * u) * Math.cos(om * s.t)); } c.stroke();
+      for (let i = 0; i <= n; i++) { const xx = x0 + (x1 - x0) * i / n; c.fillStyle = FC; c.beginPath(); c.arc(xx, y, 5, 0, 6.283); c.fill(); }
+      simLabel(c, 'จุดบัพ ' + (n + 1) + ' จุด   ปฏิบัพ ' + n + ' จุด', x0, h - 22, INK, 14);
+    },
+    readouts(s, p) { const n = Math.round(p.n); return [['λ', f2(2 * p.L / n) + ' m'], ['f', f2(n * p.v / (2 * p.L)) + ' Hz'], ['ความถี่มูลฐาน', f2(p.v / (2 * p.L)) + ' Hz']]; }
+  }
+};
+const SIMRT = new Map();
+let simRaf = 0, simLast = 0;
+function simParams(it) { const def = SIMS[it.kind].params, out = {}; for (const k of Object.keys(def)) out[k] = it.params && isFinite(it.params[k]) ? +it.params[k] : def[k][1]; return out; }
+function simRuntime(it) {
+  let rt = SIMRT.get(it.id);
+  if (!rt) { rt = { playing: false, st: SIMS[it.kind].init(simParams(it)) }; SIMRT.set(it.id, rt); }
+  return rt;
+}
+function simRender(it, cv, ro) {
+  const S0 = SIMS[it.kind], rt = simRuntime(it), p = simParams(it);
+  const w = 560, h = 300, dpr = Math.min(3, (window.devicePixelRatio || 1) * Math.max(1, (S.base || 1) * (S.zoom || 1)));
+  if (cv.width !== Math.round(w * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); }
+  const c = cv.getContext('2d'); c.setTransform(dpr, 0, 0, dpr, 0, 0); c.clearRect(0, 0, w, h);
+  c.fillStyle = '#FFFFFF'; c.fillRect(0, 0, w, h);
+  S0.draw(c, w, h, rt.st, p);
+  if (ro) ro.innerHTML = S0.readouts(rt.st, p).map(([a, b]) => '<span><i>' + esc(a) + '</i> ' + esc(b) + '</span>').join('');
+}
+function simTick(t) {
+  simRaf = 0;
+  const dt = Math.min(0.05, Math.max(0, (t - (simLast || t)) / 1000)); simLast = t;
+  let any = false;
+  for (const [id, rt] of SIMRT) {
+    if (!rt.playing) continue;
+    const el = itemsEl.querySelector('[data-id="' + id + '"]'), it = findItem(id);
+    if (!el || !it || !SIMS[it.kind]) { rt.playing = false; continue; }
+    const done = SIMS[it.kind].step(rt.st, simParams(it), dt);
+    simRender(it, el.querySelector('canvas'), el.querySelector('.sro'));
+    if (done) { rt.playing = false; const b = el.querySelector('[data-s="play"]'); if (b) b.textContent = 'เล่นอีกครั้ง'; rt.ended = true; }
+    else any = true;
+  }
+  if (any) simRaf = requestAnimationFrame(simTick); else simLast = 0;
+}
+function buildSim(d, it, forExport) {
+  const S0 = SIMS[it.kind]; if (!S0) { d.textContent = 'แบบจำลองนี้ใช้ไม่ได้'; return; }
+  const head = document.createElement('div'); head.className = 'gh';
+  head.innerHTML = '<span></span>' + (forExport ? '' : '<span class="sbtns"><button type="button" data-s="play">เล่น</button><button type="button" data-s="reset">เริ่มใหม่</button></span>');
+  head.firstChild.textContent = S0.title; d.appendChild(head);
+  const cv = document.createElement('canvas'); cv.className = 'simcv'; d.appendChild(cv);
+  const ro = document.createElement('div'); ro.className = 'sro'; d.appendChild(ro);
+  const hint = document.createElement('div'); hint.className = 'shint'; hint.textContent = S0.hint; d.appendChild(hint);
+  const rt = simRuntime(it);
+  if (forExport) { const st = S0.init(simParams(it)); if (it.kind === 'projectile') st.t = S0.calc(simParams(it)).T * 0.45; const tmp = { playing: false, st }; SIMRT.set('__x', tmp); simRender(Object.assign({}, it, { id: '__x' }), cv, ro); SIMRT.delete('__x'); }
+  else simRender(it, cv, ro);
+  const g = document.createElement('div'); g.className = 'gsl';
+  const p = simParams(it);
+  for (const [k, def] of Object.entries(S0.params)) {
+    const lab = document.createElement('span'); lab.textContent = def[0];
+    const out = document.createElement('output'); out.textContent = fmtNum(p[k]);
+    if (forExport) { g.append(lab, document.createElement('span'), out); continue; }
+    const r = document.createElement('input'); r.type = 'range'; r.min = def[2]; r.max = def[3]; r.step = def[4]; r.value = p[k]; r.setAttribute('aria-label', def[0]);
+    r.addEventListener('input', () => {
+      const live = findItem(it.id); if (!live) return;
+      live.params = Object.assign({}, live.params || {}, { [k]: +r.value }); out.textContent = fmtNum(+r.value);
+      const R = simRuntime(live); R.st = S0.init(simParams(live)); R.ended = false; simRender(live, cv, ro);
+    });
+    r.addEventListener('change', () => savePage());
+    g.append(lab, r, out);
+  }
+  d.appendChild(g);
+  if (!forExport) {
+    const pb = head.querySelector('[data-s="play"]'), rb = head.querySelector('[data-s="reset"]');
+    pb.textContent = rt.playing ? 'หยุด' : (rt.ended ? 'เล่นอีกครั้ง' : 'เล่น');
+    pb.onclick = () => {
+      const live = findItem(it.id) || it, R = simRuntime(live);
+      if (R.ended) { R.st = S0.init(simParams(live)); R.ended = false; }
+      R.playing = !R.playing; pb.textContent = R.playing ? 'หยุด' : 'เล่น';
+      if (R.playing && !simRaf) simRaf = requestAnimationFrame(simTick);
+    };
+    rb.onclick = () => { const live = findItem(it.id) || it, R = simRuntime(live); R.st = S0.init(simParams(live)); R.playing = false; R.ended = false; pb.textContent = 'เล่น'; simRender(live, cv, ro); };
+  }
+}
+function insertSim(kind) {
+  if (!S.page || !SIMS[kind]) return;
+  const w = 560; const [x, y] = viewSpot(w, 520);
+  addItem({ type: 'sim', kind, params: {}, x, y, w });
+  toast('วางแบบจำลองแล้ว กดเล่น แล้วเลื่อนแถบเพื่อเปลี่ยนค่า', 2600);
+}
+function renderSimPicker() {
+  const g = $('#simGrid'); g.innerHTML = '';
+  for (const [k, S0] of Object.entries(SIMS)) {
+    const b = document.createElement('button'); b.className = 'simpick'; b.type = 'button';
+    b.innerHTML = '<canvas width="280" height="150"></canvas><b></b><span></span>';
+    b.querySelector('b').textContent = S0.title; b.querySelector('span').textContent = S0.hint;
+    const cv = b.querySelector('canvas'), c = cv.getContext('2d'), p = {}; for (const [pk, def] of Object.entries(S0.params)) p[pk] = def[1];
+    const st = S0.init(p); if (k === 'projectile') st.t = S0.calc(p).T * 0.45; if (k === 'collision') { st.x1 = -1; st.x2 = 1; }
+    c.setTransform(0.5, 0, 0, 0.5, 0, 0); c.fillStyle = '#FFFFFF'; c.fillRect(0, 0, 560, 300); S0.draw(c, 560, 300, st, p);
+    b.onclick = () => { $('#simSheet').hidden = true; insertSim(k); };
+    g.appendChild(b);
+  }
+}
+
+
+/* ---------- physics calculator: math with units, constants, variables ---------- */
+const CONSTS = [
+  ['g', '9.8 m/s^2', 'g ความเร่งโน้มถ่วง'], ['c', '299792458 m/s', 'c อัตราเร็วแสง'], ['G', '6.674e-11 N m^2/kg^2', 'G ค่านิจโน้มถ่วง'],
+  ['hP', '6.626e-34 J s', 'h ค่าคงที่ของพลังค์ (hP)'], ['qe', '1.602e-19 C', 'e ประจุมูลฐาน (qe)'], ['me', '9.109e-31 kg', 'มวลอิเล็กตรอน (me)'],
+  ['mp', '1.673e-27 kg', 'มวลโปรตอน (mp)'], ['kC', '8.988e9 N m^2/C^2', 'k ค่าคงที่คูลอมบ์ (kC)'], ['eps0', '8.854e-12 C^2/(N m^2)', 'ε₀ (eps0)'],
+  ['mu0', '1.2566e-6 N/A^2', 'μ₀ (mu0)'], ['NA', '6.022e23 1/mol', 'เลขอาโวกาโดร (NA)'], ['kB', '1.381e-23 J/K', 'ค่าคงที่โบลต์ซมันน์ (kB)'], ['Rg', '8.314 J/(mol K)', 'ค่าคงที่แก๊ส R (Rg)']
+];
+const UNITS = ['m', 'cm', 'km', 's', 'min', 'h', 'kg', 'g', 'N', 'J', 'W', 'Pa', 'Hz', 'C', 'V', 'A', 'ohm', 'T', 'K', 'deg', 'm/s', 'km/h', 'm/s^2', 'eV'];
+let calcScope = null;
+function calcInsertText(t) {
+  const ta = $('#cIn'), a = ta.selectionStart || ta.value.length, b = ta.selectionEnd || a;
+  ta.value = ta.value.slice(0, a) + t + ta.value.slice(b); ta.focus({ preventScroll: true }); ta.selectionStart = ta.selectionEnd = a + t.length;
+}
+function fmtCalc(v) {
+  const m = window.math;
+  try {
+    if (v && typeof v === 'object' && v.type === 'Unit') { const u = v.units && v.units.length ? v : v; return m.format(u, { precision: 5, lowerExp: -4, upperExp: 6 }); }
+    return m.format(v, { precision: 6, lowerExp: -4, upperExp: 7 });
+  } catch (e) { return String(v); }
+}
+async function runCalc() {
+  const out = $('#cOut');
+  try { await loadLib('math'); } catch (e) { out.innerHTML = '<div class="note err">โหลดเครื่องคำนวณไม่สำเร็จ ตรวจอินเทอร์เน็ต</div>'; return; }
+  const m = window.math; calcScope = {};
+  for (const [k, v] of CONSTS) { try { calcScope[k] = m.evaluate(v); } catch (e) { /* skip */ } }
+  out.innerHTML = '';
+  const lines = $('#cIn').value.split('\n').map((l) => l.trim()).filter(Boolean).slice(0, 40);
+  for (const line of lines) {
+    const row = document.createElement('div'); row.className = 'crow';
+    try {
+      const node = m.parse(line.replace(/×/g, '*').replace(/÷/g, '/').replace(/π/g, 'pi').replace(/°/g, ' deg'));
+      const res = node.evaluate(calcScope);
+      if (typeof res === 'function' || res === undefined) throw new Error('ยังไม่ได้ผลเป็นตัวเลข');
+      const txt = fmtCalc(res);
+      row.innerHTML = '<span class="ce"><code></code><b></b></span><button type="button">แทรกลงหน้า</button>';
+      row.querySelector('code').textContent = line; row.querySelector('b').textContent = txt;
+      row.querySelector('button').onclick = () => {
+        let tex = ''; try { tex = node.toTex({ parenthesis: 'auto', implicit: 'hide' }).replace(/:=/g, '='); } catch (e) { tex = line; }
+        let rtex = txt; try { rtex = m.parse(txt).toTex(); } catch (e) { /* keep plain */ }
+        const md = node.type === 'AssignmentNode' ? '$' + tex + '$' + (node.value && node.value.type !== 'ConstantNode' ? ' $= ' + rtex + '$' : '') : '$' + tex + ' = ' + rtex + '$';
+        const w = 520; const [x, y] = viewSpot(w, 60);
+        addItem({ type: 'text', md, x, y, w, fs: 26 });
+        toast('แทรกผลลงหน้าแล้ว', 1400);
+      };
+    } catch (e) {
+      row.classList.add('err');
+      row.innerHTML = '<span class="ce"><code></code><b></b></span>';
+      row.querySelector('code').textContent = line;
+      const msg = String((e && e.message) || e);
+      row.querySelector('b').textContent = /Undefined symbol (\S+)/.test(msg) ? 'ไม่รู้จัก ' + msg.match(/Undefined symbol (\S+)/)[1] + ' ตั้งค่าก่อน เช่น ' + msg.match(/Undefined symbol (\S+)/)[1] + ' = 2 m' : /Units do not match|dimension/i.test(msg) ? 'หน่วยไม่เข้ากัน ตรวจหน่วยของแต่ละพจน์' : 'อ่านบรรทัดนี้ไม่ได้ (' + msg.slice(0, 60) + ')';
+    }
+    out.appendChild(row);
+  }
+  try { store_ls.set('tp-calc', $('#cIn').value.slice(0, 4000)); } catch (e) { /* ignore */ }
+}
+function openCalc() {
+  closeSheets(); $('#ai').hidden = true; $('#calc').hidden = false;
+  if (!$('#cConst').children.length) {
+    for (const [k, v, t] of CONSTS) { const b = document.createElement('button'); b.className = 'chip'; b.type = 'button'; b.textContent = t; b.title = k + ' = ' + v; b.onclick = () => calcInsertText(k); $('#cConst').appendChild(b); }
+    for (const u of UNITS) { const b = document.createElement('button'); b.className = 'chip'; b.type = 'button'; b.textContent = u; b.onclick = () => calcInsertText(' ' + u); $('#cUnits').appendChild(b); }
+    $('#cIn').value = store_ls.get('tp-calc') || 'v0 = 20 m/s\nth = 30 deg\nt = 2 * v0 * sin(th) / g\nR = v0^2 * sin(2 th) / g\nv0 to km/h';
+  }
+  setTimeout(fit, 0);
+  runCalc();
+}
+$('#iCalc').onclick = openCalc;
+$('#cGo').onclick = runCalc;
+$('#cClear').onclick = () => { $('#cIn').value = ''; $('#cOut').innerHTML = ''; };
+$('#cIn').addEventListener('keydown', (e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); runCalc(); } });
+$('#bCalcClose').onclick = () => { $('#calc').hidden = true; setTimeout(fit, 0); };
+
+/* ---------- new version notice (own website only) ---------- */
+const BUILD = '1792992147';
+let updShown = false;
+async function checkUpdate() {
+  if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
+  try {
+    const r = await fetch('./index.html?check=' + now(), { cache: 'no-store' }); if (!r.ok) return;
+    const m = (await r.text()).match(/const BUILD = '(\d+)'/);
+    if (!m || m[1] === BUILD) return;
+    if (S.present) { location.reload(); return; }
+    updShown = true; $('#updBar').hidden = false;
+  } catch (e) { /* offline: try again later */ }
+}
+$('#updBar').onclick = async () => { $('#updBar').textContent = 'กำลังอัปเดต'; try { saveMine.flush(); savePage.flush(); if (S.store && S.store.flush) await S.store.flush(); } catch (e) { /* reload anyway */ } location.reload(); };
+document.addEventListener('visibilitychange', () => { if (!document.hidden) checkUpdate(); });
+setInterval(checkUpdate, 30 * 60 * 1000); setTimeout(checkUpdate, 8000);
+
 /* ---------- cloud account UI ---------- */
 function openAuth() { closeSheets(); $('#aMsg').innerHTML = ''; $('#authSheet').hidden = false; setTimeout(() => $('#aEmail').focus({ preventScroll: true }), 50); }
 function authErr(e) {
@@ -4104,7 +4473,7 @@ function syncToggles() {
 }
 function hideLoading() { $('#loading').hidden = true; }
 function togglePages(v) { const el = $('#pages'); el.hidden = v === undefined ? !el.hidden : !v; $('#bPages').setAttribute('aria-pressed', el.hidden ? 'false' : 'true'); setTimeout(fit, 0); }
-function closeSheets() { $('#mediaSheet').hidden = true; $('#menu').hidden = true; $('#exportSheet').hidden = true; $('#insSheet').hidden = true; }
+function closeSheets() { $('#simSheet').hidden = true; $('#mediaSheet').hidden = true; $('#menu').hidden = true; $('#exportSheet').hidden = true; $('#insSheet').hidden = true; }
 
 /* ---------- wiring ---------- */
 document.querySelectorAll('.tool[data-tool]').forEach((b) => {
@@ -4144,6 +4513,8 @@ $('#graphSheet').addEventListener('click', (e) => { if (e.target.id === 'graphSh
 $('#iImg').onclick = () => { closeSheets(); $('#fImg').value = ''; $('#fImg').click(); };
 $('#iVid').onclick = () => { closeSheets(); $('#fVid').value = ''; $('#fVid').click(); };
 $('#iGraph').onclick = () => { closeSheets(); openGraphSheet(null); };
+$('#iSim').onclick = () => { closeSheets(); renderSimPicker(); $('#simSheet').hidden = false; };
+$('#bSimClose').onclick = () => { $('#simSheet').hidden = true; };
 $('#iText').onclick = () => { closeSheets(); setTool('text'); toast('แตะบนหน้าตรงที่ต้องการพิมพ์', 2500); };
 $('#fImg').onchange = (e) => { const f = e.target.files && e.target.files[0]; if (f) insertImage(f); };
 $('#fVid').onchange = (e) => { const f = e.target.files && e.target.files[0]; if (f) insertVideo(f); };
