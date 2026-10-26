@@ -425,6 +425,63 @@ body.present .updbar { display: none !important; }
 .item.lab .lout .lres { flex-basis: 100%; padding: 8px 10px; border-radius: 10px; background: #EEF2FF; }
 .item.lab .lout .lres b { color: #1F3A8A; font-size: 16px; }
 .mrow { display: flex; gap: 6px; }
+.exttl { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.exttl h2 { margin-right: auto; }
+.exwho { flex-direction: row; align-items: center; gap: 6px; }
+.exwho select { min-width: 140px; }
+.exbody { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
+.exbody h3 { margin: 8px 0 0; font-size: 15px; }
+.chip.weak { border-color: var(--warn); box-shadow: inset 0 0 0 1px var(--warn); }
+.exhead { display: flex; align-items: baseline; gap: 12px; }
+.exhead b { font-size: 16px; margin-right: auto; }
+.exprog, .extime { font-size: 14px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.extime.low { color: var(--danger); font-weight: 700; }
+.exbar { display: flex; gap: 3px; }
+.exbar i { flex: 1; height: 7px; border-radius: 4px; background: var(--line); cursor: pointer; }
+.exbar i.cur { background: var(--accent); }
+.exbar i.ok { background: var(--ok); }
+.exbar i.no { background: var(--danger); }
+.exbar i.did { background: var(--chrome); opacity: .55; }
+.exch { font-size: 13px; color: var(--muted); }
+.exch span { margin-left: 6px; padding: 1px 8px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+.exq { font-size: 19px; line-height: 1.6; }
+.exq p { margin: 0 0 6px; }
+.exopts { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 8px; }
+.exopt { display: flex; align-items: center; gap: 12px; min-height: 56px; padding: 8px 14px; text-align: left; font-size: 17px; border-radius: 14px; border: 1.5px solid var(--line); background: var(--surface); color: var(--fg); cursor: pointer; }
+.exopt b { flex: 0 0 30px; height: 30px; border-radius: 999px; display: grid; place-items: center; background: var(--bg); font-size: 15px; }
+.exopt span p { margin: 0; }
+.exopt.pick { border-color: var(--accent); background: var(--accent-soft); }
+.exopt.right { border-color: var(--ok); background: var(--ok-soft); }
+.exopt.wrong { border-color: var(--danger); background: var(--danger-soft); }
+.exscore { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; }
+.exscore b { font-size: 46px; line-height: 1; }
+.exscore small { font-size: 22px; color: var(--muted); }
+.exscore span { color: var(--muted); }
+.exper { display: flex; flex-direction: column; gap: 6px; }
+.exper > div { display: grid; grid-template-columns: minmax(0, 1.6fr) 1fr 56px; align-items: center; gap: 10px; font-size: 14px; cursor: default; }
+.exper > div[title] { cursor: pointer; }
+.exper small { color: var(--muted); }
+.exper em { font-style: normal; font-size: 12px; font-weight: 700; color: var(--warn); margin-left: 4px; }
+.exper em.good { color: var(--ok); }
+.exper i { height: 10px; border-radius: 6px; background: var(--line); overflow: hidden; }
+.exper s { display: block; height: 100%; background: var(--accent); }
+.exper b { text-align: right; font-variant-numeric: tabular-nums; }
+.exsum { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; }
+.exsum > div { padding: 10px 12px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); display: flex; flex-direction: column; gap: 2px; }
+.exsum b { font-size: 26px; }
+.exsum span { font-size: 12px; color: var(--muted); }
+.exspark { width: 100%; height: 48px; }
+.exspark polyline { fill: none; stroke: var(--accent); stroke-width: 2; }
+.exspark circle { fill: var(--accent); }
+.exspark line.g { stroke: var(--line); stroke-dasharray: 4 3; }
+.exhist > div { display: grid; grid-template-columns: 150px 1fr 52px; gap: 8px; font-size: 13px; padding: 5px 0; border-bottom: 1px solid var(--line); }
+.exhist b { text-align: right; }
+.exrev { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); }
+.exrev .exq { font-size: 16px; }
+.exrev .btn { align-self: flex-start; }
+.expick { flex-direction: row; align-items: flex-start; cursor: pointer; }
+.expick input { width: 22px; height: 22px; margin-top: 4px; flex: 0 0 auto; }
+.exform textarea, .exform input, .exform select { font: inherit; }
 .qsteps { margin: 0; padding-left: 22px; display: flex; flex-direction: column; gap: 6px; font-size: 15px; line-height: 1.5; }
 .qsteps a { color: var(--accent); font-weight: 600; }
 .mrow input { flex: 1; min-width: 0; }
@@ -455,6 +512,7 @@ body.present .updbar { display: none !important; }
     <button class="btn" id="bConvert" aria-label="แปลงเป็นตัวพิมพ์" title="แปลงเป็นตัวพิมพ์"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 15.5c2-3 3-7 4.5-7s.5 5 2 5 2-6 3.5-6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M12 4h6 M15 4v7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span class="lbl">แปลงเป็นตัวพิมพ์</span></button>
     <button class="btn" id="bInsert" aria-label="แทรก" title="แทรก"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="2.5" y="3.5" width="15" height="13" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M3 14l4.5-4.5 3.5 3.5 2-2 4 4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><circle cx="13.5" cy="7.5" r="1.5" fill="currentColor"/></svg><span class="lbl">แทรก</span></button>
     <button class="btn solid" id="bAI" aria-pressed="false" aria-label="สร้างโจทย์" title="สร้างโจทย์"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 2.5l1.8 4.6 4.7 1.9-4.7 1.9L10 15.5l-1.8-4.6L3.5 9l4.7-1.9z" fill="currentColor"/></svg><span class="lbl">สร้างโจทย์</span></button>
+    <button class="btn" id="bExam" aria-label="ฝึกโจทย์แข่งขัน" title="ฝึกโจทย์แข่งขัน"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6 3.5h8v3.5a4 4 0 0 1-8 0z M6 5H3.5v1a3 3 0 0 0 3 3 M14 5h2.5v1a3 3 0 0 1-3 3 M10 11v3 M7 16.5h6 M8 14h4v2.5H8z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/></svg><span class="lbl">ฝึกแข่งขัน</span></button>
     <button class="btn" id="bExport" aria-label="ส่งออก PDF" title="ส่งออก PDF"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3v9 M6.5 8.5L10 12l3.5-3.5 M4 14.5V17h12v-2.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="lbl">ส่งออก</span></button>
     <button class="btn icon" id="bFull" aria-label="เต็มหน้าจอ" title="เต็มหน้าจอ"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 7.5V3h4.5 M12.5 3H17v4.5 M17 12.5V17h-4.5 M7.5 17H3v-4.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
   </div>
@@ -749,6 +807,14 @@ body.present .updbar { display: none !important; }
       <div id="mMine"></div>
     </div>
     <div class="note small">สื่อจาก Wikimedia Commons ใช้สอนได้ฟรี แอปจะใส่ชื่อผู้สร้างและสัญญาอนุญาตไว้ใต้สื่อให้เอง แตะรูปดาวเพื่อเก็บสื่อเข้าคลังของฉัน ใช้ได้ทุกเครื่อง</div>
+  </div>
+</div>
+
+<div class="sheet" id="examSheet" hidden>
+  <div class="panel wide" role="dialog" aria-label="ฝึกโจทย์แข่งขัน">
+    <div class="exttl"><h2>ฝึกโจทย์แข่งขัน</h2><label class="field exwho"><span>ผู้ฝึก</span><select id="exWho"></select></label><span id="exAdd" hidden class="mrow"><input id="exNew" placeholder="ชื่อผู้ฝึก" maxlength="40"><button class="btn" id="exAddOk" type="button">เพิ่ม</button></span><button class="btn" id="exClose">ปิด</button></div>
+    <div class="seg" id="exTabs" role="group" aria-label="ส่วนของการฝึก"><button data-t="practice">ฝึกและสอบ</button><button data-t="stats">ผลและจุดอ่อน</button><button data-t="bank">คลังโจทย์</button></div>
+    <div id="exBody" class="exbody"></div>
   </div>
 </div>
 
@@ -4921,8 +4987,443 @@ async function renderSaved() {
   for (const [t, ms] of Object.entries(groups)) { const h = document.createElement('h3'); h.textContent = t + ' (' + ms.length + ')'; box.appendChild(h); box.appendChild(mediaGrid(ms)); }
 }
 
+/* ---------- competition prep: built-in question bank (written for Burin, first choice is the key; choices are shuffled when shown) ---------- */
+const EXAM_BANK = {
+  olymp: [
+    [0, 1, 'คาบของลูกตุ้มอย่างง่ายขึ้นกับมวล $m$ ความยาว $L$ และ $g$ จากการวิเคราะห์มิติ คาบแปรผันตามข้อใด', ['$\\sqrt{L/g}$', '$\\sqrt{g/L}$', '$\\sqrt{mL/g}$', '$L/g$'], 'มิติของ $T$ คือเวลา มีเพียง $\\sqrt{L/g}$ ที่ได้มิติเวลา มวลไม่มีปริมาณอื่นมาหักล้างหน่วย kg จึงไม่ปรากฏ'],
+    [0, 1, 'เมื่อ $|x| \\ll 1$ ค่าประมาณอันดับหนึ่งของ $\\sqrt{1+x}$ คือข้อใด', ['$1+\\tfrac{x}{2}$', '$1+x$', '$1-\\tfrac{x}{2}$', '$1+\\tfrac{x^2}{2}$'], 'จากอนุกรมทวินาม $(1+x)^n \\approx 1+nx$ เมื่อ $n=\\tfrac12$'],
+    [0, 2, 'หัวใจเต้นประมาณ 70 ครั้งต่อนาที ตลอดอายุ 70 ปี จำนวนครั้งที่หัวใจเต้นมีอันดับขนาดใกล้เคียงข้อใด', ['$10^{9}$', '$10^{7}$', '$10^{8}$', '$10^{11}$'], '$70 \\times 60 \\times 24 \\times 365 \\times 70 \\approx 2.6\\times10^{9}$ ครั้ง'],
+    [1, 1, 'ขว้างลูกบอลในแนวระดับด้วยอัตราเร็ว 10 m/s จากที่สูง 20 m ($g=10$ m/s²) ลูกบอลตกห่างจากจุดใต้ตำแหน่งขว้างเท่าใด', ['20 m', '10 m', '28 m', '40 m'], 'เวลาตก $t=\\sqrt{2h/g}=2$ s ระยะในแนวระดับ $=10\\times2=20$ m'],
+    [1, 1, 'วัตถุเริ่มจากหยุดนิ่งด้วยความเร่งคงที่ ในวินาทีแรกเคลื่อนที่ได้ $d$ ในวินาทีที่สามจะเคลื่อนที่ได้เท่าใด', ['$5d$', '$3d$', '$9d$', '$4d$'], 'ระยะในแต่ละวินาทีเป็นสัดส่วน 1 : 3 : 5 : ... จึงได้ $5d$'],
+    [1, 2, 'แม่น้ำกว้าง 100 m กระแสน้ำ 3 m/s เรือแล่นได้ 5 m/s เทียบกับน้ำ ถ้าต้องการข้ามไปตรงจุดตรงข้ามพอดี ใช้เวลาเท่าใด', ['25 s', '20 s', '33 s', '12.5 s'], 'ต้องหันหัวเรือทวนน้ำให้องค์ประกอบทวนน้ำเท่ากับ 3 m/s ความเร็วข้ามฝั่งจึงเป็น $\\sqrt{5^2-3^2}=4$ m/s เวลา $100/4=25$ s'],
+    [2, 1, 'เครื่องแอตวูดมีมวล 3 kg และ 1 kg คล้องรอกเบาไม่มีความฝืด ($g=10$ m/s²) ความเร่งของระบบเท่าใด', ['5 m/s²', '2.5 m/s²', '7.5 m/s²', '10 m/s²'], '$a=\\dfrac{(m_1-m_2)g}{m_1+m_2}=\\dfrac{2\\times10}{4}=5$ m/s²'],
+    [2, 1, 'คนมวล 50 kg ยืนบนตาชั่งในลิฟต์ที่กำลังเร่งขึ้น 2 m/s² ($g=10$ m/s²) ตาชั่งอ่านค่าแรงได้เท่าใด', ['600 N', '500 N', '400 N', '1000 N'], '$N-mg=ma$ ได้ $N=m(g+a)=50\\times12=600$ N'],
+    [2, 2, 'รถเลี้ยวบนถนนราบรัศมี 50 m สัมประสิทธิ์ความเสียดทานสถิต 0.5 ($g=10$ m/s²) อัตราเร็วสูงสุดที่ไม่ไถลคือเท่าใด', ['15.8 m/s', '11.2 m/s', '25 m/s', '5 m/s'], 'แรงเสียดทานให้แรงสู่ศูนย์กลาง $\\mu mg = mv^2/r$ ได้ $v=\\sqrt{\\mu g r}=\\sqrt{250}\\approx15.8$ m/s'],
+    [3, 1, 'สปริง $k=200$ N/m ถูกอัด 0.1 m แล้วปล่อยดันวัตถุ 0.5 kg บนพื้นลื่น วัตถุหลุดออกด้วยอัตราเร็วเท่าใด', ['2 m/s', '1 m/s', '4 m/s', '20 m/s'], '$\\tfrac12 kx^2=\\tfrac12 mv^2$ ได้ $v=x\\sqrt{k/m}=0.1\\times20=2$ m/s'],
+    [3, 2, 'มวล 2 kg เคลื่อนที่ 6 m/s ชนและติดไปกับมวล 1 kg ที่หยุดนิ่ง พลังงานจลน์หายไปกี่ส่วนของพลังงานจลน์เดิม', ['1/3', '1/2', '2/3', '1/4'], 'ความเร็วหลังชน $=12/3=4$ m/s พลังงานจลน์ก่อน 36 J หลัง 24 J หายไป 12 J หรือ 1/3'],
+    [3, 2, 'ปล่อยลูกบอลจากความสูง $h$ ชนพื้นด้วยสัมประสิทธิ์การกระดอน $e$ ลูกบอลกระดอนขึ้นได้สูงสุดเท่าใด', ['$e^2 h$', '$e h$', '$\\sqrt{e}\\,h$', '$h/e$'], 'อัตราเร็วหลังกระดอนเป็น $e$ เท่า ความสูงแปรผันตามกำลังสองของอัตราเร็ว จึงได้ $e^2h$'],
+    [4, 1, 'ทรงกลมตัน ทรงกระบอกตัน และวงแหวน ปล่อยจากหยุดนิ่งให้กลิ้งไม่ไถลลงพื้นเอียงเดียวกัน ข้อใดถึงพื้นก่อน', ['ทรงกลมตัน', 'ทรงกระบอกตัน', 'วงแหวน', 'ถึงพร้อมกัน'], '$a=\\dfrac{g\\sin\\theta}{1+I/mr^2}$ ทรงกลมตันมี $I/mr^2=2/5$ น้อยที่สุด จึงเร่งมากที่สุด'],
+    [4, 1, 'โมเมนต์ความเฉื่อยของแท่งบางสม่ำเสมอมวล $M$ ยาว $L$ รอบแกนที่ผ่านปลายข้างหนึ่งและตั้งฉากกับแท่งคือข้อใด', ['$ML^2/3$', '$ML^2/12$', '$ML^2/2$', '$ML^2$'], 'รอบจุดกึ่งกลางเป็น $ML^2/12$ ใช้ทฤษฎีแกนขนาน $ML^2/12+M(L/2)^2=ML^2/3$'],
+    [4, 2, 'นักสเก็ตหมุนตัวแล้วหุบแขนจนโมเมนต์ความเฉื่อยลดเหลือครึ่งหนึ่ง พลังงานจลน์การหมุนเปลี่ยนเป็นกี่เท่า', ['2 เท่า', 'เท่าเดิม', '4 เท่า', 'ครึ่งหนึ่ง'], 'โมเมนตัมเชิงมุมคงตัว $\\omega$ เพิ่ม 2 เท่า $K=L^2/2I$ จึงเพิ่ม 2 เท่า งานมาจากกล้ามเนื้อที่ดึงแขนเข้า'],
+    [4, 3, 'ทรงกระบอกตันกลิ้งไม่ไถล พลังงานจลน์การหมุนคิดเป็นสัดส่วนเท่าใดของพลังงานจลน์ทั้งหมด', ['1/3', '1/2', '2/3', '1/4'], 'การเลื่อนที่ $\\tfrac12mv^2$ การหมุน $\\tfrac12(\\tfrac12mr^2)(v/r)^2=\\tfrac14mv^2$ สัดส่วน $\\tfrac{1/4}{3/4}=\\tfrac13$'],
+    [5, 1, 'คานสม่ำเสมอยาว 4 m มวล 20 kg วางบนจุดรองรับที่ปลายทั้งสอง คนมวล 40 kg ยืนห่างปลายซ้าย 1 m ($g=10$ m/s²) แรงที่จุดรองรับซ้ายเท่าใด', ['400 N', '200 N', '300 N', '600 N'], 'โมเมนต์รอบปลายซ้าย $R\\times4=200\\times2+400\\times1$ ได้ $R_{ขวา}=200$ N แรงซ้าย $=600-200=400$ N'],
+    [5, 1, 'ก้อนวัตถุบนพื้นเอียงเริ่มไถลพอดีเมื่อมุมเอียงเป็น $\\theta$ สัมประสิทธิ์ความเสียดทานสถิตเท่ากับข้อใด', ['$\\tan\\theta$', '$\\sin\\theta$', '$\\cos\\theta$', '$\\cot\\theta$'], '$mg\\sin\\theta=\\mu_s mg\\cos\\theta$ ได้ $\\mu_s=\\tan\\theta$'],
+    [5, 2, 'วัตถุแข็งเกร็งสมดุลภายใต้แรงสามแรงที่ไม่ขนานกัน ข้อใดต้องเป็นจริง', ['แนวแรงทั้งสามตัดกันที่จุดเดียว', 'แรงทั้งสามต้องมีขนาดเท่ากัน', 'แรงทั้งสามต้องตั้งฉากกันเป็นคู่', 'แรงหนึ่งต้องเป็นน้ำหนัก'], 'ถ้าแนวแรงสองแรงตัดกันที่จุดหนึ่ง แรงที่สามต้องผ่านจุดนั้นด้วย มิฉะนั้นจะมีโมเมนต์รอบจุดนั้นไม่เป็นศูนย์'],
+    [6, 1, 'ดาวเคราะห์โคจรรอบดวงอาทิตย์ด้วยรัศมีวงโคจร 4 AU คาบการโคจรเป็นกี่ปี', ['8 ปี', '4 ปี', '2 ปี', '16 ปี'], 'กฎข้อที่สามของเคปเลอร์ $T^2\\propto a^3$ ได้ $T=4^{3/2}=8$ ปี'],
+    [6, 1, 'ที่รัศมีเดียวกัน อัตราเร็วหลุดพ้นเป็นกี่เท่าของอัตราเร็ววงโคจรวงกลม', ['$\\sqrt2$ เท่า', '2 เท่า', '$\\sqrt3$ เท่า', 'เท่ากัน'], '$v_{esc}=\\sqrt{2GM/r}$ และ $v_{orb}=\\sqrt{GM/r}$'],
+    [6, 2, 'ดาวเทียมโคจรเป็นวงกลม มีพลังงานรวม $E$ (ค่าลบ) พลังงานจลน์เท่ากับข้อใด', ['$-E$', '$E$', '$-2E$', '$2E$'], 'สำหรับวงโคจรวงกลม $K=GMm/2r$ และ $E=-GMm/2r$ จึงได้ $K=-E$'],
+    [6, 3, 'ถ้ามวลของโลกเพิ่มเป็น 2 เท่า ดาวเทียมค้างฟ้าที่ยังมีคาบ 1 วันต้องอยู่ที่รัศมีวงโคจรกี่เท่าของเดิม', ['$2^{1/3}$', '$2$', '$\\sqrt2$', '$1/2$'], '$T^2=4\\pi^2r^3/GM$ คาบคงที่ $r^3\\propto M$ ได้ $r\\propto2^{1/3}$'],
+    [7, 1, 'ที่ความลึก 10 m ใต้ผิวน้ำ ($\\rho=1000$ kg/m³, $g=10$ m/s²) ความดันเกจเท่าใด', ['$1.0\\times10^{5}$ Pa', '$1.0\\times10^{4}$ Pa', '$2.0\\times10^{5}$ Pa', '$1.0\\times10^{6}$ Pa'], '$P=\\rho g h=1000\\times10\\times10=10^5$ Pa'],
+    [7, 1, 'ก้อนน้ำแข็งลอยในแก้วน้ำ เมื่อน้ำแข็งละลายหมด ระดับน้ำในแก้วเป็นอย่างไร', ['เท่าเดิม', 'สูงขึ้น', 'ลดลง', 'ขึ้นกับขนาดก้อนน้ำแข็ง'], 'น้ำแข็งที่ลอยแทนที่น้ำเท่ากับมวลของตัวเอง เมื่อละลายกลายเป็นน้ำปริมาตรเท่ากับส่วนที่แทนที่พอดี'],
+    [7, 2, 'น้ำไหลในท่อจากส่วนพื้นที่หน้าตัด $A$ ด้วยอัตราเร็ว 2 m/s เข้าสู่ส่วนที่มีพื้นที่ $A/2$ อัตราเร็วและความดันในส่วนแคบเป็นอย่างไร', ['4 m/s ความดันต่ำลง', '4 m/s ความดันสูงขึ้น', '1 m/s ความดันต่ำลง', '2 m/s ความดันเท่าเดิม'], 'สมการความต่อเนื่อง $A_1v_1=A_2v_2$ ได้ 4 m/s และจากหลักของแบร์นูลลี ความดันลดลงเมื่ออัตราเร็วเพิ่ม'],
+    [7, 2, 'ถังน้ำเปิดมีรูเล็กอยู่ต่ำกว่าผิวน้ำ 5 m ($g=10$ m/s²) น้ำพุ่งออกจากรูด้วยอัตราเร็วเท่าใด', ['10 m/s', '5 m/s', '7.1 m/s', '50 m/s'], 'ทฤษฎีของทอร์ริเชลลี $v=\\sqrt{2gh}=\\sqrt{100}=10$ m/s'],
+    [8, 1, 'มวลติดสปริงสั่นด้วยคาบ $T$ ถ้าเปลี่ยนมวลเป็น 4 เท่า คาบใหม่เป็นเท่าใด', ['$2T$', '$4T$', '$T/2$', '$T$'], '$T=2\\pi\\sqrt{m/k}$ คาบแปรผันตาม $\\sqrt m$'],
+    [8, 1, 'เชือกยาว $L$ ตรึงปลายทั้งสองข้าง ความยาวคลื่นของฮาร์มอนิกที่หนึ่งคือข้อใด', ['$2L$', '$L$', '$L/2$', '$4L$'], 'ฮาร์มอนิกที่หนึ่งมีบัพที่ปลายทั้งสอง และมีครึ่งความยาวคลื่นพอดีในเชือก'],
+    [8, 2, 'ถ้าเพิ่มแรงตึงในเส้นเชือกเป็น 4 เท่า อัตราเร็วคลื่นในเชือกเปลี่ยนเป็นกี่เท่า', ['2 เท่า', '4 เท่า', '16 เท่า', 'เท่าเดิม'], '$v=\\sqrt{T/\\mu}$'],
+    [8, 3, 'แหล่งกำเนิดเสียงความถี่ $f_0$ เคลื่อนเข้าหาผู้ฟังที่หยุดนิ่งด้วยอัตราเร็ว 1/10 ของอัตราเร็วเสียง ผู้ฟังได้ยินความถี่ประมาณเท่าใด', ['$1.11 f_0$', '$1.10 f_0$', '$0.91 f_0$', '$1.21 f_0$'], '$f=f_0\\dfrac{v}{v-v_s}=\\dfrac{f_0}{0.9}\\approx1.11f_0$'],
+    [9, 1, 'ประจุสองตัวห่างกัน $r$ ออกแรงต่อกัน $F$ ถ้าเพิ่มประจุแต่ละตัวเป็น 2 เท่าและเพิ่มระยะห่างเป็น 2 เท่า แรงใหม่เป็นเท่าใด', ['$F$', '$2F$', '$4F$', '$F/2$'], '$F\\propto q_1q_2/r^2$ ตัวเศษเพิ่ม 4 เท่า ตัวส่วนเพิ่ม 4 เท่า'],
+    [9, 1, 'ทรงกลมตัวนำได้รับประจุและอยู่ในสภาวะสมดุล สนามไฟฟ้าภายในเนื้อตัวนำเป็นอย่างไร', ['เป็นศูนย์', 'มีค่าสูงสุดที่จุดศูนย์กลาง', 'แปรผันตามระยะจากจุดศูนย์กลาง', 'เท่ากับที่ผิว'], 'ในตัวนำที่สมดุล ถ้ามีสนามภายใน อิเล็กตรอนอิสระจะเคลื่อนที่ จนสนามลัพธ์ภายในเป็นศูนย์'],
+    [9, 2, 'ตัวเก็บประจุแผ่นขนานถูกตัดออกจากแบตเตอรี่ (ประจุคงที่) แล้วลดระยะระหว่างแผ่นลงครึ่งหนึ่ง ความต่างศักย์ระหว่างแผ่นเป็นอย่างไร', ['ลดเหลือครึ่งหนึ่ง', 'เพิ่มเป็น 2 เท่า', 'เท่าเดิม', 'ลดเหลือหนึ่งในสี่'], '$C=\\varepsilon_0A/d$ เพิ่ม 2 เท่า ประจุคงที่ $V=Q/C$ จึงลดครึ่งหนึ่ง'],
+    [9, 2, 'ตัวเก็บประจุ 10 μF มีความต่างศักย์ 100 V สะสมพลังงานไว้เท่าใด', ['0.05 J', '0.1 J', '0.5 mJ', '1 mJ'], '$U=\\tfrac12CV^2=\\tfrac12(10^{-5})(10^4)=0.05$ J'],
+    [10, 1, 'ตัวต้านทาน 6 Ω สามตัวต่อขนานกัน ความต้านทานรวมเท่าใด', ['2 Ω', '18 Ω', '3 Ω', '6 Ω'], '$1/R=3/6$ ได้ $R=2$ Ω'],
+    [10, 1, 'แบตเตอรี่ อีเอ็มเอฟ 12 V ความต้านทานภายใน 1 Ω ต่อกับตัวต้านทาน 5 Ω ความต่างศักย์ที่ขั้วแบตเตอรี่เท่าใด', ['10 V', '12 V', '2 V', '11 V'], 'กระแส $I=12/6=2$ A ความต่างศักย์ที่ขั้ว $=12-2\\times1=10$ V'],
+    [10, 2, 'แหล่งจ่ายมีความต้านทานภายใน $r$ กำลังที่ส่งให้ตัวต้านทานภายนอก $R$ มีค่ามากที่สุดเมื่อใด', ['$R=r$', '$R=0$', '$R=2r$', '$R$ มีค่ามากที่สุด'], '$P=\\dfrac{\\mathcal E^2R}{(R+r)^2}$ หาอนุพันธ์เทียบ $R$ แล้วเป็นศูนย์เมื่อ $R=r$'],
+    [10, 3, 'อัดประจุตัวเก็บประจุผ่านตัวต้านทาน เมื่อเวลาผ่านไปเท่ากับค่าคงตัวเวลา $RC$ ความต่างศักย์ของตัวเก็บประจุเป็นประมาณกี่เปอร์เซ็นต์ของค่าสุดท้าย', ['63%', '37%', '50%', '100%'], '$V=V_0(1-e^{-t/RC})$ ที่ $t=RC$ ได้ $1-e^{-1}\\approx0.63$'],
+    [11, 1, 'อนุภาคมีประจุเคลื่อนที่ตั้งฉากกับสนามแม่เหล็กสม่ำเสมอ ถ้าอัตราเร็วเพิ่มเป็น 2 เท่า รัศมีวงโคจรเป็นอย่างไร', ['เพิ่มเป็น 2 เท่า', 'เท่าเดิม', 'ลดเหลือครึ่งหนึ่ง', 'เพิ่มเป็น 4 เท่า'], '$qvB=mv^2/r$ ได้ $r=mv/qB$'],
+    [11, 1, 'แท่งตัวนำยาว 0.5 m เคลื่อนที่ 4 m/s ตั้งฉากกับสนามแม่เหล็ก 0.2 T อีเอ็มเอฟเหนี่ยวนำเท่าใด', ['0.4 V', '0.1 V', '1.6 V', '4 V'], '$\\mathcal E=BLv=0.2\\times0.5\\times4=0.4$ V'],
+    [11, 2, 'สนามแม่เหล็กรอบลวดตรงยาวที่มีกระแส ที่ระยะ $r$ มีค่า $B$ ที่ระยะ $3r$ มีค่าเท่าใด', ['$B/3$', '$B/9$', '$3B$', '$B$'], '$B=\\mu_0I/2\\pi r$ แปรผกผันกับ $r$'],
+    [11, 2, 'ปล่อยแม่เหล็กแรงสูงให้ตกในท่อทองแดงแนวดิ่ง แม่เหล็กตกอย่างไรเมื่อเทียบกับตกอย่างอิสระ', ['ช้ากว่า เพราะกระแสวนในท่อสร้างสนามต้าน', 'เร็วกว่า เพราะทองแดงดูดแม่เหล็ก', 'เท่ากัน เพราะทองแดงไม่ใช่สารแม่เหล็ก', 'หยุดค้างกลางท่อ'], 'ฟลักซ์ที่เปลี่ยนเหนี่ยวนำกระแสวนในท่อ ตามกฎของเลนซ์กระแสนี้สร้างแรงต้านการเคลื่อนที่ แต่ไม่ทำให้หยุดนิ่ง'],
+    [12, 1, 'แสงเดินทางจากน้ำ ($n=1.33$) สู่อากาศ มุมวิกฤตประมาณเท่าใด', ['48.8°', '41.8°', '36.9°', '60°'], '$\\sin\\theta_c=1/1.33\\approx0.752$ ได้ $\\theta_c\\approx48.8°$'],
+    [12, 1, 'ในการทดลองสลิตคู่ ถ้าลดระยะห่างระหว่างสลิตลงครึ่งหนึ่ง ระยะห่างระหว่างแถบสว่างเป็นอย่างไร', ['เพิ่มเป็น 2 เท่า', 'ลดเหลือครึ่งหนึ่ง', 'เท่าเดิม', 'เพิ่มเป็น 4 เท่า'], '$\\Delta y=\\lambda L/d$'],
+    [12, 2, 'วางวัตถุห่างเลนส์นูนความยาวโฟกัส 10 cm เป็นระยะ 15 cm ภาพเกิดที่ใด', ['หลังเลนส์ 30 cm ภาพจริงหัวกลับ', 'หลังเลนส์ 6 cm ภาพจริงหัวกลับ', 'หน้าเลนส์ 30 cm ภาพเสมือนหัวตั้ง', 'ที่ระยะอนันต์'], '$1/s\'=1/10-1/15=1/30$ ได้ $s\'=30$ cm กำลังขยาย $-2$'],
+    [12, 3, 'แสงไม่โพลาไรซ์ความเข้ม $I_0$ ผ่านแผ่นโพลารอยด์สองแผ่นที่แกนทำมุมกัน 60° ความเข้มที่ออกมาเท่าใด', ['$I_0/8$', '$I_0/4$', '$I_0/2$', '$3I_0/8$'], 'แผ่นแรกเหลือ $I_0/2$ แผ่นที่สองตามกฎของมาลุส คูณ $\\cos^2 60°=1/4$'],
+    [13, 1, 'แก๊สอุดมคติขยายตัวแบบอุณหภูมิคงที่จนปริมาตรเป็น 2 เท่า ความดันเป็นอย่างไร', ['ลดเหลือครึ่งหนึ่ง', 'เท่าเดิม', 'เพิ่มเป็น 2 เท่า', 'ลดเหลือหนึ่งในสี่'], '$PV=nRT$ เมื่อ $T$ คงที่ $P\\propto1/V$'],
+    [13, 1, 'เครื่องยนต์คาร์โนต์ทำงานระหว่าง 600 K และ 300 K มีประสิทธิภาพเท่าใด', ['50%', '100%', '25%', '67%'], '$\\eta=1-T_C/T_H=1-300/600$'],
+    [13, 2, 'แก๊สอุดมคติขยายตัวอย่างอิสระเข้าสู่สุญญากาศในภาชนะที่หุ้มฉนวน อุณหภูมิของแก๊สเป็นอย่างไร', ['เท่าเดิม', 'ลดลง', 'เพิ่มขึ้น', 'ขึ้นกับปริมาตรสุดท้าย'], 'ไม่มีความร้อนเข้าออก ($Q=0$) และไม่มีงานเพราะขยายเข้าสุญญากาศ ($W=0$) พลังงานภายในคงที่ แก๊สอุดมคติมีพลังงานภายในขึ้นกับอุณหภูมิเท่านั้น'],
+    [13, 3, 'ให้ความร้อนแก่แก๊สอุดมคติอะตอมเดี่ยว 1 โมลที่ความดันคงที่ จนอุณหภูมิเพิ่ม $\\Delta T$ ต้องใช้ความร้อนเท่าใด', ['$\\tfrac52R\\Delta T$', '$\\tfrac32R\\Delta T$', '$\\tfrac72R\\Delta T$', '$R\\Delta T$'], '$Q=\\Delta U+W=\\tfrac32R\\Delta T+R\\Delta T=\\tfrac52R\\Delta T$'],
+    [14, 1, 'ถ้าอุณหภูมิสัมบูรณ์ของแก๊สเพิ่มเป็น 4 เท่า อัตราเร็วรากที่สองของกำลังสองเฉลี่ยเปลี่ยนเป็นกี่เท่า', ['2 เท่า', '4 เท่า', '16 เท่า', '$\\sqrt2$ เท่า'], '$v_{rms}=\\sqrt{3kT/m}$'],
+    [14, 1, 'พลังงานจลน์เฉลี่ยต่อโมเลกุลของแก๊สอุดมคติอะตอมเดี่ยวที่อุณหภูมิ $T$ คือข้อใด', ['$\\tfrac32kT$', '$\\tfrac12kT$', '$kT$', '$\\tfrac52kT$'], 'หลักการแบ่งเท่าพลังงาน $\\tfrac12kT$ ต่อองศาอิสระ อะตอมเดี่ยวมี 3 องศาอิสระของการเลื่อนที่'],
+    [14, 2, 'ระบบที่สมดุลความร้อนที่อุณหภูมิ $T$ อัตราส่วนจำนวนอนุภาคในระดับพลังงานบนต่อระดับล่างที่ห่างกัน $\\Delta E$ (ระดับไม่ซ้อนสถานะ) คือข้อใด', ['$e^{-\\Delta E/kT}$', '$e^{\\Delta E/kT}$', '$\\Delta E/kT$', '$1-\\Delta E/kT$'], 'การแจกแจงของโบลต์ซมันน์ $N\\propto e^{-E/kT}$'],
+    [14, 3, 'ที่อุณหภูมิเดียวกัน $v_{rms}$ ของ H₂ เป็นกี่เท่าของ O₂', ['4 เท่า', '16 เท่า', '2 เท่า', '8 เท่า'], '$v_{rms}\\propto1/\\sqrt m$ มวลโมเลกุล 32 ต่อ 2 ได้ $\\sqrt{16}=4$'],
+    [15, 1, 'นาฬิกาเคลื่อนที่ด้วยอัตราเร็ว $0.6c$ เทียบกับผู้สังเกต ช่วงเวลา 10 s ตามนาฬิกานั้น ผู้สังเกตวัดได้เท่าใด', ['12.5 s', '8 s', '10 s', '16.7 s'], '$\\gamma=1/\\sqrt{1-0.36}=1.25$ ช่วงเวลาที่วัดได้ $=1.25\\times10$'],
+    [15, 1, 'ไม้บรรทัดยาวขณะหยุดนิ่ง $L_0$ เคลื่อนที่ด้วย $0.8c$ ตามแนวยาว ผู้สังเกตวัดความยาวได้เท่าใด', ['$0.6L_0$', '$0.8L_0$', '$L_0$', '$1.67L_0$'], '$L=L_0\\sqrt{1-0.64}=0.6L_0$'],
+    [15, 2, 'มวล 1 g มีพลังงานนิ่งเท่าใด', ['$9\\times10^{13}$ J', '$9\\times10^{16}$ J', '$3\\times10^{5}$ J', '$9\\times10^{10}$ J'], '$E=mc^2=10^{-3}\\times(3\\times10^8)^2$'],
+    [15, 3, 'ยาน A เคลื่อนที่ $0.5c$ เทียบกับพื้นโลก ยิงยาน B ไปข้างหน้าด้วย $0.5c$ เทียบกับ A ผู้สังเกตบนโลกวัดอัตราเร็ว B ได้เท่าใด', ['$0.8c$', '$c$', '$0.75c$', '$0.5c$'], '$u=\\dfrac{0.5c+0.5c}{1+0.25}=0.8c$'],
+    [16, 1, 'ในปรากฏการณ์โฟโตอิเล็กทริก ถ้าเพิ่มความเข้มแสงโดยความถี่คงเดิม ข้อใดถูก', ['จำนวนโฟโตอิเล็กตรอนเพิ่ม พลังงานจลน์สูงสุดเท่าเดิม', 'พลังงานจลน์สูงสุดเพิ่ม', 'ความถี่ขีดเริ่มลดลง', 'ไม่มีอะไรเปลี่ยน'], 'พลังงานโฟตอนแต่ละตัว $hf$ คงเดิม ความเข้มเพิ่มคือจำนวนโฟตอนเพิ่ม'],
+    [16, 1, 'โฟตอนความยาวคลื่น 620 nm มีพลังงานประมาณเท่าใด ($hc\\approx1240$ eV nm)', ['2.0 eV', '0.5 eV', '3.1 eV', '1.0 eV'], '$E=1240/620=2.0$ eV'],
+    [16, 2, 'ถ้าโมเมนตัมของอนุภาคเพิ่มเป็น 2 เท่า ความยาวคลื่นเดอบรอยล์เป็นอย่างไร', ['ลดเหลือครึ่งหนึ่ง', 'เพิ่มเป็น 2 เท่า', 'เท่าเดิม', 'ลดเหลือหนึ่งในสี่'], '$\\lambda=h/p$'],
+    [16, 3, 'อะตอมไฮโดรเจนเปลี่ยนจาก $n=2$ ไป $n=1$ ปล่อยโฟตอนพลังงานเท่าใด', ['10.2 eV', '13.6 eV', '3.4 eV', '12.1 eV'], '$E_n=-13.6/n^2$ eV ผลต่าง $=13.6(1-\\tfrac14)=10.2$ eV'],
+    [17, 1, 'หาค่า $g$ จากลูกตุ้มอย่างง่าย ควรพล็อตกราฟแบบใดจึงได้เส้นตรง และหา $g$ อย่างไร', ['$T^2$ กับ $L$ แล้ว $g=4\\pi^2/\\text{ความชัน}$', '$T$ กับ $L$ แล้ว $g=\\text{ความชัน}$', '$T$ กับ $L^2$ แล้ว $g=2\\pi/\\text{ความชัน}$', '$T^2$ กับ $L$ แล้ว $g=\\text{ความชัน}$'], '$T^2=\\dfrac{4\\pi^2}{g}L$ เป็นเส้นตรงผ่านจุดกำเนิด ความชัน $4\\pi^2/g$'],
+    [17, 2, '$A=x^2y$ โดย $x$ มีความไม่แน่นอนสัมพัทธ์ 2% และ $y$ มี 1% (เป็นอิสระต่อกัน) ความไม่แน่นอนสัมพัทธ์ของ $A$ แบบรวมกำลังสองประมาณเท่าใด', ['4.1%', '5%', '3%', '2.2%'], '$\\sqrt{(2\\times2\\%)^2+(1\\%)^2}=\\sqrt{17}\\%\\approx4.1\\%$'],
+    [17, 1, 'ผลคูณ $2.50\\times3.1$ ควรรายงานด้วยเลขนัยสำคัญตามข้อใด', ['7.8', '7.75', '8', '7.750'], 'ผลคูณมีเลขนัยสำคัญเท่ากับตัวที่มีน้อยที่สุด คือ 2 ตัว'],
+    [17, 2, 'พล็อต $\\log y$ กับ $\\log x$ ได้เส้นตรงความชัน 2 ความสัมพันธ์ระหว่าง $y$ กับ $x$ คือข้อใด', ['$y\\propto x^2$', '$y\\propto 2x$', '$y\\propto e^{2x}$', '$y\\propto \\sqrt x$'], '$\\log y=2\\log x+c$ ได้ $y=Kx^2$']
+  ],
+  ijso: [
+    [0, 1, '72 km/h เท่ากับกี่ m/s', ['20 m/s', '72 m/s', '7.2 m/s', '259 m/s'], '$72\\times1000/3600=20$ m/s'],
+    [0, 1, 'ข้อใดเป็นหน่วยฐานในระบบ SI', ['เคลวิน', 'นิวตัน', 'จูล', 'วัตต์'], 'หน่วยฐานมี 7 หน่วย ได้แก่ m, kg, s, A, K, mol, cd ส่วน N, J, W เป็นหน่วยอนุพันธ์'],
+    [0, 2, 'ก้อนวัตถุขนาด 2 cm × 3 cm × 5 cm มีมวล 60 g ความหนาแน่นเท่าใด', ['2 g/cm³', '3 g/cm³', '0.5 g/cm³', '12 g/cm³'], 'ปริมาตร 30 cm³ ความหนาแน่น $60/30=2$ g/cm³'],
+    [1, 1, 'ขับรถ 60 km แรกด้วย 30 km/h และ 60 km ต่อมาด้วย 60 km/h อัตราเร็วเฉลี่ยตลอดทางเท่าใด', ['40 km/h', '45 km/h', '50 km/h', '35 km/h'], 'เวลารวม $2+1=3$ h ระยะรวม 120 km อัตราเร็วเฉลี่ย 40 km/h ไม่ใช่ค่าเฉลี่ยของอัตราเร็ว'],
+    [1, 1, 'ความชันของกราฟความเร็วกับเวลาบอกปริมาณใด', ['ความเร่ง', 'การกระจัด', 'ระยะทาง', 'แรง'], 'ความชันคือ $\\Delta v/\\Delta t$ ส่วนพื้นที่ใต้กราฟคือการกระจัด'],
+    [1, 2, 'ปล่อยวัตถุจากหยุดนิ่ง ($g=10$ m/s² ไม่คิดแรงต้านอากาศ) ใน 3 s แรกตกได้ระยะเท่าใด', ['45 m', '30 m', '90 m', '15 m'], '$s=\\tfrac12gt^2=\\tfrac12\\times10\\times9=45$ m'],
+    [2, 1, 'แรงลัพธ์ 10 N กระทำต่อวัตถุมวล 2 kg ความเร่งเท่าใด', ['5 m/s²', '20 m/s²', '0.2 m/s²', '12 m/s²'], '$a=F/m$'],
+    [2, 1, 'ข้อใดถูกต้องเกี่ยวกับแรงกิริยาและแรงปฏิกิริยา', ['กระทำต่อวัตถุต่างก้อนกัน', 'หักล้างกันจึงไม่มีการเคลื่อนที่', 'ขนาดไม่เท่ากันถ้ามวลต่างกัน', 'เกิดเฉพาะเมื่อวัตถุสัมผัสกัน'], 'แรงคู่นี้มีขนาดเท่ากัน ทิศตรงข้าม แต่กระทำต่อคนละวัตถุ จึงหักล้างกันไม่ได้'],
+    [2, 2, 'นักบินอวกาศมวล 60 kg บนโลก เมื่อไปยืนบนดวงจันทร์ที่ $g$ เป็น 1/6 ของโลก มวลของเขาเป็นเท่าใด', ['60 kg', '10 kg', '360 kg', '100 N'], 'มวลเป็นสมบัติของวัตถุ ไม่ขึ้นกับสถานที่ ที่เปลี่ยนคือน้ำหนัก'],
+    [3, 1, 'ยกกล่อง 10 kg ขึ้นสูง 2 m ด้วยอัตราเร็วคงที่ ($g=10$ m/s²) งานที่ทำเท่าใด', ['200 J', '20 J', '100 J', '50 J'], '$W=mgh=10\\times10\\times2$'],
+    [3, 1, 'ทำงาน 200 J ในเวลา 4 s กำลังเฉลี่ยเท่าใด', ['50 W', '800 W', '200 W', '0.02 W'], '$P=W/t$'],
+    [3, 2, 'ปล่อยลูกบอลจากที่สูง 5 m ($g=10$ m/s² ไม่คิดแรงต้าน) ก่อนกระทบพื้นมีอัตราเร็วเท่าใด', ['10 m/s', '5 m/s', '50 m/s', '7 m/s'], '$mgh=\\tfrac12mv^2$ ได้ $v=\\sqrt{2gh}=10$ m/s'],
+    [4, 1, 'เครื่องอัดไฮดรอลิกมีพื้นที่ลูกสูบเล็กต่อใหญ่ 1 : 50 ออกแรงที่ลูกสูบเล็ก 20 N ได้แรงที่ลูกสูบใหญ่เท่าใด', ['1000 N', '20 N', '0.4 N', '70 N'], 'หลักของปาสคาล ความดันเท่ากัน $F_2=F_1A_2/A_1=20\\times50$'],
+    [4, 1, 'วัตถุลอยนิ่งบนผิวน้ำ ข้อใดถูกต้อง', ['แรงพยุงเท่ากับน้ำหนักของวัตถุ', 'แรงพยุงมากกว่าน้ำหนัก', 'แรงพยุงเป็นศูนย์', 'วัตถุต้องมีความหนาแน่นเท่ากับน้ำ'], 'วัตถุสมดุล แรงลัพธ์เป็นศูนย์ และวัตถุลอยได้เพราะความหนาแน่นน้อยกว่าน้ำ'],
+    [4, 2, 'คนหนัก 600 N ยืนบนพื้นที่สัมผัส 0.02 m² ความดันที่พื้นเท่าใด', ['30000 Pa', '12 Pa', '3000 Pa', '300 Pa'], '$P=F/A=600/0.02$'],
+    [5, 1, 'ต้องใช้ความร้อนเท่าใดทำให้น้ำ 2 kg ร้อนขึ้น 10 °C (ความจุความร้อนจำเพาะ 4200 J/(kg K))', ['84000 J', '8400 J', '42000 J', '840 J'], '$Q=mc\\Delta T=2\\times4200\\times10$'],
+    [5, 1, 'ผสมน้ำ 80 °C 1 kg กับน้ำ 20 °C 1 kg ในภาชนะที่ไม่รับความร้อน อุณหภูมิสุดท้ายเท่าใด', ['50 °C', '60 °C', '40 °C', '100 °C'], 'มวลและความจุความร้อนจำเพาะเท่ากัน อุณหภูมิสุดท้ายจึงเป็นค่าเฉลี่ย'],
+    [5, 2, 'จับแท่งโลหะและแท่งไม้ที่อุณหภูมิห้องเท่ากัน รู้สึกว่าโลหะเย็นกว่า เพราะเหตุใด', ['โลหะนำความร้อนออกจากมือได้เร็วกว่า', 'โลหะมีอุณหภูมิต่ำกว่าจริง', 'ไม้ผลิตความร้อนได้เอง', 'โลหะมีความจุความร้อนเป็นศูนย์'], 'ทั้งสองอุณหภูมิเท่ากัน แต่โลหะมีสภาพนำความร้อนสูง ความร้อนจากมือไหลออกเร็ว'],
+    [6, 1, 'คลื่นความถี่ 50 Hz ความยาวคลื่น 2 m มีอัตราเร็วเท่าใด', ['100 m/s', '25 m/s', '52 m/s', '0.04 m/s'], '$v=f\\lambda$'],
+    [6, 1, 'ตะโกนหน้าหน้าผา ได้ยินเสียงสะท้อนกลับหลังจาก 2 s (อัตราเร็วเสียง 340 m/s) หน้าผาอยู่ห่างเท่าใด', ['340 m', '680 m', '170 m', '1360 m'], 'เสียงเดินทางไปและกลับ ระยะ $=340\\times2/2$'],
+    [6, 2, 'ยืนหน้ากระจกเงาราบห่าง 2 m ระยะระหว่างตัวเรากับภาพในกระจกเท่าใด', ['4 m', '2 m', '1 m', '8 m'], 'ภาพอยู่หลังกระจกเท่ากับระยะวัตถุ คือ 2 m จึงห่างจากเรา 4 m'],
+    [7, 1, 'ความต่างศักย์ 12 V คร่อมตัวต้านทาน 4 Ω มีกระแสไหลเท่าใด', ['3 A', '48 A', '0.33 A', '16 A'], '$I=V/R$'],
+    [7, 1, 'ตัวต้านทาน 6 Ω สองตัวต่ออนุกรมกับแบตเตอรี่ 12 V กระแสในวงจรเท่าใด', ['1 A', '2 A', '4 A', '0.5 A'], 'ความต้านทานรวม 12 Ω กระแส $12/12=1$ A'],
+    [7, 2, 'เครื่องทำความร้อน 2 kW เปิดนาน 3 ชั่วโมง ใช้พลังงานไฟฟ้ากี่หน่วย (kWh)', ['6 หน่วย', '1.5 หน่วย', '5 หน่วย', '6000 หน่วย'], 'พลังงาน $=2\\text{ kW}\\times3\\text{ h}=6$ kWh'],
+    [8, 1, 'แสงจากดวงอาทิตย์เดินทางถึงโลก (ระยะ $1.5\\times10^{11}$ m) ใช้เวลาประมาณเท่าใด', ['8 นาที', '8 วินาที', '1 ชั่วโมง', '1 วัน'], '$t=1.5\\times10^{11}/3\\times10^8=500$ s ประมาณ 8.3 นาที'],
+    [8, 1, 'สารกัมมันตรังสีผ่านไป 3 ครึ่งชีวิต จะเหลือกี่ส่วนของปริมาณเดิม', ['1/8', '1/3', '1/6', '1/9'], 'แต่ละครึ่งชีวิตเหลือครึ่งหนึ่ง $(1/2)^3$'],
+    [8, 2, 'ข้อใดไม่ใช่คลื่นแม่เหล็กไฟฟ้า', ['คลื่นเสียง', 'รังสีเอกซ์', 'คลื่นวิทยุ', 'แสงอัลตราไวโอเลต'], 'เสียงเป็นคลื่นกลที่ต้องอาศัยตัวกลาง'],
+    [9, 1, 'การทดลองหาความสัมพันธ์ระหว่างความยาวเชือกกับคาบของลูกตุ้ม ตัวแปรต้นคือข้อใด', ['ความยาวเชือก', 'คาบการแกว่ง', 'มวลลูกตุ้ม', 'มุมเริ่มต้น'], 'ตัวแปรต้นคือสิ่งที่เราเปลี่ยน คาบเป็นตัวแปรตาม มวลและมุมเริ่มต้นเป็นตัวแปรควบคุม'],
+    [9, 1, 'วิธีใดลดความคลาดเคลื่อนสุ่มในการจับเวลาคาบของลูกตุ้มได้ดีที่สุด', ['จับเวลา 20 รอบแล้วหารด้วย 20', 'จับเวลา 1 รอบให้ตั้งใจที่สุด', 'ใช้ลูกตุ้มที่หนักขึ้น', 'แกว่งด้วยมุมกว้างขึ้น'], 'ความคลาดเคลื่อนจากการกดนาฬิกาเกิดครั้งเดียวต่อการจับ เมื่อหารด้วยจำนวนรอบจึงลดลง'],
+    [9, 2, 'พล็อตกราฟระยะทางกับกำลังสองของเวลาได้เส้นตรงผ่านจุดกำเนิด สรุปได้ว่าอย่างไร', ['วัตถุเริ่มจากหยุดนิ่งและมีความเร่งคงที่', 'วัตถุมีความเร็วคงที่', 'วัตถุมีความเร่งเพิ่มขึ้นเรื่อย ๆ', 'วัตถุหยุดนิ่ง'], '$s=\\tfrac12at^2$ ความชันของกราฟ $s$ กับ $t^2$ คือ $a/2$']
+  ]
+};
+
+/* ---------- competition prep: practice, scores and weak topics ---------- */
+const EX = { who: store_ls.get('tp-exwho') || 'ตัวฉัน', people: [], att: [], own: [], tab: 'practice', track: store_ls.get('tp-extrack') || 'olymp', chs: new Set(), n: 10, mode: 'practice', run: null, loaded: false };
+const exTrackName = (t) => (CURRIC[t] ? CURRIC[t][0] : t);
+const exChName = (t, ch) => (CURRIC[t] && CURRIC[t][1][ch] ? CURRIC[t][1][ch][0] : 'บทที่ ' + (ch + 1));
+function exAllQs() {
+  const out = [];
+  for (const [t, list] of Object.entries(EXAM_BANK)) {
+    const seen = {};
+    for (const r of list) { const k = r[0]; seen[k] = (seen[k] || 0) + 1; out.push({ id: 'b-' + t + '-' + k + '-' + seen[k], t, ch: r[0], d: r[1], q: r[2], c: r[3], a: 0, e: r[4] || '', src: 'bank' }); }
+  }
+  for (const q of EX.own) out.push(Object.assign({ src: 'own' }, q, { id: 'u-' + q.id }));
+  return out.filter((q) => CURRIC[q.t] && q.c && q.c.length >= 2);
+}
+async function exLoad() {
+  try {
+    const [pp, aa, qq] = await Promise.all([S.store.get('exp/people'), S.store.list('exa'), S.store.list('exq')]);
+    EX.people = (pp && pp.names) || [];
+    EX.att = (aa || []).sort((a, b) => (a.at || 0) - (b.at || 0));
+    EX.own = qq || [];
+  } catch (e) { /* offline first run: keep what we have */ }
+  if (!EX.people.includes(EX.who)) EX.people.unshift(EX.who);
+  EX.loaded = true;
+}
+async function exSavePeople() { await S.store.set('exp/people', { names: EX.people, at: now() }).catch(() => {}); }
+function exStats(who) {
+  const by = {}, hist = {};
+  for (const a of EX.att) {
+    if (a.who !== who) continue;
+    for (const it of a.items || []) {
+      const k = it[1]; const s = by[k] || (by[k] = { n: 0, ok: 0, recent: [] });
+      s.n++; if (it[2]) s.ok++; s.recent.push(it[2] ? 1 : 0); if (s.recent.length > 10) s.recent.shift();
+      hist[it[0]] = it[2] ? 1 : -1;
+    }
+  }
+  return { by, hist };
+}
+/* weak topic score: smoothed accuracy, recent answers count double */
+function exWeakness(s) { const r = s.recent.reduce((x, y) => x + y, 0); return (s.ok + r + 1) / (s.n + s.recent.length + 2); }
+function exPick(pool, n, hist) {
+  const pr = (q) => (hist[q.id] === -1 ? 3 : hist[q.id] === undefined ? 2 : 1) + Math.random() * 0.9;
+  return pool.map((q) => [pr(q), q]).sort((a, b) => b[0] - a[0]).slice(0, n).map((x) => x[1]).sort(() => Math.random() - 0.5);
+}
+function exShuffle(q) {
+  const order = q.c.map((_, i) => i).sort(() => Math.random() - 0.5);
+  return { q, order, key: order.indexOf(q.a), pick: -1, t0: 0, sec: 0 };
+}
+function exStart(qs, title) {
+  if (!qs.length) { toast('ยังไม่มีโจทย์ในบทที่เลือก', 2200); return; }
+  EX.run = { title, mode: EX.mode, items: qs.map(exShuffle), i: 0, t0: now(), limit: EX.mode === 'exam' ? qs.length * 120 : 0, done: false };
+  EX.run.items[0].t0 = now();
+  exRender();
+}
+function exStartFromSetup() {
+  const all = exAllQs().filter((q) => q.t === EX.track && (!EX.chs.size || EX.chs.has(q.ch)));
+  const { hist } = exStats(EX.who);
+  exStart(exPick(all, EX.n, hist), exTrackName(EX.track) + (EX.chs.size === 1 ? ' : ' + exChName(EX.track, [...EX.chs][0]) : ''));
+}
+function exStartWeak() {
+  const { by, hist } = exStats(EX.who);
+  const weak = Object.entries(by).filter(([, s]) => s.n >= 2).sort((a, b) => exWeakness(a[1]) - exWeakness(b[1])).slice(0, 3).map(([k]) => k);
+  if (!weak.length) { toast('ยังมีข้อมูลน้อย ฝึกไปสักชุดก่อน แล้วระบบจะหาจุดอ่อนให้', 2600); return; }
+  const pool = exAllQs().filter((q) => weak.includes(q.t + ':' + q.ch));
+  EX.mode = 'practice';
+  exStart(exPick(pool, 10, hist), 'ฝึกจุดอ่อน');
+}
+async function exFinish() {
+  const R = EX.run; if (!R || R.done) return;
+  R.done = true; clearInterval(EX.tick);
+  const items = R.items.map((x) => [x.q.id, x.q.t + ':' + x.q.ch, x.pick === x.key ? 1 : 0, Math.round(x.sec)]);
+  const rec = { who: EX.who, at: now(), title: R.title, mode: R.mode, n: items.length, ok: items.filter((x) => x[2]).length, sec: Math.round((now() - R.t0) / 1000), items };
+  EX.att.push(rec);
+  await S.store.set('exa/' + rec.at.toString(36) + uid().slice(0, 4), rec).catch(() => toast('บันทึกคะแนนไม่สำเร็จ จะลองใหม่เมื่อต่อเน็ต', 2600));
+  exRender();
+}
+function exAnswer(i) {
+  const R = EX.run, x = R.items[R.i]; if (R.done) return;
+  if (R.mode === 'practice' && x.pick >= 0) return;
+  x.pick = i; x.sec += (now() - x.t0) / 1000; x.t0 = now();
+  exRender();
+}
+function exGo(d) {
+  const R = EX.run, x = R.items[R.i];
+  if (R.mode === 'exam' && x.pick < 0) x.sec += (now() - x.t0) / 1000;
+  R.i = clamp(R.i + d, 0, R.items.length - 1); R.items[R.i].t0 = now();
+  exRender();
+}
+function exQToMd(x, withKey) {
+  const L = 'กขคง';
+  let md = '**โจทย์** ' + x.q.q + '\n\n' + x.order.map((o, k) => L[k] + '. ' + x.q.c[o]).join('\n');
+  if (withKey) md += '\n\n**ตอบ ' + L[x.key] + '** ' + (x.q.e || '');
+  return md;
+}
+function exPutOnPage(x, withKey) {
+  if (!S.page) return;
+  const w = 620, [px, py] = viewSpot(w, 260);
+  addItem({ type: 'text', x: px, y: py, w, md: exQToMd(x, withKey) });
+  toast(withKey ? 'วางโจทย์พร้อมเฉลยลงหน้าแล้ว' : 'วางโจทย์ลงหน้าแล้ว', 1600);
+}
+function exEl(tag, cls, html) { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; }
+function exChips(box, list, cur, on) {
+  const c = exEl('span', 'chips');
+  for (const [v, label] of list) { const b = exEl('button', 'chip'); b.type = 'button'; b.textContent = label; b.setAttribute('aria-pressed', cur(v) ? 'true' : 'false'); b.onclick = () => on(v); c.appendChild(b); }
+  box.appendChild(c); return c;
+}
+function exRenderWho() {
+  const sel = $('#exWho'); sel.innerHTML = '';
+  for (const n of EX.people) { const o = document.createElement('option'); o.value = n; o.textContent = n; sel.appendChild(o); }
+  const o = document.createElement('option'); o.value = '+'; o.textContent = 'เพิ่มผู้ฝึก'; sel.appendChild(o);
+  sel.value = EX.who;
+}
+function exRender() {
+  const body = $('#exBody'); body.innerHTML = '';
+  $('#exTabs').hidden = !!(EX.run);
+  $('#exTabs').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', b.dataset.t === EX.tab ? 'true' : 'false'));
+  if (EX.run) return exRenderRun(body);
+  if (EX.tab === 'practice') exRenderSetup(body);
+  else if (EX.tab === 'stats') exRenderStats(body);
+  else exRenderBank(body);
+}
+function exRenderSetup(body) {
+  const all = exAllQs();
+  const tracks = Object.keys(CURRIC).filter((t) => all.some((q) => q.t === t));
+  if (!tracks.includes(EX.track)) EX.track = tracks[0];
+  body.appendChild(exEl('span', 'label', 'สนามสอบ'));
+  exChips(body, tracks.map((t) => [t, exTrackName(t)]), (v) => v === EX.track, (v) => { EX.track = v; EX.chs.clear(); store_ls.set('tp-extrack', v); exRender(); });
+  const { by } = exStats(EX.who);
+  body.appendChild(exEl('span', 'label', 'บทที่จะฝึก แตะเลือกได้หลายบท ไม่เลือกคือทุกบท'));
+  const chs = [...new Set(all.filter((q) => q.t === EX.track).map((q) => q.ch))].sort((a, b) => a - b);
+  const c = exChips(body, [['all', 'ทุกบท']].concat(chs.map((ch) => [ch, exChName(EX.track, ch) + ' (' + all.filter((q) => q.t === EX.track && q.ch === ch).length + ')'])),
+    (v) => (v === 'all' ? !EX.chs.size : EX.chs.has(v)), (v) => { if (v === 'all') EX.chs.clear(); else if (EX.chs.has(v)) EX.chs.delete(v); else EX.chs.add(v); exRender(); });
+  c.querySelectorAll('.chip').forEach((b, i) => { const ch = chs[i - 1]; const s = by[EX.track + ':' + ch]; if (i && s && s.n >= 3 && exWeakness(s) < 0.6) b.classList.add('weak'); });
+  body.appendChild(exEl('span', 'label', 'จำนวนข้อ'));
+  exChips(body, [[5, '5 ข้อ'], [10, '10 ข้อ'], [20, '20 ข้อ'], [40, '40 ข้อ']], (v) => v === EX.n, (v) => { EX.n = v; exRender(); });
+  body.appendChild(exEl('span', 'label', 'รูปแบบ'));
+  exChips(body, [['practice', 'ฝึก เฉลยทันทีทีละข้อ'], ['exam', 'สอบ จับเวลา 2 นาทีต่อข้อ เฉลยตอนจบ']], (v) => v === EX.mode, (v) => { EX.mode = v; exRender(); });
+  const row = exEl('div', 'row2');
+  const go = exEl('button', 'btn solid', 'เริ่มทำ'); go.onclick = exStartFromSetup; row.appendChild(go);
+  const wk = exEl('button', 'btn', 'ฝึกจุดอ่อนของ ' + esc(EX.who)); wk.onclick = exStartWeak; row.appendChild(wk);
+  body.appendChild(row);
+  body.appendChild(exEl('div', 'note', 'ระบบเลือกข้อที่เคยทำผิดและข้อที่ยังไม่เคยทำก่อน คะแนนทุกชุดเก็บแยกตามผู้ฝึกและซิงก์ข้ามเครื่อง บทที่มีกรอบสีส้มคือบทที่ยังเป็นจุดอ่อน'));
+}
+function exRenderRun(body) {
+  const R = EX.run, L = 'กขคง';
+  if (R.done) return exRenderResult(body);
+  const x = R.items[R.i];
+  const head = exEl('div', 'exhead');
+  head.appendChild(exEl('b', '', esc(R.title)));
+  head.appendChild(exEl('span', 'exprog', 'ข้อ ' + (R.i + 1) + ' จาก ' + R.items.length));
+  const tm = exEl('span', 'extime'); head.appendChild(tm);
+  body.appendChild(head);
+  const bar = exEl('div', 'exbar'); for (let k = 0; k < R.items.length; k++) { const s = exEl('i'); const it = R.items[k]; if (k === R.i) s.className = 'cur'; else if (it.pick >= 0) s.className = R.mode === 'practice' ? (it.pick === it.key ? 'ok' : 'no') : 'did'; if (R.mode === 'exam') s.onclick = () => { exGo(k - R.i); }; bar.appendChild(s); } body.appendChild(bar);
+  body.appendChild(exEl('div', 'exch', esc(exTrackName(x.q.t) + ' : ' + exChName(x.q.t, x.q.ch)) + ' ' + '<span>' + ['', 'พื้นฐาน', 'กลาง', 'ท้าทาย'][x.q.d || 1] + '</span>'));
+  const qd = exEl('div', 'exq', mdToHtml(x.q.q)); body.appendChild(qd);
+  const opts = exEl('div', 'exopts');
+  const reveal = R.mode === 'practice' && x.pick >= 0;
+  x.order.forEach((o, k) => {
+    const b = exEl('button', 'exopt', '<b>' + L[k] + '</b><span>' + mdToHtml(x.q.c[o]) + '</span>'); b.type = 'button';
+    if (x.pick === k) b.classList.add('pick');
+    if (reveal) { if (k === x.key) b.classList.add('right'); else if (k === x.pick) b.classList.add('wrong'); }
+    b.onclick = () => exAnswer(k); opts.appendChild(b);
+  });
+  body.appendChild(opts);
+  if (reveal) body.appendChild(exEl('div', 'note ' + (x.pick === x.key ? 'ok' : 'err'), '<b>' + (x.pick === x.key ? 'ถูกต้อง' : 'ยังไม่ถูก คำตอบคือ ' + L[x.key]) + '</b> ' + mdToHtml(x.q.e || '')));
+  const nav = exEl('div', 'row2');
+  const mk = (t, cls, f) => { const b = exEl('button', 'btn ' + cls, t); b.type = 'button'; b.onclick = f; nav.appendChild(b); return b; };
+  if (R.mode === 'exam' && R.i > 0) mk('ข้อก่อนหน้า', '', () => exGo(-1));
+  const last = R.i === R.items.length - 1;
+  if (R.mode === 'practice') { if (reveal) mk(last ? 'ดูผล' : 'ข้อต่อไป', 'solid', () => (last ? exFinish() : exGo(1))); }
+  else mk(last ? 'ส่งคำตอบ' : 'ข้อต่อไป', 'solid', () => { if (!last) exGo(1); else { const left = R.items.filter((y) => y.pick < 0).length; if (left && !EX.confirmSend) { EX.confirmSend = true; toast('ยังไม่ได้ตอบ ' + left + ' ข้อ กดส่งอีกครั้งเพื่อยืนยัน', 2600); return; } EX.confirmSend = false; exFinish(); } });
+  mk('วางโจทย์ลงหน้า', '', () => exPutOnPage(x, reveal));
+  mk('เลิกทำ', '', () => { clearInterval(EX.tick); EX.run = null; exRender(); });
+  body.appendChild(nav);
+  const upd = () => {
+    const el = (now() - R.t0) / 1000;
+    if (R.limit) { const left = Math.max(0, R.limit - el); tm.textContent = 'เหลือ ' + Math.floor(left / 60) + ':' + String(Math.floor(left % 60)).padStart(2, '0'); tm.classList.toggle('low', left < 60); if (!left) exFinish(); }
+    else tm.textContent = Math.floor(el / 60) + ':' + String(Math.floor(el % 60)).padStart(2, '0');
+  };
+  clearInterval(EX.tick); upd(); EX.tick = setInterval(() => { if ($('#examSheet').hidden || !EX.run || EX.run.done) return; upd(); }, 1000);
+  typeset(body);
+}
+function exRenderResult(body) {
+  const R = EX.run, L = 'กขคง';
+  const ok = R.items.filter((x) => x.pick === x.key).length, n = R.items.length;
+  const sec = Math.round((now() - R.t0) / 1000);
+  body.appendChild(exEl('div', 'exscore', '<b>' + ok + '<small> / ' + n + '</small></b><span>' + esc(EX.who) + ' ได้ ' + Math.round(ok / n * 100) + '% ใช้เวลา ' + Math.floor(sec / 60) + ' นาที ' + (sec % 60) + ' วินาที</span>'));
+  const per = {};
+  for (const x of R.items) { const k = exChName(x.q.t, x.q.ch); const p = per[k] || (per[k] = [0, 0]); p[1]++; if (x.pick === x.key) p[0]++; }
+  const tb = exEl('div', 'exper');
+  for (const [k, p] of Object.entries(per).sort((a, b) => a[1][0] / a[1][1] - b[1][0] / b[1][1])) tb.appendChild(exEl('div', '', '<span>' + esc(k) + '</span><i><s style="width:' + Math.round(p[0] / p[1] * 100) + '%"></s></i><b>' + p[0] + '/' + p[1] + '</b>'));
+  body.appendChild(tb);
+  const wrong = R.items.filter((x) => x.pick !== x.key);
+  if (wrong.length) {
+    body.appendChild(exEl('h3', '', 'ทบทวนข้อที่ยังไม่ถูก'));
+    for (const x of wrong) {
+      const d = exEl('div', 'exrev', '<div class="exq">' + mdToHtml(x.q.q) + '</div><div class="note">' + (x.pick < 0 ? 'ไม่ได้ตอบ' : 'ตอบ ' + mdToHtml(x.q.c[x.order[x.pick]])) + ' คำตอบที่ถูก ' + mdToHtml(x.q.c[x.q.a]) + '</div><div class="note">' + mdToHtml(x.q.e || '') + '</div>');
+      const b = exEl('button', 'btn', 'วางลงหน้าพร้อมเฉลย'); b.onclick = () => exPutOnPage(x, true); d.appendChild(b);
+      body.appendChild(d);
+    }
+  }
+  const row = exEl('div', 'row2');
+  if (wrong.length) { const b = exEl('button', 'btn solid', 'ฝึกข้อที่ผิดอีกครั้ง'); b.onclick = () => { EX.mode = 'practice'; exStart(wrong.map((x) => x.q), 'ฝึกซ้ำข้อที่ผิด'); }; row.appendChild(b); }
+  const b2 = exEl('button', 'btn', 'ดูผลและจุดอ่อน'); b2.onclick = () => { EX.run = null; EX.tab = 'stats'; exRender(); }; row.appendChild(b2);
+  const b3 = exEl('button', 'btn', 'ทำชุดใหม่'); b3.onclick = () => { EX.run = null; EX.tab = 'practice'; exRender(); }; row.appendChild(b3);
+  body.appendChild(row);
+  typeset(body);
+}
+function exSpark(vals) {
+  const w = 260, h = 56, n = vals.length;
+  if (n < 2) return '';
+  const pts = vals.map((v, i) => [6 + i * (w - 12) / (n - 1), h - 6 - v * (h - 12)]);
+  return '<svg class="exspark" viewBox="0 0 ' + w + ' ' + h + '" aria-label="คะแนนแต่ละชุดล่าสุด"><line x1="6" x2="' + (w - 6) + '" y1="' + (h - 6 - 0.6 * (h - 12)) + '" y2="' + (h - 6 - 0.6 * (h - 12)) + '" class="g"/><polyline points="' + pts.map((p) => p.join(',')).join(' ') + '"/>' + pts.map((p) => '<circle cx="' + p[0] + '" cy="' + p[1] + '" r="3"/>').join('') + '</svg>';
+}
+function exRenderStats(body) {
+  const mine = EX.att.filter((a) => a.who === EX.who);
+  if (!mine.length) { body.appendChild(exEl('div', 'note', 'ยังไม่มีคะแนนของ ' + esc(EX.who) + ' ไปที่แท็บฝึกแล้วทำสักชุด')); return; }
+  const n = mine.reduce((s, a) => s + a.n, 0), ok = mine.reduce((s, a) => s + a.ok, 0);
+  body.appendChild(exEl('div', 'exsum', '<div><b>' + mine.length + '</b><span>ชุดที่ทำ</span></div><div><b>' + n + '</b><span>ข้อที่ตอบ</span></div><div><b>' + Math.round(ok / n * 100) + '%</b><span>ตอบถูก</span></div><div>' + exSpark(mine.slice(-12).map((a) => a.ok / a.n)) + '<span>12 ชุดล่าสุด เส้นจางคือ 60%</span></div>'));
+  const { by } = exStats(EX.who);
+  const rows = Object.entries(by).map(([k, s]) => { const [t, ch] = k.split(':'); return { t, ch: +ch, s, w: exWeakness(s) }; }).sort((a, b) => a.w - b.w);
+  body.appendChild(exEl('h3', '', 'รายบท เรียงจากจุดอ่อนที่สุด'));
+  const tb = exEl('div', 'exper');
+  for (const r of rows) {
+    const p = r.s.ok / r.s.n, tag = r.s.n >= 3 && r.w < 0.6 ? '<em>จุดอ่อน</em>' : r.s.n >= 3 && r.w >= 0.8 ? '<em class="good">แม่นแล้ว</em>' : '';
+    const d = exEl('div', '', '<span>' + esc(exChName(r.t, r.ch)) + ' <small>' + esc(exTrackName(r.t)) + '</small> ' + tag + '</span><i><s style="width:' + Math.round(p * 100) + '%"></s></i><b>' + r.s.ok + '/' + r.s.n + '</b>');
+    d.onclick = () => { EX.track = r.t; EX.chs = new Set([r.ch]); EX.tab = 'practice'; exRender(); }; d.title = 'แตะเพื่อฝึกบทนี้'; tb.appendChild(d);
+  }
+  body.appendChild(tb);
+  const row = exEl('div', 'row2');
+  const b = exEl('button', 'btn solid', 'ฝึกจุดอ่อน 10 ข้อ'); b.onclick = exStartWeak; row.appendChild(b);
+  const c = exEl('button', 'btn', 'ส่งออกคะแนนทุกคน CSV'); c.onclick = exCsv; row.appendChild(c);
+  body.appendChild(row);
+  body.appendChild(exEl('h3', '', 'ชุดล่าสุด'));
+  const hl = exEl('div', 'exhist');
+  for (const a of mine.slice(-10).reverse()) hl.appendChild(exEl('div', '', '<span>' + new Date(a.at).toLocaleString('th-TH', { dateStyle: 'medium', timeStyle: 'short' }) + '</span><span>' + esc(a.title || '') + (a.mode === 'exam' ? ' (สอบ)' : '') + '</span><b>' + a.ok + '/' + a.n + '</b>'));
+  body.appendChild(hl);
+}
+function exCsv() {
+  const lines = [['ผู้ฝึก', 'วันเวลา', 'ชุด', 'รูปแบบ', 'ถูก', 'ทั้งหมด', 'ร้อยละ', 'เวลา (วินาที)'].join(',')];
+  const q = (s) => '"' + String(s).replace(/"/g, '""') + '"';
+  for (const a of EX.att) lines.push([q(a.who), q(new Date(a.at).toLocaleString('th-TH')), q(a.title || ''), a.mode === 'exam' ? 'สอบ' : 'ฝึก', a.ok, a.n, Math.round(a.ok / a.n * 100), a.sec || ''].join(','));
+  lines.push(''); lines.push(['ผู้ฝึก', 'สนาม', 'บท', 'ถูก', 'ทั้งหมด', 'ร้อยละ'].join(','));
+  for (const who of EX.people) { const { by } = exStats(who); for (const [k, s] of Object.entries(by)) { const [t, ch] = k.split(':'); lines.push([q(who), q(exTrackName(t)), q(exChName(t, +ch)), s.ok, s.n, Math.round(s.ok / s.n * 100)].join(',')); } }
+  saveFile('burin-scores.csv', new Blob(['﻿' + lines.join('\n')], { type: 'text/csv' }));
+}
+function exRenderBank(body) {
+  const all = exAllQs();
+  const tracks = Object.keys(CURRIC);
+  body.appendChild(exEl('div', 'note', 'คลังในแอปมีโจทย์ ' + all.filter((q) => q.src === 'bank').length + ' ข้อ เขียนขึ้นใหม่สำหรับ Burin ครอบคลุมทุกบทของ สอวน. และ IJSO ส่วนฟิสิกส์ อาจารย์เพิ่มโจทย์ของตัวเอง หรือให้ AI ร่างโจทย์ตามบทแล้วตรวจก่อนเก็บก็ได้ โจทย์ที่เพิ่มซิงก์ข้ามเครื่อง'));
+  const f = exEl('div', 'exform');
+  f.innerHTML = '<div class="row2"><label class="field"><span>สนาม</span><select id="eqT"></select></label><label class="field" style="flex:2 1 260px"><span>บท</span><select id="eqC"></select></label><label class="field" style="flex:0 1 120px"><span>ระดับ</span><select id="eqD"><option value="1">พื้นฐาน</option><option value="2">กลาง</option><option value="3">ท้าทาย</option></select></label></div>'
+    + '<label class="field"><span>โจทย์ ใส่สมการใน $...$ ได้</span><textarea id="eqQ" rows="3"></textarea></label>'
+    + '<div class="row2"><label class="field"><span>ตัวเลือกที่ถูก</span><input id="eqA0"></label><label class="field"><span>ตัวเลือกผิด 1</span><input id="eqA1"></label></div>'
+    + '<div class="row2"><label class="field"><span>ตัวเลือกผิด 2</span><input id="eqA2"></label><label class="field"><span>ตัวเลือกผิด 3</span><input id="eqA3"></label></div>'
+    + '<label class="field"><span>เฉลยและเหตุผล</span><textarea id="eqE" rows="2"></textarea></label>'
+    + '<div class="row2"><button class="btn solid" id="eqSave" type="button">เก็บโจทย์นี้</button><button class="btn" id="eqAI" type="button">ให้ AI ร่างโจทย์บทนี้ 5 ข้อ</button></div><div id="eqMsg"></div>';
+  body.appendChild(exEl('h3', '', 'เพิ่มโจทย์ของฉัน'));
+  body.appendChild(f);
+  const sT = $('#eqT'), sC = $('#eqC');
+  for (const t of tracks) { const o = document.createElement('option'); o.value = t; o.textContent = exTrackName(t); sT.appendChild(o); }
+  const fillC = () => { sC.innerHTML = ''; CURRIC[sT.value][1].forEach((c, i) => { const o = document.createElement('option'); o.value = i; o.textContent = c[0]; sC.appendChild(o); }); };
+  sT.value = EX.track; fillC(); if (EX.chs.size === 1) sC.value = [...EX.chs][0];
+  sT.onchange = fillC;
+  $('#eqSave').onclick = async () => {
+    const c = [0, 1, 2, 3].map((i) => $('#eqA' + i).value.trim()).filter(Boolean);
+    const q = { t: sT.value, ch: +sC.value, d: +$('#eqD').value, q: $('#eqQ').value.trim(), c, a: 0, e: $('#eqE').value.trim(), at: now() };
+    if (!q.q || c.length < 2 || !$('#eqA0').value.trim()) { $('#eqMsg').innerHTML = '<div class="note err">ใส่โจทย์ ตัวเลือกที่ถูก และตัวเลือกผิดอย่างน้อยหนึ่งข้อ</div>'; return; }
+    await exAddOwn([q]); $('#eqMsg').innerHTML = '<div class="note ok">เก็บแล้ว</div>';
+    for (const id of ['eqQ', 'eqA0', 'eqA1', 'eqA2', 'eqA3', 'eqE']) $('#' + id).value = '';
+    exRenderOwnList();
+  };
+  $('#eqAI').onclick = () => exAIDraft(sT.value, +sC.value, +$('#eqD').value);
+  const draft = exEl('div', ''); draft.id = 'eqDraft'; body.appendChild(draft);
+  body.appendChild(exEl('h3', '', 'โจทย์ของฉัน'));
+  const ol = exEl('div', 'exown'); ol.id = 'exOwn'; body.appendChild(ol);
+  exRenderOwnList();
+}
+async function exAddOwn(qs) {
+  for (const q of qs) { const id = 'q' + uid(); q.id = id; EX.own.push(q); await S.store.set('exq/' + id, Object.assign({}, q, { id: undefined })).catch(() => {}); }
+}
+function exRenderOwnList() {
+  const ol = $('#exOwn'); if (!ol) return; ol.innerHTML = '';
+  if (!EX.own.length) { ol.appendChild(exEl('div', 'note', 'ยังไม่มีโจทย์ที่เพิ่มเอง')); return; }
+  for (const q of EX.own.slice().sort((a, b) => (b.at || 0) - (a.at || 0))) {
+    const d = exEl('div', 'exrev', '<small>' + esc(exTrackName(q.t) + ' : ' + exChName(q.t, q.ch)) + (q.src === 'ai' ? ' ร่างโดย AI' : '') + '</small><div class="exq">' + mdToHtml(q.q) + '</div><div class="note">ตอบ ' + mdToHtml(q.c[q.a || 0]) + '</div>');
+    const b = exEl('button', 'btn', 'ลบ'); b.onclick = async () => { EX.own = EX.own.filter((x) => x.id !== q.id); await S.store.del('exq/' + q.id).catch(() => {}); exRenderOwnList(); };
+    d.appendChild(b); ol.appendChild(d);
+  }
+  typeset(ol);
+}
+async function exAIDraft(t, ch, d) {
+  if (!needAI('gen')) return;
+  const box = $('#eqDraft'); box.innerHTML = '<div class="note">AI กำลังร่างโจทย์ ' + esc(exChName(t, ch)) + '</div>';
+  const subs = (CURRIC[t][1][ch][1] || []).map((s) => s[0]).join(', ');
+  const level = { 1: 'basic', 2: 'intermediate', 3: 'challenging, close to the selection round' }[d];
+  const prompt = 'Write 5 original multiple-choice physics questions in Thai for students preparing for ' + exTrackName(t) + ', topic "' + exChName(t, ch) + '" (subtopics: ' + subs + '). Difficulty: ' + level + '.\n'
+    + 'Each question has exactly 4 choices, one correct. Use $...$ for math and SI units. Check every number carefully: compute the correct answer step by step before writing it, and make the wrong choices come from common mistakes.\n'
+    + 'Reply in exactly this format and nothing else, repeated 5 times:\n@@Q\n(question)\n@@RIGHT\n(correct choice)\n@@WRONG\n(wrong choice 1)\n(wrong choice 2)\n(wrong choice 3)\n@@WHY\n(short explanation in Thai with the key equation)';
+  try {
+    const res = await AI.run('gen', prompt, { cache: false });
+    const parts = sections(res.text), out = []; let cur = null;
+    for (const p of parts) {
+      const tx = (p.text || p.arg || '').trim();
+      if (p.key === 'Q') { cur = { t, ch, d, q: tx, c: [], a: 0, e: '', src: 'ai', at: now() }; out.push(cur); }
+      else if (cur && p.key === 'RIGHT') cur.c.unshift(tx);
+      else if (cur && p.key === 'WRONG') cur.c.push(...tx.split('\n').map((s) => s.replace(/^[-*\d.)\s]+(?=\S)/, '').trim()).filter(Boolean).slice(0, 3));
+      else if (cur && p.key === 'WHY') cur.e = tx;
+    }
+    const good = out.filter((q) => q.q && q.c.length >= 3);
+    if (!good.length) throw { code: 'empty_completion' };
+    box.innerHTML = '<h3>ร่างจาก AI ตรวจก่อนเก็บ</h3><div class="note">ตรวจตัวเลขและคำตอบทุกข้อ ติ๊กเฉพาะข้อที่ถูกต้องแล้วกดเก็บ</div>';
+    good.forEach((q, i) => {
+      const dv = exEl('label', 'exrev expick', '<input type="checkbox" checked data-i="' + i + '"><div><div class="exq">' + mdToHtml(q.q) + '</div><div class="note">ถูก: ' + mdToHtml(q.c[0]) + '<br>ผิด: ' + q.c.slice(1).map(mdToHtml).join(' ; ') + '</div><div class="note">' + mdToHtml(q.e) + '</div></div>');
+      box.appendChild(dv);
+    });
+    const b = exEl('button', 'btn solid', 'เก็บข้อที่เลือก'); b.onclick = async () => {
+      const pick = [...box.querySelectorAll('input[type=checkbox]')].filter((c) => c.checked).map((c) => good[+c.dataset.i]);
+      await exAddOwn(pick); box.innerHTML = '<div class="note ok">เก็บแล้ว ' + pick.length + ' ข้อ</div>'; exRenderOwnList();
+    };
+    box.appendChild(b);
+    typeset(box);
+  } catch (e) { box.innerHTML = '<div class="note err">' + esc(aiErr(e)) + '</div>'; }
+}
+async function openExam() {
+  closeSheets();
+  $('#examSheet').hidden = false;
+  if (!EX.loaded) { $('#exBody').innerHTML = '<div class="note">กำลังโหลดคะแนน</div>'; await exLoad(); }
+  else exLoad().then(() => { if (!EX.run) exRender(); });
+  exRenderWho(); exRender();
+}
+
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1792996754';
+const BUILD = '1792997403';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
@@ -5032,7 +5533,7 @@ function syncToggles() {
 }
 function hideLoading() { $('#loading').hidden = true; }
 function togglePages(v) { const el = $('#pages'); el.hidden = v === undefined ? !el.hidden : !v; $('#bPages').setAttribute('aria-pressed', el.hidden ? 'false' : 'true'); setTimeout(fit, 0); }
-function closeSheets() { $('#aiSetup').hidden = true; $('#labSheet').hidden = true; $('#simSheet').hidden = true; $('#mediaSheet').hidden = true; $('#menu').hidden = true; $('#exportSheet').hidden = true; $('#insSheet').hidden = true; }
+function closeSheets() { $('#examSheet').hidden = true; $('#aiSetup').hidden = true; $('#labSheet').hidden = true; $('#simSheet').hidden = true; $('#mediaSheet').hidden = true; $('#menu').hidden = true; $('#exportSheet').hidden = true; $('#insSheet').hidden = true; }
 
 /* ---------- wiring ---------- */
 document.querySelectorAll('.tool[data-tool]').forEach((b) => {
@@ -5073,6 +5574,20 @@ $('#graphSheet').addEventListener('click', (e) => { if (e.target.id === 'graphSh
 $('#iImg').onclick = () => { closeSheets(); $('#fImg').value = ''; $('#fImg').click(); };
 $('#iVid').onclick = () => { closeSheets(); $('#fVid').value = ''; $('#fVid').click(); };
 $('#iGraph').onclick = () => { closeSheets(); openGraphSheet(null); };
+$('#bExam').onclick = openExam;
+$('#exClose').onclick = () => { $('#examSheet').hidden = true; };
+$('#exTabs').querySelectorAll('button').forEach((b) => { b.onclick = () => { EX.tab = b.dataset.t; exRender(); }; });
+$('#exWho').onchange = () => {
+  const v = $('#exWho').value;
+  if (v === '+') { $('#exAdd').hidden = false; $('#exNew').value = ''; $('#exNew').focus(); $('#exWho').value = EX.who; return; }
+  EX.who = v; store_ls.set('tp-exwho', v); if (!EX.run) exRender();
+};
+$('#exAddOk').onclick = () => {
+  const n = $('#exNew').value.trim(); if (!n) return;
+  if (!EX.people.includes(n)) { EX.people.push(n); exSavePeople(); }
+  EX.who = n; store_ls.set('tp-exwho', n); $('#exAdd').hidden = true; exRenderWho(); if (!EX.run) exRender();
+};
+$('#exNew').onkeydown = (e) => { if (e.key === 'Enter') $('#exAddOk').click(); };
 $('#qsGo').onclick = quickSetup; $('#qsClose').onclick = () => { $('#aiSetup').hidden = true; };
 $('#qsMore').onclick = () => { $('#aiSetup').hidden = true; $('#menu').hidden = false; const c = $('#cfgKey'); if (c) { c.open = true; setTimeout(() => c.scrollIntoView({ block: 'center' }), 50); } };
 $('#iLab').onclick = () => { closeSheets(); renderLabPicker(); $('#labSheet').hidden = false; };
