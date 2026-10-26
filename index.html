@@ -865,6 +865,7 @@ body.guest #roleSeg, body.guest #bJoin { display: none !important; }
       </details>
     </div>
     <h3>ผู้ช่วย AI</h3>
+    <button class="btn solid" id="bAIConnect" type="button">เชื่อมต่อ AI ของคุณ (เข้าระบบแล้วกดอนุญาต หรือวางคีย์)</button>
     <div class="note" id="aiSrcNote"></div>
     <div id="aiTasks" style="display:flex;flex-direction:column;gap:10px"></div>
     <details class="aicfg" id="cfgLocal">
@@ -7243,7 +7244,7 @@ async function pdfImport(newNb) {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793013424';
+const BUILD = '1793016207';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
@@ -7442,6 +7443,7 @@ $('#exAddOk').onclick = () => {
 };
 $('#exNew').onkeydown = (e) => { if (e.key === 'Enter') $('#exAddOk').click(); };
 $('#qsGo').onclick = quickSetup;
+$('#bAIConnect').onclick = () => { openAISetup(); };
 $('#qsAgree').onchange = syncAgree;
 $('#qsOR').onclick = orStart;
 $('#qsORGo').onclick = () => { const c = $('#qsORCode').value.trim(); if (c) orFinish(c, null); };
