@@ -467,6 +467,27 @@ body.student #bLive, body.student #bPresent { display: none; }
 #qmBody textarea { min-height: 70px; }
 .pagenav .zsep { width: 1px; align-self: stretch; margin: 6px 2px; background: var(--line); }
 .pagenav #zNum { min-width: 56px; font-variant-numeric: tabular-nums; }
+.busy { display: flex; flex-direction: column; gap: 8px; padding: 12px 14px; border-radius: 14px; background: var(--accent-soft); border: 1px solid var(--line); }
+.busy .bh { display: flex; align-items: center; gap: 10px; }
+.busy .bh b { flex: 1; font-size: 15px; }
+.busy .bt { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.busy .spin { width: 20px; height: 20px; border-radius: 999px; border: 3px solid rgba(47,75,184,0.2); border-top-color: var(--accent); animation: bspin 0.8s linear infinite; flex: none; }
+@keyframes bspin { to { transform: rotate(360deg); } }
+.busy .bar { height: 4px; border-radius: 4px; background: rgba(47,75,184,0.15); overflow: hidden; }
+.busy .bar i { display: block; height: 100%; width: 35%; background: var(--accent); border-radius: 4px; animation: bslide 1.3s ease-in-out infinite; }
+@keyframes bslide { 0% { transform: translateX(-100%); } 100% { transform: translateX(290%); } }
+.busy .bs { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 4px; font-size: 14px; color: var(--muted); }
+.busy .bs li { display: flex; align-items: center; gap: 8px; }
+.busy .bs li::before { content: ""; width: 10px; height: 10px; border-radius: 999px; border: 2px solid var(--line); flex: none; }
+.busy .bs li.now { color: var(--fg); font-weight: 600; }
+.busy .bs li.now::before { border-color: var(--accent); background: var(--accent); animation: bpulse 1s ease-in-out infinite; }
+.busy .bs li.done { color: var(--ok); }
+.busy .bs li.done::before { border-color: var(--ok); background: var(--ok); }
+@keyframes bpulse { 50% { opacity: 0.35; } }
+.busy .bhint { font-size: 13px; color: var(--warn); }
+.busy .bhint:empty { display: none; }
+.busy .bcancel { align-self: flex-start; }
+@media (prefers-reduced-motion: reduce) { .busy .spin, .busy .bar i, .busy .bs li.now::before { animation: none; } }
 .exttl { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .exttl h2 { margin-right: auto; }
 .exwho { flex-direction: row; align-items: center; gap: 6px; }
@@ -2953,21 +2974,45 @@ function needAI(task) {
   toast('งานนี้ยังไม่ได้เลือกแหล่ง AI ตั้งค่าได้ที่เมนู หัวข้อผู้ช่วย AI', 4500);
   return false;
 }
+
+/* a clear "working" card: spinner, steps, seconds counting, and a way out */
+function waitCard(el, title, steps, opt) {
+  opt = opt || {}; const t0 = now(); let cur = 0, dead = false, cancelled = false;
+  const box = document.createElement('div'); box.className = 'busy';
+  box.innerHTML = '<div class="bh"><span class="spin" aria-hidden="true"></span><b></b><span class="bt">0 วินาที</span></div><div class="bar"><i></i></div><ol class="bs"></ol><div class="bhint"></div>';
+  box.querySelector('b').textContent = title;
+  const ol = box.querySelector('.bs');
+  (steps || []).forEach((s) => { const li = document.createElement('li'); li.textContent = s; ol.appendChild(li); });
+  if (opt.onCancel || opt.cancel !== false) { const c = document.createElement('button'); c.type = 'button'; c.className = 'btn bcancel'; c.textContent = opt.cancelText || 'ยกเลิก'; c.onclick = () => { cancelled = true; stop(); el.innerHTML = '<div class="note">ยกเลิกแล้ว</div>'; if (opt.onCancel) opt.onCancel(); }; box.appendChild(c); }
+  el.innerHTML = ''; el.appendChild(box);
+  const paint = () => { [...ol.children].forEach((li, i) => { li.className = i < cur ? 'done' : i === cur ? 'now' : ''; }); };
+  paint();
+  const tick = setInterval(() => {
+    if (!box.isConnected) { clearInterval(tick); return; }
+    const sec = Math.round((now() - t0) / 1000); box.querySelector('.bt').textContent = sec + ' วินาที';
+    const h = box.querySelector('.bhint');
+    h.textContent = sec >= 40 ? 'นานกว่าปกติมาก อาจติดที่เน็ตหรือ AI ไม่ว่าง กดยกเลิกแล้วลองใหม่ได้' : sec >= 12 ? (opt.slowHint || 'AI แบบใช้ฟรีอาจตอบช้าเมื่อมีคนใช้มาก รออีกสักครู่') : '';
+  }, 500);
+  function stop() { dead = true; clearInterval(tick); }
+  return { step(i) { cur = i; paint(); }, stop, get cancelled() { return cancelled; }, get dead() { return dead; } };
+}
 function openAISetup() { closeSheets(); $('#qsMsg').innerHTML = ''; $('#qsKey').value = ''; $('#aiSetup').hidden = false; }
 async function quickSetup() {
   const key = $('#qsKey').value.trim(), out = $('#qsMsg');
   if (key.length < 20) { out.innerHTML = '<div class="note err">วางคีย์ที่คัดลอกมาให้ครบก่อน</div>'; return; }
-  out.innerHTML = '<div class="note">กำลังทดสอบ</div>';
+  const B = waitCard(out, 'กำลังเชื่อมต่อ Gemini', ['ตรวจคีย์และหาโมเดลที่ใช้ได้', 'ส่งข้อความทดสอบให้ AI', 'บันทึกการตั้งค่า']);
   const V = KEY_VENDORS.gemini;
   try {
     let model = V.model;
     try { const ids = await listModels(V.url, key, 'gemini'); const pick = ids.find((x) => x === 'gemini-flash-latest') || ids.find((x) => /^gemini-[\d.]+-flash$/.test(x)) || ids.find((x) => /flash/.test(x) && !/image|tts|live|audio|lite/.test(x)); if (pick) model = pick; } catch (e) { /* keep the alias */ }
+    if (B.cancelled) return; B.step(1);
     const r = await runOpenAI(V.url, key, model, 'Reply with exactly: OK', {}, false);
+    if (B.cancelled) return; B.step(2); B.stop();
     AI.cfg.key = { vendor: 'gemini', url: '', model, key }; AI.cfg.use = { read: 'auto', gen: 'auto', draw: 'auto' }; AI.save();
     renderAISettings(); renderAIAvail();
     out.innerHTML = '<div class="note ok">เชื่อมต่อแล้ว (' + esc(model) + ') ใช้แปลงลายมือ สร้างสมการ สร้างโจทย์ และวาดรูปใหม่ได้ทันที</div>';
     setTimeout(() => { $('#aiSetup').hidden = true; }, 1600);
-  } catch (e) { out.innerHTML = '<div class="note err">' + esc(aiErr(e)) + '</div>'; }
+  } catch (e) { B.stop(); if (!B.cancelled) out.innerHTML = '<div class="note err">' + esc(aiErr(e)) + '</div>'; }
 }
 function inkBlob(refs, pad) {
   const list = refs ? refs.map(findStroke).filter(Boolean).map((s) => ({ s })) : allStrokes();
@@ -4175,12 +4220,12 @@ async function listModels(base, key, vendor) {
   return ((r.data || r.models || []).map((m) => String(m.id || m.name || '').replace(/^models\//, '')).filter(Boolean)).sort();
 }
 async function fillModels(listId, msgId, fn) {
-  const out = $(msgId); out.innerHTML = '<div class="note">กำลังดึงรายชื่อโมเดล</div>';
+  const out = $(msgId); const B = waitCard(out, 'กำลังดึงรายชื่อโมเดล', ['ติดต่อผู้ให้บริการ', 'อ่านรายชื่อ']);
   try {
-    const ids = await fn(); const dl = $(listId); dl.innerHTML = '';
+    const ids = await fn(); B.stop(); if (B.cancelled) return; const dl = $(listId); dl.innerHTML = '';
     for (const id of ids) { const o = document.createElement('option'); o.value = id; dl.appendChild(o); }
     out.innerHTML = '<div class="note ok">พบ ' + ids.length + ' โมเดล แตะช่องชื่อโมเดลเพื่อเลือก ' + esc(ids.filter((x) => /flash|vl|vision|sonnet|gpt-4|4o|5/.test(x)).slice(0, 4).join(', ')) + '</div>';
-  } catch (e) { out.innerHTML = '<div class="note err">' + esc(e && e.code === 'cfg' ? 'ใส่คีย์ก่อน' : aiErr(e)) + '</div>'; }
+  } catch (e) { B.stop(); if (!B.cancelled) out.innerHTML = '<div class="note err">' + esc(e && e.code === 'cfg' ? 'ใส่คีย์ก่อน' : aiErr(e)) + '</div>'; }
 }
 /* people often paste a whole curl example or a model URL: keep only what the app needs */
 function cleanApiUrl(v, vendor) {
@@ -4204,14 +4249,17 @@ function bindAISettings() {
   $('#tgLVision').onclick = () => { C.local.vision = !C.local.vision; upd(); };
   $('#tgLTools').onclick = () => { C.local.tools = !C.local.tools; upd(); };
   const test = async (kind, msgEl) => {
-    const out = $(msgEl); out.innerHTML = '<div class="note">กำลังทดสอบ</div>';
+    const out = $(msgEl); const B = waitCard(out, 'กำลังทดสอบการเชื่อมต่อ', ['ตรวจการตั้งค่า', 'ส่งข้อความทดสอบและรอ AI ตอบ'], { slowHint: kind === 'local' ? 'AI ในเครื่องอาจกำลังโหลดโมเดลครั้งแรก ใช้เวลาได้ถึงหนึ่งนาที' : '' });
     const prompt = 'Reply with exactly: OK';
     try {
+      setTimeout(() => B.step(1), 250);
       let r;
       if (kind === 'local') { if (!AI.localReady()) throw { code: 'cfg' }; r = await runOpenAI(C.local.url, '', C.local.model, prompt, {}, false); }
       else { if (!AI.keyReady()) throw { code: 'cfg' }; const V = KEY_VENDORS[C.key.vendor] || KEY_VENDORS.other; r = C.key.vendor === 'anthropic' ? await runAnthropic(C.key.key, C.key.model || V.model, prompt, {}) : await runOpenAI(C.key.url || V.url, C.key.key, C.key.model || V.model, prompt, {}, false); }
+      B.stop(); if (B.cancelled) return;
       out.innerHTML = '<div class="note ok">เชื่อมต่อได้ AI ตอบว่า ' + esc(String(r.text || '').slice(0, 60)) + '</div>';
     } catch (e) {
+      B.stop(); if (B.cancelled) return;
       out.innerHTML = '<div class="note err">' + esc(e && e.code === 'cfg' ? 'กรอกที่อยู่ ชื่อโมเดล และคีย์ให้ครบก่อน' : aiErr(e)) + '</div>';
     }
   };
@@ -5740,7 +5788,7 @@ function exRenderOwnList() {
 }
 async function exAIDraft(t, ch, d) {
   if (!needAI('gen')) return;
-  const box = $('#eqDraft'); box.innerHTML = '<div class="note">AI กำลังร่างโจทย์ ' + esc(exChName(t, ch)) + '</div>';
+  const box = $('#eqDraft'); const B = waitCard(box, 'AI กำลังร่างโจทย์ ' + exChName(t, ch), ['ส่งหัวข้อและระดับให้ AI', 'AI คิดคำตอบและเขียนโจทย์ 5 ข้อ', 'จัดรูปแบบให้ตรวจ']); setTimeout(() => B.step(1), 800);
   const subs = (CURRIC[t][1][ch][1] || []).map((s) => s[0]).join(', ');
   const level = { 1: 'basic', 2: 'intermediate', 3: 'challenging, close to the selection round' }[d];
   const prompt = 'Write 5 original multiple-choice physics questions in Thai for students preparing for ' + exTrackName(t) + ', topic "' + exChName(t, ch) + '" (subtopics: ' + subs + '). Difficulty: ' + level + '.\n'
@@ -5748,6 +5796,7 @@ async function exAIDraft(t, ch, d) {
     + 'Reply in exactly this format and nothing else, repeated 5 times:\n@@Q\n(question)\n@@RIGHT\n(correct choice)\n@@WRONG\n(wrong choice 1)\n(wrong choice 2)\n(wrong choice 3)\n@@WHY\n(short explanation in Thai with the key equation)';
   try {
     const res = await AI.run('gen', prompt, { cache: false });
+    B.stop(); if (B.cancelled) return;
     const parts = sections(res.text), out = []; let cur = null;
     for (const p of parts) {
       const tx = (p.text || p.arg || '').trim();
@@ -5906,7 +5955,7 @@ function exRenderBuilt(body) {
 async function exAIFromPage() {
   const box = () => $('#gbAI'); if (!needAI('gen')) return;
   const det = detectTopics(); const names = GB.picks.map(([t, c]) => exChName(t, c)).join(', ');
-  if (box()) box().innerHTML = '<div class="note">AI กำลังเขียนโจทย์เพิ่มจากเนื้อหาในหน้านี้</div>';
+  const B = box() ? waitCard(box(), 'AI กำลังเขียนโจทย์เพิ่มจากเนื้อหาในหน้านี้', ['ส่งเนื้อหาบนหน้าให้ AI', 'AI เขียนโจทย์และคิดคำตอบ', 'เพิ่มเข้าชุด']) : null; if (B) setTimeout(() => B.step(1), 800);
   const lvl = { easy: 'easy', mid: 'medium', hard: 'hard', mix: 'one easy, one medium, one hard' }[GB.level];
   const prompt = 'A Thai physics teacher just lectured on: ' + names + '. Text on the board: "' + det.text.slice(0, 1500) + '".\nWrite 3 original multiple-choice questions in Thai that use the same situation, numbers or examples the teacher wrote where possible. Difficulty: ' + lvl + '.\n'
     + 'Each has exactly 4 choices, one correct. Use $...$ for math. Compute every answer carefully before writing it. Wrong choices should come from typical student mistakes.\n'
@@ -6443,11 +6492,13 @@ async function qmMake() {
   $('#qmGo').disabled = true;
   let qs = [];
   if (useAI) {
-    say('<div class="note">AI กำลังออกโจทย์จากเนื้อหานี้ ระหว่างรอ กดใช้โจทย์จากคลังแทนได้</div>');
-    const skip = exEl('button', 'btn', 'ไม่รอ ใช้คลังและโจทย์สุ่มตัวเลข'); msg.appendChild(skip);
-    let skipped = false;
+    let skipped = false, skipR = null;
+    const B = waitCard(msg, 'AI กำลังออกโจทย์จากเนื้อหานี้', ['ส่งเนื้อหาให้ AI', 'AI เขียนโจทย์ ' + QM.n + ' ข้อและคิดคำตอบ', 'จัดลำดับและวางโจทย์'], { cancelText: 'ไม่รอ ใช้คลังและโจทย์สุ่มตัวเลขแทน', onCancel: () => { skipped = true; if (skipR) skipR([]); } });
+    setTimeout(() => B.step(1), 800);
+    const skip = { set onclick(f) { skipR = () => f(); } };
     const ai = aiQuestionsFrom(QM.text, QM.picks, QM.level, QM.n).catch((e) => { if (!skipped) say('<div class="note err">AI ออกโจทย์ไม่สำเร็จ ' + esc(aiErr(e)) + ' ใช้โจทย์จากคลังแทน</div>'); return []; });
     qs = await Promise.race([ai, new Promise((r) => { skip.onclick = () => { skipped = true; r([]); }; })]);
+    B.stop(); if (!skipped && qs.length) B.step(2);
   }
   const fill = pickByLevel(poolFor(QM.picks, true, true), QM.n, QM.level, QM.order, qs.slice(0, QM.n));
   qs = fill.length ? fill : qs.slice(0, QM.n).map(shuffleChoices);
@@ -6517,7 +6568,7 @@ async function pdfImport(newNb) {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793002074';
+const BUILD = '1793002298';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
