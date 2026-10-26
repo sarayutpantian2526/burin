@@ -492,6 +492,31 @@ body.student #bLive, body.student #bPresent { display: none; }
 .kadv summary small { color: var(--muted); margin-left: 6px; }
 .kadv[open] { display: flex; flex-direction: column; gap: 10px; }
 #qsWho { color: var(--muted); font-weight: 400; margin-left: 6px; }
+.shelf { display: grid; grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: 16px 12px; }
+.bcard { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.bopen { padding: 0; border: 0; background: none; cursor: pointer; display: block; border-radius: 6px 12px 12px 6px; }
+.bopen[aria-current="true"] { outline: 3px solid var(--accent); outline-offset: 3px; }
+.book { position: relative; display: flex; align-items: center; justify-content: center; width: 100%; aspect-ratio: 3 / 4; border-radius: 4px 10px 10px 4px; overflow: hidden; box-shadow: 0 1px 2px rgba(20,26,34,.18), 0 6px 14px rgba(20,26,34,.16), inset -2px 0 0 rgba(255,255,255,.18); }
+.book.big { width: 150px; flex: none; }
+.book .bphoto { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.book .bphoto + .blabel, .book .blabel { position: relative; z-index: 1; }
+.blabel { display: flex; flex-direction: column; align-items: center; gap: 2px; text-align: center; color: #1D232C; }
+.blabel b { font-size: 13px; line-height: 1.3; max-width: 100%; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; word-break: break-word; }
+.blabel small { font-size: 10px; color: #5A6575; }
+.blabel.plate { width: 70%; margin-left: 8%; padding: 8px 6px; background: #FFFDF7; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,.25), inset 0 0 0 1px rgba(0,0,0,.08); }
+.blabel.band { width: 100%; padding: 8px 6px 8px 14%; background: rgba(255,253,247,.92); box-shadow: 0 1px 3px rgba(0,0,0,.2); box-sizing: border-box; }
+.bmeta { display: flex; flex-direction: column; min-width: 0; }
+.bmeta b { font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bmeta span { font-size: 12px; color: var(--muted); }
+.bacts { display: flex; gap: 4px; flex-wrap: wrap; }
+.bacts .btn { min-height: 34px; padding: 0 8px; font-size: 12px; flex: 1 1 auto; }
+.nbedit { grid-column: 1 / -1; flex-direction: row !important; flex-wrap: wrap; align-items: flex-start; }
+.nbprev { flex: none; padding: 6px; }
+.nbform { flex: 1 1 260px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.nbedit .pats { display: flex; flex-wrap: wrap; gap: 6px; }
+.nbedit .psw { width: 54px; height: 64px; border-radius: 3px 8px 8px 3px; border: 2px solid transparent; cursor: pointer; display: flex; align-items: flex-end; justify-content: center; padding: 0 0 3px; }
+.nbedit .psw span { font-size: 9px; background: rgba(255,253,247,.9); color: #1D232C; padding: 1px 4px; border-radius: 4px; }
+.nbedit .psw[aria-pressed="true"] { border-color: var(--fg); box-shadow: 0 0 0 2px var(--surface) inset; }
 .nbedit { display: flex; flex-direction: column; gap: 10px; padding: 12px; border: 1.5px solid var(--accent); border-radius: 14px; background: var(--surface); }
 .nbedit .covers { display: flex; flex-wrap: wrap; gap: 6px; align-items: flex-end; padding-bottom: 4px; }
 .nbedit .csw { width: 34px; height: 34px; border-radius: 10px; border: 2px solid transparent; cursor: pointer; }
@@ -758,7 +783,7 @@ body.student #bLive, body.student #bPresent { display: none; }
 <div class="sheet" id="menu" hidden>
   <div class="panel" role="dialog" aria-label="เมนู">
     <div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><h2>สมุดทั้งหมด</h2><button class="btn" id="bMenuClose">กลับไปเขียน</button></div>
-    <div id="nbList" style="display:flex;flex-direction:column;gap:8px"></div>
+    <div id="nbList" class="shelf"></div>
     <h3>สมุดเล่มใหม่</h3>
     <div class="row2">
       <label class="field" style="flex:1 1 220px"><span>ชื่อสมุด</span><input id="nbTitle" placeholder="เช่น สอวน. ม.4 บทที่ 4 งานและพลังงาน" maxlength="80"></label>
@@ -1020,7 +1045,7 @@ const WIDTHS = [2, 3.2, 5.2]; /* default presets; the user can change each one *
 const HL = '#F5C542';
 const PAPERS = [['grid', 'ตาราง'], ['dot', 'จุด'], ['lined', 'บรรทัด'], ['mm', 'กราฟ มม.'], ['cornell', 'คอร์เนลล์'], ['blank', 'เปล่า']];
 const LEVELS = [['p', 'ประถมปลาย'], ['mt', 'ม.ต้น'], ['mp', 'ม.ปลาย'], ['olymp', 'สอวน. และ IJSO'], ['u', 'มหาวิทยาลัย']];
-const COVERS = ['#2F4BB8', '#1F6E8C', '#6B3FA0', '#1D7350', '#9A4A12', '#8C2F39', '#3E4A5C'];
+const COVERS = ['#2F4BB8', '#1F6E8C', '#6B3FA0', '#1D7350', '#9A4A12', '#8C2F39', '#3E4A5C', '#22252B', '#E8A0A8', '#F2C6A0', '#F3DE8A', '#A8D5BA', '#9CC5E8', '#C3B1E1', '#D9C9A8', '#F4EFE4'];
 const LIBS = {
   math: 'https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.11.0/math.min.js',
   qr: 'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js',
@@ -4071,53 +4096,112 @@ $('#pkSize').onclick = () => { const el = $('#peek'); el.classList.toggle('big')
 $('#pkMin').onclick = () => { $('#peek').classList.toggle('min'); };
 $('#pkClose').onclick = () => { peekStop(); $('#peek').hidden = true; };
 
+/* ---------- notebook covers: colour, pattern, label, or a photo ---------- */
+const COVER_PATTERNS = [
+  ['plain', 'เรียบ'], ['linen', 'ผ้าลินิน'], ['dots', 'จุด'], ['grid', 'ตาราง'], ['stripe', 'ริ้วเฉียง'], ['check', 'ลายสก็อต'], ['wave', 'คลื่น'], ['marble', 'หินอ่อน'], ['star', 'ดาว']
+];
+const COVER_LABELS = [['plate', 'ป้ายชื่อ'], ['band', 'แถบคาด'], ['none', 'ไม่มีป้าย']];
+function lum(hex) { const n = parseInt(String(hex).slice(1), 16); const c = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }); return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]; }
+function coverColor(nb) { return COVERS.includes(nb.color) ? nb.color : COVERS[0]; }
+function coverCss(nb) {
+  const c = coverColor(nb), dark = lum(c) < 0.35, ink = dark ? 'rgba(255,255,255,' : 'rgba(20,24,31,';
+  const P = {
+    plain: '',
+    linen: 'repeating-linear-gradient(0deg,' + ink + '.07) 0 1px,transparent 1px 3px),repeating-linear-gradient(90deg,' + ink + '.06) 0 1px,transparent 1px 3px)',
+    dots: 'radial-gradient(' + ink + '.28) 1.4px,transparent 1.6px)',
+    grid: 'linear-gradient(' + ink + '.16) 1px,transparent 1px),linear-gradient(90deg,' + ink + '.16) 1px,transparent 1px)',
+    stripe: 'repeating-linear-gradient(45deg,' + ink + '.14) 0 6px,transparent 6px 14px)',
+    check: 'linear-gradient(' + ink + '.13) 50%,transparent 50%),linear-gradient(90deg,' + ink + '.13) 50%,transparent 50%)',
+    wave: 'radial-gradient(circle at 50% 100%,transparent 9px,' + ink + '.16) 10px,' + ink + '.16) 11px,transparent 12px)',
+    marble: 'radial-gradient(ellipse at 20% 30%,' + ink + '.22),transparent 45%),radial-gradient(ellipse at 80% 70%,' + ink + '.18),transparent 50%),linear-gradient(120deg,transparent 40%,' + ink + '.12) 48%,transparent 56%)',
+    star: 'radial-gradient(' + ink + '.55) 1.2px,transparent 1.6px),radial-gradient(' + ink + '.3) 0.8px,transparent 1.2px)'
+  };
+  const size = { dots: '12px 12px', grid: '14px 14px', check: '22px 22px', wave: '20px 12px', star: '37px 41px, 23px 19px', linen: 'auto' }[nb.pattern] || 'auto';
+  const pos = nb.pattern === 'star' ? '0 0, 11px 7px' : '0 0';
+  const img = P[nb.pattern || 'plain'] || '';
+  return 'background-color:' + c + ';' + (img ? 'background-image:' + img + ',linear-gradient(90deg,rgba(0,0,0,.22) 0 7%,rgba(255,255,255,.14) 7.5% 8.5%,transparent 9%);background-size:' + size + ',100% 100%;background-position:' + pos + ',0 0;' : 'background-image:linear-gradient(90deg,rgba(0,0,0,.22) 0 7%,rgba(255,255,255,.14) 7.5% 8.5%,transparent 9%);');
+}
+function coverEl(nb, big) {
+  const d = document.createElement('span'); d.className = 'book' + (big ? ' big' : ''); d.setAttribute('style', coverCss(nb));
+  if (okAsset(nb.coverAsset)) { const im = document.createElement('img'); im.alt = ''; im.className = 'bphoto'; d.appendChild(im); setAssetSrc(im, nb.coverAsset); }
+  const lab = nb.label || 'plate';
+  if (lab !== 'none') {
+    const t = document.createElement('span'); t.className = 'blabel ' + lab;
+    t.innerHTML = '<b></b><small></small>'; t.querySelector('b').textContent = nb.title || 'สมุด'; t.querySelector('small').textContent = levelName(nb.level);
+    d.appendChild(t);
+  }
+  return d;
+}
 function renderLibrary() {
   renderTabs();
   const el = $('#nbList'); if (!el) return;
   if (S.nbEditing && el.querySelector('.nbedit')) return; /* do not wipe a name being typed when another device syncs */
-  S.nbEditing = null; el.innerHTML = '';
+  S.nbEditing = null; el.innerHTML = ''; el.className = 'shelf';
   if (!S.nbs.length) { el.innerHTML = '<div class="note">ยังไม่มีสมุด สร้างเล่มแรกด้านล่าง</div>'; return; }
   for (const nb of S.nbs) {
-    const b = document.createElement('button'); b.className = 'nbrow'; b.type = 'button';
-    b.setAttribute('aria-current', nb.id === S.nid ? 'true' : 'false');
-    const d = nb.updatedAt ? new Date(nb.updatedAt) : null;
-    b.innerHTML = '<span class="cover" style="background:' + esc(COVERS.includes(nb.color) ? nb.color : COVERS[0]) + '"></span><span class="t"><b></b><span></span></span>';
-    b.querySelector('b').textContent = nb.title || 'สมุด';
-    b.querySelector('.t span').textContent = levelName(nb.level) + ' : ' + ((nb.pages || []).length) + ' หน้า' + (d ? ' : แก้ไข ' + d.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' }) : '');
+    const card = document.createElement('div'); card.className = 'bcard'; card.dataset.nb = nb.id;
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'bopen'; b.setAttribute('aria-current', nb.id === S.nid ? 'true' : 'false');
+    b.setAttribute('aria-label', 'เปิด ' + (nb.title || 'สมุด'));
+    b.appendChild(coverEl(nb));
     b.onclick = () => { openNotebook(nb.id); closeSheets(); };
-    b.style.flex = '1 1 auto'; b.style.minWidth = '0';
-    const row = document.createElement('div'); row.style.cssText = 'display:flex;gap:6px;align-items:stretch';
-    const pk = document.createElement('button'); pk.className = 'btn'; pk.type = 'button'; pk.textContent = 'ดูคู่กัน';
-    pk.setAttribute('aria-label', 'เปิด ' + (nb.title || 'สมุด') + ' ดูคู่กับหน้าที่เขียนอยู่');
-    pk.onclick = () => { closeSheets(); openPeek(nb.id); };
-    const ed = document.createElement('button'); ed.className = 'btn'; ed.type = 'button'; ed.textContent = 'แก้ไข';
-    ed.setAttribute('aria-label', 'แก้ชื่อ ระดับ หรือสีปกของ ' + (nb.title || 'สมุด'));
-    ed.onclick = () => editNotebookRow(row, nb);
-    row.append(b, ed, pk);
-    el.appendChild(row);
-    if (S.editNb === nb.id) { S.editNb = null; editNotebookRow(row, nb); }
+    const d = nb.updatedAt ? new Date(nb.updatedAt) : null;
+    const meta = document.createElement('div'); meta.className = 'bmeta';
+    meta.innerHTML = '<b></b><span></span>'; meta.querySelector('b').textContent = nb.title || 'สมุด';
+    meta.querySelector('span').textContent = ((nb.pages || []).length) + ' หน้า' + (d ? ' : ' + d.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' }) : '');
+    const acts = document.createElement('div'); acts.className = 'bacts';
+    const ed = document.createElement('button'); ed.className = 'btn'; ed.type = 'button'; ed.textContent = 'แต่งปก แก้ชื่อ'; ed.onclick = () => editNotebookRow(card, nb);
+    const pk = document.createElement('button'); pk.className = 'btn'; pk.type = 'button'; pk.textContent = 'ดูคู่กัน'; pk.setAttribute('aria-label', 'เปิด ' + (nb.title || 'สมุด') + ' ดูคู่กับหน้าที่เขียนอยู่'); pk.onclick = () => { closeSheets(); openPeek(nb.id); };
+    acts.append(ed, pk);
+    card.append(b, meta, acts);
+    el.appendChild(card);
+    if (S.editNb === nb.id) { S.editNb = null; editNotebookRow(card, nb); }
   }
 }
 function editNotebookRow(row, nb) {
+  const st = { title: nb.title || '', level: nb.level || 'mp', color: coverColor(nb), pattern: nb.pattern || 'plain', label: nb.label || 'plate', coverAsset: nb.coverAsset || null };
   const f = document.createElement('div'); f.className = 'nbedit';
-  f.innerHTML = '<label class="field"><span>ชื่อสมุด</span><input maxlength="80"></label><div class="row2"><label class="field"><span>ระดับ</span><select></select></label><span class="covers"></span></div><div class="row2"><button class="btn solid" type="button">บันทึก</button><button class="btn" type="button">ยกเลิก</button><button class="btn danger" type="button">ลบสมุดเล่มนี้</button></div><div class="nbmsg"></div>';
-  const inp = f.querySelector('input'), sel = f.querySelector('select'), [bSave, bCancel, bDel] = f.querySelectorAll('.row2 .btn');
-  inp.value = nb.title || '';
+  f.innerHTML = '<div class="nbprev"></div><div class="nbform"><label class="field"><span>ชื่อสมุด</span><input maxlength="80"></label><label class="field"><span>ระดับ</span><select></select></label>'
+    + '<span class="label">สีปก</span><span class="covers"></span><span class="label">ลายปก</span><span class="pats"></span><span class="label">ป้ายชื่อบนปก</span><span class="labs chips"></span>'
+    + '<div class="row2"><button class="btn" type="button" data-a="photo">ใช้รูปเป็นปก</button><button class="btn" type="button" data-a="nophoto">เอารูปปกออก</button></div>'
+    + '<div class="row2"><button class="btn solid" type="button" data-a="save">บันทึก</button><button class="btn" type="button" data-a="cancel">ยกเลิก</button><button class="btn danger" type="button" data-a="del">ลบสมุดเล่มนี้</button></div><div class="nbmsg"></div></div>';
+  const $f = (q) => f.querySelector(q), inp = $f('input'), sel = $f('select');
+  inp.value = st.title;
   for (const [k, n] of LEVELS) { const o = document.createElement('option'); o.value = k; o.textContent = n; sel.appendChild(o); }
-  sel.value = nb.level || 'mp';
-  let color = COVERS.includes(nb.color) ? nb.color : COVERS[0];
-  const cv = f.querySelector('.covers');
-  for (const c of COVERS) { const s2 = document.createElement('button'); s2.type = 'button'; s2.className = 'csw'; s2.style.background = c; s2.setAttribute('aria-label', 'สีปก'); s2.setAttribute('aria-pressed', c === color ? 'true' : 'false'); s2.onclick = () => { color = c; cv.querySelectorAll('.csw').forEach((x) => x.setAttribute('aria-pressed', x === s2 ? 'true' : 'false')); }; cv.appendChild(s2); }
-  const save = async () => {
-    const title = inp.value.trim() || 'สมุด';
-    try { await S.store.update('notebooks/' + nb.id, { title, level: sel.value, color, updatedAt: now() }); if (S.nid === nb.id) { S.nb = Object.assign({}, S.nb, { title, level: sel.value, color }); renderTitle(); } toast('บันทึกแล้ว', 1200); } catch (e) { onStoreError(e); }
-    S.nbEditing = null; renderLibrary();
+  sel.value = st.level;
+  const prev = () => { const p = $f('.nbprev'); p.innerHTML = ''; p.appendChild(coverEl(Object.assign({}, st, { title: inp.value || 'สมุด', level: sel.value }), true)); $f('[data-a="nophoto"]').hidden = !st.coverAsset; };
+  inp.oninput = prev; sel.onchange = prev;
+  const cv = $f('.covers');
+  for (const c of COVERS) { const s2 = document.createElement('button'); s2.type = 'button'; s2.className = 'csw'; s2.style.background = c; s2.setAttribute('aria-label', 'สีปก'); s2.setAttribute('aria-pressed', c === st.color ? 'true' : 'false'); s2.onclick = () => { st.color = c; cv.querySelectorAll('.csw').forEach((x) => x.setAttribute('aria-pressed', x === s2 ? 'true' : 'false')); paintPats(); prev(); }; cv.appendChild(s2); }
+  const pats = $f('.pats');
+  const paintPats = () => { pats.innerHTML = ''; for (const [k, n] of COVER_PATTERNS) { const b = document.createElement('button'); b.type = 'button'; b.className = 'psw'; b.title = n; b.setAttribute('aria-label', 'ลาย' + n); b.setAttribute('style', coverCss({ color: st.color, pattern: k })); b.setAttribute('aria-pressed', k === st.pattern ? 'true' : 'false'); b.innerHTML = '<span>' + n + '</span>'; b.onclick = () => { st.pattern = k; paintPats(); prev(); }; pats.appendChild(b); } };
+  paintPats();
+  const labs = $f('.labs');
+  const paintLabs = () => { labs.innerHTML = ''; for (const [k, n] of COVER_LABELS) { const b = document.createElement('button'); b.type = 'button'; b.className = 'chip'; b.textContent = n; b.setAttribute('aria-pressed', k === st.label ? 'true' : 'false'); b.onclick = () => { st.label = k; paintLabs(); prev(); }; labs.appendChild(b); } };
+  paintLabs();
+  $f('[data-a="photo"]').onclick = () => {
+    const fi = document.createElement('input'); fi.type = 'file'; fi.accept = 'image/*';
+    fi.onchange = async () => {
+      const file = fi.files && fi.files[0]; if (!file) return;
+      const A = await getAssets(); if (!A) { toast('มุมมองนี้ใส่รูปปกไม่ได้', 2400); return; }
+      $f('.nbmsg').innerHTML = '<div class="note">กำลังใส่รูปปก</div>';
+      try { const p = await prepImage(file); const r = await A.upload(p.blob, { type: p.type }); st.coverAsset = r.id; $f('.nbmsg').innerHTML = ''; prev(); }
+      catch (e) { $f('.nbmsg').innerHTML = '<div class="note err">' + esc(assetErr(e)) + '</div>'; }
+    };
+    fi.click();
   };
-  bSave.onclick = save; inp.onkeydown = (e) => { if (e.key === 'Enter') save(); if (e.key === 'Escape') { S.nbEditing = null; renderLibrary(); } };
-  bCancel.onclick = () => { S.nbEditing = null; renderLibrary(); };
-  let armed = false;
+  $f('[data-a="nophoto"]').onclick = () => { st.coverAsset = null; prev(); };
+  const done = () => { S.nbEditing = null; renderLibrary(); };
+  const save = async () => {
+    const title = inp.value.trim() || 'สมุด', patch = { title, level: sel.value, color: st.color, pattern: st.pattern, label: st.label, coverAsset: st.coverAsset || null, updatedAt: now() };
+    try { await S.store.update('notebooks/' + nb.id, patch); if (S.nid === nb.id) { S.nb = Object.assign({}, S.nb, patch); renderTitle(); } toast('บันทึกแล้ว', 1200); } catch (e) { onStoreError(e); }
+    done();
+  };
+  $f('[data-a="save"]').onclick = save;
+  inp.onkeydown = (e) => { if (e.key === 'Enter') save(); if (e.key === 'Escape') done(); };
+  $f('[data-a="cancel"]').onclick = done;
+  let armed = false; const bDel = $f('[data-a="del"]');
   bDel.onclick = async () => {
-    if (!armed) { armed = true; bDel.textContent = 'แตะอีกครั้งเพื่อยืนยันการลบ'; f.querySelector('.nbmsg').innerHTML = '<div class="note err">ลบแล้วกู้คืนไม่ได้ ทุกหน้าและลายมือในเล่มนี้จะหายไป</div>'; setTimeout(() => { armed = false; if (bDel.isConnected) bDel.textContent = 'ลบสมุดเล่มนี้'; }, 4000); return; }
+    if (!armed) { armed = true; bDel.textContent = 'แตะอีกครั้งเพื่อยืนยันการลบ'; $f('.nbmsg').innerHTML = '<div class="note err">ลบแล้วกู้คืนไม่ได้ ทุกหน้าและลายมือในเล่มนี้จะหายไป</div>'; setTimeout(() => { armed = false; if (bDel.isConnected) bDel.textContent = 'ลบสมุดเล่มนี้'; }, 4000); return; }
     try {
       for (const pid of nb.pages || []) { const ls = await S.store.list('pages/' + pid + '/layers').catch(() => []); for (const l of ls) await S.store.del('pages/' + pid + '/layers/' + l.id).catch(() => {}); await S.store.del('pages/' + pid).catch(() => {}); }
       S.nbEditing = null;
@@ -4127,8 +4211,8 @@ function editNotebookRow(row, nb) {
       toast('ลบสมุดแล้ว', 1600);
     } catch (e) { onStoreError(e); }
   };
-  row.replaceWith(f); f.dataset.nb = nb.id; S.nbEditing = nb.id;
-  setTimeout(() => { inp.focus({ preventScroll: true }); inp.select(); }, 30);
+  row.replaceWith(f); f.dataset.nb = nb.id; S.nbEditing = nb.id; prev();
+  setTimeout(() => { f.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }, 30);
 }
 function closePops() {
   for (const id of ['#popShape', '#popColors', '#popEraser', '#popLaser', '#popWidth']) $(id).hidden = true;
@@ -6683,7 +6767,7 @@ async function pdfImport(newNb) {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793002887';
+const BUILD = '1793002962';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
