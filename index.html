@@ -527,6 +527,9 @@ body.student #bLive, body.student #bPresent { display: none; }
 .nbedit .csw[aria-pressed="true"] { border-color: var(--fg); box-shadow: 0 0 0 2px var(--surface) inset; }
 .btn.danger { color: var(--danger); }
 #tTitle { cursor: pointer; }
+#aiFloat { position: fixed; left: 50%; bottom: max(76px, env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); z-index: 55; display: flex; flex-direction: column; gap: 8px; width: min(420px, calc(100% - 24px)); }
+#aiFloat .busy { background: var(--surface); box-shadow: var(--shadow); }
+body.present #aiFloat { display: none; }
 .exttl { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .exttl h2 { margin-right: auto; }
 .exwho { flex-direction: row; align-items: center; gap: 6px; }
@@ -1556,9 +1559,9 @@ const AI = {
     if (s === 'key') {
       const K = this.cfg.key, V = KEY_VENDORS[K.vendor] || KEY_VENDORS.other;
       if (!K.model && !V.model) { K.model = await pickModel(K.vendor, K.url, K.key); this.save(); }
-      if (K.vendor === 'anthropic') return runAnthropic(K.key, K.model || V.model, prompt, o);
       if (K.vendor === 'gemini' && task === 'read' && !o.effort) o = Object.assign({}, o, { effort: 'low' });
-      return runOpenAI(K.url || V.url, K.key, K.model || V.model, prompt, o, true);
+      const call = (model) => (K.vendor === 'anthropic' ? runAnthropic(K.key, model, prompt, o) : runOpenAI(K.url || V.url, K.key, model, prompt, o, true));
+      return withRetry(call, K.model || V.model, K, o);
     }
     throw { code: 'ai_off' };
   }
@@ -1602,7 +1605,9 @@ async function runOpenAI(base, key, model, prompt, o, toolsOk) {
     }
     const text = typeof m.content === 'string' ? m.content : Array.isArray(m.content) ? m.content.map((x) => x.text || '').join('') : '';
     if (o.onText) o.onText(text);
-    return { text: text.replace(/<think>[\s\S]*?<\/think>/g, '').trim(), truncated: ch.finish_reason === 'length' };
+    const clean = text.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+    if (!clean && !o.allowEmpty) throw { code: 'empty_text', why: ch.finish_reason === 'length' ? 'คำตอบยาวเกินกำหนด' : ch.finish_reason === 'content_filter' || ch.finish_reason === 'safety' ? 'ระบบกรองเนื้อหาของผู้ให้บริการ' : '' };
+    return { text: clean, truncated: ch.finish_reason === 'length' };
   }
   throw { code: 'empty_completion' };
 }
@@ -3020,7 +3025,8 @@ function setPaper(kind) {
 function sections(text) {
   const out = []; let cur = null;
   for (const line of String(text || '').split('\n')) {
-    const m = line.match(/^\s*@@\s*([A-Za-z_]+)\s*(.*)$/);
+    if (/^\s*```/.test(line)) continue;
+    const m = line.match(/^[\s*#>_`-]*@@\s*([A-Za-z_]+)\s*(.*?)[\s*_`]*$/);
     if (m) { cur = { key: m[1].toUpperCase(), arg: m[2].trim(), body: [] }; out.push(cur); }
     else if (cur) cur.body.push(line);
   }
@@ -3056,7 +3062,33 @@ function waitCard(el, title, steps, opt) {
   function stop() { dead = true; clearInterval(tick); }
   return { step(i) { cur = i; paint(); }, stop, get cancelled() { return cancelled; }, get dead() { return dead; } };
 }
+function floatWait(title, steps, onCancel) {
+  let host = document.getElementById('aiFloat');
+  if (!host) { host = document.createElement('div'); host.id = 'aiFloat'; host.className = 'no-ink'; document.body.appendChild(host); }
+  const slot = document.createElement('div'); host.appendChild(slot);
+  const B = waitCard(slot, title, steps, { cancelText: 'ยกเลิก', onCancel: () => { if (onCancel) onCancel(); setTimeout(() => slot.remove(), 900); } });
+  B.close = () => { B.stop(); slot.remove(); };
+  return B;
+}
 function openAISetup() { closeSheets(); $('#qsMsg').innerHTML = ''; $('#qsKey').value = ''; $('#aiSetup').hidden = false; }
+/* busy servers (503, 500, overloaded): wait and try again, then try a sister model; keep the one that worked */
+const busyErr = (e) => e && (/^http_5\d\d$/.test(e.code) || (e.code === 'rate_limited' && /overload|unavailable|try again/i.test(e.message || '')) || /overload|unavailable|high demand/i.test((e && e.message) || ''));
+const sleepAbort = (ms, sig) => new Promise((res, rej) => { const t = setTimeout(res, ms); if (sig) sig.addEventListener('abort', () => { clearTimeout(t); rej({ code: 'cancelled' }); }, { once: true }); });
+async function withRetry(call, model, K, o) {
+  let last;
+  for (const wait of [0, 1500, 4000]) {
+    if (wait) await sleepAbort(wait, o.signal);
+    try { return await call(model); } catch (e) { last = e; if (!busyErr(e)) throw e; }
+  }
+  /* still busy: try other models from this provider that can read pictures */
+  let alts = [];
+  try { const ids = await listModels(K.url || (KEY_VENDORS[K.vendor] || {}).url, K.key, K.vendor); const pref = MODEL_PREF[K.vendor] || MODEL_PREF.other; for (const re of pref) for (const id of ids.filter((x) => re.test(x)).sort().reverse()) if (id !== model && !alts.includes(id)) alts.push(id); } catch (e) { /* no list */ }
+  for (const m of alts.slice(0, 3)) {
+    try { const r = await call(m); K.model = m; AI.save(); toast('โมเดลเดิมไม่ว่าง จึงเปลี่ยนไปใช้ ' + m + ' ให้แล้ว', 3000); return r; }
+    catch (e) { last = e; if (!busyErr(e)) throw e; }
+  }
+  throw last;
+}
 function detectVendor(key) {
   key = String(key || '').trim();
   if (/^sk-ant-/.test(key)) return 'anthropic';
@@ -3110,7 +3142,7 @@ function inkBlob(refs, pad) {
   for (const r of list) { boxCache.delete(r.s); const b = sbox(r.s); x0 = Math.min(x0, b[0]); y0 = Math.min(y0, b[1]); x1 = Math.max(x1, b[2]); y1 = Math.max(y1, b[3]); }
   pad = pad || 24; x0 = Math.max(0, x0 - pad); y0 = Math.max(0, y0 - pad); x1 = Math.min(W, x1 + pad); y1 = Math.min(H, y1 + pad);
   const w = x1 - x0, h = y1 - y0;
-  const k = clamp(Math.sqrt(1150000 / (w * h)), 0.5, 3);
+  const k = clamp(Math.sqrt(700000 / (w * h)), 0.5, 2.5);
   const cv = document.createElement('canvas'); cv.width = Math.round(w * k); cv.height = Math.round(h * k);
   const c = cv.getContext('2d'); c.fillStyle = '#FFFFFF'; c.fillRect(0, 0, cv.width, cv.height);
   c.setTransform(k, 0, 0, k, -x0 * k, -y0 * k);
@@ -3127,12 +3159,15 @@ function aiErr(e) {
   if (code === 'bad_key') return 'คีย์ API ไม่ถูกต้องหรือหมดสิทธิ์ ตรวจที่เมนู หัวข้อผู้ช่วย AI';
   if (code === 'bad_model') return 'ไม่พบโมเดลนี้ ตรวจชื่อโมเดลที่เมนู หัวข้อผู้ช่วย AI' + (e.message ? ' (' + String(e.message).slice(0, 80) + ')' : '');
   if (code === 'ai_off') return 'งานนี้ปิด AI ไว้ เปิดได้ที่เมนู หัวข้อผู้ช่วย AI';
-  if (code === 'rate_limited') return 'เรียกใช้บ่อยเกินไป รอสักครู่แล้วลองอีกครั้ง';
+  if (code === 'rate_limited') return 'ใช้ครบโควตาชั่วคราวของคีย์นี้ (แบบใช้ฟรีจำกัดจำนวนครั้งต่อนาทีและต่อวัน) รอสักครู่แล้วลองอีกครั้ง' + (e.message ? ' : ' + String(e.message).slice(0, 120) : '');
+  if (/^http_5\d\d$/.test(code || '')) return 'ผู้ให้บริการ AI ไม่ว่างชั่วคราว (' + code.replace('http_', '') + ') ระบบลองซ้ำและลองโมเดลอื่นให้แล้วแต่ยังไม่ว่าง รอสักครู่แล้วลองใหม่' + (e.message ? ' : ' + String(e.message).slice(0, 120) : '');
   if (code === 'images_unavailable') return 'มุมมองนี้ส่งภาพให้ AI อ่านไม่ได้';
   if (code === 'invalid_json') return 'AI ตอบกลับไม่ครบ ลองอีกครั้ง';
   if (code === 'refused') return 'AI ไม่ตอบคำขอนี้ ลองวงส่วนอื่นหรือปรับเนื้อหา';
   if (code === 'session_expired') return 'ต้องลงชื่อเข้าใช้อีกครั้ง';
   if (code === 'cancelled') return 'ยกเลิกแล้ว';
+  if (code === 'timeout') return 'AI ใช้เวลานานเกินไป ลองอีกครั้ง หรือวงทีละส่วนให้เล็กลง';
+  if (code === 'empty_text') return 'AI ไม่ได้ส่งข้อความกลับมา' + (e.why ? ' (' + e.why + ')' : '') + ' ลองอีกครั้ง';
   if (code === 'prompt_too_large') return 'เนื้อหาในหน้ายาวเกินไป วงเฉพาะส่วนที่ต้องการแล้วลองใหม่';
   return 'เชื่อมต่อ AI ไม่สำเร็จ ลองอีกครั้ง' + (code ? ' (รหัส ' + code + ')' : (e && e.message ? ' (' + String(e.message).slice(0, 80) + ')' : ''));
 }
@@ -3190,8 +3225,10 @@ async function convertBatch(gs, eq) {
   if (!imgs.length) return;
   for (const x of imgs) S.pending.push(x.g.box);
   drawSelBox();
-  toast(imgs.length > 1 ? 'กำลังแปลง ' + imgs.length + ' ส่วน' : 'กำลังแปลงเป็นตัวพิมพ์', 6000);
-  const N = imgs.length;
+  const N = imgs.length, ctl = new AbortController(); let timedOut = false;
+  const B = floatWait(N > 1 ? 'กำลังแปลง ' + N + ' ส่วนเป็นตัวพิมพ์' : (eq ? 'กำลังแปลงเป็นสมการ' : 'กำลังแปลงเป็นตัวพิมพ์'), ['ส่งภาพลายมือให้ AI', 'AI กำลังอ่าน', 'ใส่ตัวพิมพ์แทนลายมือ'], () => ctl.abort());
+  const limit = setTimeout(() => { timedOut = true; ctl.abort(); }, 100000);
+  setTimeout(() => B.step(1), 1200);
   const prompt = eq ? 'You will see ' + N + ' image' + (N > 1 ? 's' : '') + ', numbered 1 to ' + N + ' in the order attached. Each is a handwritten equation or derivation from a Thai physics teacher\'s notebook.\n'
     + 'Transcribe each into LaTeX, faithfully: do not solve, simplify or correct anything. One equation per line, without $ signs. Use \\frac, \\sqrt, subscripts and superscripts, vectors as \\vec{}, Greek letters, units with \\,\\mathrm{}. Put any Thai words inside \\text{}.\n'
     + 'If a block is a drawing rather than an equation, mark it SKIP.\n'
@@ -3206,20 +3243,26 @@ async function convertBatch(gs, eq) {
     + Array.from({ length: N }, (_, i) => '@@BLOCK ' + (i + 1) + '\n(transcription of image ' + (i + 1) + ')').join('\n')
     + '\nFor a drawing, write the marker line as "@@BLOCK k SKIP" with nothing under it.';
   try {
-    const res = await AI.run('read', prompt, { images: imgs.map((x) => x.im.blob) });
+    let res;
+    try { res = await AI.run('read', prompt, { images: imgs.map((x) => x.im.blob), signal: ctl.signal }); }
+    catch (e) { if (e && e.code === 'cancelled' && timedOut) throw { code: 'timeout' }; throw e; }
+    B.step(2);
     const parts = sections(res.text).filter((p) => p.key === 'BLOCK');
+    if (!parts.length && N > 1) { B.close(); for (const x of imgs) await convertBatch([x.g], eq); return; }
     let done = 0, skipped = 0;
     imgs.forEach((x, i) => {
       const p = parts.find((q) => parseInt(q.arg, 10) === i + 1) || (N === 1 ? parts[0] : null);
-      const raw = p ? p.text : (N === 1 && !parts.length ? String(res.text || '').trim() : '');
+      const raw = p ? p.text : (N === 1 && !parts.length ? String(res.text || '').replace(/^\s*```\w*\s*$/gm, '').trim() : '');
       if (!p && !raw) { skipped++; return; }
       if ((p && /skip/i.test(p.arg)) || !raw) { skipped++; return; }
       const out = eq ? raw.split('\n').map((l) => l.trim().replace(/^\$+|\$+$/g, '').replace(/^\\\[|\\\]$/g, '').trim()).filter(Boolean).map((l) => '$$' + l + '$$').join('\n') : raw;
       replaceGroup(x.g, out); done++;
     });
-    toast(done ? 'แปลงแล้ว ' + done + ' ส่วน' + (skipped ? ' ข้ามภาพวาด ' + skipped + ' ส่วน' : '') + ' แตะสองนิ้วเพื่อย้อนกลับ' : 'ส่วนนี้เป็นภาพวาด จึงไม่ได้แปลง', 3200);
-  } catch (e) { toast(aiErr(e), 4500); }
+    B.close();
+    toast(done ? 'แปลงแล้ว ' + done + ' ส่วน' + (skipped ? ' ข้ามภาพวาด ' + skipped + ' ส่วน' : '') + ' แตะสองนิ้วเพื่อย้อนกลับ' : 'AI มองว่าส่วนนี้เป็นภาพวาด จึงไม่ได้แปลง ถ้าเป็นตัวหนังสือ ลองวงให้เล็กลงแล้วแปลงใหม่', 4200);
+  } catch (e) { B.close(); if (!(e && e.code === 'cancelled')) toast(aiErr(e), 5000); }
   finally {
+    clearTimeout(limit);
     const set = new Set(imgs.map((x) => x.g.box));
     S.pending = S.pending.filter((b) => !set.has(b)); drawSelBox();
   }
@@ -6687,7 +6730,9 @@ async function aiQuestionsFrom(text, picks, level, n) {
 }
 async function readInkText(refs) {
   const im = await inkBlob(refs, 14); if (!im) return '';
-  const res = await AI.run('read', 'This image is handwriting from a Thai physics teacher\'s notebook. Transcribe it faithfully: Thai text as written, math in LaTeX inside $...$. Reply with the transcription only.', { images: [im.blob] });
+  const ctl = new AbortController(), lim = setTimeout(() => ctl.abort(), 100000);
+  let res; try { res = await AI.run('read', 'This image is handwriting from a Thai physics teacher\'s notebook. Transcribe it faithfully: Thai text as written, math in LaTeX inside $...$. Reply with the transcription only.', { images: [im.blob], signal: ctl.signal }); }
+  catch (e) { throw e && e.code === 'cancelled' ? { code: 'timeout' } : e; } finally { clearTimeout(lim); }
   return String(res.text || '').trim();
 }
 function openQuizMaker() {
@@ -6823,7 +6868,7 @@ async function pdfImport(newNb) {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793003366';
+const BUILD = '1793003600';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
