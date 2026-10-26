@@ -47,3 +47,19 @@ create policy "burin files: change own" on storage.objects for update to authent
   using (bucket_id = 'burin' and (storage.foldername(name))[1] = auth.uid()::text);
 create policy "burin files: delete own" on storage.objects for delete to authenticated
   using (bucket_id = 'burin' and (storage.foldername(name))[1] = auth.uid()::text);
+
+-- 5) แชร์เลคเชอร์ให้ผู้เรียน (ใครมีลิงก์อ่านได้ เฉพาะเจ้าของแก้ได้)
+create table if not exists public.shares (
+  id text primary key,
+  owner uuid not null default auth.uid() references auth.users (id) on delete cascade,
+  title text,
+  data jsonb not null,
+  created_at timestamptz not null default now()
+);
+alter table public.shares enable row level security;
+drop policy if exists "shares: anyone with the link can read" on public.shares;
+drop policy if exists "shares: owner writes" on public.shares;
+create policy "shares: anyone with the link can read" on public.shares for select to anon, authenticated using (true);
+create policy "shares: owner writes" on public.shares for all to authenticated using (owner = auth.uid()) with check (owner = auth.uid());
+grant select on public.shares to anon;
+grant select, insert, update, delete on public.shares to authenticated;

@@ -440,6 +440,24 @@ body.present .updbar { display: none !important; }
 .extab th, .extab td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
 .extab td small { display: block; color: var(--muted); font-size: 11px; }
 #exTabs { flex-wrap: wrap; }
+.livetop { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
+.livetop .qr { width: 168px; min-height: 60px; background: #FFFFFF; padding: 8px; border-radius: 12px; border: 1px solid var(--line); }
+.livetop .qr img, .livetop .qr canvas { width: 100%; height: auto; display: block; }
+.lcode { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.lcode span { font-size: 13px; color: var(--muted); }
+.lcode b { font-size: 44px; letter-spacing: 6px; font-variant-numeric: tabular-nums; }
+.lcode small { font-size: 12px; color: var(--muted); word-break: break-all; }
+.roster { display: flex; flex-wrap: wrap; gap: 6px; }
+.roster span { padding: 4px 10px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-size: 13px; }
+.roster .none, .qr .none { background: none; color: var(--muted); }
+#bLive.on { background: var(--ok-soft); border-color: var(--ok); }
+#bLiveN { font-style: normal; font-size: 12px; font-weight: 700; color: var(--ok); }
+#bLiveN:empty { display: none; }
+.livepill { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); z-index: 8; display: flex; align-items: center; gap: 8px; padding: 6px 8px 6px 14px; border-radius: 999px; background: var(--chrome); color: var(--chrome-fg); font-size: 13px; box-shadow: var(--shadow); max-width: calc(100% - 24px); }
+.livepill button { min-height: 32px; padding: 0 12px; border-radius: 999px; border: 0; background: rgba(255,255,255,0.14); color: inherit; font: inherit; cursor: pointer; }
+.livepill button[aria-pressed="true"] { background: var(--ok); color: #FFFFFF; }
+.sqq { display: flex; flex-direction: column; gap: 8px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
+body.student #bLive, body.student #bPresent { display: none; }
 .exttl { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .exttl h2 { margin-right: auto; }
 .exwho { flex-direction: row; align-items: center; gap: 6px; }
@@ -527,6 +545,7 @@ body.present .updbar { display: none !important; }
     <button class="btn" id="bConvert" aria-label="แปลงเป็นตัวพิมพ์" title="แปลงเป็นตัวพิมพ์"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 15.5c2-3 3-7 4.5-7s.5 5 2 5 2-6 3.5-6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M12 4h6 M15 4v7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span class="lbl">แปลงเป็นตัวพิมพ์</span></button>
     <button class="btn" id="bInsert" aria-label="แทรก" title="แทรก"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="2.5" y="3.5" width="15" height="13" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M3 14l4.5-4.5 3.5 3.5 2-2 4 4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><circle cx="13.5" cy="7.5" r="1.5" fill="currentColor"/></svg><span class="lbl">แทรก</span></button>
     <button class="btn solid" id="bAI" aria-pressed="false" aria-label="สร้างโจทย์" title="สร้างโจทย์"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 2.5l1.8 4.6 4.7 1.9-4.7 1.9L10 15.5l-1.8-4.6L3.5 9l4.7-1.9z" fill="currentColor"/></svg><span class="lbl">สร้างโจทย์</span></button>
+    <button class="btn" id="bLive" aria-label="ห้องเรียนสด" title="ห้องเรียนสด"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="2.5" y="4" width="15" height="9.5" rx="1.6" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M6 17h8 M10 13.5V17" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="8.7" r="1.9" fill="currentColor"/></svg><span class="lbl">ห้องสด</span><i id="bLiveN"></i></button>
     <button class="btn" id="bExam" aria-label="ฝึกโจทย์แข่งขัน" title="ฝึกโจทย์แข่งขัน"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6 3.5h8v3.5a4 4 0 0 1-8 0z M6 5H3.5v1a3 3 0 0 0 3 3 M14 5h2.5v1a3 3 0 0 1-3 3 M10 11v3 M7 16.5h6 M8 14h4v2.5H8z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/></svg><span class="lbl">ฝึกแข่งขัน</span></button>
     <button class="btn" id="bExport" aria-label="ส่งออก PDF" title="ส่งออก PDF"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3v9 M6.5 8.5L10 12l3.5-3.5 M4 14.5V17h12v-2.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="lbl">ส่งออก</span></button>
     <button class="btn icon" id="bFull" aria-label="เต็มหน้าจอ" title="เต็มหน้าจอ"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 7.5V3h4.5 M12.5 3H17v4.5 M17 12.5V17h-4.5 M7.5 17H3v-4.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
@@ -651,6 +670,7 @@ body.present .updbar { display: none !important; }
         <button id="cDone">เสร็จ</button>
       </div>
       <div class="toast no-ink" id="toast" hidden></div>
+      <div class="livepill no-ink" id="livePill" hidden><span id="lpMsg"></span><button id="lpFollow" aria-pressed="true">ตามผู้สอน</button><button id="lpQuiz">แบบฝึก</button></div>
       <input type="file" id="fImg" accept="image/*" hidden>
       <input type="file" id="fVid" accept="video/mp4,video/webm,video/quicktime,video/*" hidden>
       <div class="loading no-ink" id="loading"><span class="logo" style="width:64px;height:64px;border-radius:18px" aria-hidden="true"><svg viewBox="0 0 32 32" style="width:42px;height:42px"><path d="M9 6.5h8.2c3.6 0 5.8 1.9 5.8 4.8 0 2-1.1 3.4-2.8 4 2.3.5 3.8 2.2 3.8 4.6 0 3.3-2.5 5.6-6.4 5.6H9z M13.2 10.2v4.5h3.4c1.6 0 2.5-.9 2.5-2.3 0-1.4-.9-2.2-2.5-2.2z M13.2 18v5.3h3.9c1.8 0 2.8-1 2.8-2.7 0-1.6-1-2.6-2.8-2.6z" fill="currentColor" fill-rule="evenodd"/><g transform="translate(23.6 8.6) rotate(-45) scale(0.86)"><path d="M2.8 -1.45H9.6V1.45H2.8z" fill="#F6C343"/><path d="M2.8 0.5H9.6V1.45H2.8z" fill="#E0A82A"/><path d="M9.6 -1.45h1.2v2.9h-1.2z" fill="#C9CFDA"/><path d="M10.8 -1.45h1a.6 .6 0 0 1 .6 .6v1.7a.6 .6 0 0 1-.6 .6h-1z" fill="#F28CA0"/><path d="M0 0L2.8 -1.45V1.45z" fill="#F1D3A6"/><path d="M0 0L1.05 -.55V.55z" fill="#26282E"/></g></svg></span><span>กำลังเปิดสมุด</span></div>
@@ -825,6 +845,27 @@ body.present .updbar { display: none !important; }
   </div>
 </div>
 
+<div class="sheet" id="liveSheet" hidden>
+  <div class="panel wide" role="dialog" aria-label="ห้องเรียนสด">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><h2>ห้องเรียนสด</h2><button class="btn" id="liveClose">ปิด</button></div>
+    <div id="liveBody" class="exbody"></div>
+  </div>
+</div>
+<div class="sheet" id="joinSheet" hidden>
+  <div class="panel" role="dialog" aria-label="เข้าห้องเรียน">
+    <h2>เข้าห้องเรียน <span id="jCode"></span></h2>
+    <div class="note">ใส่ชื่อที่ผู้สอนจะเห็นและใช้บันทึกคะแนน หน้าที่ผู้สอนเขียนจะขึ้นในสมุดบนเครื่องนี้ และจดทับเองได้</div>
+    <label class="field"><span>ชื่อ หรือ ชื่อเล่นกับเลขที่</span><input id="jName" maxlength="40" autocomplete="name"></label>
+    <button class="btn solid" id="jGo">เข้าห้อง</button>
+  </div>
+</div>
+<div class="sheet" id="sqSheet" hidden>
+  <div class="panel wide" role="dialog" aria-label="แบบฝึกจากผู้สอน">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><h2 id="sqTitle">แบบฝึก</h2><button class="btn" id="sqHide">ซ่อนไว้ก่อน</button></div>
+    <div id="sqBody" class="exbody"></div>
+  </div>
+</div>
+
 <div class="sheet" id="examSheet" hidden>
   <div class="panel wide" role="dialog" aria-label="ฝึกโจทย์แข่งขัน">
     <div class="exttl"><h2>ฝึกโจทย์แข่งขัน</h2><label class="field exwho"><span>ผู้ฝึก</span><select id="exWho"></select></label><span id="exAdd" hidden class="mrow"><input id="exNew" placeholder="ชื่อผู้ฝึก" maxlength="40"><button class="btn" id="exAddOk" type="button">เพิ่ม</button></span><button class="btn" id="exClose">ปิด</button></div>
@@ -920,6 +961,7 @@ const LEVELS = [['p', 'ประถมปลาย'], ['mt', 'ม.ต้น'], [
 const COVERS = ['#2F4BB8', '#1F6E8C', '#6B3FA0', '#1D7350', '#9A4A12', '#8C2F39', '#3E4A5C'];
 const LIBS = {
   math: 'https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.11.0/math.min.js',
+  qr: 'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js',
   jspdf: 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
   h2c: 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js'
 };
@@ -1807,6 +1849,7 @@ const savePage = debounce(() => {
   const body = { nb: S.page.nb || S.nid, paper: S.page.paper || 'grid', items: S.page.items || [], rev: now() };
   setSync(S.store.kind === 'local' ? 'local' : 'saving');
   Promise.resolve(S.store.set('pages/' + S.pid, body)).then(() => setSync(S.store.kind === 'local' ? 'local' : 'saved')).catch(onStoreError);
+  if (LIVE.role === 'teacher') liveSendPage();
 }, 300);
 function addItem(it) {
   const before = clone((S.page && S.page.items) || []);
@@ -1824,6 +1867,7 @@ const saveMine = debounce(async () => {
   setSync(S.store.kind === 'local' ? 'local' : 'saving');
   try {
     await S.store.set('pages/' + pid + '/layers/' + DEV, { strokes, rev: S.myRev, dev: DEV });
+    if (LIVE.role === 'teacher') liveSendPage();
     setSync(S.store.kind === 'local' ? 'local' : 'saved');
   } catch (e) { onStoreError(e); }
   S.saving = false;
@@ -2782,6 +2826,7 @@ function openNotebook(nid, pidWanted) {
   });
 }
 function openPage(pid) {
+  if (LIVE.role === 'teacher') setTimeout(liveSendPage, 400);
   if (pid === S.pid) return;
   saveMine.flush(); savePage.flush();
   if (editing) commitEdit();
@@ -4135,7 +4180,7 @@ bindAISettings();
 
 /* ---------- teaching media: from this device, from the web (Wikimedia Commons), or an automatic set for the page ---------- */
 const MD = { tab: 'auto', kind: 'all', busy: 0, lastAuto: null };
-const okRemote = (u) => /^https:\/\/upload\.wikimedia\.org\/[^\s"'<>]+$/.test(String(u || ''));
+const okRemote = (u) => /^https:\/\/upload\.wikimedia\.org\/[^\s"'<>]+$/.test(String(u || '')) || okSigned(u);
 /* common Thai physics topics, so searching works even without AI */
 const TOPIC_EN = [
   ['โพรเจกไทล์', 'projectile motion'], ['ฟรีฟอลล์', 'free fall'], ['ตกอิสระ', 'free fall'], ['เสรี', 'free fall'],
@@ -5774,7 +5819,8 @@ function buildSet() {
   for (const [L, f] of Object.entries(quota)) take(+L, Math.round(GB.n * f));
   for (const L of GB.level === 'hard' ? [2, 1] : GB.level === 'easy' ? [2, 3] : [2, 1, 3]) if (out.length < GB.n) take(L, GB.n - out.length);
   if (GB.order === 'easy') out.sort((a, b) => lv(a) - lv(b)); else out.sort(() => Math.random() - 0.5);
-  return out.slice(0, GB.n);
+  /* fix one shuffled choice order per set, so worksheets, live classes and item analysis all agree */
+  return out.slice(0, GB.n).map((q) => { const o = q.c.map((_, i) => i).sort(() => Math.random() - 0.5); return Object.assign({}, q, { c: o.map((i) => q.c[i]), a: o.indexOf(q.a || 0) }); });
 }
 function exRenderBuild(body) {
   const det = detectTopics();
@@ -5919,8 +5965,304 @@ function exRenderAnalysis(body) {
   body.appendChild(exEl('div', 'note', 'ตัวเลือก ก ถึง ง ในตารางเรียงตามที่บันทึกในชุด ผู้เรียนแต่ละคนเห็นตัวเลือกสลับลำดับ ระบบแปลงกลับให้แล้ว'));
 }
 
+/* ---------- live class: students follow the lecture on their own device, keep their own notes, answer the same exercises ---------- */
+const LIVE = { ch: null, code: null, role: null, peers: [], follow: store_ls.get('tp-follow') !== '0', set: null, ans: {}, revealed: false, parts: {}, signed: new Map(), sid: store_ls.get('tp-sid') || ('s' + uid()), name: store_ls.get('tp-sname') || '' };
+store_ls.set('tp-sid', LIVE.sid);
+const CODE_ABC = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+const newCode = () => Array.from({ length: 6 }, () => CODE_ABC[Math.floor(Math.random() * CODE_ABC.length)]).join('');
+const okSigned = (u) => !!(CLOUD.cfg && CLOUD.cfg.url) && String(u || '').startsWith(CLOUD.cfg.url.replace(/\/+$/, '') + '/storage/v1/object/sign/') && !/[\s"'<>]/.test(String(u));
+function liveSend(ev, data) { if (!LIVE.ch || !LIVE.ready) return; try { LIVE.ch.send({ type: 'broadcast', event: ev, payload: data }); } catch (e) { /* dropped */ } }
+function classLink(code) { return location.origin + location.pathname + '#class=' + code; }
+async function signedUrl(asset, secs) {
+  const k = asset + ':' + (secs || 0), hit = LIVE.signed.get(k); if (hit && hit.exp > now() + 60000) return hit.u;
+  try {
+    const { data, error } = await CLOUD.client.storage.from('burin').createSignedUrl(CLOUD.user.id + '/' + asset, secs || 86400);
+    if (error || !data) return null;
+    const u = data.signedUrl || data.signedURL; LIVE.signed.set(k, { u, exp: now() + (secs || 86400) * 1000 }); return u;
+  } catch (e) { return null; }
+}
+async function shareItems(items, secs) {
+  const out = [];
+  for (const it of items || []) {
+    const o = clone(it);
+    if ((o.type === 'img' || o.type === 'video') && okAsset(o.asset)) { const u = await signedUrl(o.asset, secs); if (!u) continue; o.url = u; delete o.asset; }
+    o.by = 'teacher'; out.push(o);
+  }
+  return out;
+}
+function chunkStrokes(strokes, lim) {
+  const parts = []; let cur = [], size = 0;
+  for (const s of strokes) { const n = s.p.length * 5 + 60; if (cur.length && size + n > lim) { parts.push(cur); cur = []; size = 0; } cur.push(s); size += n; }
+  parts.push(cur); return parts;
+}
+/* ----- teacher side ----- */
+async function liveOpen() {
+  if (CLOUD.state !== 'on') { toast('ห้องเรียนสดต้องเข้าระบบคลาวด์ก่อน', 3000); return; }
+  const sb = CLOUD.client; LIVE.code = LIVE.code || store_ls.get('tp-class') || newCode(); store_ls.set('tp-class', LIVE.code);
+  LIVE.role = 'teacher';
+  const ch = sb.channel('class-' + LIVE.code, { config: { broadcast: { self: false }, presence: { key: 'teacher-' + TAB } } });
+  ch.on('broadcast', { event: 'join' }, () => { liveSendPage(); if (LIVE.set) liveSend('quiz', liveQuizPayload()); if (LIVE.revealed) liveSend('reveal', liveRevealPayload()); });
+  ch.on('broadcast', { event: 'ans' }, (m) => liveGotAnswer(m.payload));
+  ch.on('presence', { event: 'sync' }, () => { const st = ch.presenceState(); LIVE.peers = []; for (const k in st) { const m = (st[k] || []).slice(-1)[0] || {}; if (m.role === 'student') LIVE.peers.push({ sid: k, name: m.name || 'ไม่ระบุชื่อ' }); } liveRender(); });
+  ch.subscribe((s) => { if (s === 'SUBSCRIBED') { LIVE.ready = true; ch.track({ role: 'teacher' }); liveSendPage(); liveRender(); } });
+  LIVE.ch = ch; liveRender(); $('#bLive').classList.add('on');
+}
+function liveClose() {
+  if (LIVE.ch) { liveSend('end', {}); try { CLOUD.client.removeChannel(LIVE.ch); } catch (e) { /* closed */ } }
+  LIVE.ch = null; LIVE.ready = false; LIVE.role = null; LIVE.peers = []; LIVE.set = null; LIVE.ans = {}; LIVE.revealed = false;
+  $('#bLive').classList.remove('on'); $('#bLiveN').textContent = ''; liveRender();
+}
+async function liveSendPageNow() {
+  if (LIVE.role !== 'teacher' || !LIVE.ready || !S.page || !S.pid || !S.nb) return;
+  const pages = S.nb.pages || [], rev = now();
+  const items = await shareItems(S.page.items, 86400);
+  const strokes = S.mine.concat(...Object.values(S.others));
+  const parts = chunkStrokes(strokes, 90000);
+  liveSend('page', { tpid: S.pid, idx: pages.indexOf(S.pid), n: pages.length, nb: S.nb.title || '', level: S.nb.level || 'mp', paper: S.page.paper || 'grid', items, rev, parts: parts.length });
+  parts.forEach((p, i) => setTimeout(() => liveSend('strokes', { tpid: S.pid, rev, part: i, strokes: p }), 40 * (i + 1)));
+}
+const liveSendPage = debounce(liveSendPageNow, 900);
+function liveQuizPayload() { const s = LIVE.set; return { id: s.id, title: s.title, qs: s.qs.map((q) => ({ id: q.id, q: q.q, c: q.c, d: q.d })) }; }
+function liveRevealPayload() { const s = LIVE.set, keys = {}, why = {}; for (const q of s.qs) { keys[q.id] = q.a || 0; why[q.id] = q.e || ''; } return { id: s.id, keys, why }; }
+function liveSendSet(set) {
+  if (LIVE.role !== 'teacher' || !LIVE.ready) { toast('เปิดห้องเรียนสดก่อน แล้วค่อยส่งแบบฝึก', 2600); openLive(); return; }
+  LIVE.set = set; LIVE.ans = {}; LIVE.revealed = false;
+  liveSend('quiz', liveQuizPayload());
+  toast('ส่งแบบฝึก ' + set.qs.length + ' ข้อให้ผู้เรียนแล้ว', 2000);
+  openLive();
+}
+async function liveGotAnswer(d) {
+  if (!LIVE.set || !d || d.id !== LIVE.set.id || typeof d.sid !== 'string') return;
+  const name = String(d.name || 'ไม่ระบุชื่อ').slice(0, 40);
+  LIVE.ans[d.sid] = { name, ans: d.ans || {} };
+  const set = LIVE.set, items = set.qs.map((q) => { const a = (d.ans || {})[q.id]; const ch = a && isFinite(a[0]) ? +a[0] : -1; return [q.id, q.t + ':' + q.ch, ch === (q.a || 0) ? 1 : 0, a && isFinite(a[1]) ? Math.round(+a[1]) : 0, ch]; });
+  const key = set.id + '_' + d.sid;
+  const rec = { key, who: name, at: now(), setId: set.id, title: set.title, mode: 'live', n: items.length, ok: items.filter((x) => x[2]).length, items };
+  EX.att = EX.att.filter((a) => a.key !== key); EX.att.push(rec);
+  if (!EX.people.includes(name)) { EX.people.push(name); exSavePeople(); }
+  S.store.set('exa/' + key, rec).catch(() => {});
+  liveRender();
+}
+function liveReveal() { if (!LIVE.set) return; LIVE.revealed = true; liveSend('reveal', liveRevealPayload()); liveRender(); }
+function liveRender() {
+  const n = LIVE.peers.length; $('#bLiveN').textContent = LIVE.role === 'teacher' ? String(n) : '';
+  const box = $('#liveBody'); if (!box || $('#liveSheet').hidden) return;
+  box.innerHTML = '';
+  if (CLOUD.state !== 'on') { box.appendChild(exEl('div', 'note', 'ห้องเรียนสดและการแชร์เลคเชอร์ใช้คลาวด์ (Supabase) ของอาจารย์ เข้าระบบก่อนจึงจะใช้ได้')); return; }
+  if (LIVE.role !== 'teacher') {
+    box.appendChild(exEl('div', 'note', 'เปิดห้องแล้วให้ผู้เรียนสแกน QR หรือเปิดลิงก์บนโทรศัพท์ แท็บเล็ต หรือคอมพิวเตอร์ ไม่ต้องสมัครบัญชี ผู้เรียนเห็นหน้าที่อาจารย์กำลังสอนพร้อมลายมือทันที และจดทับลงบนสำเนาของตัวเองได้ สมุดของผู้เรียนเก็บในเครื่องผู้เรียน หลังจบคาบยังเปิดอ่านและส่งออก PDF ได้'));
+    const b = exEl('button', 'btn solid', 'เปิดห้องเรียนสด'); b.onclick = liveOpen; box.appendChild(b);
+  } else {
+    const link = classLink(LIVE.code);
+    const top = exEl('div', 'livetop', '<div class="qr" id="liveQR"></div><div class="lcode"><span>รหัสห้อง</span><b>' + LIVE.code + '</b><small>' + esc(link) + '</small></div>');
+    box.appendChild(top);
+    const row = exEl('div', 'row2');
+    const cp = exEl('button', 'btn', 'คัดลอกลิงก์'); cp.onclick = () => { navigator.clipboard && navigator.clipboard.writeText(link).then(() => toast('คัดลอกแล้ว', 1200)).catch(() => {}); }; row.appendChild(cp);
+    const big = exEl('button', 'btn', 'วาง QR ลงหน้ากระดาษให้ทั้งห้องเห็น'); big.onclick = liveQRToPage; row.appendChild(big);
+    const rs = exEl('button', 'btn', 'ส่งหน้านี้อีกครั้ง'); rs.onclick = liveSendPageNow; row.appendChild(rs);
+    const cl = exEl('button', 'btn', 'ปิดห้อง'); cl.onclick = () => { liveClose(); store_ls.set('tp-class', ''); LIVE.code = null; }; row.appendChild(cl);
+    box.appendChild(row);
+    box.appendChild(exEl('h3', '', 'ผู้เรียนในห้อง ' + n + ' คน'));
+    box.appendChild(exEl('div', 'roster', LIVE.peers.map((p) => '<span>' + esc(p.name) + '</span>').join('') || '<span class="none">ยังไม่มีผู้เรียนเข้าห้อง</span>'));
+    box.appendChild(exEl('h3', '', 'แบบฝึกในห้อง'));
+    if (!LIVE.set) {
+      box.appendChild(exEl('div', 'note', 'สร้างชุดแบบฝึกจากปุ่ม ฝึกแข่งขัน แท็บ "จากหน้านี้" แล้วกด "ส่งให้ผู้เรียนในห้องสด" ทุกคนจะได้ชุดเดียวกันและลำดับเดียวกัน คำตอบกลับมาที่นี่และใช้วิเคราะห์ข้อสอบได้ทันที'));
+      const recent = (EX.sets || []).slice().sort((a, b) => b.at - a.at).slice(0, 4);
+      if (recent.length) { const r2 = exEl('div', 'row2'); for (const s of recent) { const b = exEl('button', 'btn', 'ส่ง ' + esc(s.title)); b.onclick = () => liveSendSet(s); r2.appendChild(b); } box.appendChild(r2); }
+    } else {
+      const got = Object.keys(LIVE.ans).length, L = 'กขคง';
+      box.appendChild(exEl('div', 'exch', esc(LIVE.set.title) + ' ส่งคำตอบแล้ว ' + got + ' จาก ' + Math.max(n, got) + ' คน'));
+      const tb = exEl('div', 'exper');
+      LIVE.set.qs.forEach((q, i) => {
+        const cnt = q.c.map(() => 0); for (const v of Object.values(LIVE.ans)) { const a = v.ans[q.id]; if (a && a[0] >= 0) cnt[a[0]]++; }
+        const ok = cnt[q.a || 0];
+        tb.appendChild(exEl('div', '', '<span>ข้อ ' + (i + 1) + ' <small>' + q.c.map((_, o) => (o === (q.a || 0) ? '<b>' : '') + L[o] + ' ' + cnt[o] + (o === (q.a || 0) ? '</b>' : '')).join(' ') + '</small></span><i><s style="width:' + (got ? Math.round(ok / got * 100) : 0) + '%"></s></i><b>' + (got ? Math.round(ok / got * 100) : 0) + '%</b>'));
+      });
+      box.appendChild(tb);
+      const r3 = exEl('div', 'row2');
+      const rv = exEl('button', 'btn solid', LIVE.revealed ? 'เฉลยแล้ว' : 'เฉลยให้ผู้เรียนดู'); rv.disabled = LIVE.revealed; rv.onclick = liveReveal; r3.appendChild(rv);
+      const an = exEl('button', 'btn', 'วิเคราะห์ข้อสอบชุดนี้'); an.onclick = () => { EX.anSet = LIVE.set.id; EX.tab = 'analysis'; EX.run = null; openExam(); }; r3.appendChild(an);
+      const end = exEl('button', 'btn', 'ปิดแบบฝึกนี้'); end.onclick = () => { liveSend('quizend', { id: LIVE.set.id }); LIVE.set = null; LIVE.ans = {}; LIVE.revealed = false; liveRender(); }; r3.appendChild(end);
+      box.appendChild(r3);
+    }
+    drawQR($('#liveQR'), link, 168);
+  }
+  box.appendChild(exEl('h3', '', 'แชร์เลคเชอร์ทั้งเล่ม'));
+  box.appendChild(exEl('div', 'note', 'ส่งสมุดเล่มนี้ให้ผู้เรียนเก็บไว้จดต่อหลังคาบ ผู้เรียนเปิดลิงก์แล้วได้สำเนาลงเครื่องตัวเอง เขียนทับได้ ถ้าอาจารย์แชร์ซ้ำ ผู้เรียนกดรับฉบับใหม่ได้โดยโน้ตของตัวเองไม่หาย รูปในลิงก์ใช้ได้ 1 ปี'));
+  const sh = exEl('button', 'btn', 'สร้างลิงก์เลคเชอร์ของสมุดเล่มนี้'); sh.onclick = shareLecture; box.appendChild(sh);
+  const out = exEl('div', ''); out.id = 'shareOut'; box.appendChild(out);
+}
+function drawQR(el, text, size) {
+  if (!el) return;
+  loadLib('qr').then(() => { el.innerHTML = ''; try { new window.QRCode(el, { text, width: size, height: size, correctLevel: window.QRCode.CorrectLevel.M }); } catch (e) { el.textContent = ''; } }).catch(() => { el.innerHTML = '<span class="none">โหลด QR ไม่ได้ ใช้รหัสห้องหรือลิงก์แทน</span>'; });
+}
+async function liveQRToPage() {
+  if (!S.page) return;
+  const tmp = document.createElement('div');
+  try {
+    await loadLib('qr'); new window.QRCode(tmp, { text: classLink(LIVE.code), width: 512, height: 512, correctLevel: window.QRCode.CorrectLevel.M });
+    const cv = tmp.querySelector('canvas'); if (!cv) throw new Error('qr');
+    const blob = await new Promise((r) => cv.toBlob(r, 'image/png'));
+    await insertImage(new File([blob], 'qr.png', { type: 'image/png' }));
+    const [x, y] = viewSpot(300, 60); addItem({ type: 'text', x, y: y + 250, w: 300, md: '**เข้าห้องเรียน** รหัส ' + LIVE.code });
+    $('#liveSheet').hidden = true;
+  } catch (e) { toast('วาง QR ไม่ได้ ใช้รหัสห้องแทน', 2400); }
+}
+async function shareLecture() {
+  const out = $('#shareOut'); if (!S.nb || CLOUD.state !== 'on') return;
+  out.innerHTML = '<div class="note">กำลังรวมทุกหน้า</div>';
+  try {
+    const pages = [];
+    for (const pid of S.nb.pages || []) {
+      const pg = await S.store.get('pages/' + pid); const ls = await S.store.list('pages/' + pid + '/layers').catch(() => []);
+      const strokes = []; for (const l of ls) for (const s of l.strokes || []) strokes.push(s);
+      pages.push({ paper: (pg && pg.paper) || 'grid', items: await shareItems(pg && pg.items, 31536000), strokes });
+    }
+    const id = (S.nb.shareId) || Array.from({ length: 10 }, () => CODE_ABC[Math.floor(Math.random() * CODE_ABC.length)]).join('').toLowerCase();
+    const { error } = await CLOUD.client.from('shares').upsert({ id, owner: CLOUD.user.id, title: S.nb.title || 'เลคเชอร์', data: { title: S.nb.title || 'เลคเชอร์', level: S.nb.level || 'mp', pages, at: now() } });
+    if (error) throw error;
+    if (!S.nb.shareId) S.store.update('notebooks/' + S.nid, { shareId: id }).catch(() => {});
+    const link = location.origin + location.pathname + '#lecture=' + id;
+    out.innerHTML = '<div class="livetop"><div class="qr" id="shareQR"></div><div class="lcode"><span>ลิงก์เลคเชอร์ ' + esc(S.nb.title || '') + ' (' + pages.length + ' หน้า)</span><small>' + esc(link) + '</small></div></div>';
+    const b = exEl('button', 'btn', 'คัดลอกลิงก์'); b.onclick = () => navigator.clipboard && navigator.clipboard.writeText(link).then(() => toast('คัดลอกแล้ว', 1200)).catch(() => {}); out.appendChild(b);
+    drawQR($('#shareQR'), link, 150);
+  } catch (e) {
+    const msg = String((e && (e.message || e.code)) || e);
+    out.innerHTML = '<div class="note err">' + (/shares|relation|schema cache|42P01|PGRST205/i.test(msg) ? 'ยังไม่มีตารางสำหรับแชร์ เปิด Supabase เมนู SQL Editor แล้วรันส่วนที่ 5 ของไฟล์ setup.sql (ตาราง shares) ครั้งเดียว' : 'แชร์ไม่สำเร็จ ' + esc(msg)) + '</div>';
+  }
+}
+function openLive() { closeSheets(); $('#liveSheet').hidden = false; if (!EX.loaded) exLoad().then(liveRender); liveRender(); }
+/* ----- student side ----- */
+async function studentNotebook(key, title, level) {
+  let nid = store_ls.get('tp-snb-' + key);
+  if (nid && !(await S.store.get('notebooks/' + nid))) nid = null;
+  if (!nid) {
+    nid = 'n' + uid();
+    await S.store.set('notebooks/' + nid, { title, level: level || 'mp', pages: [], color: COVERS[1], createdAt: now(), updatedAt: now(), from: key });
+    store_ls.set('tp-snb-' + key, nid);
+  }
+  return nid;
+}
+async function studentPutPage(nid, lpid, idx, d, strokes) {
+  const old = await S.store.get('pages/' + lpid);
+  const mine = ((old && old.items) || []).filter((it) => it.by !== 'teacher');
+  await S.store.set('pages/' + lpid, { nb: nid, paper: d.paper || 'grid', items: (d.items || []).map((it) => Object.assign({}, it, { by: 'teacher' })).concat(mine), rev: now(), tidx: idx });
+  if (strokes) await S.store.set('pages/' + lpid + '/layers/teacher', { strokes, rev: now(), dev: 'teacher' });
+  const nb = await S.store.get('notebooks/' + nid); const pages = (nb.pages || []).slice();
+  if (!pages.includes(lpid)) {
+    let at = pages.length;
+    for (let i = 0; i < pages.length; i++) { const p = await S.store.get('pages/' + pages[i]); if (p && isFinite(p.tidx) && p.tidx > idx) { at = i; break; } }
+    pages.splice(at, 0, lpid);
+    await S.store.update('notebooks/' + nid, { pages, updatedAt: now(), title: nb.title });
+  }
+}
+async function studentJoin(code) {
+  LIVE.code = code; LIVE.role = 'student';
+  if (!LIVE.name) { $('#joinSheet').hidden = false; $('#jCode').textContent = code; setTimeout(() => $('#jName').focus({ preventScroll: true }), 60); return; }
+  $('#joinSheet').hidden = true;
+  const nid = await studentNotebook('class-' + code, 'ห้องเรียน ' + code + ' ' + new Date().toLocaleDateString('th-TH', { day: 'numeric', month: 'short' }), 'mp');
+  LIVE.nid = nid; openNotebook(nid);
+  $('#livePill').hidden = false; liveStudentPill('กำลังเชื่อมต่อ');
+  let sb; try { sb = await cloudClient(); } catch (e) { liveStudentPill('เชื่อมต่อไม่ได้'); return; }
+  const ch = sb.channel('class-' + code, { config: { broadcast: { self: false }, presence: { key: LIVE.sid } } });
+  ch.on('broadcast', { event: 'page' }, (m) => studentGotPage(m.payload));
+  ch.on('broadcast', { event: 'strokes' }, (m) => studentGotStrokes(m.payload));
+  ch.on('broadcast', { event: 'ink' }, (m) => studentInk(m.payload));
+  ch.on('broadcast', { event: 'laser' }, (m) => studentLaser(m.payload));
+  ch.on('broadcast', { event: 'quiz' }, (m) => studentQuiz(m.payload));
+  ch.on('broadcast', { event: 'reveal' }, (m) => studentReveal(m.payload));
+  ch.on('broadcast', { event: 'quizend' }, () => { $('#sqSheet').hidden = true; });
+  ch.on('broadcast', { event: 'end' }, () => { liveStudentPill('ผู้สอนปิดห้องแล้ว สมุดยังอยู่ในเครื่องนี้'); });
+  ch.subscribe((s) => {
+    if (s === 'SUBSCRIBED') { LIVE.ready = true; ch.track({ role: 'student', name: LIVE.name }); liveSend('join', { sid: LIVE.sid, name: LIVE.name }); liveStudentPill('เชื่อมต่อแล้ว'); }
+    else if (s === 'CHANNEL_ERROR' || s === 'TIMED_OUT' || s === 'CLOSED') { LIVE.ready = false; liveStudentPill('หลุดการเชื่อมต่อ กำลังต่อใหม่'); }
+  });
+  LIVE.ch = ch;
+}
+function liveStudentPill(msg) { $('#lpMsg').textContent = 'ห้อง ' + LIVE.code + ' ' + msg; $('#lpFollow').setAttribute('aria-pressed', LIVE.follow ? 'true' : 'false'); }
+async function studentGotPage(d) {
+  if (!d || typeof d.tpid !== 'string') return;
+  const P = LIVE.parts[d.tpid] = { d, rev: d.rev, need: d.parts || 1, got: [] };
+  if (P.need === 0) studentApply(d.tpid);
+  if (LIVE.nid) { const nb = await S.store.get('notebooks/' + LIVE.nid); if (nb && d.nb && !nb.titleSet) S.store.update('notebooks/' + LIVE.nid, { title: d.nb + ' (ห้อง ' + LIVE.code + ')', titleSet: true, level: d.level || nb.level }).catch(() => {}); }
+}
+function studentGotStrokes(d) {
+  const P = d && LIVE.parts[d.tpid]; if (!P || P.rev !== d.rev || !Array.isArray(d.strokes)) return;
+  P.got[d.part] = d.strokes;
+  if (P.got.filter(Boolean).length >= P.need) studentApply(d.tpid);
+}
+async function studentApply(tpid) {
+  const P = LIVE.parts[tpid]; if (!P) return; delete LIVE.parts[tpid];
+  const strokes = [].concat(...P.got.filter(Boolean)).filter((s) => s && Array.isArray(s.p) && typeof s.id === 'string');
+  const lpid = 'T' + tpid.replace(/[^A-Za-z0-9]/g, '');
+  await studentPutPage(LIVE.nid, lpid, P.d.idx, P.d, strokes);
+  PV.ink = {}; if (S.pid === lpid) drawPresentLive();
+  LIVE.cur = lpid;
+  if (LIVE.follow && S.pid !== lpid) openPage(lpid);
+}
+function studentInk(d) {
+  if (!d || typeof d.id !== 'string' || !Array.isArray(d.p) || S.pid !== 'T' + String(d.pid || '').replace(/[^A-Za-z0-9]/g, '')) return;
+  const s = PV.ink[d.id] || (PV.ink[d.id] = { k: d.k === 'h' ? 'h' : 'p', c: okHex(d.c) ? d.c : '#14181F', w: clamp(+d.w || 3, 1, 40), p: [] });
+  for (const v of d.p.slice(0, 450)) if (isFinite(v)) s.p.push(+v);
+  drawPresentLive(); drawStudentMineOnTop();
+}
+function studentLaser(d) {
+  if (!d || !isFinite(d.x) || S.pid !== 'T' + String(d.pid || '').replace(/[^A-Za-z0-9]/g, '')) return;
+  if (!d.down) { PV.laser = null; drawPresentLive(); return; }
+  if (!PV.laser || PV.laser.mode !== d.mode) PV.laser = { mode: d.mode === 'line' ? 'line' : 'dot', pts: [] };
+  PV.laser.pts.push([+d.x, +d.y]); if (PV.laser.pts.length > 3000) PV.laser.pts.shift();
+  drawPresentLive();
+}
+function drawStudentMineOnTop() { /* the student's own live stroke is drawn on the same canvas by the pen code, nothing else to do */ }
+function studentQuiz(d) {
+  if (!d || !Array.isArray(d.qs)) return;
+  LIVE.quiz = { id: d.id, title: d.title, qs: d.qs.slice(0, 60), pick: {}, t0: now(), sent: false, keys: null };
+  renderStudentQuiz(); $('#sqSheet').hidden = false;
+}
+function studentReveal(d) { if (!LIVE.quiz || !d || d.id !== LIVE.quiz.id) return; LIVE.quiz.keys = d.keys || {}; LIVE.quiz.why = d.why || {}; renderStudentQuiz(); $('#sqSheet').hidden = false; }
+function renderStudentQuiz() {
+  const Q = LIVE.quiz, box = $('#sqBody'), L = 'กขคง'; box.innerHTML = '';
+  $('#sqTitle').textContent = Q.title || 'แบบฝึก';
+  let score = 0;
+  Q.qs.forEach((q, i) => {
+    const wrap = exEl('div', 'sqq', '<div class="exq"><b>' + (i + 1) + '.</b> ' + mdToHtml(q.q) + '</div>');
+    const opts = exEl('div', 'exopts');
+    q.c.forEach((c, o) => {
+      const b = exEl('button', 'exopt', '<b>' + L[o] + '</b><span>' + mdToHtml(c) + '</span>'); b.type = 'button';
+      if (Q.pick[q.id] && Q.pick[q.id][0] === o) b.classList.add('pick');
+      if (Q.keys) { if (Q.keys[q.id] === o) b.classList.add('right'); else if (Q.pick[q.id] && Q.pick[q.id][0] === o) b.classList.add('wrong'); }
+      b.onclick = () => { if (Q.sent && !Q.keys) { /* allow change until reveal: resend */ } if (Q.keys) return; Q.pick[q.id] = [o, Math.round((now() - Q.t0) / 1000)]; renderStudentQuiz(); };
+      opts.appendChild(b);
+    });
+    wrap.appendChild(opts);
+    if (Q.keys) { if (Q.pick[q.id] && Q.pick[q.id][0] === Q.keys[q.id]) score++; if (Q.why && Q.why[q.id]) wrap.appendChild(exEl('div', 'note', mdToHtml(Q.why[q.id]))); }
+    box.appendChild(wrap);
+  });
+  const row = exEl('div', 'row2');
+  if (Q.keys) box.prepend(exEl('div', 'exscore', '<b>' + score + '<small> / ' + Q.qs.length + '</small></b><span>' + esc(LIVE.name) + '</span>'));
+  else {
+    const left = Q.qs.filter((q) => !Q.pick[q.id]).length;
+    const send = exEl('button', 'btn solid', Q.sent ? 'ส่งคำตอบใหม่อีกครั้ง' : 'ส่งคำตอบ'); send.onclick = () => { liveSend('ans', { id: Q.id, sid: LIVE.sid, name: LIVE.name, ans: Q.pick }); Q.sent = true; toast('ส่งคำตอบแล้ว รอผู้สอนเฉลย', 2200); renderStudentQuiz(); }; row.appendChild(send);
+    row.appendChild(exEl('span', 'exch', left ? 'ยังไม่ได้ตอบ ' + left + ' ข้อ' : 'ตอบครบแล้ว' + (Q.sent ? ' ส่งแล้ว แก้แล้วส่งใหม่ได้จนกว่าจะเฉลย' : '')));
+  }
+  const pg = exEl('button', 'btn', 'คัดลอกโจทย์ลงสมุดของฉัน'); pg.onclick = () => { const md = Q.qs.map((q, i) => (i + 1) + '. ' + q.q + '\n' + q.c.map((c, o) => '  ' + L[o] + '. ' + c).join('\n') + (Q.keys ? '\nตอบ ' + L[Q.keys[q.id]] + (Q.why && Q.why[q.id] ? ' ' + Q.why[q.id] : '') : '')).join('\n\n'); const [x, y] = viewSpot(700, 400); addItem({ type: 'text', x, y, w: 700, md }); $('#sqSheet').hidden = true; }; row.appendChild(pg);
+  box.appendChild(row);
+  typeset(box);
+}
+async function openLecture(id) {
+  let sb; try { sb = await cloudClient(); } catch (e) { toast('เชื่อมต่อไม่ได้', 3000); return; }
+  $('#loading').querySelector('span').textContent = 'กำลังรับเลคเชอร์';
+  const { data, error } = await sb.from('shares').select('title,data').eq('id', id).maybeSingle();
+  if (error || !data) { toast('ไม่พบเลคเชอร์นี้ หรือผู้สอนยังไม่ได้แชร์', 4000); return; }
+  const D = data.data || {}, nid = await studentNotebook('lecture-' + id, 'เลคเชอร์ ' + (D.title || data.title || ''), D.level);
+  let i = 0;
+  for (const p of D.pages || []) { await studentPutPage(nid, 'S' + id + 'p' + i, i, p, (p.strokes || []).filter((s) => s && Array.isArray(s.p))); i++; }
+  openNotebook(nid);
+  toast('ได้รับเลคเชอร์ ' + i + ' หน้าแล้ว เขียนจดทับได้เลย เปิดลิงก์เดิมอีกครั้งเพื่อรับฉบับใหม่ โน้ตของคุณยังอยู่', 4200);
+}
+
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1792998538';
+const BUILD = '1792999058';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
@@ -6030,7 +6372,7 @@ function syncToggles() {
 }
 function hideLoading() { $('#loading').hidden = true; }
 function togglePages(v) { const el = $('#pages'); el.hidden = v === undefined ? !el.hidden : !v; $('#bPages').setAttribute('aria-pressed', el.hidden ? 'false' : 'true'); setTimeout(fit, 0); }
-function closeSheets() { $('#examSheet').hidden = true; $('#aiSetup').hidden = true; $('#labSheet').hidden = true; $('#simSheet').hidden = true; $('#mediaSheet').hidden = true; $('#menu').hidden = true; $('#exportSheet').hidden = true; $('#insSheet').hidden = true; }
+function closeSheets() { $('#liveSheet').hidden = true; $('#sqSheet').hidden = true; $('#examSheet').hidden = true; $('#aiSetup').hidden = true; $('#labSheet').hidden = true; $('#simSheet').hidden = true; $('#mediaSheet').hidden = true; $('#menu').hidden = true; $('#exportSheet').hidden = true; $('#insSheet').hidden = true; }
 
 /* ---------- wiring ---------- */
 document.querySelectorAll('.tool[data-tool]').forEach((b) => {
@@ -6072,6 +6414,13 @@ $('#iImg').onclick = () => { closeSheets(); $('#fImg').value = ''; $('#fImg').cl
 $('#iVid').onclick = () => { closeSheets(); $('#fVid').value = ''; $('#fVid').click(); };
 $('#iGraph').onclick = () => { closeSheets(); openGraphSheet(null); };
 $('#bExam').onclick = openExam;
+$('#bLive').onclick = openLive;
+$('#liveClose').onclick = () => { $('#liveSheet').hidden = true; };
+$('#jGo').onclick = () => { const n = $('#jName').value.trim(); if (!n) { $('#jName').focus(); return; } LIVE.name = n; store_ls.set('tp-sname', n); studentJoin(LIVE.code); };
+$('#jName').onkeydown = (e) => { if (e.key === 'Enter') $('#jGo').click(); };
+$('#sqHide').onclick = () => { $('#sqSheet').hidden = true; };
+$('#lpFollow').onclick = () => { LIVE.follow = !LIVE.follow; store_ls.set('tp-follow', LIVE.follow ? '1' : '0'); $('#lpFollow').setAttribute('aria-pressed', LIVE.follow ? 'true' : 'false'); if (LIVE.follow && LIVE.cur && S.pid !== LIVE.cur) openPage(LIVE.cur); };
+$('#lpQuiz').onclick = () => { if (LIVE.quiz) { renderStudentQuiz(); $('#sqSheet').hidden = false; } else toast('ยังไม่มีแบบฝึกจากผู้สอน', 1600); };
 $('#exClose').onclick = () => { $('#examSheet').hidden = true; };
 $('#exTabs').querySelectorAll('button').forEach((b) => { b.onclick = () => { EX.tab = b.dataset.t; exRender(); }; });
 $('#exWho').onchange = () => {
@@ -6122,26 +6471,33 @@ function emitView() {
   S.room.emit('view', { pid: S.pid, y0: Math.round(y0), y1: Math.round(y1) }).catch(() => {});
 }
 const viewLater = debounce(emitView, 140);
+const liveOn = () => LIVE.role === 'teacher' && LIVE.ready;
 function emitInkDelta(pt) {
-  if (!S.room || S.present || !S.watchers) return;
+  if (S.present || !((S.room && S.watchers) || liveOn())) return;
   const s = pt.stroke, t = now();
   if (pt.inkT && t - pt.inkT < 70) return; pt.inkT = t;
   const from = pt.inkSent || 0, to = Math.min(s.p.length, from + 450);
   if (to <= from) return;
   pt.inkSent = to;
-  S.room.emit('ink', { pid: S.pid, id: s.id, c: s.c, w: s.w, k: s.k, p: s.p.slice(from, to) }).catch(() => {});
+  const msg = { pid: S.pid, id: s.id, c: s.c, w: s.w, k: s.k, p: s.p.slice(from, to) };
+  if (S.room && S.watchers) S.room.emit('ink', msg).catch(() => {});
+  if (liveOn()) liveSend('ink', msg);
 }
 function emitInkDone(pt) {
-  if (!S.room || S.present || !S.watchers) return;
+  if (S.present || !((S.room && S.watchers) || liveOn())) return;
   const s = pt.stroke, from = pt.inkSent || 0;
-  S.room.emit('ink', { pid: S.pid, id: s.id, c: s.c, w: s.w, k: s.k, p: s.p.slice(from, from + 450), done: true }).catch(() => {});
+  const msg = { pid: S.pid, id: s.id, c: s.c, w: s.w, k: s.k, p: s.p.slice(from, from + 450), done: true };
+  if (S.room && S.watchers) S.room.emit('ink', msg).catch(() => {});
+  if (liveOn()) liveSend('ink', msg);
 }
 function emitInk() { /* shapes reach the audience when saved */ }
 let lastLz = 0;
 function emitLaserPt(x, y, down) {
-  if (!S.room || S.present || !S.watchers) return;
+  if (S.present || !((S.room && S.watchers) || liveOn())) return;
   const t = now(); if (down && t - lastLz < 35) return; lastLz = t;
-  S.room.emit('laser', { pid: S.pid, mode: S.laserMode, x: Math.round(x), y: Math.round(y), down: !!down }).catch(() => {});
+  const msg = { pid: S.pid, mode: S.laserMode, x: Math.round(x), y: Math.round(y), down: !!down };
+  if (S.room && S.watchers) S.room.emit('laser', msg).catch(() => {});
+  if (liveOn()) liveSend('laser', msg);
 }
 function drawPresentLive() {
   const c = cLive.getContext('2d');
@@ -6410,9 +6766,11 @@ async function boot() {
   renderTools(); renderLevels(); syncToggles(); fit(); updUndo();
   const C = window.claude && typeof window.claude.use === 'function' ? window.claude : null;
   renderAIAvail(C ? 'checking' : 'none');
-  const db = C ? await C.use('db').catch(() => null) : null;
+  const hs = (location.hash || '').replace('#', ''), mC = hs.match(/^class=([A-Z2-9]{6})$/i), mL = hs.match(/^lecture=([a-z0-9]{6,20})$/i);
+  S.student = !!(mC || mL);
+  const db = C && !S.student ? await C.use('db').catch(() => null) : null;
  if (db) S.store = makeDbStore(db);
-  else if (CLOUD.ready()) {
+  else if (CLOUD.ready() && !S.student) {
     try {
       const sb = await cloudClient();
       const { data } = await sb.auth.getSession();
@@ -6432,8 +6790,11 @@ async function boot() {
     : db
     ? 'สมุดทุกเล่มเก็บไว้บนระบบและซิงก์ทันทีกับทุกเครื่องที่เปิดหน้านี้ด้วยบัญชีเดียวกัน เช่น iPad กับทีวี แต่ละเครื่องเขียนชั้นหมึกของตัวเอง จึงเขียนพร้อมกันได้โดยงานไม่ทับกัน'
     : 'สมุดบันทึกไว้ในเบราว์เซอร์ของเครื่องนี้ รูปและวิดีโอก็เก็บในเครื่องนี้ หน้าต่างอื่นบนเครื่องเดียวกันเห็นตรงกันทันที รวมทั้งจอผู้ชม การซิงก์ข้ามเครื่อง เช่น iPad กับทีวี ต้องเปิดใน claude.ai หรือต่อฐานข้อมูลบนคลาวด์';
+  if (S.student) { S.creatingFirst = true; document.body.classList.add('student'); }
   watchNotebooks();
-  watchLiveDoc();
+  if (!S.student) watchLiveDoc();
+  if (mC && CLOUD.ready()) studentJoin(mC[1].toUpperCase());
+  else if (mL && CLOUD.ready()) openLecture(mL[1].toLowerCase());
   let wantPresent = store_ls.get('tp-present') === '1';
   try { if ((location.hash || '').replace('#', '') === 'present') wantPresent = true; } catch (e) {}
   if (wantPresent) enterPresent();
@@ -6446,7 +6807,7 @@ async function boot() {
     }).catch(() => { AI.claude = null; AI.claudeState = 'none'; renderAIAvail(); });
   } else { AI.claudeState = 'none'; setupRoom(CLOUD.state === 'on' ? makeCloudRoom(CLOUD.client, CLOUD.user) : makeLocalRoom()); renderAIAvail(); }
   renderAISettings(); renderCloud();
-  if (CLOUD.state === 'signedout' && !S.present) openAuth();
+  if (CLOUD.state === 'signedout' && !S.present && !S.student) openAuth();
   setTimeout(() => { if (!S.pid) { const l = $('#loading'); l.querySelector('span').textContent = 'ยังเชื่อมต่อไม่ได้ ตรวจอินเทอร์เน็ตแล้วเปิดหน้านี้ใหม่'; } }, 12000);
 }
 boot();
