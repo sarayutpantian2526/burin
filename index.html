@@ -404,6 +404,26 @@ body.tv .convbar { bottom: 112px; }
 #calc code { font-size: 12px; background: var(--surface-2); padding: 1px 5px; border-radius: 6px; }
 .updbar { position: absolute; left: 50%; top: 12px; transform: translateX(-50%); z-index: 9; min-height: 40px; padding: 0 16px; border-radius: 999px; border: 0; background: var(--accent); color: #FFFFFF; font-size: 14px; font-weight: 600; box-shadow: var(--shadow); cursor: pointer; }
 body.present .updbar { display: none !important; }
+.item.lab { font-size: 14px; }
+.item.lab .lplan { display: grid; grid-template-columns: max-content 1fr; gap: 4px 10px; align-items: center; margin: 4px 0 8px; }
+.item.lab .lplan label { display: contents; }
+.item.lab .lplan b { font-weight: 600; color: #3E4A5C; font-size: 13px; }
+.item.lab input, .item.lab select { font: inherit; font-size: 14px; min-height: 34px; border: 1px solid #D6DCE4; border-radius: 8px; padding: 0 8px; background: #FFFFFF; color: #14181F; width: 100%; box-sizing: border-box; -webkit-user-select: text; user-select: text; }
+.item.lab .lcfg { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px 8px; padding: 8px; border-radius: 10px; background: #F5F7FA; margin-bottom: 8px; }
+.item.lab .lcfg label { display: flex; flex-direction: column; gap: 2px; font-size: 11.5px; color: #535E6C; }
+.item.lab .lcfg label:nth-last-child(2) { grid-column: span 2; }
+.item.lab table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.item.lab th { font-size: 12.5px; font-weight: 600; color: #3E4A5C; text-align: left; padding: 4px; border-bottom: 1.5px solid #D6DCE4; }
+.item.lab td { padding: 2px 4px; border-bottom: 1px solid #EEF1F5; }
+.item.lab td.avg { font-weight: 600; color: #2F4BB8; }
+.item.lab .ldel { width: 30px; height: 30px; border: 0; border-radius: 8px; background: transparent; color: #B42318; font-size: 18px; cursor: pointer; }
+.item.lab .ladd { margin-top: 6px; min-height: 36px; padding: 0 12px; border-radius: 10px; border: 1px dashed #9AA4B2; background: #FFFFFF; color: #3E4A5C; font: inherit; font-size: 13px; cursor: pointer; }
+.item.lab .lgraph { margin-top: 8px; border: 1px solid #E1E6EC; border-radius: 8px; background: #FFFFFF; }
+.item.lab .lgraph svg { width: 100%; height: auto; display: block; }
+.item.lab .lout { display: flex; flex-wrap: wrap; gap: 4px 16px; margin-top: 8px; font-size: 14px; font-variant-numeric: tabular-nums; }
+.item.lab .lout i { font-style: normal; color: #6B7686; }
+.item.lab .lout .lres { flex-basis: 100%; padding: 8px 10px; border-radius: 10px; background: #EEF2FF; }
+.item.lab .lout .lres b { color: #1F3A8A; font-size: 16px; }
 .insgrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
 .insb { min-height: 96px; border-radius: 16px; border: 1px solid var(--line); background: var(--surface); cursor: pointer; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 4px; padding: 12px 14px; text-align: left; }
 .insb b { font-size: 16px; }
@@ -688,6 +708,7 @@ body.present .updbar { display: none !important; }
       <button class="insb" id="iVid"><b>วิดีโอ</b><span>ไฟล์ MP4 ขนาดไม่เกิน 20 MB</span></button>
       <button class="insb" id="iGraph"><b>กราฟจากสมการ</b><span>พิมพ์สมการ แล้วปรับค่าตัวแปรด้วยแถบเลื่อน</span></button>
       <button class="insb" id="iSim"><b>แบบจำลองการทดลอง</b><span>โพรเจกไทล์ ลูกตุ้ม สปริง พื้นเอียง การชน คลื่นนิ่ง ปรับค่าแล้วกดเล่น</span></button>
+      <button class="insb" id="iLab"><b>การทดลองและตารางผล</b><span>วางแผนตัวแปร บันทึกผล พล็อตกราฟ หาความชันและค่าที่ต้องการพร้อมความไม่แน่นอน</span></button>
       <button class="insb" id="iCalc"><b>เครื่องคิดเลขฟิสิกส์</b><span>คิดพร้อมหน่วยและค่าคงที่ แล้วแทรกผลลงหน้า</span></button>
       <button class="insb" id="iText"><b>กล่องข้อความ</b><span>แตะบนหน้าแล้วพิมพ์ เขียนสมการใน $...$ ได้</span></button>
     </div>
@@ -723,6 +744,14 @@ body.present .updbar { display: none !important; }
       <div id="mMine"></div>
     </div>
     <div class="note small">สื่อจาก Wikimedia Commons ใช้สอนได้ฟรี แอปจะใส่ชื่อผู้สร้างและสัญญาอนุญาตไว้ใต้สื่อให้เอง แตะรูปดาวเพื่อเก็บสื่อเข้าคลังของฉัน ใช้ได้ทุกเครื่อง</div>
+  </div>
+</div>
+
+<div class="sheet" id="labSheet" hidden>
+  <div class="panel wide" role="dialog" aria-label="การทดลอง">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><h2>การทดลองและตารางผล</h2><button class="btn" id="bLabClose">ปิด</button></div>
+    <div class="note">เลือกแบบตั้งต้น แล้วแก้ข้อมูลในการ์ดบนหน้ากระดาษได้ทั้งหมด กราฟใช้วิธีกำลังสองน้อยที่สุด ความไม่แน่นอนของความชันคำนวณจากการกระจายของจุดรอบเส้นตรง ผลที่หาจากความชันคิดการแพร่ความคลาดเคลื่อนให้ด้วย</div>
+    <div class="simgrid" id="labGrid"></div>
   </div>
 </div>
 
@@ -1607,7 +1636,7 @@ function buildItemEl(it, forExport) {
   const d = document.createElement('div');
   const media = it.type === 'img' || it.type === 'video';
   d.className = 'item' + (it.teacher ? ' teacher' : '') + (it.type === 'svg' ? ' svg' : '') + (media ? ' media' : '')
-    + (it.type === 'graph' || it.type === 'sim' ? ' graph' : '') + (it.type === 'sim' ? ' sim' : '') + ((it.type === 'graph' || it.type === 'video' || it.type === 'sim') && !forExport ? ' live no-ink' : '');
+    + (it.type === 'graph' || it.type === 'sim' || it.type === 'lab' ? ' graph' : '') + (it.type === 'sim' ? ' sim' : '') + ((it.type === 'graph' || it.type === 'video' || it.type === 'sim' || it.type === 'lab') && !forExport ? ' live no-ink' : '');
   d.style.left = it.x + 'px'; d.style.top = it.y + 'px'; d.style.width = (it.w || 600) + 'px';
   if (it.fs) d.style.fontSize = clamp(+it.fs || 24, 12, 80) + 'px';
   d.dataset.id = it.id;
@@ -1619,6 +1648,7 @@ function buildItemEl(it, forExport) {
     else if (okAsset(it.asset) || okRemote(it.url)) { const bar = document.createElement('div'); bar.className = 'vbar'; bar.innerHTML = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 7h12 M4 10h12 M4 13h12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span>วิดีโอ แตะแถบนี้เพื่อเลือก ย้าย หรือลบ</span>'; d.appendChild(bar); const v = document.createElement('video'); v.controls = true; v.playsInline = true; v.preload = 'metadata'; d.appendChild(v); if (okAsset(it.asset)) setAssetSrc(v, it.asset); else { v.src = it.url; if (okRemote(it.poster)) v.poster = it.poster; } }
   } else if (it.type === 'graph') { buildGraph(d, it, forExport); }
   else if (it.type === 'sim') { buildSim(d, it, forExport); }
+  else if (it.type === 'lab') { buildLab(d, it, forExport); }
   else d.innerHTML = mdToHtml(it.md || '');
   if ((it.type === 'img' || it.type === 'video') && it.credit) { const c = document.createElement('div'); c.className = 'credit'; c.textContent = String(it.credit).slice(0, 160); d.appendChild(c); }
   return d;
@@ -3470,8 +3500,8 @@ async function drawThumb(pid, cv) {
   paper(c, (page && page.paper) || 'grid');
   for (const it of ((page && page.items) || [])) {
     const x = it.x || 0, y = it.y || 0, iw = it.w || 600;
-    if (it.type === 'img' || it.type === 'video' || it.type === 'graph' || it.type === 'svg' || it.type === 'sim') {
-      const ih = it.type === 'graph' ? 440 : it.type === 'sim' ? 560 : iw * (it.ar || 0.62);
+    if (it.type === 'img' || it.type === 'video' || it.type === 'graph' || it.type === 'svg' || it.type === 'sim' || it.type === 'lab') {
+      const ih = it.type === 'graph' ? 440 : it.type === 'sim' ? 560 : it.type === 'lab' ? 900 : iw * (it.ar || 0.62);
       const u = it.asset && blobUrls.get(it.asset);
       c.fillStyle = it.type === 'video' ? '#2A313C' : '#E8ECF2'; c.fillRect(x, y, iw, ih);
       if (u && it.type === 'img') { const im = await thumbImg(it.asset, u); if (im) { try { c.drawImage(im, x, y, iw, ih); } catch (e) { /* skip */ } } }
@@ -4344,6 +4374,172 @@ function renderSimPicker() {
 }
 
 
+/* ---------- experiment card: plan, data table, graph with best-fit line, result from the slope ---------- */
+const XF = { x: ['x', (v) => v], x2: ['x²', (v) => v * v], sqrt: ['√x', (v) => Math.sqrt(v)], inv: ['1/x', (v) => 1 / v], ln: ['ln x', (v) => Math.log(v)] };
+const LAB_TPL = {
+  pendulum: { title: 'หาค่า g จากลูกตุ้มอย่างง่าย', xn: 'L', xu: 'm', yn: 'T', yu: 's', xt: 'x', yt: 'x2', trials: 3, f: '4*pi^2/m', fn: 'g', fu: 'm/s²',
+    plan: { iv: 'ความยาวเชือก L', dv: 'คาบการแกว่ง T', cv: 'มวลลูกตุ้ม มุมเริ่มต้นไม่เกิน 10 องศา', hyp: 'T² แปรผันตรงกับ L ความชัน = 4π²/g' },
+    rows: [[0.2, 0.9, 0.91, 0.89], [0.4, 1.27, 1.26, 1.28], [0.6, 1.55, 1.56, 1.54], [0.8, 1.79, 1.8, 1.78], [1.0, 2.0, 2.01, 2.0]] },
+  spring: { title: 'หาค่านิจสปริงจากการสั่น', xn: 'm', xu: 'kg', yn: 'T', yu: 's', xt: 'x', yt: 'x2', trials: 3, f: '4*pi^2/m', fn: 'k', fu: 'N/m',
+    plan: { iv: 'มวลที่แขวน m', dv: 'คาบการสั่น T', cv: 'สปริงตัวเดิม แอมพลิจูดเล็ก', hyp: 'T² แปรผันตรงกับ m ความชัน = 4π²/k' }, rows: [[0.1, 0.45, 0.44, 0.46], [0.2, 0.63, 0.63, 0.64], [0.3, 0.77, 0.78, 0.77], [0.4, 0.89, 0.9, 0.89]] },
+  hooke: { title: 'กฎของฮุก', xn: 'x', xu: 'm', yn: 'F', yu: 'N', xt: 'x', yt: 'x', trials: 1, f: 'm', fn: 'k', fu: 'N/m',
+    plan: { iv: 'ระยะยืด x', dv: 'แรงดึง F', cv: 'สปริงตัวเดิม ไม่เกินขีดจำกัดสภาพยืดหยุ่น', hyp: 'F แปรผันตรงกับ x ความชัน = k' }, rows: [[0.01, 0.5], [0.02, 1.0], [0.03, 1.48], [0.04, 2.02], [0.05, 2.5]] },
+  ohm: { title: 'กฎของโอห์ม', xn: 'I', xu: 'A', yn: 'V', yu: 'V', xt: 'x', yt: 'x', trials: 1, f: 'm', fn: 'R', fu: 'Ω',
+    plan: { iv: 'กระแสไฟฟ้า I', dv: 'ความต่างศักย์ V', cv: 'ตัวต้านทานตัวเดิม อุณหภูมิคงที่', hyp: 'V แปรผันตรงกับ I ความชัน = R' }, rows: [[0.1, 1.0], [0.2, 2.1], [0.3, 2.9], [0.4, 4.0], [0.5, 5.1]] },
+  freefall: { title: 'หาค่า g จากการตกอิสระ', xn: 't', xu: 's', yn: 'h', yu: 'm', xt: 'x2', yt: 'x', trials: 1, f: '2*m', fn: 'g', fu: 'm/s²',
+    plan: { iv: 'ความสูงที่ปล่อย h', dv: 'เวลาที่ตก t', cv: 'วัตถุเดิม ปล่อยจากหยุดนิ่ง', hyp: 'h = ½gt² ความชันของ h กับ t² = g/2' }, rows: [[0.2, 0.2], [0.3, 0.44], [0.4, 0.78], [0.5, 1.22], [0.6, 1.76]] },
+  blank: { title: 'การทดลองของฉัน', xn: 'x', xu: '', yn: 'y', yu: '', xt: 'x', yt: 'x', trials: 1, f: 'm', fn: 'ความชัน', fu: '', plan: { iv: '', dv: '', cv: '', hyp: '' }, rows: [[1, ''], [2, ''], [3, '']] }
+};
+function labFit(it) {
+  const tx = (XF[it.xt] || XF.x)[1], ty = (XF[it.yt] || XF.x)[1], n0 = Math.max(1, Math.min(3, it.trials || 1));
+  const pts = [];
+  for (const r of it.rows || []) {
+    const x = parseFloat(r[0]); const ys = r.slice(1, 1 + n0).map(parseFloat).filter(isFinite);
+    if (!isFinite(x) || !ys.length) continue;
+    const ym = ys.reduce((a, b) => a + b, 0) / ys.length, dy = ys.length > 1 ? (Math.max(...ys) - Math.min(...ys)) / 2 : 0;
+    const X = tx(x), Y = ty(ym), Yh = ty(ym + dy), Yl = ty(ym - dy);
+    if (!isFinite(X) || !isFinite(Y)) continue;
+    pts.push({ x: X, y: Y, e: isFinite(Yh) && isFinite(Yl) ? Math.abs(Yh - Yl) / 2 : 0, raw: [x, ym] });
+  }
+  const n = pts.length; if (n < 2) return { pts, n };
+  const mx = pts.reduce((a, p) => a + p.x, 0) / n, my = pts.reduce((a, p) => a + p.y, 0) / n;
+  let sxx = 0, sxy = 0, syy = 0; for (const p of pts) { sxx += (p.x - mx) ** 2; sxy += (p.x - mx) * (p.y - my); syy += (p.y - my) ** 2; }
+  if (sxx === 0) return { pts, n };
+  const m = sxy / sxx, c = my - m * mx;
+  let ssr = 0; for (const p of pts) ssr += (p.y - (m * p.x + c)) ** 2;
+  const s = n > 2 ? Math.sqrt(ssr / (n - 2)) : 0;
+  return { pts, n, m, c, sm: s / Math.sqrt(sxx), sc: s * Math.sqrt(1 / n + mx * mx / sxx), r2: syy > 0 ? 1 - ssr / syy : 1 };
+}
+function sig3(v) { if (!isFinite(v)) return '-'; const a = Math.abs(v); if (a !== 0 && (a >= 1e5 || a < 1e-3)) return v.toExponential(2); return String(+v.toPrecision(3)); }
+function labResult(it, F) {
+  if (!window.math || !isFinite(F.m) || !it.f) return null;
+  try {
+    const node = window.math.compile(String(it.f).replace(/π/g, 'pi'));
+    const ev = (m, c) => +node.evaluate({ m, c, pi: Math.PI });
+    const v = ev(F.m, F.c), hm = Math.abs(F.m) * 1e-6 || 1e-9, hc = Math.abs(F.c) * 1e-6 || 1e-9;
+    const dm = (ev(F.m + hm, F.c) - ev(F.m - hm, F.c)) / (2 * hm), dc = (ev(F.m, F.c + hc) - ev(F.m, F.c - hc)) / (2 * hc);
+    const u = Math.sqrt((dm * (F.sm || 0)) ** 2 + (dc * (F.sc || 0)) ** 2);
+    return isFinite(v) ? { v, u } : null;
+  } catch (e) { return null; }
+}
+function labSvg(it, F) {
+  const VW = 600, VH = 300, L = 62, R = 16, T = 14, B = 46;
+  const xs = F.pts.map((p) => p.x), ys = F.pts.map((p) => p.y);
+  if (!xs.length) return '<svg viewBox="0 0 600 300"><text x="300" y="150" text-anchor="middle" font-size="16" fill="#6B7686">กรอกข้อมูลอย่างน้อย 2 แถวเพื่อพล็อตกราฟ</text></svg>';
+  let x0 = Math.min(0, ...xs), x1 = Math.max(...xs), y0 = Math.min(0, ...ys.map((y, i) => y - F.pts[i].e)), y1 = Math.max(...ys.map((y, i) => y + F.pts[i].e));
+  if (x1 === x0) x1 = x0 + 1; if (y1 === y0) y1 = y0 + 1; x1 += (x1 - x0) * 0.06; y1 += (y1 - y0) * 0.08;
+  const X = (v) => L + (v - x0) / (x1 - x0) * (VW - L - R), Y = (v) => VH - B - (v - y0) / (y1 - y0) * (VH - T - B);
+  const ticks = (a, b) => { const st = Math.pow(10, Math.floor(Math.log10((b - a) / 5))); const k = [1, 2, 5, 10].find((q) => (b - a) / (st * q) <= 6) * st; const out = []; for (let v = Math.ceil(a / k) * k; v <= b + 1e-12; v += k) out.push(+v.toPrecision(6)); return out; };
+  let g = '<svg viewBox="0 0 600 300" xmlns="http://www.w3.org/2000/svg" font-family="Sarabun, sans-serif">';
+  for (const t of ticks(x0, x1)) g += '<line x1="' + X(t) + '" y1="' + T + '" x2="' + X(t) + '" y2="' + (VH - B) + '" stroke="#EEF1F5"/><text x="' + X(t) + '" y="' + (VH - B + 18) + '" font-size="13" text-anchor="middle" fill="#535E6C">' + t + '</text>';
+  for (const t of ticks(y0, y1)) g += '<line x1="' + L + '" y1="' + Y(t) + '" x2="' + (VW - R) + '" y2="' + Y(t) + '" stroke="#EEF1F5"/><text x="' + (L - 6) + '" y="' + (Y(t) + 4) + '" font-size="13" text-anchor="end" fill="#535E6C">' + t + '</text>';
+  g += '<line x1="' + L + '" y1="' + Y(Math.max(y0, Math.min(0, y1))) + '" x2="' + (VW - R) + '" y2="' + Y(Math.max(y0, Math.min(0, y1))) + '" stroke="#9AA4B2"/><line x1="' + X(Math.max(x0, 0)) + '" y1="' + T + '" x2="' + X(Math.max(x0, 0)) + '" y2="' + (VH - B) + '" stroke="#9AA4B2"/>';
+  if (isFinite(F.m)) g += '<line x1="' + X(x0) + '" y1="' + Y(F.m * x0 + F.c) + '" x2="' + X(x1) + '" y2="' + Y(F.m * x1 + F.c) + '" stroke="#C2571A" stroke-width="2.2"/>';
+  for (const p of F.pts) { if (p.e) g += '<line x1="' + X(p.x) + '" y1="' + Y(p.y - p.e) + '" x2="' + X(p.x) + '" y2="' + Y(p.y + p.e) + '" stroke="#2F4BB8" stroke-width="1.5"/>'; g += '<circle cx="' + X(p.x) + '" cy="' + Y(p.y) + '" r="4.5" fill="#2F4BB8"/>'; }
+  const lab = (n, u, t) => (XF[t] || XF.x)[0].replace('x', n) + (u ? ' (' + u + ((t === 'x2') ? '²' : '') + ')' : '');
+  g += '<text x="' + (VW - R) + '" y="' + (VH - 8) + '" font-size="14" text-anchor="end" fill="#14181F" font-style="italic">' + esc(lab(it.xn || 'x', it.xu, it.xt)) + '</text>';
+  g += '<text x="' + (L + 4) + '" y="' + (T + 12) + '" font-size="14" fill="#14181F" font-style="italic">' + esc(lab(it.yn || 'y', it.yu, it.yt)) + '</text>';
+  return g + '</svg>';
+}
+function labCommit(it, d) {
+  const live = findItem(it.id); if (!live) return;
+  d._sig = JSON.stringify(Object.assign({}, live, { x: 0, y: 0, w: 0 }));
+  labSaveLater();
+}
+const labSaveLater = debounce(() => savePage(), 700);
+function buildLab(d, it, forExport) {
+  d.classList.add('lab');
+  const head = document.createElement('div'); head.className = 'gh';
+  head.innerHTML = '<span></span>'; head.firstChild.textContent = it.title || 'การทดลอง'; d.appendChild(head);
+  const ro = forExport;
+  const plan = document.createElement('div'); plan.className = 'lplan';
+  const P = it.plan || {};
+  for (const [k, lab] of [['iv', 'ตัวแปรต้น'], ['dv', 'ตัวแปรตาม'], ['cv', 'ตัวแปรควบคุม'], ['hyp', 'สมมติฐาน']]) {
+    const row = document.createElement('label'); row.innerHTML = '<b></b>'; row.firstChild.textContent = lab;
+    if (ro) { const sp = document.createElement('span'); sp.textContent = P[k] || '-'; row.appendChild(sp); }
+    else { const inp = document.createElement('input'); inp.value = P[k] || ''; inp.placeholder = 'พิมพ์' + lab; inp.oninput = () => { const live = findItem(it.id); if (!live) return; live.plan = Object.assign({}, live.plan || {}, { [k]: inp.value }); labCommit(it, d); }; row.appendChild(inp); }
+    plan.appendChild(row);
+  }
+  d.appendChild(plan);
+  const cfg = document.createElement('div'); cfg.className = 'lcfg';
+  const tbl = document.createElement('div'); tbl.className = 'ltbl';
+  const graph = document.createElement('div'); graph.className = 'lgraph';
+  const out = document.createElement('div'); out.className = 'lout';
+  const redraw = () => {
+    const live = findItem(it.id) || it, F = labFit(live);
+    graph.innerHTML = labSvg(live, F);
+    if (!isFinite(F.m)) { out.innerHTML = '<span>กรอกข้อมูลอย่างน้อย 2 แถว</span>'; return; }
+    const res = labResult(live, F);
+    out.innerHTML = '<span><i>ความชัน m</i> ' + esc(sig3(F.m)) + ' ± ' + esc(sig3(F.sm)) + '</span><span><i>จุดตัดแกน c</i> ' + esc(sig3(F.c)) + ' ± ' + esc(sig3(F.sc)) + '</span><span><i>R²</i> ' + esc(F.r2.toFixed(4)) + '</span>'
+      + (res ? '<span class="lres"><i>' + esc(live.fn || 'ผล') + ' = ' + esc(live.f) + '</i> <b>' + esc(sig3(res.v)) + ' ± ' + esc(sig3(res.u)) + ' ' + esc(live.fu || '') + '</b></span>' : '');
+  };
+  const buildTable = () => {
+    const live = findItem(it.id) || it, n0 = Math.max(1, Math.min(3, live.trials || 1));
+    let h = '<table><thead><tr><th>' + esc((live.xn || 'x') + (live.xu ? ' (' + live.xu + ')' : '')) + '</th>';
+    for (let k = 0; k < n0; k++) h += '<th>' + esc((live.yn || 'y') + (n0 > 1 ? ' ครั้งที่ ' + (k + 1) : '') + (live.yu ? ' (' + live.yu + ')' : '')) + '</th>';
+    if (n0 > 1) h += '<th>เฉลี่ย</th>';
+    h += (ro ? '' : '<th></th>') + '</tr></thead><tbody>';
+    (live.rows || []).forEach((r, i) => {
+      h += '<tr>';
+      for (let k = 0; k <= n0; k++) h += ro ? '<td>' + esc(r[k] == null ? '' : r[k]) + '</td>' : '<td><input inputmode="decimal" data-r="' + i + '" data-c="' + k + '" value="' + esc(r[k] == null ? '' : r[k]) + '"></td>';
+      if (n0 > 1) { const ys = r.slice(1, 1 + n0).map(parseFloat).filter(isFinite); h += '<td class="avg">' + (ys.length ? esc(sig3(ys.reduce((a, b) => a + b, 0) / ys.length)) : '') + '</td>'; }
+      h += ro ? '' : '<td><button type="button" class="ldel" data-del="' + i + '" aria-label="ลบแถว">×</button></td>';
+      h += '</tr>';
+    });
+    h += '</tbody></table>' + (ro ? '' : '<button type="button" class="ladd">เพิ่มแถว</button>');
+    tbl.innerHTML = h;
+    if (ro) return;
+    tbl.querySelectorAll('input').forEach((inp) => inp.addEventListener('input', () => {
+      const live2 = findItem(it.id); if (!live2) return;
+      const rows = clone(live2.rows || []); const r = +inp.dataset.r, c = +inp.dataset.c;
+      while (rows[r].length <= c) rows[r].push('');
+      rows[r][c] = inp.value.replace(',', '.'); live2.rows = rows;
+      const avg = inp.closest('tr').querySelector('.avg');
+      if (avg) { const ys = rows[r].slice(1, 1 + n0).map(parseFloat).filter(isFinite); avg.textContent = ys.length ? sig3(ys.reduce((a, b) => a + b, 0) / ys.length) : ''; }
+      redraw(); labCommit(it, d);
+    }));
+    tbl.querySelectorAll('[data-del]').forEach((b) => { b.onclick = () => { const live2 = findItem(it.id); if (!live2) return; live2.rows = (live2.rows || []).filter((_, i) => i !== +b.dataset.del); buildTable(); redraw(); labCommit(it, d); }; });
+    tbl.querySelector('.ladd').onclick = () => { const live2 = findItem(it.id); if (!live2) return; live2.rows = (live2.rows || []).concat([['', '', '', '']]); buildTable(); redraw(); labCommit(it, d); const ins = tbl.querySelectorAll('tbody tr:last-child input'); if (ins[0]) ins[0].focus({ preventScroll: true }); };
+  };
+  if (!ro) {
+    const mk = (label, key, opts) => {
+      const w = document.createElement('label'); w.innerHTML = '<span></span>'; w.firstChild.textContent = label;
+      let el;
+      if (opts) { el = document.createElement('select'); for (const [v, t] of opts) { const o = document.createElement('option'); o.value = v; o.textContent = t; el.appendChild(o); } }
+      else el = document.createElement('input');
+      el.value = it[key] == null ? '' : String(it[key]);
+      el.addEventListener(opts ? 'change' : 'input', () => { const live = findItem(it.id); if (!live) return; live[key] = key === 'trials' ? +el.value : el.value; if (key !== 'f' && key !== 'fn' && key !== 'fu') buildTable(); redraw(); labCommit(it, d); });
+      w.appendChild(el); cfg.appendChild(w);
+    };
+    mk('ชื่อแกนนอน', 'xn'); mk('หน่วย', 'xu'); mk('ชื่อแกนตั้ง', 'yn'); mk('หน่วย', 'yu');
+    mk('วัดซ้ำ', 'trials', [['1', '1 ครั้ง'], ['2', '2 ครั้ง'], ['3', '3 ครั้ง']]);
+    mk('พล็อตแกนนอนเป็น', 'xt', Object.entries(XF).map(([k, v]) => [k, v[0]]));
+    mk('พล็อตแกนตั้งเป็น', 'yt', Object.entries(XF).map(([k, v]) => [k, v[0].replace('x', 'y')]));
+    mk('ชื่อผลที่หา', 'fn'); mk('สูตรจากความชัน m และจุดตัด c', 'f'); mk('หน่วยของผล', 'fu');
+    d.appendChild(cfg);
+  }
+  d.appendChild(tbl); d.appendChild(graph); d.appendChild(out);
+  buildTable();
+  if (window.math) redraw(); else { redraw(); loadLib('math').then(redraw).catch(() => {}); }
+}
+function insertLab(tpl) {
+  if (!S.page) return;
+  const t = clone(LAB_TPL[tpl] || LAB_TPL.blank);
+  const w = 640; const [x, y] = viewSpot(w, 760);
+  addItem(Object.assign({ type: 'lab', tpl, x, y, w }, t));
+  toast('วางการ์ดการทดลองแล้ว แก้ข้อมูลในตารางได้เลย กราฟและผลคำนวณจะอัปเดตทันที', 3000);
+}
+function renderLabPicker() {
+  const g = $('#labGrid'); g.innerHTML = '';
+  for (const [k, t] of Object.entries(LAB_TPL)) {
+    const b = document.createElement('button'); b.className = 'simpick'; b.type = 'button';
+    b.innerHTML = '<b></b><span></span>'; b.querySelector('b').textContent = t.title;
+    b.querySelector('span').textContent = k === 'blank' ? 'ตั้งชื่อตัวแปร หน่วย และสูตรเอง' : 'พล็อต ' + (XF[t.yt][0].replace('x', t.yn)) + ' กับ ' + XF[t.xt][0].replace('x', t.xn) + ' แล้วหา ' + t.fn + ' = ' + t.f;
+    b.onclick = () => { $('#labSheet').hidden = true; insertLab(k); };
+    g.appendChild(b);
+  }
+}
+
 /* ---------- physics calculator: math with units, constants, variables ---------- */
 const CONSTS = [
   ['g', '9.8 m/s^2', 'g ความเร่งโน้มถ่วง'], ['c', '299792458 m/s', 'c อัตราเร็วแสง'], ['G', '6.674e-11 N m^2/kg^2', 'G ค่านิจโน้มถ่วง'],
@@ -4585,7 +4781,7 @@ async function renderSaved() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1792995094';
+const BUILD = '1792995286';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
@@ -4695,7 +4891,7 @@ function syncToggles() {
 }
 function hideLoading() { $('#loading').hidden = true; }
 function togglePages(v) { const el = $('#pages'); el.hidden = v === undefined ? !el.hidden : !v; $('#bPages').setAttribute('aria-pressed', el.hidden ? 'false' : 'true'); setTimeout(fit, 0); }
-function closeSheets() { $('#simSheet').hidden = true; $('#mediaSheet').hidden = true; $('#menu').hidden = true; $('#exportSheet').hidden = true; $('#insSheet').hidden = true; }
+function closeSheets() { $('#labSheet').hidden = true; $('#simSheet').hidden = true; $('#mediaSheet').hidden = true; $('#menu').hidden = true; $('#exportSheet').hidden = true; $('#insSheet').hidden = true; }
 
 /* ---------- wiring ---------- */
 document.querySelectorAll('.tool[data-tool]').forEach((b) => {
@@ -4735,6 +4931,8 @@ $('#graphSheet').addEventListener('click', (e) => { if (e.target.id === 'graphSh
 $('#iImg').onclick = () => { closeSheets(); $('#fImg').value = ''; $('#fImg').click(); };
 $('#iVid').onclick = () => { closeSheets(); $('#fVid').value = ''; $('#fVid').click(); };
 $('#iGraph').onclick = () => { closeSheets(); openGraphSheet(null); };
+$('#iLab').onclick = () => { closeSheets(); renderLabPicker(); $('#labSheet').hidden = false; };
+$('#bLabClose').onclick = () => { $('#labSheet').hidden = true; };
 $('#iSim').onclick = () => { closeSheets(); renderSimPicker(); $('#simSheet').hidden = false; };
 $('#bSimClose').onclick = () => { $('#simSheet').hidden = true; };
 $('#iText').onclick = () => { closeSheets(); setTool('text'); toast('แตะบนหน้าตรงที่ต้องการพิมพ์', 2500); };
