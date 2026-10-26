@@ -594,6 +594,24 @@ body.present .peekcard { display: none !important; }
 .hwfiles img { width: 160px; height: 200px; object-fit: cover; border-radius: 10px; border: 1px solid var(--line); }
 .pdfchip { display: inline-block; padding: 6px 10px; border-radius: 10px; background: var(--accent-soft); color: var(--accent); font-size: 13px; }
 .hwfile { font: inherit; }
+.deckview { position: fixed; inset: 0; z-index: 35; background: #20242B; display: flex; flex-direction: column; }
+.dkbar { display: flex; gap: 6px; align-items: center; padding: 10px 12px; background: var(--surface); flex-wrap: wrap; }
+.dksp { flex: 1; }
+.dkwrap { position: relative; flex: 1; min-height: 0; overflow: hidden; margin: 12px; }
+#dkStage { position: absolute; transform-origin: 0 0; box-shadow: 0 12px 40px rgba(0,0,0,.45); }
+#dkStage [contenteditable="true"] { outline: 2px dashed rgba(127,160,255,.7); outline-offset: 4px; }
+.dknotes { background: var(--surface); padding: 10px 16px; font-size: 15px; max-height: 22vh; overflow-y: auto; }
+.dknav { display: flex; justify-content: center; align-items: center; gap: 14px; padding: 8px; color: #FFFFFF; }
+.dknav .btn { color: var(--fg); min-width: 96px; }
+.deckview.full .dkbar, .deckview.full .dknav, .deckview.full .dknotes { display: none; }
+.deckview.full .dkwrap { margin: 0; }
+.deckview.full { background: #000; }
+.themegrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 8px; }
+.themecard { display: flex; flex-direction: column; gap: 4px; padding: 6px; border-radius: 12px; border: 1.5px solid var(--line); background: var(--surface); cursor: pointer; color: var(--fg); }
+.themecard span { display: flex; align-items: center; justify-content: center; gap: 8px; height: 54px; border-radius: 8px; font-size: 22px; font-weight: 700; position: relative; }
+.themecard span i { position: absolute; left: 0; top: 0; width: 100%; height: 5px; border-radius: 8px 8px 0 0; }
+.themecard b { font-size: 12px; font-weight: 600; }
+.themecard[aria-pressed="true"] { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
 .exttl { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .exttl h2 { margin-right: auto; }
 .exwho { flex-direction: row; align-items: center; gap: 6px; }
@@ -1018,6 +1036,18 @@ body.present .peekcard { display: none !important; }
     <div class="note">แต่ละหน้าของ PDF เป็นพื้นหลังที่ล็อกไว้ เขียน วาด แทรกกล่องข้อความทับได้โดยไม่เลื่อนหลุด นำเข้าได้ครั้งละไม่เกิน 60 หน้า</div>
   </div>
 </div>
+<div class="sheet" id="deckSheet" hidden>
+  <div class="panel wide" role="dialog" aria-label="สร้างสไลด์นำเสนอ">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><h2>สร้างสไลด์นำเสนอ</h2><button class="btn" id="dkClose">ปิด</button></div>
+    <div id="deckBody" class="exbody"></div>
+  </div>
+</div>
+<div class="deckview" id="deckView" hidden>
+  <div class="dkbar"><button class="btn" id="dkBack">กลับ</button><span class="dksp"></span><button class="btn" id="dkEdit" aria-pressed="false">แก้ข้อความ</button><button class="btn" id="dkNoteBtn" aria-pressed="false">บันทึกผู้พูด</button><select id="dkTheme" class="traysel" style="width:auto"></select><button class="btn" id="dkPptx">PowerPoint</button><button class="btn" id="dkHtml">ไฟล์ HTML</button><button class="btn solid" id="dkFull">นำเสนอเต็มจอ</button></div>
+  <div class="dkwrap" id="dkWrap"><div id="dkStage"></div></div>
+  <div class="dknotes" id="dkNotes" hidden></div>
+  <div class="dknav"><button class="btn" id="dkPrev">ก่อนหน้า</button><span id="dkNum"></span><button class="btn" id="dkNext">ถัดไป</button></div>
+</div>
 <div class="sheet" id="hwSheet" hidden>
   <div class="panel" role="dialog" aria-label="มอบหมายการบ้าน">
     <div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><h2>มอบหมายเป็นการบ้าน</h2><button class="btn" id="hwClose">ปิด</button></div>
@@ -1157,6 +1187,9 @@ body.present .peekcard { display: none !important; }
     <div class="chips" id="expScope"><button class="chip" data-v="all" aria-pressed="true">ทั้งเล่ม</button><button class="chip" data-v="page" aria-pressed="false">เฉพาะหน้านี้</button></div>
     <button class="btn solid" id="bExpGo">สร้างไฟล์ PDF</button>
     <div id="expMsg"></div>
+    <h3>สไลด์นำเสนอ</h3>
+    <div class="note">แปลงสิ่งที่จดหรือค้นคว้าไว้เป็นสไลด์ เลือกได้ว่านำเสนอผู้บริหาร ลูกค้า รายงานหน้าห้อง สอน หรืองานวิชาการ</div>
+    <button class="btn" id="bDeck">สร้างสไลด์จากสมุดเล่มนี้</button>
   </div>
 </div>
 
@@ -7942,8 +7975,221 @@ async function openHomework(id) {
   typeset(b);
 }
 
+/* ---------- notes to presentation slides: for executives, clients, a class report, teaching, or a talk ---------- */
+const AUDIENCES = [
+  ['exec', 'ผู้บริหาร', 'Executives: lead with the conclusion and the decision needed. Few words, key numbers, impact, cost, risk, next steps. 6 to 8 slides.'],
+  ['client', 'ลูกค้า หรือผู้รับบริการ', 'Clients: their problem, what we offer, benefits in their terms, evidence, simple next step. Friendly and persuasive, no jargon. 6 to 9 slides.'],
+  ['class', 'รายงานหน้าห้อง', 'A student presenting to classmates and the teacher: clear story, key concepts explained simply, one worked example, summary and a question for the class. 7 to 10 slides.'],
+  ['teach', 'สอนในชั้นเรียน', 'A teacher teaching: learning objectives, concept in steps, worked example, common mistakes, a quick check question, summary. 8 to 12 slides.'],
+  ['talk', 'ประชุมวิชาการ หรืองานวิจัย', 'An academic talk: background and gap, aim, method, key results with numbers, discussion, conclusion. 8 to 12 slides.'],
+  ['custom', 'กำหนดเอง', '']
+];
+const THEMES = [
+  ['clean', 'สะอาดตา', { bg: '#FFFFFF', fg: '#1A2230', ac: '#2F4BB8', soft: '#EEF2FB', head: 'Sarabun' }],
+  ['exec', 'ผู้บริหาร', { bg: '#0F1B33', fg: '#F2F4F8', ac: '#E0B44C', soft: '#1B2A4A', head: 'Sarabun' }],
+  ['warm', 'อบอุ่น', { bg: '#FBF6EE', fg: '#3A2A1C', ac: '#C2571A', soft: '#F3E6D3', head: 'Sarabun' }],
+  ['chalk', 'กระดานดำ', { bg: '#24352C', fg: '#F4F1E8', ac: '#F2D06B', soft: '#2F4438', head: 'Sarabun' }],
+  ['fresh', 'สดใส', { bg: '#F4FBF8', fg: '#14302A', ac: '#1D9A74', soft: '#DFF3EA', head: 'Sarabun' }]
+];
+const DK = { audience: store_ls.get('tp-dk-aud') || 'class', theme: store_ls.get('tp-dk-theme') || 'clean', n: 8, pids: [], extra: '', deck: null, i: 0, notes: false, edit: false };
+function themeOf(k) { return (THEMES.find((t) => t[0] === k) || THEMES[0])[2]; }
+function openDeckMaker() {
+  closeSheets(); $('#deckSheet').hidden = false;
+  if (!DK.pids.length || !DK.pids.every((p) => ((S.nb && S.nb.pages) || []).includes(p))) DK.pids = ((S.nb && S.nb.pages) || []).slice(0, 12);
+  renderDeckMaker();
+}
+async function renderDeckMaker() {
+  const b = $('#deckBody'); b.innerHTML = '';
+  b.appendChild(exEl('div', 'note', 'เลือกหน้าที่จดหรือค้นคว้าไว้ บอกว่าจะนำเสนอให้ใคร แล้วระบบจัดเป็นสไลด์ให้ แก้ข้อความได้ นำเสนอเต็มจอได้ และบันทึกเป็นไฟล์ PowerPoint หรือ HTML ได้'));
+  b.appendChild(exEl('span', 'label', 'หน้าที่ใช้เป็นเนื้อหา'));
+  const P = (S.nb && S.nb.pages) || [];
+  exChips(b, [['all', 'ทั้งเล่ม'], ['cur', 'หน้านี้']].concat(P.map((p, i) => [p, 'หน้า ' + (i + 1)])), (v) => (v === 'all' ? DK.pids.length === P.length : v === 'cur' ? DK.pids.length === 1 && DK.pids[0] === S.pid : DK.pids.includes(v)), (v) => {
+    if (v === 'all') DK.pids = P.slice(); else if (v === 'cur') DK.pids = [S.pid]; else DK.pids = DK.pids.includes(v) ? DK.pids.filter((x) => x !== v) : P.filter((x) => x === v || DK.pids.includes(x));
+    renderDeckMaker();
+  }).classList.add('pgchips');
+  b.appendChild(exEl('span', 'label', 'นำเสนอให้ใคร'));
+  exChips(b, AUDIENCES.map((a) => [a[0], a[1]]), (v) => v === DK.audience, (v) => { DK.audience = v; store_ls.set('tp-dk-aud', v); renderDeckMaker(); });
+  const ex = exEl('label', 'field', '<span>' + (DK.audience === 'custom' ? 'บอกผู้ฟังและเป้าหมายของการนำเสนอ' : 'ข้อกำหนดเพิ่มเติม (เว้นว่างได้) เช่น เน้นงบประมาณ ใช้เวลา 10 นาที') + '</span>');
+  const ta = document.createElement('textarea'); ta.rows = 2; ta.value = DK.extra; ta.oninput = () => { DK.extra = ta.value; }; ex.appendChild(ta); b.appendChild(ex);
+  b.appendChild(exEl('span', 'label', 'ธีมและจำนวนสไลด์'));
+  const tg = exEl('div', 'themegrid');
+  for (const [k, n, t] of THEMES) { const c = exEl('button', 'themecard', '<span style="background:' + t.bg + ';color:' + t.fg + '"><i style="background:' + t.ac + '"></i>Aa</span><b>' + n + '</b>'); c.type = 'button'; c.setAttribute('aria-pressed', k === DK.theme ? 'true' : 'false'); c.onclick = () => { DK.theme = k; store_ls.set('tp-dk-theme', k); renderDeckMaker(); }; tg.appendChild(c); }
+  b.appendChild(tg);
+  exChips(b, [[6, '6 สไลด์'], [8, '8 สไลด์'], [10, '10 สไลด์'], [14, '14 สไลด์']], (v) => v === DK.n, (v) => { DK.n = v; renderDeckMaker(); });
+  const msg = exEl('div', ''); msg.id = 'dkMsg'; b.appendChild(msg);
+  const go = exEl('button', 'btn solid', 'สร้างสไลด์'); go.onclick = makeDeck; b.appendChild(go);
+  /* saved decks */
+  let decks = []; try { decks = (await S.store.list('decks')).sort((a, c) => (c.at || 0) - (a.at || 0)); } catch (e) { decks = []; }
+  if (decks.length) {
+    b.appendChild(exEl('h3', '', 'สไลด์ที่เคยสร้าง'));
+    for (const d of decks.slice(0, 12)) { const r = exEl('div', 'setrow', '<div><b>' + esc(d.title || 'สไลด์') + '</b><small>' + (d.slides || []).length + ' สไลด์ : ' + esc((AUDIENCES.find((a) => a[0] === d.audience) || ['', ''])[1]) + ' : ' + new Date(d.at || 0).toLocaleDateString('th-TH', { day: 'numeric', month: 'short' }) + '</small></div>'); const op = exEl('button', 'btn', 'เปิด'); op.onclick = () => { DK.deck = Object.assign({ id: d.id }, d); showDeck(0); }; r.appendChild(op); b.appendChild(r); }
+  }
+}
+async function deckSource(pids, onStep) {
+  const texts = [], imgs = [];
+  for (let k = 0; k < pids.length; k++) {
+    const pid = pids[k], i = ((S.nb && S.nb.pages) || []).indexOf(pid) + 1;
+    if (onStep) onStep(k);
+    const pg = pid === S.pid ? S.page : await S.store.get('pages/' + pid);
+    const typed = ((pg && pg.items) || []).filter((it) => !it.type || it.type === 'text').map((it) => it.md).join('\n');
+    for (const it of ((pg && pg.items) || [])) if (it.type === 'img' && okAsset(it.asset) && !it.lock) imgs.push({ asset: it.asset, what: 'ภาพที่แทรกในหน้า ' + i });
+    const c = await pageContent(pid); let hand = '';
+    if (c.strokes.length) {
+      const im = await blobFromStrokes(c.strokes);
+      if (im && AI.ready('read')) {
+        try { const r = await AI.run('read', 'This is a page of handwritten notes (Thai and maths). Transcribe the writing faithfully, math as LaTeX in $...$, joining lines of the same sentence. If part of the page is a drawing or diagram, write [DIAGRAM: short description] in its place. Reply with the transcription only.', { images: [im.blob] }); hand = String(r.text || '').trim(); } catch (e) { hand = ''; }
+        if (/\[DIAGRAM/i.test(hand)) { try { const A = await getAssets(); if (A) { const up = await A.upload(im.blob, { type: 'image/jpeg' }); imgs.push({ asset: up.id, what: 'ภาพลายมือและแผนภาพในหน้า ' + i }); } } catch (e) { /* no picture */ } }
+      }
+    }
+    texts.push('--- หน้า ' + i + ' ---\n' + [typed, hand].filter(Boolean).join('\n'));
+  }
+  return { text: texts.join('\n\n'), imgs };
+}
+function parseDeck(txt, nImgs) {
+  const deck = { title: '', sub: '', slides: [] }; let cur = null;
+  for (const p of sections(txt)) {
+    if (p.key === 'DECK') { const [t, s] = String(p.arg || p.text || '').split('|'); deck.title = (t || '').trim(); deck.sub = (s || '').trim(); continue; }
+    if (p.key !== 'SLIDE') continue;
+    cur = { layout: (p.arg || 'bullets').toLowerCase().split(/\s/)[0], title: '', points: [], notes: '', stat: null, img: null }; deck.slides.push(cur);
+    for (const line of String(p.text || '').split('\n')) {
+      const m = line.match(/^\s*([A-Z]+)\s*:\s*(.*)$/); if (!m) { if (line.trim() && cur.points.length < 6) cur.points.push(line.replace(/^[-*•]\s*/, '').trim()); continue; }
+      const [, k, v] = m;
+      if (k === 'TITLE') cur.title = v.trim(); else if (k === 'POINT') { if (v.trim()) cur.points.push(v.trim()); }
+      else if (k === 'NOTES') cur.notes = v.trim(); else if (k === 'STAT') { const [a, c] = v.split('|'); cur.stat = { value: (a || '').trim(), label: (c || '').trim() }; }
+      else if (k === 'IMAGE') { const n = parseInt(v, 10) - 1; if (n >= 0 && n < nImgs) cur.img = n; }
+    }
+  }
+  deck.slides = deck.slides.filter((s) => s.title || s.points.length || s.stat);
+  return deck;
+}
+async function makeDeck() {
+  const msg = $('#dkMsg'); if (!DK.pids.length) { msg.innerHTML = '<div class="note err">เลือกอย่างน้อยหนึ่งหน้า</div>'; return; }
+  const aud = AUDIENCES.find((a) => a[0] === DK.audience) || AUDIENCES[2];
+  const B = waitCard(msg, 'กำลังสร้างสไลด์', ['อ่านเนื้อหา ' + DK.pids.length + ' หน้า', 'จัดโครงเรื่องและเขียนสไลด์', 'จัดรูปแบบ']);
+  try {
+    const src = await deckSource(DK.pids);
+    if (B.cancelled) return; B.step(1);
+    let deck;
+    if (AI.ready('gen') && src.text.replace(/---[^\n]*---/g, '').trim().length > 20) {
+      const prompt = 'Turn these notes into a presentation in Thai.\nAudience and purpose: ' + (aud[2] || '') + ' ' + (DK.extra || '') + '\nAim for about ' + DK.n + ' slides.\n'
+        + 'Rules: one idea per slide; titles are short messages (not topic labels); at most 5 points per slide, each under 15 words; keep facts, numbers and equations from the notes, do not invent data; use $...$ for math; put detail in NOTES for the speaker.\n'
+        + (src.imgs.length ? 'Available pictures (use IMAGE: number on a slide where it helps):\n' + src.imgs.map((im, i) => (i + 1) + ') ' + im.what).join('\n') + '\n' : '')
+        + 'Layouts: title (first slide), section, bullets, split (points with a picture), stat (one big number), quote (one key message), summary (last slide).\n'
+        + 'Reply in exactly this format and nothing else:\n@@DECK title | subtitle\n@@SLIDE layout\nTITLE: ...\nPOINT: ...\nPOINT: ...\nSTAT: value | label   (only for stat)\nIMAGE: number   (optional)\nNOTES: what to say, 1 to 3 sentences\n(repeat @@SLIDE blocks)\n\nNOTES TO USE:\n' + src.text.slice(0, 14000);
+      const r = await AI.run('gen', prompt, { cache: false });
+      deck = parseDeck(r.text, src.imgs.length);
+    }
+    if (!deck || deck.slides.length < 2) deck = fallbackDeck(src);
+    B.step(2);
+    deck.audience = DK.audience; deck.theme = DK.theme; deck.imgs = src.imgs; deck.at = now(); deck.title = deck.title || (S.nb && S.nb.title) || 'การนำเสนอ';
+    deck.id = 'd' + uid(); await S.store.set('decks/' + deck.id, Object.assign({}, deck, { id: undefined })).catch(() => {});
+    B.stop(); DK.deck = deck; showDeck(0);
+  } catch (e) { B.stop(); msg.innerHTML = '<div class="note err">สร้างสไลด์ไม่สำเร็จ ' + esc(aiErr(e)) + '</div>'; }
+}
+function fallbackDeck(src) {
+  const deck = { title: (S.nb && S.nb.title) || 'การนำเสนอ', sub: new Date().toLocaleDateString('th-TH', { dateStyle: 'long' }), slides: [] };
+  deck.slides.push({ layout: 'title', title: deck.title, points: [deck.sub], notes: '' });
+  for (const part of src.text.split(/--- หน้า \d+ ---/).map((x) => x.trim()).filter(Boolean)) {
+    const lines = part.split('\n').map((l) => l.trim()).filter(Boolean);
+    deck.slides.push({ layout: 'bullets', title: lines[0].slice(0, 70), points: lines.slice(1, 6), notes: lines.slice(6).join(' ') });
+  }
+  src.imgs.forEach((im, i) => { const s = deck.slides[Math.min(deck.slides.length - 1, i + 1)]; if (s && s.img == null) { s.img = i; s.layout = 'split'; } });
+  deck.slides.push({ layout: 'summary', title: 'สรุป', points: deck.slides.slice(1, 5).map((s) => s.title), notes: '' });
+  return deck;
+}
+/* ----- viewer and presenter ----- */
+function slideHtml(s, d, i, n, forFile) {
+  const imgTag = s.img != null && d.imgs && d.imgs[s.img] ? (forFile ? '<img src="' + (d.imgs[s.img].data || '') + '" alt="">' : '<img data-asset="' + esc(d.imgs[s.img].asset) + '" alt="">') : '';
+  const pts = (s.points || []).map((p) => '<li>' + mdToHtml(p) + '</li>').join('');
+  const lay = s.layout === 'split' && !imgTag ? 'bullets' : s.layout;
+  let inner = '';
+  if (lay === 'title') inner = '<div class="st-title"><h1>' + mdToHtml(s.title || d.title) + '</h1><p>' + mdToHtml((s.points || [])[0] || d.sub || '') + '</p></div>';
+  else if (lay === 'section') inner = '<div class="st-section"><span>' + (i) + '</span><h1>' + mdToHtml(s.title) + '</h1></div>';
+  else if (lay === 'stat' && s.stat) inner = '<h2>' + mdToHtml(s.title) + '</h2><div class="st-stat"><b>' + mdToHtml(s.stat.value) + '</b><span>' + mdToHtml(s.stat.label) + '</span></div>' + (pts ? '<ul>' + pts + '</ul>' : '');
+  else if (lay === 'quote') inner = '<div class="st-quote"><p>' + mdToHtml(s.title) + '</p>' + (pts ? '<ul>' + pts + '</ul>' : '') + '</div>';
+  else if (lay === 'split') inner = '<h2>' + mdToHtml(s.title) + '</h2><div class="st-split"><ul>' + pts + '</ul><div class="st-img">' + imgTag + '</div></div>';
+  else inner = '<h2>' + mdToHtml(s.title) + '</h2><ul class="' + (lay === 'summary' ? 'st-sum' : '') + '">' + pts + '</ul>' + (imgTag ? '<div class="st-img small">' + imgTag + '</div>' : '');
+  return '<div class="slide lay-' + lay + '">' + inner + '<div class="st-foot"><span>' + esc(d.title) + '</span><span>' + (i + 1) + ' / ' + n + '</span></div></div>';
+}
+function deckCss(t) {
+  return '.slide{position:relative;width:1280px;height:720px;box-sizing:border-box;padding:64px 80px 70px;background:' + t.bg + ';color:' + t.fg + ';font-family:Sarabun,Thonburi,sans-serif;overflow:hidden;display:flex;flex-direction:column;gap:22px}'
+    + '.slide:before{content:"";position:absolute;left:0;top:0;width:100%;height:10px;background:' + t.ac + '}'
+    + '.slide h2{font-size:46px;line-height:1.25;margin:0;font-weight:700}.slide h1{font-size:64px;line-height:1.2;margin:0}'
+    + '.slide ul{margin:0;padding-left:1.1em;font-size:32px;line-height:1.5;display:flex;flex-direction:column;gap:12px}.slide li::marker{color:' + t.ac + '}'
+    + '.st-title{margin:auto 0;display:flex;flex-direction:column;gap:18px;border-left:12px solid ' + t.ac + ';padding-left:36px}.st-title p{font-size:30px;opacity:.8;margin:0}'
+    + '.st-section{margin:auto 0;display:flex;align-items:center;gap:34px}.st-section span{font-size:120px;font-weight:700;color:' + t.ac + '}'
+    + '.st-stat{display:flex;align-items:baseline;gap:28px;margin:20px 0}.st-stat b{font-size:150px;line-height:1;color:' + t.ac + '}.st-stat span{font-size:34px}'
+    + '.st-quote{margin:auto 0;padding:40px 48px;background:' + t.soft + ';border-radius:24px}.st-quote p{font-size:52px;line-height:1.35;margin:0 0 18px;font-weight:700}'
+    + '.st-split{display:grid;grid-template-columns:1.1fr 1fr;gap:40px;align-items:center;flex:1;min-height:0}.st-img{background:#FFFFFF;border-radius:18px;padding:12px;display:flex;align-items:center;justify-content:center;max-height:100%}.st-img img{max-width:100%;max-height:480px;object-fit:contain}.st-img.small{position:absolute;right:70px;bottom:80px;width:300px}'
+    + '.st-sum li{background:' + t.soft + ';list-style:none;margin-left:-1.1em;padding:10px 20px;border-radius:14px}'
+    + '.st-foot{position:absolute;left:80px;right:80px;bottom:24px;display:flex;justify-content:space-between;font-size:18px;opacity:.55}'
+    + '.slide mjx-container{font-size:100%!important}';
+}
+function showDeck(i) {
+  const d = DK.deck; if (!d) return;
+  closeSheets(); DK.i = clamp(i, 0, d.slides.length - 1);
+  const v = $('#deckView'); v.hidden = false;
+  let st = document.getElementById('deckCss'); if (!st) { st = document.createElement('style'); st.id = 'deckCss'; document.head.appendChild(st); }
+  st.textContent = deckCss(themeOf(d.theme)).replace(/\.slide/g, '#dkStage .slide').replace(/\.st-/g, '#dkStage .st-');
+  const stage = $('#dkStage'); stage.innerHTML = slideHtml(d.slides[DK.i], d, DK.i, d.slides.length, false);
+  stage.querySelectorAll('img[data-asset]').forEach((im) => setAssetSrc(im, im.dataset.asset));
+  if (DK.edit) deckEditable(stage);
+  $('#dkNotes').hidden = !DK.notes; $('#dkNotes').innerHTML = '<b>บันทึกผู้พูด</b> ' + mdToHtml(d.slides[DK.i].notes || 'ไม่มี');
+  $('#dkNum').textContent = (DK.i + 1) + ' / ' + d.slides.length;
+  $('#dkTheme').value = d.theme || 'clean';
+  $('#dkEdit').setAttribute('aria-pressed', DK.edit ? 'true' : 'false'); $('#dkNoteBtn').setAttribute('aria-pressed', DK.notes ? 'true' : 'false');
+  fitDeck(); typeset(stage);
+}
+function fitDeck() { const box = $('#dkWrap'), s = $('#dkStage'); if (!box || !s) return; const k = Math.min(box.clientWidth / 1280, box.clientHeight / 720); s.style.transform = 'scale(' + k + ')'; s.style.left = ((box.clientWidth - 1280 * k) / 2) + 'px'; s.style.top = ((box.clientHeight - 720 * k) / 2) + 'px'; }
+function deckEditable(stage) {
+  const s = DK.deck.slides[DK.i];
+  const h = stage.querySelector('h1,h2,.st-quote p'); if (h) { h.contentEditable = 'true'; h.textContent = s.title; h.oninput = () => { s.title = h.textContent; deckSaveLater(); }; }
+  stage.querySelectorAll('li').forEach((li, k) => { li.contentEditable = 'true'; li.textContent = s.points[k] || ''; li.oninput = () => { s.points[k] = li.textContent; deckSaveLater(); }; });
+}
+const deckSaveLater = debounce(() => { const d = DK.deck; if (d && d.id) S.store.set('decks/' + d.id, Object.assign({}, d, { id: undefined })).catch(() => {}); }, 800);
+async function assetDataUrl(asset) {
+  try { let u = blobUrls.get(asset); if (!u) { const im = new Image(); setAssetSrc(im, asset); await new Promise((r) => setTimeout(r, 800)); u = blobUrls.get(asset) || im.src; } const b = await (await fetch(u)).blob(); return await new Promise((r) => { const f = new FileReader(); f.onload = () => r(f.result); f.readAsDataURL(b); }); } catch (e) { return ''; }
+}
+async function deckExportHtml() {
+  const d = DK.deck; toast('กำลังเตรียมไฟล์', 3000);
+  const imgs = []; for (const im of d.imgs || []) imgs.push(Object.assign({}, im, { data: await assetDataUrl(im.asset) }));
+  const dd = Object.assign({}, d, { imgs }), t = themeOf(d.theme), n = d.slides.length;
+  const html = '<!doctype html><html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>' + esc(d.title) + '</title>'
+    + '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;700&display=swap"><script>window.MathJax={tex:{inlineMath:[["$","$"]]}};<\/script><script src="https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-svg-full.js" async><\/script>'
+    + '<style>html,body{margin:0;background:#111;height:100%}#w{position:fixed;inset:0}.s{position:absolute;left:0;top:0;transform-origin:0 0;display:none}.s.on{display:block}' + deckCss(t) + '@media print{@page{size:1280px 720px;margin:0}#w{position:static}.s{display:block!important;position:static;transform:none!important;page-break-after:always}body{background:none}}</style></head><body><div id="w">'
+    + d.slides.map((s, i) => '<div class="s' + (i ? '' : ' on') + '">' + slideHtml(s, dd, i, n, true) + '</div>').join('')
+    + '</div><script>let i=0;const S=[...document.querySelectorAll(".s")];function f(){const k=Math.min(innerWidth/1280,innerHeight/720);S.forEach(s=>{s.style.transform="scale("+k+")";s.style.left=(innerWidth-1280*k)/2+"px";s.style.top=(innerHeight-720*k)/2+"px"})}function g(n){S[i].classList.remove("on");i=Math.max(0,Math.min(S.length-1,n));S[i].classList.add("on")}addEventListener("resize",f);f();addEventListener("keydown",e=>{if(["ArrowRight","PageDown"," "].includes(e.key))g(i+1);if(["ArrowLeft","PageUp"].includes(e.key))g(i-1)});addEventListener("click",e=>g(e.clientX>innerWidth/3?i+1:i-1));<\/script></body></html>';
+  saveFile((d.title || 'slides') + '.html', new Blob([html], { type: 'text/html' }));
+}
+const latexPlain = (s) => String(s || '').replace(/\$([^$]+)\$/g, (m, x) => x.replace(/\\frac\{([^}]*)\}\{([^}]*)\}/g, '($1)/($2)').replace(/\\sqrt\{([^}]*)\}/g, '√($1)').replace(/\\(times|cdot)/g, '×').replace(/\\theta/g, 'θ').replace(/\\omega/g, 'ω').replace(/\\lambda/g, 'λ').replace(/\\mu/g, 'μ').replace(/\\Delta/g, 'Δ').replace(/\\pi/g, 'π').replace(/\\alpha/g, 'α').replace(/\\(text|mathrm)\{([^}]*)\}/g, '$2').replace(/[{}]/g, '').replace(/\^2/g, '²').replace(/\^3/g, '³').replace(/\\,/g, ' ').replace(/\\/g, '')).replace(/\*\*/g, '');
+async function deckExportPptx() {
+  const d = DK.deck, t = themeOf(d.theme), hex = (c) => c.replace('#', '');
+  toast('กำลังสร้างไฟล์ PowerPoint', 4000);
+  try { await loadScript('https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js'); } catch (e) { toast('โหลดตัวสร้าง PowerPoint ไม่ได้ ใช้ไฟล์ HTML แทน', 3000); return; }
+  const P = new window.PptxGenJS(); P.layout = 'LAYOUT_WIDE';
+  const imgs = []; for (const im of d.imgs || []) imgs.push(await assetDataUrl(im.asset));
+  const font = 'Sarabun';
+  d.slides.forEach((s, i) => {
+    const sl = P.addSlide(); sl.background = { color: hex(t.bg) };
+    sl.addShape(P.ShapeType.rect, { x: 0, y: 0, w: 13.33, h: 0.12, fill: { color: hex(t.ac) }, line: { color: hex(t.ac) } });
+    const lay = s.layout, pts = (s.points || []).map(latexPlain);
+    if (lay === 'title') { sl.addText(latexPlain(s.title || d.title), { x: 0.9, y: 2.3, w: 11.5, h: 1.6, fontFace: font, fontSize: 44, bold: true, color: hex(t.fg) }); sl.addText(pts[0] || d.sub || '', { x: 0.9, y: 3.9, w: 11.5, h: 0.8, fontFace: font, fontSize: 22, color: hex(t.fg) }); }
+    else if (lay === 'stat' && s.stat) { sl.addText(latexPlain(s.title), { x: 0.8, y: 0.5, w: 11.7, h: 1, fontFace: font, fontSize: 32, bold: true, color: hex(t.fg) }); sl.addText(latexPlain(s.stat.value), { x: 0.8, y: 1.8, w: 6, h: 2, fontFace: font, fontSize: 96, bold: true, color: hex(t.ac) }); sl.addText(latexPlain(s.stat.label), { x: 0.8, y: 3.9, w: 11, h: 0.8, fontFace: font, fontSize: 24, color: hex(t.fg) }); }
+    else {
+      sl.addText(latexPlain(s.title), { x: 0.8, y: 0.45, w: 11.7, h: 1.1, fontFace: font, fontSize: 32, bold: true, color: hex(t.fg) });
+      const img = s.img != null ? imgs[s.img] : '';
+      if (pts.length) sl.addText(pts.map((p) => ({ text: p, options: { bullet: true } })), { x: 0.8, y: 1.7, w: img ? 6.4 : 11.7, h: 4.9, fontFace: font, fontSize: 22, color: hex(t.fg), valign: 'top', paraSpaceAfter: 8 });
+      if (img) sl.addImage({ data: img, x: 7.5, y: 1.7, w: 5, h: 4.6, sizing: { type: 'contain', w: 5, h: 4.6 } });
+    }
+    if (s.notes) sl.addNotes(latexPlain(s.notes));
+    sl.addText((i + 1) + ' / ' + d.slides.length, { x: 11.8, y: 7.0, w: 1.2, h: 0.35, fontFace: font, fontSize: 11, color: hex(t.fg), align: 'right' });
+  });
+  const blob = await P.write({ outputType: 'blob' });
+  saveFile((d.title || 'slides') + '.pptx', blob);
+}
+
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793049912';
+const BUILD = '1793050204';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
@@ -8053,7 +8299,7 @@ function syncToggles() {
 }
 function hideLoading() { $('#loading').hidden = true; }
 function togglePages(v) { const el = $('#pages'); el.hidden = v === undefined ? !el.hidden : !v; $('#bPages').setAttribute('aria-pressed', el.hidden ? 'false' : 'true'); setTimeout(fit, 0); }
-function closeSheets() { $('#hwSheet').hidden = true; $('#hoSheet').hidden = true; $('#pdfSheet').hidden = true; $('#qmSheet').hidden = true; $('#liveSheet').hidden = true; $('#sqSheet').hidden = true; $('#examSheet').hidden = true; $('#aiSetup').hidden = true; $('#labSheet').hidden = true; $('#simSheet').hidden = true; $('#mediaSheet').hidden = true; $('#menu').hidden = true; $('#exportSheet').hidden = true; $('#insSheet').hidden = true; }
+function closeSheets() { $('#deckSheet').hidden = true; $('#hwSheet').hidden = true; $('#hoSheet').hidden = true; $('#pdfSheet').hidden = true; $('#qmSheet').hidden = true; $('#liveSheet').hidden = true; $('#sqSheet').hidden = true; $('#examSheet').hidden = true; $('#aiSetup').hidden = true; $('#labSheet').hidden = true; $('#simSheet').hidden = true; $('#mediaSheet').hidden = true; $('#menu').hidden = true; $('#exportSheet').hidden = true; $('#insSheet').hidden = true; }
 
 /* ---------- wiring ---------- */
 document.querySelectorAll('.tool[data-tool]').forEach((b) => {
@@ -8460,6 +8706,21 @@ $('#bTrayClose').onclick = closeTray;
 $('#hoClose').onclick = () => { $('#hoSheet').hidden = true; };
 $('#hoGo').onclick = makeHandout;
 $('#hwClose').onclick = () => { $('#hwSheet').hidden = true; };
+$('#bDeck').onclick = () => { $('#exportSheet').hidden = true; openDeckMaker(); };
+$('#dkClose').onclick = () => { $('#deckSheet').hidden = true; };
+$('#dkBack').onclick = () => { if (document.fullscreenElement) document.exitFullscreen().catch(() => {}); $('#deckView').hidden = true; $('#deckView').classList.remove('full'); openDeckMaker(); };
+$('#dkPrev').onclick = () => showDeck(DK.i - 1);
+$('#dkNext').onclick = () => showDeck(DK.i + 1);
+$('#dkEdit').onclick = () => { DK.edit = !DK.edit; showDeck(DK.i); };
+$('#dkNoteBtn').onclick = () => { DK.notes = !DK.notes; showDeck(DK.i); };
+$('#dkHtml').onclick = deckExportHtml;
+$('#dkPptx').onclick = deckExportPptx;
+$('#dkFull').onclick = () => { const v = $('#deckView'); v.classList.add('full'); DK.edit = false; if (v.requestFullscreen) v.requestFullscreen().catch(() => {}); showDeck(DK.i); };
+{ const sel = $('#dkTheme'); for (const [k, n] of THEMES) { const o = document.createElement('option'); o.value = k; o.textContent = 'ธีม ' + n; sel.appendChild(o); } sel.onchange = () => { if (!DK.deck) return; DK.deck.theme = sel.value; deckSaveLater(); showDeck(DK.i); }; }
+document.addEventListener('fullscreenchange', () => { if (!document.fullscreenElement) $('#deckView').classList.remove('full'); setTimeout(fitDeck, 60); });
+document.addEventListener('keydown', (e) => { if ($('#deckView').hidden || DK.edit) return; if (['ArrowRight', 'PageDown', ' '].includes(e.key)) { e.preventDefault(); showDeck(DK.i + 1); } else if (['ArrowLeft', 'PageUp'].includes(e.key)) { e.preventDefault(); showDeck(DK.i - 1); } else if (e.key === 'Escape') $('#deckView').classList.remove('full'); });
+$('#dkWrap').addEventListener('click', (e) => { if (DK.edit || !$('#deckView').classList.contains('full')) return; const r = $('#dkWrap').getBoundingClientRect(); showDeck(e.clientX - r.left > r.width / 3 ? DK.i + 1 : DK.i - 1); });
+window.addEventListener('resize', () => { if (!$('#deckView').hidden) fitDeck(); });
 $('#sDel').onclick = deleteSel; $('#sClose').onclick = clearSel;
 $('#bExport').onclick = () => { $('#expMsg').innerHTML = ''; $('#exportSheet').hidden = false; };
 $('#bExpClose').onclick = closeSheets;
