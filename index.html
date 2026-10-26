@@ -120,7 +120,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .shp { width: 64px; height: 56px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-size: 11px; color: var(--fg); padding: 0; }
 .shp svg { width: 26px; height: 22px; }
 .shp[aria-pressed="true"] { border: 2px solid var(--accent); background: var(--accent-soft); }
-.dock { position: absolute; left: 12px; top: 12px; z-index: 5; display: flex; flex-wrap: wrap; max-width: calc(100% - 24px); align-items: center; gap: 2px; padding: 4px; border-radius: 18px; background: var(--surface); box-shadow: var(--shadow); }
+.dock { position: absolute; left: 12px; top: 12px; z-index: 7; display: flex; flex-wrap: wrap; max-width: calc(100% - 24px); align-items: center; gap: 2px; padding: 4px; border-radius: 18px; background: var(--surface); box-shadow: var(--shadow); }
 .curc { width: 46px; height: 46px; border-radius: 13px; border: 0; background: transparent; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; }
 .curc .dot { width: 22px; height: 22px; border-radius: 999px; }
 .rsw { width: 30px; height: 30px; margin: 0 4px; border-radius: 999px; border: 0; padding: 0; cursor: pointer; flex: none; }
@@ -173,10 +173,18 @@ body.tv .wd { width: 56px; height: 56px; }
 body.tv .selbar { bottom: 112px; }
 body.tv .toast { bottom: 112px; }
 
-.selbar { position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%); z-index: 6; display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; padding: 8px; border-radius: 18px; background: var(--chrome); color: var(--chrome-fg); box-shadow: var(--shadow); max-width: calc(100% - 24px); }
-.selbar button { min-height: 44px; padding: 0 14px; border-radius: 12px; border: 0; cursor: pointer; background: rgba(127, 127, 127, 0.22); color: inherit; font-size: 14px; }
-.selbar button.main { background: var(--accent); color: var(--accent-fg); font-weight: 600; }
-.selbar .count { align-self: center; font-size: 13px; padding: 0 6px; opacity: 0.8; }
+.selbar { position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%); z-index: 6; display: flex; flex-wrap: wrap; justify-content: center; align-items: stretch; gap: 4px; padding: 6px; border-radius: 18px; background: var(--chrome); color: var(--chrome-fg); box-shadow: var(--shadow); max-width: min(620px, calc(100% - 24px)); }
+.selbar.floating { transform: none; bottom: auto; }
+.selbar .sg { display: flex; gap: 2px; padding: 0 4px; }
+.selbar .sg:not(.none) ~ .sg:not(.none) { border-left: 1px solid rgba(127, 127, 127, 0.35); }
+.selbar .sg:empty, .selbar .sg.none { display: none; }
+.selbar button { min-width: 58px; min-height: 52px; padding: 5px 6px 4px; border-radius: 12px; border: 0; cursor: pointer; background: transparent; color: inherit; font-size: 11.5px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; line-height: 1.1; }
+.selbar button svg { width: 22px; height: 22px; }
+.selbar button:active { background: rgba(127, 127, 127, 0.25); }
+.selbar button.danger { color: #FF8A80; }
+.selbar button.main { background: rgba(127, 127, 127, 0.22); font-weight: 600; }
+.selbar button[hidden] { display: none; }
+.selbar .count { display: none; }
 
 .toast { position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%); z-index: 7; padding: 10px 16px; border-radius: 12px; background: var(--chrome); color: var(--chrome-fg); font-size: 14px; box-shadow: var(--shadow); max-width: calc(100% - 40px); text-align: center; }
 .loading { position: absolute; inset: 0; z-index: 8; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; background: var(--desk); color: var(--muted); }
@@ -500,19 +508,12 @@ body.tv .convbar { bottom: 112px; }
       </div>
       <div class="pull no-ink" id="pull" hidden></div>
 
-      <div class="selbar no-ink" id="selbar" hidden>
+      <div class="selbar no-ink" id="selbar" role="toolbar" aria-label="ส่วนที่เลือก" hidden>
         <span class="count" id="selCount"></span>
-        <button class="main" id="sRead">อ่านลายมือ</button>
-        <button id="sGraph">สร้างกราฟ</button>
-        <button id="sTidy">วาดใหม่ตามหลักฟิสิกส์</button>
-        <button id="sMedia">หาสื่อประกอบ</button>
-        <button id="sBig" hidden>ขยาย</button>
-        <button id="sSmall" hidden>ย่อ</button>
-        <button id="sGen">สร้างโจทย์จากส่วนนี้</button>
-        <button id="sFront" hidden>นำขึ้นหน้าสุด</button>
-        <button id="sBack" hidden>ส่งไปหลังสุด</button>
-        <button id="sDel">ลบ</button>
-        <button id="sClose">เสร็จ</button>
+        <span class="sg" id="sgInk"><button id="sRead" class="main"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M3 15c2-3 3-7 4.5-7s.5 5 2 5 2-6 3.5-6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M13 4.5h6 M16 4.5v8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span>เป็นตัวพิมพ์</span></button><button id="sGraph"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M4 3.5v14h14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M5.5 14c3-1 4-8 7-8s3 4 5 4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span>สร้างกราฟ</span></button><button id="sTidy"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M4 17l4-1 9-9-3-3-9 9z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M15.5 13.5l1 2 2 1-2 1-1 2-1-2-2-1 2-1z" fill="currentColor"/></svg><span>วาดใหม่</span></button><button id="sGen"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M11 3l1.8 4.6 4.7 1.9-4.7 1.9L11 16l-1.8-4.6L4.5 9.5l4.7-1.9z" fill="currentColor"/></svg><span>สร้างโจทย์</span></button><button id="sMedia"><svg viewBox="0 0 22 22" aria-hidden="true"><rect x="3" y="4.5" width="16" height="13" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M3.5 15l4.5-4.5 3.5 3.5 2-2 5 4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg><span>หาสื่อ</span></button></span>
+        <span class="sg" id="sgOrder"><button id="sFront"><svg viewBox="0 0 22 22" aria-hidden="true"><rect x="7" y="7" width="11" height="11" rx="2" fill="currentColor"/><rect x="3.5" y="3.5" width="11" height="11" rx="2" fill="none" stroke="currentColor" stroke-width="1.5" stroke-dasharray="2.5 2"/></svg><span>ขึ้นหน้าสุด</span></button><button id="sBack"><svg viewBox="0 0 22 22" aria-hidden="true"><rect x="3.5" y="3.5" width="11" height="11" rx="2" fill="currentColor"/><rect x="7" y="7" width="11" height="11" rx="2" fill="var(--chrome)" stroke="currentColor" stroke-width="1.5"/></svg><span>ไปหลังสุด</span></button></span>
+        <span class="sg"><button id="sDup"><svg viewBox="0 0 22 22" aria-hidden="true"><rect x="7" y="7" width="11" height="11" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M4 14V5a1 1 0 0 1 1-1h9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span>ทำสำเนา</span></button><button id="sDel" class="danger"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M5 6.5h12 M9 6.5V4.5h4v2 M6.5 6.5l.8 11h7.4l.8-11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span>ลบ</span></button><button id="sClose"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M5 11.5l4 4 8-9" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg><span>เสร็จ</span></button></span>
+        <button id="sBig" hidden>ขยาย</button><button id="sSmall" hidden>ย่อ</button>
       </div>
       <div class="convbar no-ink" id="convbar" hidden>
         <span>แตะที่ลายมือเพื่อแปลงเป็นตัวพิมพ์</span>
@@ -1718,6 +1719,7 @@ function onDown(e) {
 }
 function beginTool(pt, e) {
   const [x, y] = toLogical(e.clientX, e.clientY);
+  if ((S.tool === 'pen' || S.tool === 'hl') && S.sel && S.sel.items.length && nearHandle(S.sel.box, x, y) >= 0) { startScale(pt, nearHandle(S.sel.box, x, y)); return; }
   if ((S.tool === 'pen' || S.tool === 'hl') && S.sel && S.sel.items.length && inBox(S.sel.box, x, y)) {
     /* a picture or box picked by pressing and holding: drag it with the pen too */
     pt.mode = 'move'; pt.last = [x, y]; pt.dx = 0; pt.dy = 0; return;
@@ -1736,13 +1738,13 @@ function beginTool(pt, e) {
       if (P.get(pt.id) !== pt || pt.mode !== 'draw' || pt.moved > 10) return;
       clearTimeout(pt.holdT); clearLive();
       selectItem(hit); pt.mode = 'move'; pt.last = [x, y]; pt.dx = 0; pt.dy = 0;
-      toast('เลือกแล้ว ลากเพื่อย้าย หรือใช้ปุ่มด้านล่างเพื่อลบ ขยาย หรือย่อ', 2600);
+      toast('เลือกแล้ว ลากเพื่อย้าย ลากมุมเพื่อปรับขนาด', 2200);
     }, 480);
   } else if (S.tool === 'eraser') {
     pt.mode = 'erase'; pt.removed = []; pt.snap = {}; pt.r = ERASE_R[S.eraserSize];
     eraseAt(x, y, pt.r, pt); drawCursor(x, y, pt.r);
   } else if (S.tool === 'lasso') {
-    if (S.sel && nearHandle(S.sel.box, x, y)) { startScale(pt); }
+    if (S.sel && nearHandle(S.sel.box, x, y) >= 0) { startScale(pt, nearHandle(S.sel.box, x, y)); }
     else if (S.sel && inBox(S.sel.box, x, y)) { pt.mode = 'move'; pt.last = [x, y]; pt.dx = 0; pt.dy = 0; if (!S.sel.strokes.length && S.sel.items.length === 1 && itemsAt(x, y).length > 1) pt.cyc = [x, y]; }
     else {
       const hit = itemAt(x, y);
@@ -1886,6 +1888,13 @@ function startGesture(touches) {
   const ids = touches.slice(0, 3).map((p) => p.id);
   const pts = ids.map((id) => P.get(id));
   G = { ids, count: ids.length, t0: now(), moved: false, d0: dist(pts[0], pts[1]), m0: mid(pts[0], pts[1]), z0: S.zoom, tx0: S.tx, ty0: S.ty };
+  if (S.sel && S.sel.box && ids.length === 2) {
+    const a = toLogical(pts[0].lx, pts[0].ly), b = toLogical(pts[1].lx, pts[1].ly), pad = 40 / (S.base * S.zoom);
+    const bx = S.sel.box, inside = (p) => p[0] > bx[0] - pad && p[0] < bx[2] + pad && p[1] > bx[1] - pad && p[1] < bx[3] + pad;
+    if (inside(a) || inside(b) || inside([(a[0] + b[0]) / 2, (a[1] + b[1]) / 2])) {
+      G.sel = {}; startScale(G.sel, 2); G.sel.anchor = [(bx[0] + bx[2]) / 2, (bx[1] + bx[3]) / 2];
+    }
+  }
   if (G.count === 2 && touches.length >= 3) G.count = 3;
 }
 function dist(a, b) { return Math.hypot(a.lx - b.lx, a.ly - b.ly) || 1; }
@@ -1895,6 +1904,7 @@ function moveGesture() {
   const d = dist(a, b), m = mid(a, b);
   if (Math.abs(d - G.d0) > 10 || Math.hypot(m[0] - G.m0[0], m[1] - G.m0[1]) > 10) G.moved = true;
   if (!G.moved) return;
+  if (G.sel) { doScaleF(G.sel, clamp(d / G.d0, 0.08, 12)); return; }
   const z = clamp(G.z0 * d / G.d0, 0.5, 4);
   S.zoom = z;
   S.tx = m[0] - (G.m0[0] - G.tx0) * z / G.z0;
@@ -1906,6 +1916,7 @@ function moveGesture() {
 function endGesture() {
   const g = G; G = null;
   for (const id of g.ids) { const p = P.get(id); if (p) p.mode = 'ignore'; }
+  if (g.sel) { if (g.moved) { endScale(g.sel); return; } }
   if (S.pull) releasePull();
   if (!g.moved && now() - g.t0 < 320) { if (g.count >= 3) { redo(); toast('ทำซ้ำ', 900); } else { undo(); toast('ย้อนกลับ', 900); } }
 }
@@ -2207,18 +2218,31 @@ function commitShape(pt) {
 
 /* resize a lasso selection from its corner handle, or with the buttons */
 function handleR() { return clamp(14 / (S.base * S.zoom), 8, 30); }
-function nearHandle(b, x, y) { return b && Math.hypot(x - b[2], y - b[3]) < handleR() * 1.9; }
-function startScale(pt) {
+const CORNERS = [[0, 1], [2, 1], [2, 3], [0, 3]];
+function nearHandle(b, x, y) {
+  if (!b) return -1;
+  for (let i = 0; i < 4; i++) if (Math.hypot(x - b[CORNERS[i][0]], y - b[CORNERS[i][1]]) < handleR() * 1.9) return i;
+  return -1;
+}
+function startScale(pt, corner) {
   pt.mode = 'scale'; pt.f = 1;
   pt.box0 = S.sel.box.slice();
+  const c = corner == null || corner < 0 ? 2 : corner, o = CORNERS[(c + 2) % 4];
+  pt.anchor = [pt.box0[o[0]], pt.box0[o[1]]]; pt.grab = [pt.box0[CORNERS[c][0]], pt.box0[CORNERS[c][1]]];
   pt.orig = S.sel.strokes.map((r) => { const s = findStroke(r); return s ? { r, p: s.p.slice() } : null; }).filter(Boolean);
   pt.snap = {}; for (const o of pt.orig) if (!pt.snap[o.r.layer]) pt.snap[o.r.layer] = clone(layerArr(o.r.layer));
   pt.itemsBefore = clone((S.page && S.page.items) || []);
   pt.itemsOrig = {}; for (const id of S.sel.items) { const it = findItem(id); if (it) pt.itemsOrig[id] = { x: it.x, y: it.y, w: it.w || 600, fs: it.fs || 24, text: !it.type || it.type === 'text' }; }
 }
 function doScale(pt, x, y) {
-  const b0 = pt.box0, ox = b0[0], oy = b0[1];
-  const f = clamp(Math.max((x - ox) / Math.max(1, b0[2] - ox), (y - oy) / Math.max(1, b0[3] - oy)), 0.15, 8);
+  const ox = pt.anchor[0], oy = pt.anchor[1];
+  const gx = pt.grab[0] - ox, gy = pt.grab[1] - oy;
+  /* how far the dragged corner went from the fixed opposite corner, compared with where it started */
+  const f = clamp(((x - ox) * gx + (y - oy) * gy) / Math.max(1, gx * gx + gy * gy), 0.08, 12);
+  doScaleF(pt, f);
+}
+function doScaleF(pt, f) {
+  const b0 = pt.box0, ox = pt.anchor[0], oy = pt.anchor[1];
   pt.f = f;
   for (const o of pt.orig) {
     const s = findStroke(o.r); if (!s) continue;
@@ -2227,13 +2251,14 @@ function doScale(pt, x, y) {
   }
   for (const [id, o] of Object.entries(pt.itemsOrig)) {
     const it = findItem(id); if (!it) continue;
-    it.x = Math.round(ox + (o.x - ox) * f); it.y = Math.round(oy + (o.y - oy) * f); it.w = Math.round(clamp(o.w * f, 60, 1000));
+    it.x = Math.round(ox + (o.x - ox) * f); it.y = Math.round(oy + (o.y - oy) * f); it.w = Math.round(clamp(o.w * f, 40, 1000));
     if (o.text) it.fs = Math.round(clamp(o.fs * f, 10, 120));
     const d = itemsEl.querySelector('[data-id="' + id + '"]');
     if (d) { d.style.left = it.x + 'px'; d.style.top = it.y + 'px'; d.style.width = it.w + 'px'; if (o.text) d.style.fontSize = it.fs + 'px'; }
   }
-  S.sel.box = [ox, oy, ox + (b0[2] - ox) * f, oy + (b0[3] - oy) * f];
-  drawInk(); drawSelBox();
+  const xa = ox + (b0[0] - ox) * f, xb = ox + (b0[2] - ox) * f, ya = oy + (b0[1] - oy) * f, yb = oy + (b0[3] - oy) * f;
+  S.sel.box = [Math.min(xa, xb), Math.min(ya, yb), Math.max(xa, xb), Math.max(ya, yb)];
+  if (pt.orig.length) drawInk(); drawSelBox();
 }
 function endScale(pt) {
   if (!pt.f || Math.abs(pt.f - 1) < 0.01) return;
@@ -2246,9 +2271,8 @@ function endScale(pt) {
 }
 function scaleSelBy(f) {
   if (!S.sel) return;
-  const pt = {}; startScale(pt);
-  const b = pt.box0;
-  doScale(pt, b[0] + (b[2] - b[0]) * f, b[1] + (b[3] - b[1]) * f);
+  const pt = {}; startScale(pt, 2);
+  doScaleF(pt, f);
   endScale(pt);
 }
 
@@ -2343,12 +2367,12 @@ function moveItemEls() {
 function shiftBox(b, dx, dy) { return [b[0] + dx, b[1] + dy, b[2] + dx, b[3] + dy]; }
 function inBox(b, x, y) { return b && x >= b[0] && x <= b[2] && y >= b[1] && y <= b[3]; }
 function drawSelBox() {
+  if (S.sel && !$('#selbar').hidden) requestAnimationFrame(placeSelbar);
   const pend = (S.pending || []).map((p) => '<rect x="' + (p[0] - 6) + '" y="' + (p[1] - 6) + '" width="' + (p[2] - p[0] + 12) + '" height="' + (p[3] - p[1] + 12) + '" rx="10" fill="rgba(47,75,184,0.12)" stroke="#2F4BB8" stroke-width="2" stroke-dasharray="4 5" vector-effect="non-scaling-stroke"/>').join('');
   const b = S.sel && S.sel.box; if (!b) { selEl.innerHTML = pend; return; }
   const hr = handleR();
   selEl.innerHTML = pend + '<rect x="' + b[0] + '" y="' + b[1] + '" width="' + (b[2] - b[0]) + '" height="' + (b[3] - b[1]) + '" rx="10" fill="rgba(47,75,184,0.06)" stroke="#2F4BB8" stroke-width="2" stroke-dasharray="8 6" vector-effect="non-scaling-stroke"/>'
-    + '<circle cx="' + b[2] + '" cy="' + b[3] + '" r="' + hr.toFixed(1) + '" fill="#FFFFFF" stroke="#2F4BB8" stroke-width="2.5" vector-effect="non-scaling-stroke"/>'
-    + '<path d="M' + (b[2] - hr * 0.45).toFixed(1) + ' ' + (b[3] + hr * 0.45).toFixed(1) + 'L' + (b[2] + hr * 0.45).toFixed(1) + ' ' + (b[3] - hr * 0.45).toFixed(1) + '" stroke="#2F4BB8" stroke-width="2" vector-effect="non-scaling-stroke"/>';
+    + CORNERS.map((c) => '<circle cx="' + b[c[0]] + '" cy="' + b[c[1]] + '" r="' + (hr * 0.8).toFixed(1) + '" fill="#FFFFFF" stroke="#2F4BB8" stroke-width="2.5" vector-effect="non-scaling-stroke"/>').join('');
 }
 function moveRefs(refs, dx, dy, touched) {
   const ix = Math.round(dx * 10), iy = Math.round(dy * 10);
@@ -2373,7 +2397,41 @@ function showSelbar() {
   $('#sGraph').hidden = !(n || textSel);
   $('#sMedia').hidden = !(n || textSel);
   $('#sFront').hidden = $('#sBack').hidden = !(m && (S.page.items || []).length > 1);
-  $('#sBig').hidden = $('#sSmall').hidden = !(n || m);
+  $('#sBig').hidden = $('#sSmall').hidden = true;
+  $('#sGen').hidden = !n;
+  for (const g of ['#sgInk', '#sgOrder']) $(g).classList.toggle('none', ![...$(g).children].some((b) => !b.hidden));
+  placeSelbar();
+}
+/* the menu floats just above the selection (or below it when there is no room) */
+function placeSelbar() {
+  const bar = $('#selbar'); if (bar.hidden || !S.sel || !S.sel.box) return;
+  const host = bar.offsetParent || vp, hr = host.getBoundingClientRect(), pr = pageEl.getBoundingClientRect();
+  const k = pr.width / W, b = S.sel.box;
+  const L = pr.left + b[0] * k - hr.left, R = pr.left + b[2] * k - hr.left, T = pr.top + b[1] * k - hr.top, B = pr.top + b[3] * k - hr.top;
+  bar.classList.add('floating');
+  const bw = bar.offsetWidth, bh = bar.offsetHeight, pad = 10;
+  let x = clamp((L + R) / 2 - bw / 2, 8, Math.max(8, hr.width - bw - 8));
+  const dr = $('#dock').getBoundingClientRect(), dock = [dr.left - hr.left, dr.top - hr.top, dr.right - hr.left, dr.bottom - hr.top];
+  const hitsDock = (yy) => !(x + bw < dock[0] || x > dock[2] || yy + bh < dock[1] || yy > dock[3]);
+  let y = T - bh - pad - handleR() * k;
+  if (y < 8 || hitsDock(y)) y = B + pad + handleR() * k;
+  if (y + bh > hr.height - 8) y = Math.max(8, hr.height - bh - 8);
+  if (hitsDock(y)) y = Math.max(y, dock[3] + 8);
+  bar.style.left = x + 'px'; bar.style.top = y + 'px';
+}
+function dupSel() {
+  if (!S.sel || !S.page) return;
+  const off = 30, ix = off * 10;
+  const newStrokes = [];
+  for (const r of S.sel.strokes) { const st = findStroke(r); if (!st) continue; const c = clone(st); c.id = 's' + uid(); for (let i = 0; i < c.p.length; i += 3) { c.p[i] += ix; c.p[i + 1] += ix; } S.mine.push(c); newStrokes.push({ layer: DEV, id: c.id }); }
+  const before = clone(S.page.items || []), newItems = [];
+  const copies = before.filter((it) => S.sel.items.includes(it.id)).map((it) => { const c = clone(it); c.id = 'i' + uid(); c.by = DEV; c.x = (c.x || 0) + off; c.y = (c.y || 0) + off; newItems.push(c.id); return c; });
+  const ops = [];
+  if (newStrokes.length) { for (const r of newStrokes) { const st = findStroke(r); if (st) ops.push({ t: 'add', stroke: clone(st) }); } saveMine(); drawInk(); }
+  if (copies.length) { const after = before.concat(copies); S.page = Object.assign({}, S.page, { items: after }); savePage(); renderItems(); ops.push({ t: 'items', before, after: clone(after) }); }
+  if (ops.length) pushUndo({ t: 'combo', ops });
+  S.sel = { strokes: newStrokes, items: newItems, box: null }; S.sel.box = selBox(S.sel); drawInk(); drawSelBox(); showSelbar();
+  toast('ทำสำเนาแล้ว ลากไปวางที่ต้องการ', 1600);
 }
 function clearSel() { S.sel = null; drawSelBox(); $('#selbar').hidden = true; drawInk(); }
 function resizeSel(f) {
@@ -4352,6 +4410,7 @@ $('#bAIClose').onclick = () => { $('#ai').hidden = true; $('#bAI').setAttribute(
 $('#bGenPage').onclick = () => generate(false);
 $('#sRead').onclick = readSelection; $('#sTidy').onclick = tidySelection; $('#sGen').onclick = () => generate(true);
 $('#sFront').onclick = () => restackSel(true); $('#sBack').onclick = () => restackSel(false);
+$('#sDup').onclick = dupSel;
 $('#sDel').onclick = deleteSel; $('#sClose').onclick = clearSel;
 $('#bExport').onclick = () => { $('#expMsg').innerHTML = ''; $('#exportSheet').hidden = false; };
 $('#bExpClose').onclick = closeSheets;
