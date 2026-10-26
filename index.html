@@ -539,6 +539,14 @@ body.present #aiFloat { display: none; }
 .qsopt summary { cursor: pointer; }
 .qsopt summary small { color: var(--muted); }
 details.qsopt[open] { gap: 10px; }
+.tippop { display: flex; flex-direction: column; gap: 8px; padding: 4px; width: min(420px, 82vw); max-height: 70vh; overflow-y: auto; }
+.tipgrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.tipb { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 4px 4px 6px; border-radius: 12px; border: 1.5px solid var(--line); background: #FFFFFF; cursor: pointer; color: #14181F; }
+.tipb canvas { width: 100%; height: 40px; }
+.tipb span { font-size: 12px; }
+.tipb[aria-pressed="true"] { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
+#painterBox { display: flex; flex-direction: column; gap: 8px; }
+#painterBox[hidden] { display: none; }
 .exttl { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .exttl h2 { margin-right: auto; }
 .exwho { flex-direction: row; align-items: center; gap: 6px; }
@@ -681,10 +689,24 @@ details.qsopt[open] { gap: 10px; }
         </span>
         <span class="sep"></span>
         <span id="recent" role="group" aria-label="สีที่ใช้ล่าสุด" style="display:flex;align-items:center"></span>
+        <button class="curc" id="curTip" aria-expanded="false" aria-controls="popTip" aria-label="หัวปากกาและโหมดจิตรกร" title="หัวปากกา"><svg viewBox="0 0 22 22" aria-hidden="true" style="width:22px;height:22px"><path d="M14.5 3.5l4 4-8.5 8.5-5 1 1-5z M12.5 5.5l4 4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M4 20c2-1.2 4-1.2 6 0" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg></button>
         <button class="curc" id="curColor" aria-expanded="false" aria-controls="popColors" aria-label="สีทั้งหมด และกำหนดสีเอง"><svg viewBox="0 0 22 22" aria-hidden="true" style="width:22px;height:22px"><path d="M11 3a8 8 0 1 0 0 16c1.3 0 1.8-.9 1.4-1.9-.5-1.2.3-2.3 1.6-2.3H16a3 3 0 0 0 3-3C19 6.3 15.4 3 11 3z" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="7" cy="10" r="1.4" fill="#B42318"/><circle cx="9.5" cy="6.6" r="1.4" fill="#1D7350"/><circle cx="13.6" cy="6.6" r="1.4" fill="#2F4BB8"/><circle cx="7.6" cy="14" r="1.4" fill="#F5C542"/></svg></button>
         <span class="sep" id="wSep"></span>
         <span id="dockWidths" role="group" aria-label="ขนาดเส้น แตะขนาดที่เลือกอยู่อีกครั้งเพื่อปรับ" class="dwid"></span>
         <button class="curc" id="curWidth" aria-expanded="false" aria-controls="popWidth" aria-label="ปรับขนาดเส้นเอง" title="ปรับขนาดเส้นเอง"><svg viewBox="0 0 22 22" aria-hidden="true" style="width:22px;height:22px"><path d="M4 6h14" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><path d="M4 11h14" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/><path d="M4 16.5h14" stroke="currentColor" stroke-width="4" stroke-linecap="round"/></svg></button>
+        <div class="pop" id="popTip" role="group" aria-label="หัวปากกา" hidden>
+          <div class="tippop">
+            <span class="label">หัวปากกา</span>
+            <div class="tipgrid" id="tipGrid"></div>
+            <div class="switch"><span><b>โหมดจิตรกร</b><small>สีน้ำ สีน้ำมัน สเปรย์ สีเทียน หมึกจุ่ม แปรงฟุ้ง ปรับความทึบ และกระดาษวาดเขียน</small></span><button class="tg" id="tgPainter" role="switch" aria-checked="false" aria-label="โหมดจิตรกร"><i></i></button></div>
+            <div id="painterBox" hidden>
+              <span class="label">อุปกรณ์จิตรกร</span>
+              <div class="tipgrid" id="tipGrid2"></div>
+              <label class="wslide"><span>ความทึบของสี</span><input type="range" id="opRange" min="0.1" max="1" step="0.05"><b id="opVal"></b></label>
+              <div class="row2"><label class="field" style="flex:0 0 auto"><span>สีอิสระ</span><input type="color" id="paintColor" style="width:64px;height:40px;padding:2px"></label><span class="chips" id="paintPapers"></span></div>
+            </div>
+          </div>
+        </div>
         <div class="pop" id="popShape" role="group" aria-label="เลือกรูปทรง" hidden>
           <div style="display:flex;flex-direction:column;gap:8px;padding:4px">
             <span class="label">เลือกรูปทรง แล้วลากบนหน้าเพื่อกำหนดขนาด</span>
@@ -1069,7 +1091,7 @@ function readList(k, def) { try { const v = JSON.parse(store_ls.get(k) || 'null'
 function colorName(c) { const f = PALETTE.find((p) => p[0].toLowerCase() === String(c).toLowerCase()); return f ? f[1] : 'สี ' + c; }
 const WIDTHS = [2, 3.2, 5.2]; /* default presets; the user can change each one */
 const HL = '#F5C542';
-const PAPERS = [['grid', 'ตาราง'], ['dot', 'จุด'], ['lined', 'บรรทัด'], ['mm', 'กราฟ มม.'], ['cornell', 'คอร์เนลล์'], ['blank', 'เปล่า']];
+const PAPERS = [['grid', 'ตาราง'], ['dot', 'จุด'], ['lined', 'บรรทัด'], ['mm', 'กราฟ มม.'], ['cornell', 'คอร์เนลล์'], ['blank', 'เปล่า'], ['art', 'วาดเขียน'], ['board', 'กระดานดำ']];
 const LEVELS = [['p', 'ประถมปลาย'], ['mt', 'ม.ต้น'], ['mp', 'ม.ปลาย'], ['olymp', 'สอวน. และ IJSO'], ['u', 'มหาวิทยาลัย']];
 const COVERS = ['#2F4BB8', '#1F6E8C', '#6B3FA0', '#1D7350', '#9A4A12', '#8C2F39', '#3E4A5C', '#22252B', '#E8A0A8', '#F2C6A0', '#F3DE8A', '#A8D5BA', '#9CC5E8', '#C3B1E1', '#D9C9A8', '#F4EFE4'];
 const LIBS = {
@@ -1681,7 +1703,7 @@ const S = {
   convMode: false, autoConv: store_ls.get('tp-autoconv') === '1', autoQueue: new Set(), pending: [],
   recent: (() => { const r = readList('tp-recent', DEFAULT_RECENT); return (r.length ? r : DEFAULT_RECENT).concat(DEFAULT_RECENT.filter((c) => !r.includes(c))).slice(0, 4); })(),
   myColors: readList('tp-mycolors', []).slice(0, 12),
-  color: null, hlColor: store_ls.get('tp-hl') || '#F5C542',
+  color: null, hlColor: store_ls.get('tp-hl') || '#F5C542', tip: store_ls.get('tp-tip') || 'ball', opacity: clamp(parseFloat(store_ls.get('tp-op') || '1') || 1, 0.1, 1), painter: store_ls.get('tp-painter') === '1',
   finger: store_ls.get('tp-finger') !== null ? store_ls.get('tp-finger') !== '0' : store_ls.get('tp-pen-seen') !== '1', fingerManual: store_ls.get('tp-finger') !== null,
   palm: store_ls.get('tp-palm') !== '0', tv: store_ls.get('tp-tv') === '1',
   follow: false, presenting: false, live: null,
@@ -1785,6 +1807,14 @@ function toLogical(cx, cy) {
 /* ---------- drawing ---------- */
 function paper(c, kind) {
   c.save();
+  if (kind === 'board') {
+    c.fillStyle = '#26382F'; c.fillRect(0, 0, W, H);
+    const r = seeded('board'); c.fillStyle = 'rgba(255,255,255,0.035)'; for (let i = 0; i < 2600; i++) c.fillRect(r() * W, r() * H, 2 + r() * 6, 1 + r() * 2);
+    c.strokeStyle = 'rgba(255,255,255,0.06)'; c.lineWidth = 30; for (let i = 0; i < 9; i++) { c.beginPath(); const y = r() * H; c.moveTo(0, y); c.bezierCurveTo(W * 0.3, y + 40 * (r() - 0.5), W * 0.7, y + 60 * (r() - 0.5), W, y + 30 * (r() - 0.5)); c.stroke(); }
+  } else if (kind === 'art') {
+    c.fillStyle = '#FBF8F1'; c.fillRect(0, 0, W, H);
+    const r = seeded('art'); for (let i = 0; i < 9000; i++) { c.fillStyle = r() < 0.5 ? 'rgba(120,100,70,0.05)' : 'rgba(255,255,255,0.5)'; c.fillRect(r() * W, r() * H, 1 + r() * 2.5, 1 + r() * 2.5); }
+  }
   if (kind === 'grid' || kind === 'mm') {
     const steps = kind === 'mm' ? [[10, '#EEF1F5', 0.8], [50, '#C9D2DE', 1.1]] : [[25, '#E1E6EC', 1]];
     for (const [st, col, lw] of steps) {
@@ -1813,9 +1843,125 @@ function drawBg() {
   c.fillStyle = '#FFFFFF'; c.fillRect(0, 0, W, H);
   paper(c, (S.page && S.page.paper) || 'grid');
 }
+/* ---------- pen tips and painter tools: each stroke remembers its tip (t) and opacity (o) ---------- */
+const TIPS = [
+  ['ball', 'ลูกลื่น', 0], ['fountain', 'หมึกซึม', 0], ['brush', 'พู่กันจีน', 0], ['marker', 'มาร์กเกอร์', 0], ['pencil', 'ดินสอ', 0], ['chalk', 'ชอล์ก', 0],
+  ['water', 'สีน้ำ', 1], ['oil', 'สีน้ำมัน', 1], ['spray', 'สเปรย์', 1], ['crayon', 'สีเทียน', 1], ['ink', 'หมึกจุ่ม', 1], ['soft', 'แปรงฟุ้ง', 1]
+];
+const grainCache = new WeakMap();
+function seeded(str) { let h = 2166136261; for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); } return () => { h ^= h << 13; h ^= h >>> 17; h ^= h << 5; return ((h >>> 0) % 100000) / 100000; }; }
+function grain(c, color, kind) {
+  let per = grainCache.get(c); if (!per) { per = new Map(); grainCache.set(c, per); }
+  const key = color + kind; if (per.has(key)) return per.get(key);
+  const n = kind === 'fine' ? 48 : 64, cv = document.createElement('canvas'); cv.width = cv.height = n;
+  const g = cv.getContext('2d'), im = g.createImageData(n, n), rnd = seeded(key);
+  const v = parseInt(color.slice(1), 16), r = (v >> 16) & 255, gg = (v >> 8) & 255, b = v & 255;
+  for (let i = 0; i < n * n; i++) {
+    const x = rnd();
+    const a = kind === 'fine' ? (x < 0.18 ? 60 : 200 + x * 55) : kind === 'coarse' ? (x < 0.38 ? 0 : x < 0.5 ? 120 : 235) : (x < 0.25 ? 30 : 210);
+    im.data[i * 4] = r; im.data[i * 4 + 1] = gg; im.data[i * 4 + 2] = b; im.data[i * 4 + 3] = a;
+  }
+  g.putImageData(im, 0, 0);
+  const pat = c.createPattern(cv, 'repeat'); per.set(key, pat); return pat;
+}
+function tipPts(s) { const p = s.p, out = []; for (let i = 0; i + 2 < p.length; i += 3) out.push([p[i] / 10, p[i + 1] / 10, p[i + 2]]); return out; }
+function pathOf(c, pts, ox, oy) {
+  ox = ox || 0; oy = oy || 0;
+  c.beginPath(); c.moveTo(pts[0][0] + ox, pts[0][1] + oy);
+  if (pts.length === 1) { c.lineTo(pts[0][0] + ox + 0.1, pts[0][1] + oy); return; }
+  for (let i = 1; i < pts.length - 1; i++) { const mx = (pts[i][0] + pts[i + 1][0]) / 2, my = (pts[i][1] + pts[i + 1][1]) / 2; c.quadraticCurveTo(pts[i][0] + ox, pts[i][1] + oy, mx + ox, my + oy); }
+  const L = pts[pts.length - 1]; c.lineTo(L[0] + ox, L[1] + oy);
+}
+function normals(pts) {
+  return pts.map((q, i) => { const a = pts[Math.max(0, i - 1)], b = pts[Math.min(pts.length - 1, i + 1)]; let dx = b[0] - a[0], dy = b[1] - a[1]; const l = Math.hypot(dx, dy) || 1; return [-dy / l, dx / l]; });
+}
+function fillOutline(c, pts, widthAt) {
+  const N = normals(pts), L = [], R = [];
+  pts.forEach((q, i) => { const w = widthAt(i) / 2; L.push([q[0] + N[i][0] * w, q[1] + N[i][1] * w]); R.push([q[0] - N[i][0] * w, q[1] - N[i][1] * w]); });
+  c.beginPath(); c.moveTo(L[0][0], L[0][1]);
+  for (let i = 1; i < L.length; i++) c.lineTo(L[i][0], L[i][1]);
+  const e = pts[pts.length - 1], we = widthAt(pts.length - 1) / 2; c.arc(e[0], e[1], Math.max(0.3, we), Math.atan2(N[N.length - 1][1], N[N.length - 1][0]), Math.atan2(-N[N.length - 1][1], -N[N.length - 1][0]));
+  for (let i = R.length - 1; i >= 0; i--) c.lineTo(R[i][0], R[i][1]);
+  const s0 = pts[0], w0 = widthAt(0) / 2; c.arc(s0[0], s0[1], Math.max(0.3, w0), Math.atan2(-N[0][1], -N[0][0]), Math.atan2(N[0][1], N[0][0]));
+  c.closePath(); c.fill();
+}
+function shadeHex(hex, f) { const v = parseInt(hex.slice(1), 16); const ch = (x) => clamp(Math.round(f > 0 ? x + (255 - x) * f : x * (1 + f)), 0, 255); return 'rgb(' + ch((v >> 16) & 255) + ',' + ch((v >> 8) & 255) + ',' + ch(v & 255) + ')'; }
+function drawTip(c, s) {
+  const pts = tipPts(s); if (!pts.length) return;
+  const w = s.w, col = okHex(s.c) ? s.c : '#14181F', o = s.o > 0 && s.o < 1 ? s.o : 1, n = pts.length;
+  c.save(); c.lineCap = 'round'; c.lineJoin = 'round'; c.globalAlpha = o; c.fillStyle = col; c.strokeStyle = col;
+  const pr = (i) => clamp((pts[i][2] || 50) / 100, 0.05, 1);
+  switch (s.t) {
+    case 'fountain': { /* a flat nib held at 35 degrees: thin and thick strokes by direction */
+      const a = -0.61, nx = Math.cos(a), ny = Math.sin(a);
+      for (let i = 0; i < n; i++) {
+        const hw = w * (0.55 + 0.7 * pr(i)) * 0.9, q0 = pts[Math.max(0, i - 1)], q1 = pts[i];
+        c.beginPath(); c.moveTo(q0[0] + nx * hw, q0[1] + ny * hw); c.lineTo(q1[0] + nx * hw, q1[1] + ny * hw); c.lineTo(q1[0] - nx * hw, q1[1] - ny * hw); c.lineTo(q0[0] - nx * hw, q0[1] - ny * hw); c.closePath(); c.fill();
+        c.lineWidth = Math.max(0.6, w * 0.22); c.beginPath(); c.moveTo(q0[0], q0[1]); c.lineTo(q1[0], q1[1]); c.stroke();
+      }
+      break;
+    }
+    case 'brush': { /* pressure swells the line, both ends taper */
+      const tin = Math.min(6, n / 3), tout = Math.min(9, n / 3);
+      fillOutline(c, pts, (i) => w * 2.4 * (0.12 + 1.05 * pr(i)) * Math.min(1, (i + 1) / (tin + 1), (n - i) / (tout + 1)) + 0.4);
+      break;
+    }
+    case 'ink': { /* dip pen: thin hairlines, pools at slow points */
+      fillOutline(c, pts, (i) => { const a = pts[Math.max(0, i - 1)], b = pts[i], sp = Math.hypot(b[0] - a[0], b[1] - a[1]); return w * (0.35 + 1.4 * pr(i)) * clamp(2.2 - sp / 6, 0.45, 1.8); });
+      break;
+    }
+    case 'marker': c.globalAlpha = o * 0.78; c.lineWidth = w * 2.2; c.lineCap = 'square'; pathOf(c, pts); c.stroke(); break;
+    case 'pencil': c.strokeStyle = grain(c, col, 'fine'); c.lineWidth = Math.max(0.8, w * 0.75); c.globalAlpha = o * 0.92; pathOf(c, pts); c.stroke(); break;
+    case 'chalk': {
+      c.strokeStyle = grain(c, col, 'coarse'); c.lineWidth = w * 2.3; pathOf(c, pts); c.stroke();
+      c.globalAlpha = o * 0.5; c.lineWidth = w * 1.3; pathOf(c, pts, 0.8, -0.6); c.stroke();
+      break;
+    }
+    case 'crayon': c.strokeStyle = grain(c, col, 'coarse'); c.lineWidth = w * 1.8; c.globalAlpha = o * 0.95; pathOf(c, pts); c.stroke(); c.globalAlpha = o * 0.6; pathOf(c, pts, -0.7, 0.5); c.stroke(); break;
+    case 'water': { /* translucent wash, darker edge, soft core */
+      c.globalAlpha = o * 0.22; c.lineWidth = w * 3.6; pathOf(c, pts); c.stroke();
+      c.globalAlpha = o * 0.16; c.lineWidth = w * 2.4; pathOf(c, pts, 0.9, 0.6); c.stroke();
+      c.globalAlpha = o * 0.12; c.strokeStyle = shadeHex(col, -0.25); c.lineWidth = w * 3.6; c.globalCompositeOperation = 'source-over';
+      c.setLineDash([]); pathOf(c, pts); c.lineWidth = 1.2; c.stroke();
+      break;
+    }
+    case 'oil': { /* bristles: several parallel lines in slightly different shades */
+      const N = normals(pts), rnd = seeded(s.id || 'x'), k = 6;
+      for (let j = 0; j < k; j++) {
+        const off = (j - (k - 1) / 2) * w * 0.42, f = (rnd() - 0.5) * 0.36;
+        c.strokeStyle = shadeHex(col, f); c.lineWidth = w * (0.45 + rnd() * 0.3); c.globalAlpha = o * (0.82 + rnd() * 0.18);
+        c.beginPath(); pts.forEach((q, i) => { const x = q[0] + N[i][0] * off * (0.6 + 0.4 * pr(i)), y = q[1] + N[i][1] * off * (0.6 + 0.4 * pr(i)); if (i) c.lineTo(x, y); else c.moveTo(x, y); }); c.stroke();
+      }
+      break;
+    }
+    case 'spray': {
+      const rnd = seeded(s.id || 'x'), R = w * 2.6; c.globalAlpha = o * 0.55;
+      for (let i = 0; i < n; i++) {
+        const m = Math.round(6 + 10 * pr(i));
+        for (let j = 0; j < m; j++) { const a = rnd() * 6.2832, r = R * Math.sqrt(rnd()) * (0.4 + 0.6 * pr(i)), d = 0.5 + rnd() * 0.9; c.fillRect(pts[i][0] + Math.cos(a) * r, pts[i][1] + Math.sin(a) * r, d, d); }
+      }
+      break;
+    }
+    case 'soft': { /* airbrush: wide, layered, very soft */
+      for (const [f, a] of [[4.2, 0.07], [3, 0.09], [1.8, 0.14]]) { c.globalAlpha = o * a; c.lineWidth = w * f; pathOf(c, pts); c.stroke(); }
+      break;
+    }
+    default: c.lineWidth = w; pathOf(c, pts); c.stroke();
+  }
+  c.restore();
+}
+function tipSample(cv, tip, color) {
+  const c = cv.getContext('2d'), dpr = 2; cv.width = 120 * dpr; cv.height = 44 * dpr;
+  c.setTransform(dpr, 0, 0, dpr, 0, 0); c.clearRect(0, 0, 120, 44);
+  const p = []; for (let i = 0; i <= 26; i++) { const t = i / 26; p.push(Math.round((12 + t * 96) * 10), Math.round((24 + Math.sin(t * 6.2) * 10) * 10), Math.round(30 + 60 * Math.sin(t * 3.14))); }
+  const s = { id: 'demo' + tip, k: 'p', t: tip, c: color, w: tip === 'ball' ? 3 : 3.2, p, o: S.opacity < 1 && TIPS.find((x) => x[0] === tip)[2] ? S.opacity : 1 };
+  if (tip === 'ball') { drawStroke(c, s); } else drawTip(c, s);
+}
+
 function penW(s, pr) { return s.w * (0.42 + 1.15 * pr / 100); }
 function drawStroke(c, s) {
   const p = s.p; const n = Math.floor(p.length / 3); if (!n) return;
+  if (s.t && s.t !== 'ball' && s.k !== 'h') { drawTip(c, s); return; }
   c.strokeStyle = s.c; c.fillStyle = s.c; c.lineCap = 'round'; c.lineJoin = 'round';
   if (s.k === 'h') {
     c.save(); c.globalAlpha = 0.36; c.lineWidth = s.w; c.beginPath();
@@ -2123,6 +2269,7 @@ function beginTool(pt, e) {
     pt.mode = 'draw';
     const hl = S.tool === 'hl';
     pt.stroke = { id: 's' + uid(), k: hl ? 'h' : 'p', c: hl ? (okHex(S.hlColor) ? S.hlColor : HL) : S.color, w: hl ? 26 : curW(), p: [] };
+    if (!hl && S.tip && S.tip !== 'ball') { pt.stroke.t = S.tip; if (S.opacity < 1) pt.stroke.o = S.opacity; }
     pt.live = null;
     addPoint(pt, x, y, pr(e));
     armHold(pt, x, y);
@@ -2166,12 +2313,12 @@ function addPoint(pt, x, y, p) {
   if (n >= 3) { const dx = x - a[n - 3] / 10, dy = y - a[n - 2] / 10; if (dx * dx + dy * dy < 0.6) return; }
   a.push(Math.round(x * 10), Math.round(y * 10), p);
   drawLiveSegment(pt);
-  if (S.watchers) emitInkDelta(pt);
+  if (S.watchers || (LIVE.role === 'teacher' && LIVE.ready)) emitInkDelta(pt);
 }
 function drawLiveSegment(pt) {
   const c = cLive.getContext('2d'); c.setTransform(S.res, 0, 0, S.res, 0, 0);
   const s = pt.stroke;
-  if (s.k === 'h') { c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, cLive.width, cLive.height); c.setTransform(S.res, 0, 0, S.res, 0, 0); drawStroke(c, s); return; }
+  if (s.k === 'h' || (s.t && s.t !== 'ball')) { c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, cLive.width, cLive.height); c.setTransform(S.res, 0, 0, S.res, 0, 0); drawStroke(c, s); return; }
   const p = s.p, n = p.length / 3;
   c.strokeStyle = s.c; c.fillStyle = s.c; c.lineCap = 'round'; c.lineJoin = 'round';
   if (n === 1) { pt.live = { x0: p[0] / 10, y0: p[1] / 10, mx0: p[0] / 10, my0: p[1] / 10 }; c.beginPath(); c.arc(pt.live.x0, pt.live.y0, penW(s, p[2]) / 2, 0, 6.2832); c.fill(); return; }
@@ -4330,14 +4477,15 @@ function editNotebookRow(row, nb) {
   setTimeout(() => { f.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }, 30);
 }
 function closePops() {
-  for (const id of ['#popShape', '#popColors', '#popEraser', '#popLaser', '#popWidth']) $(id).hidden = true;
+  for (const id of ['#popShape', '#popColors', '#popEraser', '#popLaser', '#popWidth', '#popTip']) $(id).hidden = true;
   $('#curColor').setAttribute('aria-expanded', 'false'); $('#curWidth').setAttribute('aria-expanded', 'false');
 }
 /* 'opts' opens the options of the current tool; 'colors' always opens the palette */
 function togglePop(which) {
   placeDock();
   let id = '#popColors';
-  if (which !== 'colors') id = S.tool === 'eraser' ? '#popEraser' : (S.tool === 'laser' ? '#popLaser' : (S.tool === 'shape' ? '#popShape' : '#popColors'));
+  if (which !== 'colors' && which !== 'tip') id = S.tool === 'eraser' ? '#popEraser' : (S.tool === 'laser' ? '#popLaser' : (S.tool === 'shape' ? '#popShape' : '#popColors'));
+  if (which === 'tip') id = '#popTip';
   const pop = $(id);
   const open = pop.hidden;
   closePops();
@@ -4401,6 +4549,41 @@ function renderTools() {
   itemsEl.classList.toggle('editable', S.tool === 'text');
   vp.style.cursor = S.tool === 'text' ? 'text' : 'crosshair';
   renderWidths();
+  renderTips();
+}
+
+function renderTipSamples() {
+  const col = okHex(S.color) ? S.color : '#14181F';
+  document.querySelectorAll('#popTip .tipb').forEach((b) => tipSample(b.querySelector('canvas'), b.dataset.t, col));
+}
+function renderTips() {
+  const ok = TIPS.find((t) => t[0] === S.tip) || TIPS[0];
+  if (ok[2] && !S.painter) { S.tip = 'ball'; }
+  const fill = (gridId, painter) => {
+    const g = $(gridId); if (!g) return; g.innerHTML = '';
+    for (const [k, name, pt] of TIPS) {
+      if (!!pt !== painter) continue;
+      const b = document.createElement('button'); b.type = 'button'; b.className = 'tipb'; b.dataset.t = k; b.setAttribute('aria-pressed', k === S.tip ? 'true' : 'false');
+      b.innerHTML = '<canvas></canvas><span>' + name + '</span>';
+      b.onclick = () => { S.tip = k; store_ls.set('tp-tip', k); if (S.tool !== 'pen') setTool('pen'); renderTips(); };
+      g.appendChild(b);
+    }
+  };
+  fill('#tipGrid', false); fill('#tipGrid2', true);
+  $('#tgPainter').setAttribute('aria-checked', S.painter ? 'true' : 'false');
+  $('#painterBox').hidden = !S.painter;
+  $('#opRange').value = S.opacity; $('#opVal').textContent = Math.round(S.opacity * 100) + '%';
+  if (okHex(S.color)) $('#paintColor').value = S.color;
+  const pp = $('#paintPapers'); pp.innerHTML = '';
+  for (const [k, n] of [['art', 'กระดาษวาดเขียน'], ['board', 'กระดานดำ'], ['blank', 'กระดาษขาว']]) {
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'chip'; b.textContent = n; b.setAttribute('aria-pressed', S.page && S.page.paper === k ? 'true' : 'false');
+    b.onclick = () => { if (!S.page) return; S.page.paper = k; drawBg(); savePage(); if (k === 'board' && lum(S.color || '#000000') < 0.4) { useColor('#F4F1E8', true); S.tip = 'chalk'; store_ls.set('tp-tip', 'chalk'); } renderTips(); };
+    pp.appendChild(b);
+  }
+  const cur = TIPS.find((t) => t[0] === S.tip) || TIPS[0];
+  $('#curTip').title = 'หัวปากกา: ' + cur[1]; $('#curTip').setAttribute('aria-label', 'หัวปากกา ตอนนี้ ' + cur[1]);
+  if (!$('#popTip').hidden) renderTipSamples();
+  else requestAnimationFrame(() => { if (!$('#popTip').hidden) renderTipSamples(); });
 }
 function curW() { return S.widths[S.width] || WIDTHS[1]; }
 /* on-screen thickness of a pen line at normal pressure, so the buttons look exactly like what gets drawn */
@@ -4409,7 +4592,7 @@ function renderWidths() {
   const show = S.tool === 'pen' || S.tool === 'shape';
   for (const id of ['#widths', '#dockWidths']) {
     const wd = $(id); wd.innerHTML = '';
-    if (id === '#dockWidths') { wd.hidden = !show; $('#wSep').hidden = !show; $('#curWidth').hidden = !show; }
+    if (id === '#dockWidths') { wd.hidden = !show; $('#wSep').hidden = !show; $('#curWidth').hidden = !show; $('#curTip').hidden = S.tool !== 'pen'; }
     S.widths.forEach((w, i) => {
       const b = document.createElement('button'); b.className = 'wd'; b.type = 'button';
       b.setAttribute('aria-label', ['เส้นบาง', 'เส้นกลาง', 'เส้นหนา'][i] + ' ' + fmtW(w));
@@ -6925,7 +7108,7 @@ async function pdfImport(newNb) {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793004057';
+const BUILD = '1793011601';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
@@ -7047,6 +7230,10 @@ document.querySelectorAll('.tool[data-tool]').forEach((b) => {
   };
 });
 $('#curColor').onclick = () => togglePop('opts');
+$('#curTip').onclick = () => { renderTips(); togglePop('tip'); };
+$('#tgPainter').onclick = () => { S.painter = !S.painter; store_ls.set('tp-painter', S.painter ? '1' : '0'); if (!S.painter && TIPS.find((t) => t[0] === S.tip)[2]) { S.tip = 'ball'; store_ls.set('tp-tip', 'ball'); } renderTips(); };
+$('#opRange').oninput = () => { S.opacity = +$('#opRange').value; store_ls.set('tp-op', String(S.opacity)); $('#opVal').textContent = Math.round(S.opacity * 100) + '%'; renderTipSamples(); };
+$('#paintColor').oninput = () => { useColor($('#paintColor').value, true); renderTipSamples(); };
 $('#shapeColors').onclick = () => togglePop('colors');
 $('#customColor').addEventListener('input', (e) => { const c = e.target.value; if (!okHex(c)) return; if (S.tool === 'hl') S.hlColor = c; else S.color = c; renderTools(); });
 $('#customColor').addEventListener('change', (e) => {
