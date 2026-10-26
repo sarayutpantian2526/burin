@@ -4160,6 +4160,7 @@ function renderAISettings() {
   vs.value = C.key.vendor in KEY_VENDORS ? C.key.vendor : 'anthropic';
   const V = KEY_VENDORS[vs.value];
   $('#kUrlF').hidden = vs.value === 'anthropic';
+  $('#kUrlF').querySelector('span').textContent = vs.value === 'other' ? 'ที่อยู่ API' : 'ที่อยู่ API (เว้นว่างไว้ได้ ระบบใช้ค่าที่ถูกต้องให้เอง)';
   $('#kUrl').value = C.key.url || ''; $('#kUrl').placeholder = V.url || 'https://.../v1';
   $('#kModel').value = C.key.model || ''; $('#kModel').placeholder = V.model || 'ชื่อโมเดลที่อ่านภาพได้';
   $('#kKey').value = C.key.key || '';
@@ -6507,7 +6508,7 @@ async function pdfImport(newNb) {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793000251';
+const BUILD = '1793001998';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
