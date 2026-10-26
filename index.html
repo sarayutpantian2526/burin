@@ -547,6 +547,24 @@ details.qsopt[open] { gap: 10px; }
 .tipb[aria-pressed="true"] { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
 #painterBox { display: flex; flex-direction: column; gap: 8px; }
 #painterBox[hidden] { display: none; }
+.sonly { display: none; }
+body.role-student .sonly { display: inline-flex; }
+body.role-student #bLive, body.role-student #bAI, body.role-student #bPresent, body.role-student #fqAI,
+body.role-student #exTabs button[data-t="build"], body.role-student #exTabs button[data-t="analysis"], body.role-student #exTabs button[data-t="bank"], body.role-student #exTabs button[data-t="grades"] { display: none !important; }
+body.guest #roleSeg, body.guest #bJoin { display: none !important; }
+.gwrap { overflow-x: auto; }
+.extab.grades td, .extab.grades th { text-align: center; white-space: nowrap; }
+.extab.grades td:first-child, .extab.grades th:first-child { text-align: left; position: sticky; left: 0; background: var(--surface); }
+.extab.grades th small { display: block; font-weight: 400; color: var(--muted); font-size: 11px; }
+.extab.grades td.lo { color: var(--danger); font-weight: 700; }
+.extab.grades td.hi { color: var(--ok); font-weight: 700; }
+.extab.grades td.na { color: var(--muted); }
+.extab.grades tr.avg td { font-weight: 700; border-top: 2px solid var(--line); }
+.rolecard { display: flex; flex-direction: column; gap: 4px; text-align: left; padding: 14px 16px; border-radius: 16px; border: 1.5px solid var(--line); background: var(--surface); cursor: pointer; color: var(--fg); }
+.rolecard b { font-size: 17px; }
+.rolecard span { font-size: 13px; color: var(--muted); line-height: 1.5; }
+.rolecard:hover { border-color: var(--accent); }
+#roleSeg { margin-left: auto; margin-right: 8px; }
 .exttl { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .exttl h2 { margin-right: auto; }
 .exwho { flex-direction: row; align-items: center; gap: 6px; }
@@ -634,6 +652,7 @@ details.qsopt[open] { gap: 10px; }
     <button class="btn" id="bConvert" aria-label="แปลงเป็นตัวพิมพ์" title="แปลงเป็นตัวพิมพ์"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 15.5c2-3 3-7 4.5-7s.5 5 2 5 2-6 3.5-6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M12 4h6 M15 4v7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span class="lbl">แปลงเป็นตัวพิมพ์</span></button>
     <button class="btn" id="bInsert" aria-label="แทรก" title="แทรก"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="2.5" y="3.5" width="15" height="13" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M3 14l4.5-4.5 3.5 3.5 2-2 4 4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><circle cx="13.5" cy="7.5" r="1.5" fill="currentColor"/></svg><span class="lbl">แทรก</span></button>
     <button class="btn solid" id="bAI" aria-pressed="false" aria-label="สร้างโจทย์" title="สร้างโจทย์"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 2.5l1.8 4.6 4.7 1.9-4.7 1.9L10 15.5l-1.8-4.6L3.5 9l4.7-1.9z" fill="currentColor"/></svg><span class="lbl">สร้างโจทย์</span></button>
+    <button class="btn sonly" id="bJoin" aria-label="เข้าห้องเรียน" title="เข้าห้องเรียน"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M8 4H4.5v12H8 M11 6.5L14.5 10 11 13.5 M14.5 10H7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="lbl">เข้าห้องเรียน</span></button>
     <button class="btn" id="bLive" aria-label="ห้องเรียนสด" title="ห้องเรียนสด"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="2.5" y="4" width="15" height="9.5" rx="1.6" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M6 17h8 M10 13.5V17" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="8.7" r="1.9" fill="currentColor"/></svg><span class="lbl">ห้องสด</span><i id="bLiveN"></i></button>
     <button class="btn" id="bExam" aria-label="ฝึกโจทย์แข่งขัน" title="ฝึกโจทย์แข่งขัน"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6 3.5h8v3.5a4 4 0 0 1-8 0z M6 5H3.5v1a3 3 0 0 0 3 3 M14 5h2.5v1a3 3 0 0 1-3 3 M10 11v3 M7 16.5h6 M8 14h4v2.5H8z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/></svg><span class="lbl">ฝึกแข่งขัน</span></button>
     <button class="btn" id="bExport" aria-label="ส่งออก PDF" title="ส่งออก PDF"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3v9 M6.5 8.5L10 12l3.5-3.5 M4 14.5V17h12v-2.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="lbl">ส่งออก</span></button>
@@ -774,7 +793,7 @@ details.qsopt[open] { gap: 10px; }
         <button id="cDone">เสร็จ</button>
       </div>
       <div class="toast no-ink" id="toast" hidden></div>
-      <div class="livepill no-ink" id="livePill" hidden><span id="lpMsg"></span><button id="lpFollow" aria-pressed="true">ตามผู้สอน</button><button id="lpQuiz">แบบฝึก</button></div>
+      <div class="livepill no-ink" id="livePill" hidden><span id="lpMsg"></span><button id="lpFollow" aria-pressed="true">ตามผู้สอน</button><button id="lpQuiz">แบบฝึก</button><button id="lpPull">ดึงทุกหน้าของคาบ</button><button id="lpLeave">ออก</button></div>
       <input type="file" id="fImg" accept="image/*" hidden>
       <input type="file" id="fPdf" accept="application/pdf,.pdf" hidden>
       <input type="file" id="fVid" accept="video/mp4,video/webm,video/quicktime,video/*" hidden>
@@ -820,7 +839,7 @@ details.qsopt[open] { gap: 10px; }
 
 <div class="sheet" id="menu" hidden>
   <div class="panel" role="dialog" aria-label="เมนู">
-    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><h2>สมุดทั้งหมด</h2><button class="btn" id="bMenuClose">กลับไปเขียน</button></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><h2>สมุดทั้งหมด</h2><span class="seg" id="roleSeg" role="group" aria-label="ฝั่งที่ใช้บนเครื่องนี้"><button data-r="teacher">ฝั่งครู</button><button data-r="student">ฝั่งนักเรียน</button></span><button class="btn" id="bMenuClose">กลับไปเขียน</button></div>
     <div id="nbList" class="shelf"></div>
     <h3>สมุดเล่มใหม่</h3>
     <div class="row2">
@@ -975,12 +994,22 @@ details.qsopt[open] { gap: 10px; }
     <div id="liveBody" class="exbody"></div>
   </div>
 </div>
+<div class="sheet" id="roleSheet" hidden>
+  <div class="panel" role="dialog" aria-label="เลือกฝั่งที่ใช้">
+    <h2>ใช้เครื่องนี้ฝั่งไหน</h2>
+    <div class="note">บัญชีเดียวใช้ได้ทั้งสองฝั่ง เช่น iPad เป็นฝั่งครูที่สอน และอีกเครื่องเป็นฝั่งนักเรียนเพื่อดูสิ่งที่ผู้เรียนเห็นตอนสอนออนไลน์ เปลี่ยนได้ทุกเมื่อที่เมนู สมุดทั้งหมด</div>
+    <button class="rolecard" data-r="teacher"><b>ฝั่งครู</b><span>เขียนสอน ออกแบบโจทย์และแบบทดสอบ เปิดห้องเรียนสด วัดผล วิเคราะห์ข้อสอบ สมุดคะแนน</span></button>
+    <button class="rolecard" data-r="student"><b>ฝั่งนักเรียน</b><span>จดบันทึกของตัวเอง เข้าห้องเรียนสดด้วยรหัส เห็นหน้าเดียวกับครูทันทีแล้วจดเพิ่ม ดึงทุกหน้าของคาบมาเก็บ ทำแบบฝึก</span></button>
+  </div>
+</div>
 <div class="sheet" id="joinSheet" hidden>
   <div class="panel" role="dialog" aria-label="เข้าห้องเรียน">
     <h2>เข้าห้องเรียน <span id="jCode"></span></h2>
     <div class="note">ใส่ชื่อที่ผู้สอนจะเห็นและใช้บันทึกคะแนน หน้าที่ผู้สอนเขียนจะขึ้นในสมุดบนเครื่องนี้ และจดทับเองได้</div>
+    <label class="field" id="jCodeF"><span>รหัสห้อง 6 ตัว จากผู้สอน</span><input id="jCodeIn" maxlength="6" autocomplete="off" spellcheck="false" style="text-transform:uppercase;letter-spacing:4px;font-size:22px"></label>
+    <div class="chips" id="jRecent"></div>
     <label class="field"><span>ชื่อ หรือ ชื่อเล่นกับเลขที่</span><input id="jName" maxlength="40" autocomplete="name"></label>
-    <button class="btn solid" id="jGo">เข้าห้อง</button>
+    <div class="row2"><button class="btn solid" id="jGo">เข้าห้อง</button><button class="btn" id="jCancel">ยกเลิก</button></div>
   </div>
 </div>
 <div class="sheet" id="sqSheet" hidden>
@@ -993,7 +1022,7 @@ details.qsopt[open] { gap: 10px; }
 <div class="sheet" id="examSheet" hidden>
   <div class="panel wide" role="dialog" aria-label="ฝึกโจทย์แข่งขัน">
     <div class="exttl"><h2>ฝึกโจทย์แข่งขัน</h2><label class="field exwho"><span>ผู้ฝึก</span><select id="exWho"></select></label><span id="exAdd" hidden class="mrow"><input id="exNew" placeholder="ชื่อผู้ฝึก" maxlength="40"><button class="btn" id="exAddOk" type="button">เพิ่ม</button></span><button class="btn" id="exClose">ปิด</button></div>
-    <div class="seg" id="exTabs" role="group" aria-label="ส่วนของการฝึก"><button data-t="build">จากหน้านี้</button><button data-t="practice">ฝึกและสอบ</button><button data-t="stats">ผลและจุดอ่อน</button><button data-t="analysis">วิเคราะห์ข้อสอบ</button><button data-t="bank">คลังโจทย์</button></div>
+    <div class="seg" id="exTabs" role="group" aria-label="ส่วนของการฝึก"><button data-t="build">จากหน้านี้</button><button data-t="practice">ฝึกและสอบ</button><button data-t="stats">ผลและจุดอ่อน</button><button data-t="analysis">วิเคราะห์ข้อสอบ</button><button data-t="grades">สมุดคะแนน</button><button data-t="bank">คลังโจทย์</button></div>
     <div id="exBody" class="exbody"></div>
   </div>
 </div>
@@ -3074,12 +3103,13 @@ function levelName(k) { const f = LEVELS.find((l) => l[0] === k); return f ? f[1
 async function createNotebook(title, level) {
   const nid = 'n' + uid(), pid = 'p' + uid();
   await S.store.set('pages/' + pid, { nb: nid, paper: 'grid', items: [], rev: now() });
-  await S.store.set('notebooks/' + nid, { title: title || 'สมุดเล่มใหม่', level: level || 'mp', pages: [pid], color: COVERS[Math.floor(Math.random() * COVERS.length)], createdAt: now(), updatedAt: now() });
+  await S.store.set('notebooks/' + nid, Object.assign({ title: title || 'สมุดเล่มใหม่', level: level || 'mp', pages: [pid], color: COVERS[Math.floor(Math.random() * COVERS.length)], createdAt: now(), updatedAt: now() }, isStudentSide() ? { side: 'student' } : {}));
   return nid;
 }
 function watchNotebooks() {
   S.unsub.nbs = S.store.watchCollection('notebooks', async (list, meta) => {
-    S.nbs = list.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+    S.nbsAll = list.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+    S.nbs = S.nbsAll.filter(sideMatch);
     renderLibrary();
     if (S.nid || (meta && meta.fromCache)) return;
     const last = store_ls.get('tp-last-nb');
@@ -3087,7 +3117,7 @@ function watchNotebooks() {
     if (pick) { openNotebook(pick.id); return; }
     if (S.creatingFirst) return;
     S.creatingFirst = true;
-    try { const nid = await createNotebook('สมุดเล่มแรก', 'mp'); openNotebook(nid); }
+    try { const nid = await createNotebook(isStudentSide() ? 'สมุดจดของฉัน' : 'สมุดเล่มแรก', 'mp'); openNotebook(nid); }
     catch (e) { onStoreError(e); S.creatingFirst = false; }
   });
 }
@@ -6111,6 +6141,7 @@ function exRender() {
   else if (EX.tab === 'practice') exRenderSetup(body);
   else if (EX.tab === 'stats') exRenderStats(body);
   else if (EX.tab === 'analysis') exRenderAnalysis(body);
+  else if (EX.tab === 'grades') exRenderGrades(body);
   else exRenderBank(body);
 }
 function exRenderSetup(body) {
@@ -6240,6 +6271,36 @@ function exCsv() {
   lines.push(''); lines.push(['ผู้ฝึก', 'สนาม', 'บท', 'ถูก', 'ทั้งหมด', 'ร้อยละ'].join(','));
   for (const who of EX.people) { const { by } = exStats(who); for (const [k, s] of Object.entries(by)) { const [t, ch] = k.split(':'); lines.push([q(who), q(exTrackName(t)), q(exChName(t, +ch)), s.ok, s.n, Math.round(s.ok / s.n * 100)].join(',')); } }
   saveFile('burin-scores.csv', new Blob(['﻿' + lines.join('\n')], { type: 'text/csv' }));
+}
+
+/* gradebook: every learner against every set (latest attempt), with averages */
+function exRenderGrades(body) {
+  const sets = (EX.sets || []).filter((st) => EX.att.some((a) => a.setId === st.id)).sort((a, b) => a.at - b.at);
+  const free = EX.att.filter((a) => !a.setId);
+  if (!sets.length && !free.length) { body.appendChild(exEl('div', 'note', 'ยังไม่มีคะแนน เมื่อผู้เรียนทำแบบฝึกในห้องสดหรือบนเครื่องนี้ คะแนนจะมาเรียงที่นี่')); return; }
+  const who = [...new Set(EX.att.map((a) => a.who))].sort((a, b) => a.localeCompare(b, 'th'));
+  const cell = (w, st) => { const l = EX.att.filter((a) => a.who === w && a.setId === st.id).sort((a, b) => b.at - a.at)[0]; return l ? l.ok / l.n : null; };
+  const tb = exEl('table', 'extab grades');
+  let h = '<thead><tr><th>ผู้เรียน</th>' + sets.map((st, i) => '<th title="' + esc(st.title) + '">ชุด ' + (i + 1) + '<small>' + esc(st.title.replace(/^ชุด /, '').slice(0, 24)) + '</small></th>').join('') + '<th>ฝึกเอง</th><th>เฉลี่ย</th></tr></thead><tbody>';
+  const colSum = sets.map(() => [0, 0]);
+  for (const w of who) {
+    const vals = sets.map((st, i) => { const v = cell(w, st); if (v != null) { colSum[i][0] += v; colSum[i][1]++; } return v; });
+    const fr = free.filter((a) => a.who === w), frv = fr.length ? fr.reduce((x, a) => x + a.ok, 0) / fr.reduce((x, a) => x + a.n, 0) : null;
+    const all = vals.filter((v) => v != null), avg = all.length ? all.reduce((a, b) => a + b, 0) / all.length : frv;
+    const pc = (v) => (v == null ? '<td class="na">-</td>' : '<td class="' + (v < 0.5 ? 'lo' : v >= 0.8 ? 'hi' : '') + '">' + Math.round(v * 100) + '</td>');
+    h += '<tr><td>' + esc(w) + '</td>' + vals.map(pc).join('') + pc(frv) + pc(avg) + '</tr>';
+  }
+  h += '<tr class="avg"><td>เฉลี่ยทั้งห้อง</td>' + colSum.map(([a, n]) => '<td>' + (n ? Math.round(a / n * 100) : '-') + '</td>').join('') + '<td></td><td></td></tr></tbody>';
+  tb.innerHTML = h;
+  const wrap = exEl('div', 'gwrap'); wrap.appendChild(tb); body.appendChild(wrap);
+  body.appendChild(exEl('div', 'note', 'ตัวเลขเป็นร้อยละของข้อที่ตอบถูก ใช้ครั้งล่าสุดของแต่ละชุด สีแดงต่ำกว่า 50 สีเขียวตั้งแต่ 80 ขึ้นไป แตะแท็บวิเคราะห์ข้อสอบเพื่อดูคุณภาพรายข้อ'));
+  const b = exEl('button', 'btn', 'ส่งออกสมุดคะแนน CSV'); b.onclick = () => {
+    const q = (x) => '"' + String(x).replace(/"/g, '""') + '"';
+    const lines = [['ผู้เรียน'].concat(sets.map((st) => st.title)).concat(['เฉลี่ย']).map(q).join(',')];
+    for (const w of who) { const vals = sets.map((st) => cell(w, st)); const all = vals.filter((v) => v != null); lines.push([q(w)].concat(vals.map((v) => (v == null ? '' : Math.round(v * 100)))).concat([all.length ? Math.round(all.reduce((a, c) => a + c, 0) / all.length * 100) : '']).join(',')); }
+    saveFile('burin-gradebook.csv', new Blob(['﻿' + lines.join('\n')], { type: 'text/csv' }));
+  };
+  body.appendChild(b);
 }
 function exRenderBank(body) {
   const all = exAllQs();
@@ -6547,6 +6608,54 @@ function exRenderAnalysis(body) {
   body.appendChild(exEl('div', 'note', 'ตัวเลือก ก ถึง ง ในตารางเรียงตามที่บันทึกในชุด ผู้เรียนแต่ละคนเห็นตัวเลือกสลับลำดับ ระบบแปลงกลับให้แล้ว'));
 }
 
+
+/* ---------- teacher side and student side: chosen per device; a QR / class link always opens the student side only ---------- */
+function isStudentSide() { return !!S.student || S.role === 'student'; }
+function sideMatch(nb) { return isStudentSide() ? nb.side === 'student' : nb.side !== 'student'; }
+function applyRole() {
+  document.body.classList.toggle('role-student', isStudentSide());
+  document.body.classList.toggle('guest', !!S.student);
+  const seg = $('#roleSeg'); if (seg) seg.querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', b.dataset.r === (isStudentSide() ? 'student' : 'teacher') ? 'true' : 'false'));
+  if (EX && isStudentSide() && !['practice', 'stats'].includes(EX.tab)) EX.tab = 'practice';
+}
+function setRole(r) {
+  if (S.student) return; /* guests from a QR code stay students */
+  if (r === S.role) return;
+  S.role = r; store_ls.set('tp-role', r); applyRole();
+  if (S.nbsAll) { S.nbs = S.nbsAll.filter(sideMatch); renderLibrary(); }
+  const pick = (S.nbs || [])[0];
+  if (S.nb && !sideMatch(S.nb)) { if (pick) openNotebook(pick.id); else createNotebook(r === 'student' ? 'สมุดจดของฉัน' : 'สมุดเล่มแรก', 'mp').then(openNotebook).catch(onStoreError); }
+  toast(r === 'student' ? 'เครื่องนี้ใช้ฝั่งนักเรียนแล้ว' : 'เครื่องนี้ใช้ฝั่งครูแล้ว', 1800);
+}
+function openJoin(code) {
+  closeSheets();
+  $('#jCode').textContent = code || ''; $('#jCodeF').hidden = !!code; $('#jCodeIn').value = code || '';
+  $('#jName').value = LIVE.name || ''; $('#joinSheet').hidden = false;
+  const rec = (S.nbsAll || []).filter((n) => /^class-/.test(n.from || '')).slice(0, 4);
+  $('#jRecent').innerHTML = rec.length ? '<span class="label">ห้องที่เคยเข้า</span>' : '';
+  for (const n of rec) { const b = document.createElement('button'); b.className = 'chip'; b.type = 'button'; b.textContent = n.from.slice(6) + ' ' + (n.title || ''); b.onclick = () => { $('#jCodeIn').value = n.from.slice(6); }; $('#jRecent').appendChild(b); }
+  setTimeout(() => (code ? $('#jName') : $('#jCodeIn')).focus({ preventScroll: true }), 60);
+}
+function leaveClass() {
+  if (LIVE.ch && LIVE.role === 'student') { try { CLOUD.client.removeChannel(LIVE.ch); } catch (e) { /* closed */ } }
+  LIVE.ch = null; LIVE.ready = false; if (LIVE.role === 'student') LIVE.role = null; $('#livePill').hidden = true;
+  toast('ออกจากห้องแล้ว สมุดที่จดยังอยู่ครบ', 2000);
+}
+/* teacher: send every page of the lecture when a student asks for it */
+async function liveSendAll() {
+  if (LIVE.role !== 'teacher' || !LIVE.ready || !S.nb) return;
+  const pages = S.nb.pages || [];
+  for (let i = 0; i < pages.length; i++) {
+    const pid = pages[i]; if (pid === S.pid) continue;
+    const pg = await S.store.get('pages/' + pid); if (!pg) continue;
+    const ls = await S.store.list('pages/' + pid + '/layers').catch(() => []); const strokes = []; for (const l of ls) for (const st of l.strokes || []) strokes.push(st);
+    const items = await shareItems(pg.items, 86400), parts = chunkStrokes(strokes, 90000), rev = now();
+    liveSend('page', { tpid: pid, idx: i, n: pages.length, nb: S.nb.title || '', level: S.nb.level || 'mp', paper: pg.paper || 'grid', items, rev, parts: parts.length, bg: true });
+    for (let k = 0; k < parts.length; k++) { await new Promise((r) => setTimeout(r, 60)); liveSend('strokes', { tpid: pid, rev, part: k, strokes: parts[k] }); }
+    await new Promise((r) => setTimeout(r, 250));
+  }
+  liveSendPageNow();
+}
 /* ---------- live class: students follow the lecture on their own device, keep their own notes, answer the same exercises ---------- */
 const LIVE = { ch: null, code: null, role: null, peers: [], follow: store_ls.get('tp-follow') !== '0', set: null, ans: {}, revealed: false, parts: {}, signed: new Map(), sid: store_ls.get('tp-sid') || ('s' + uid()), name: store_ls.get('tp-sname') || '' };
 store_ls.set('tp-sid', LIVE.sid);
@@ -6583,6 +6692,7 @@ async function liveOpen() {
   const sb = CLOUD.client; LIVE.code = LIVE.code || store_ls.get('tp-class') || newCode(); store_ls.set('tp-class', LIVE.code);
   LIVE.role = 'teacher';
   const ch = sb.channel('class-' + LIVE.code, { config: { broadcast: { self: false }, presence: { key: 'teacher-' + TAB } } });
+  ch.on('broadcast', { event: 'pullall' }, () => { clearTimeout(LIVE.pullT); LIVE.pullT = setTimeout(liveSendAll, 400); });
   ch.on('broadcast', { event: 'join' }, () => { liveSendPage(); if (LIVE.set) liveSend('quiz', liveQuizPayload()); if (LIVE.revealed) liveSend('reveal', liveRevealPayload()); });
   ch.on('broadcast', { event: 'ans' }, (m) => liveGotAnswer(m.payload));
   ch.on('presence', { event: 'sync' }, () => { const st = ch.presenceState(); LIVE.peers = []; for (const k in st) { const m = (st[k] || []).slice(-1)[0] || {}; if (m.role === 'student') LIVE.peers.push({ sid: k, name: m.name || 'ไม่ระบุชื่อ' }); } liveRender(); });
@@ -6718,9 +6828,10 @@ function openLive() { closeSheets(); $('#liveSheet').hidden = false; if (!EX.loa
 async function studentNotebook(key, title, level) {
   let nid = store_ls.get('tp-snb-' + key);
   if (nid && !(await S.store.get('notebooks/' + nid))) nid = null;
+  if (!nid) { const f = (S.nbsAll || S.nbs || []).find((n) => n.from === key); if (f) nid = f.id; }
   if (!nid) {
     nid = 'n' + uid();
-    await S.store.set('notebooks/' + nid, { title, level: level || 'mp', pages: [], color: COVERS[1], createdAt: now(), updatedAt: now(), from: key });
+    await S.store.set('notebooks/' + nid, { title, level: level || 'mp', pages: [], color: COVERS[1], createdAt: now(), updatedAt: now(), from: key, side: 'student' });
     store_ls.set('tp-snb-' + key, nid);
   }
   return nid;
@@ -6740,7 +6851,7 @@ async function studentPutPage(nid, lpid, idx, d, strokes) {
 }
 async function studentJoin(code) {
   LIVE.code = code; LIVE.role = 'student';
-  if (!LIVE.name) { $('#joinSheet').hidden = false; $('#jCode').textContent = code; setTimeout(() => $('#jName').focus({ preventScroll: true }), 60); return; }
+  if (!LIVE.name) { openJoin(code); return; }
   $('#joinSheet').hidden = true;
   const nid = await studentNotebook('class-' + code, 'ห้องเรียน ' + code + ' ' + new Date().toLocaleDateString('th-TH', { day: 'numeric', month: 'short' }), 'mp');
   LIVE.nid = nid; openNotebook(nid);
@@ -6779,6 +6890,7 @@ async function studentApply(tpid) {
   const lpid = 'T' + tpid.replace(/[^A-Za-z0-9]/g, '');
   await studentPutPage(LIVE.nid, lpid, P.d.idx, P.d, strokes);
   PV.ink = {}; if (S.pid === lpid) drawPresentLive();
+  if (P.d.bg) return;
   LIVE.cur = lpid;
   if (LIVE.follow && S.pid !== lpid) openPage(lpid);
 }
@@ -7108,7 +7220,7 @@ async function pdfImport(newNb) {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793011601';
+const BUILD = '1793011725';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
@@ -7275,7 +7387,20 @@ $('#zOut').onclick = () => zoomTo(S.zoom / 1.4);
 $('#zNum').onclick = () => zoomTo(1);
 $('#qmClose').onclick = () => { $('#qmSheet').hidden = true; };
 $('#liveClose').onclick = () => { $('#liveSheet').hidden = true; };
-$('#jGo').onclick = () => { const n = $('#jName').value.trim(); if (!n) { $('#jName').focus(); return; } LIVE.name = n; store_ls.set('tp-sname', n); studentJoin(LIVE.code); };
+$('#jGo').onclick = () => {
+  const code = ($('#jCodeIn').value || LIVE.code || '').trim().toUpperCase();
+  if (!/^[A-Z2-9]{6}$/.test(code)) { toast('ใส่รหัสห้อง 6 ตัวให้ถูกต้อง', 2200); $('#jCodeIn').focus(); return; }
+  const n = $('#jName').value.trim(); if (!n) { $('#jName').focus(); return; }
+  LIVE.name = n; store_ls.set('tp-sname', n);
+  if (LIVE.ch && LIVE.role === 'student' && LIVE.code !== code) leaveClass();
+  studentJoin(code);
+};
+$('#jCancel').onclick = () => { $('#joinSheet').hidden = true; };
+$('#bJoin').onclick = () => openJoin('');
+document.querySelectorAll('#roleSheet .rolecard').forEach((b) => { b.onclick = () => { $('#roleSheet').hidden = true; store_ls.set('tp-role', b.dataset.r); S.role = null; setRole(b.dataset.r); }; });
+$('#lpPull').onclick = () => { if (!LIVE.ready) { toast('ยังไม่ได้เชื่อมต่อห้อง', 1600); return; } liveSend('pullall', { sid: LIVE.sid }); toast('ขอหน้าทั้งหมดของคาบนี้จากผู้สอนแล้ว หน้าจะทยอยเข้ามาในสมุด', 2600); };
+$('#lpLeave').onclick = () => { if (S.student) { toast('ปิดหน้านี้ได้เลย สมุดที่จดเก็บไว้ในเครื่องนี้', 2400); return; } leaveClass(); };
+document.querySelectorAll('#roleSeg button').forEach((b) => { b.onclick = () => setRole(b.dataset.r); });
 $('#jName').onkeydown = (e) => { if (e.key === 'Enter') $('#jGo').click(); };
 $('#sqHide').onclick = () => { $('#sqSheet').hidden = true; };
 $('#lpFollow').onclick = () => { LIVE.follow = !LIVE.follow; store_ls.set('tp-follow', LIVE.follow ? '1' : '0'); $('#lpFollow').setAttribute('aria-pressed', LIVE.follow ? 'true' : 'false'); if (LIVE.follow && LIVE.cur && S.pid !== LIVE.cur) openPage(LIVE.cur); };
@@ -7660,6 +7785,8 @@ async function boot() {
     : db
     ? 'สมุดทุกเล่มเก็บไว้บนระบบและซิงก์ทันทีกับทุกเครื่องที่เปิดหน้านี้ด้วยบัญชีเดียวกัน เช่น iPad กับทีวี แต่ละเครื่องเขียนชั้นหมึกของตัวเอง จึงเขียนพร้อมกันได้โดยงานไม่ทับกัน'
     : 'สมุดบันทึกไว้ในเบราว์เซอร์ของเครื่องนี้ รูปและวิดีโอก็เก็บในเครื่องนี้ หน้าต่างอื่นบนเครื่องเดียวกันเห็นตรงกันทันที รวมทั้งจอผู้ชม การซิงก์ข้ามเครื่อง เช่น iPad กับทีวี ต้องเปิดใน claude.ai หรือต่อฐานข้อมูลบนคลาวด์';
+  S.role = store_ls.get('tp-role') === 'student' ? 'student' : 'teacher';
+  applyRole();
   if (S.student) { S.creatingFirst = true; document.body.classList.add('student'); }
   watchNotebooks();
   if (!S.student) { watchLiveDoc(); aiCloudWatch(); }
@@ -7679,6 +7806,7 @@ async function boot() {
   renderAISettings(); renderCloud();
   try { const qp = new URLSearchParams(location.search); if (qp.get('code') && store_ls.get('tp-or')) { const c = qp.get('code'), st = qp.get('state'); history.replaceState(null, '', location.pathname + location.hash); setTimeout(() => orFinish(c, st), 600); } } catch (e) { /* no query */ }
   if (CLOUD.state === 'signedout' && !S.present && !S.student) openAuth();
+  else if (!S.student && !S.present && !store_ls.get('tp-role') && CLOUD.state === 'on') setTimeout(() => { if (!store_ls.get('tp-role')) { closeSheets(); $('#roleSheet').hidden = false; } }, 900);
   setTimeout(() => { if (!S.pid) { const l = $('#loading'); l.querySelector('span').textContent = 'ยังเชื่อมต่อไม่ได้ ตรวจอินเทอร์เน็ตแล้วเปิดหน้านี้ใหม่'; } }, 12000);
 }
 boot();
