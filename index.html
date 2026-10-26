@@ -114,7 +114,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .item.svg svg { width: 100%; height: auto; display: block; }
 .item.editing { -webkit-user-select: text; user-select: text; -webkit-touch-callout: default; cursor: text; outline: 2px dashed #2F4BB8; background: rgba(229, 234, 250, 0.6); white-space: pre-wrap; font-family: var(--doc); }
 .item mjx-container { display: inline-block; }
-.item { overflow-wrap: break-word; }
+.item { overflow-wrap: break-word; word-break: normal; line-break: auto; hyphens: manual; }
 .item .mh { display: block; font-weight: 700; font-size: 1.15em; margin: 0.1em 0 0.3em; }
 .item .chrow { display: flex; flex-wrap: wrap; gap: 0.2em 1.6em; margin: 0.15em 0 0.2em 1.4em; }
 .item .ch { display: inline-block; max-width: 100%; }
@@ -780,7 +780,7 @@ body.guest #roleSeg, body.guest #bJoin { display: none !important; }
 
       <div class="selbar no-ink" id="selbar" role="toolbar" aria-label="ส่วนที่เลือก" hidden>
         <span class="count" id="selCount"></span>
-        <span class="sg" id="sgInk"><button id="sQuiz" class="main"><svg viewBox="0 0 22 22" aria-hidden="true"><rect x="3.5" y="3" width="15" height="16" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M7 8h8 M7 11.5h8 M7 15h5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span>สร้างโจทย์</span></button><button id="sRead" class="main"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M3 15c2-3 3-7 4.5-7s.5 5 2 5 2-6 3.5-6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M13 4.5h6 M16 4.5v8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span>เป็นตัวพิมพ์</span></button><button id="sEq"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M3.5 8h6 M3.5 12.5h6 M13 6.5l5 7 M18 6.5l-5 7" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg><span>เป็นสมการ</span></button><button id="sGraph"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M4 3.5v14h14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M5.5 14c3-1 4-8 7-8s3 4 5 4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span>สร้างกราฟ</span></button><button id="sTidy"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M4 17l4-1 9-9-3-3-9 9z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M15.5 13.5l1 2 2 1-2 1-1 2-1-2-2-1 2-1z" fill="currentColor"/></svg><span>วาดใหม่</span></button><button id="sGen"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M11 3l1.8 4.6 4.7 1.9-4.7 1.9L11 16l-1.8-4.6L4.5 9.5l4.7-1.9z" fill="currentColor"/></svg><span>สร้างโจทย์</span></button><button id="sMedia"><svg viewBox="0 0 22 22" aria-hidden="true"><rect x="3" y="4.5" width="16" height="13" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M3.5 15l4.5-4.5 3.5 3.5 2-2 5 4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg><span>หาสื่อ</span></button></span>
+        <span class="sg" id="sgInk"><button id="sJoin"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M3 6h16 M3 11h10 M3 16h7 M14 13.5l3 2.5-3 2.5 M10 16h7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span>ต่อบรรทัด</span></button><button id="sQuiz" class="main"><svg viewBox="0 0 22 22" aria-hidden="true"><rect x="3.5" y="3" width="15" height="16" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M7 8h8 M7 11.5h8 M7 15h5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span>สร้างโจทย์</span></button><button id="sRead" class="main"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M3 15c2-3 3-7 4.5-7s.5 5 2 5 2-6 3.5-6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M13 4.5h6 M16 4.5v8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span>เป็นตัวพิมพ์</span></button><button id="sEq"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M3.5 8h6 M3.5 12.5h6 M13 6.5l5 7 M18 6.5l-5 7" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg><span>เป็นสมการ</span></button><button id="sGraph"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M4 3.5v14h14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M5.5 14c3-1 4-8 7-8s3 4 5 4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span>สร้างกราฟ</span></button><button id="sTidy"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M4 17l4-1 9-9-3-3-9 9z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M15.5 13.5l1 2 2 1-2 1-1 2-1-2-2-1 2-1z" fill="currentColor"/></svg><span>วาดใหม่</span></button><button id="sGen"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M11 3l1.8 4.6 4.7 1.9-4.7 1.9L11 16l-1.8-4.6L4.5 9.5l4.7-1.9z" fill="currentColor"/></svg><span>สร้างโจทย์</span></button><button id="sMedia"><svg viewBox="0 0 22 22" aria-hidden="true"><rect x="3" y="4.5" width="16" height="13" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M3.5 15l4.5-4.5 3.5 3.5 2-2 5 4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg><span>หาสื่อ</span></button></span>
         <span class="sg" id="sgOrder"><button id="sFront"><svg viewBox="0 0 22 22" aria-hidden="true"><rect x="7" y="7" width="11" height="11" rx="2" fill="currentColor"/><rect x="3.5" y="3.5" width="11" height="11" rx="2" fill="none" stroke="currentColor" stroke-width="1.5" stroke-dasharray="2.5 2"/></svg><span>ขึ้นหน้าสุด</span></button><button id="sBack"><svg viewBox="0 0 22 22" aria-hidden="true"><rect x="3.5" y="3.5" width="11" height="11" rx="2" fill="currentColor"/><rect x="7" y="7" width="11" height="11" rx="2" fill="var(--chrome)" stroke="currentColor" stroke-width="1.5"/></svg><span>ไปหลังสุด</span></button></span>
         <span class="sg"><button id="sDup"><svg viewBox="0 0 22 22" aria-hidden="true"><rect x="7" y="7" width="11" height="11" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M4 14V5a1 1 0 0 1 1-1h9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span>ทำสำเนา</span></button><button id="sDel" class="danger"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M5 6.5h12 M9 6.5V4.5h4v2 M6.5 6.5l.8 11h7.4l.8-11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span>ลบ</span></button><button id="sClose"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M5 11.5l4 4 8-9" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg><span>เสร็จ</span></button></span>
         <button id="sBig" hidden>ขยาย</button><button id="sSmall" hidden>ย่อ</button>
@@ -2858,14 +2858,18 @@ function selectStrokes(refs) {
 /* resize a lasso selection from its corner handle, or with the buttons */
 function handleR() { return clamp(14 / (S.base * S.zoom), 8, 30); }
 const CORNERS = [[0, 1], [2, 1], [2, 3], [0, 3]];
+function textOnlySel() { return S.sel && !S.sel.strokes.length && S.sel.items.length && S.sel.items.every((id) => { const it = findItem(id); return it && (!it.type || it.type === 'text'); }); }
 function nearHandle(b, x, y) {
   if (!b) return -1;
+  if (textOnlySel() && Math.abs(x - b[2]) < handleR() * 1.6 && Math.abs(y - (b[1] + b[3]) / 2) < handleR() * 2.4) return 4;
   for (let i = 0; i < 4; i++) if (Math.hypot(x - b[CORNERS[i][0]], y - b[CORNERS[i][1]]) < handleR() * 1.9) return i;
   return -1;
 }
 function startScale(pt, corner) {
   pt.mode = 'scale'; pt.f = 1;
   pt.box0 = S.sel.box.slice();
+  pt.widthOnly = corner === 4;
+  if (pt.widthOnly) corner = 2;
   const c = corner == null || corner < 0 ? 2 : corner, o = CORNERS[(c + 2) % 4];
   pt.anchor = [pt.box0[o[0]], pt.box0[o[1]]]; pt.grab = [pt.box0[CORNERS[c][0]], pt.box0[CORNERS[c][1]]];
   pt.orig = S.sel.strokes.map((r) => { const s = findStroke(r); return s ? { r, p: s.p.slice() } : null; }).filter(Boolean);
@@ -2874,6 +2878,17 @@ function startScale(pt, corner) {
   pt.itemsOrig = {}; for (const id of S.sel.items) { const it = findItem(id); if (it) pt.itemsOrig[id] = { x: it.x, y: it.y, w: it.w || 600, fs: it.fs || 24, text: !it.type || it.type === 'text' }; }
 }
 function doScale(pt, x, y) {
+  if (pt.widthOnly) {
+    const dx = x - pt.box0[2]; pt.f = Math.abs(dx) > 1 ? 2 : 1;
+    for (const [id, o] of Object.entries(pt.itemsOrig)) {
+      const it = findItem(id); if (!it) continue;
+      it.w = Math.round(clamp(o.w + dx, 80, W - it.x - 4));
+      const d = itemsEl.querySelector('[data-id="' + id + '"]'); if (d) d.style.width = it.w + 'px';
+    }
+    S.sel.box = [pt.box0[0], pt.box0[1], Math.max(pt.box0[0] + 60, pt.box0[2] + dx), pt.box0[3]];
+    S.sel.box = [S.sel.box[0], S.sel.box[1], S.sel.box[2], Math.max(...S.sel.items.map((id) => { const it = findItem(id); return it ? itemBox(it)[3] : 0; }))];
+    drawSelBox(); return;
+  }
   const ox = pt.anchor[0], oy = pt.anchor[1];
   const gx = pt.grab[0] - ox, gy = pt.grab[1] - oy;
   /* how far the dragged corner went from the fixed opposite corner, compared with where it started */
@@ -3011,7 +3026,8 @@ function drawSelBox() {
   const b = S.sel && S.sel.box; if (!b) { selEl.innerHTML = pend; return; }
   const hr = handleR();
   selEl.innerHTML = pend + '<rect x="' + b[0] + '" y="' + b[1] + '" width="' + (b[2] - b[0]) + '" height="' + (b[3] - b[1]) + '" rx="10" fill="rgba(47,75,184,0.06)" stroke="#2F4BB8" stroke-width="2" stroke-dasharray="8 6" vector-effect="non-scaling-stroke"/>'
-    + CORNERS.map((c) => '<circle cx="' + b[c[0]] + '" cy="' + b[c[1]] + '" r="' + (hr * 0.8).toFixed(1) + '" fill="#FFFFFF" stroke="#2F4BB8" stroke-width="2.5" vector-effect="non-scaling-stroke"/>').join('');
+    + CORNERS.map((c) => '<circle cx="' + b[c[0]] + '" cy="' + b[c[1]] + '" r="' + (hr * 0.8).toFixed(1) + '" fill="#FFFFFF" stroke="#2F4BB8" stroke-width="2.5" vector-effect="non-scaling-stroke"/>').join('')
+    + (textOnlySel() ? '<rect x="' + (b[2] - hr * 0.45).toFixed(1) + '" y="' + ((b[1] + b[3]) / 2 - hr * 1.3).toFixed(1) + '" width="' + (hr * 0.9).toFixed(1) + '" height="' + (hr * 2.6).toFixed(1) + '" rx="' + (hr * 0.45).toFixed(1) + '" fill="#2F4BB8" stroke="#FFFFFF" stroke-width="2" vector-effect="non-scaling-stroke"/>' : '');
 }
 function moveRefs(refs, dx, dy, touched) {
   const ix = Math.round(dx * 10), iy = Math.round(dy * 10);
@@ -3035,6 +3051,7 @@ function showSelbar() {
   const textSel = S.sel.items.some((id) => { const it = (S.page.items || []).find((t) => t.id === id); return it && (!it.type || it.type === 'text'); });
   $('#sGraph').hidden = !(n || textSel);
   $('#sQuiz').hidden = !(n || textSel);
+  $('#sJoin').hidden = !(textSel && !n);
   $('#sMedia').hidden = !(n || textSel);
   $('#sFront').hidden = $('#sBack').hidden = !(m && (S.page.items || []).length > 1);
   $('#sBig').hidden = $('#sSmall').hidden = true;
@@ -3471,7 +3488,7 @@ async function convertBatch(gs, eq) {
     + '\nFor a drawing, write the marker line as "@@BLOCK k SKIP" with nothing under it.'
     : 'You will see ' + N + ' image' + (N > 1 ? 's' : '') + ', numbered 1 to ' + N + ' in the order attached. Each is one block of handwriting from a Thai physics teacher\'s notebook (Thai text, equations, units or a small sketch).\n'
     + 'Transcribe each block faithfully. Do not solve, simplify or correct anything. When unclear, choose the most likely reading in a physics context.\n'
-    + 'Write every piece of math as LaTeX between $ signs, for example $v = u + at$, $t = \\sqrt{2h/g}$, $v_0^2 \\sin 2\\theta$. Keep Thai words in Thai. Keep the original line breaks.\n'
+    + 'Write every piece of math as LaTeX between $ signs, for example $v = u + at$, $t = \\sqrt{2h/g}$, $v_0^2 \\sin 2\\theta$. Keep Thai words in Thai. Handwriting wraps only because the page is narrow, so join lines that continue the same sentence into one line (Thai words join with no space). Start a new line only for a new sentence or idea, a new equation, a list item or a heading.\n'
     + 'If a block is mainly a drawing or diagram rather than writing, mark it SKIP.\n'
     + 'Reply in exactly this format and nothing else:\n'
     + Array.from({ length: N }, (_, i) => '@@BLOCK ' + (i + 1) + '\n(transcription of image ' + (i + 1) + ')').join('\n')
@@ -3501,17 +3518,23 @@ async function convertBatch(gs, eq) {
     S.pending = S.pending.filter((b) => !set.has(b)); drawSelBox();
   }
 }
+/* type size that matches the handwriting: Thai letter bodies are about half the type size; tall marks above and below are ignored by taking the median */
+function fontFromInk(strokes, box, text) {
+  const hs = strokes.map((s) => { const b = sbox(s); return b[3] - b[1]; }).filter((h) => h > 2).sort((a, b) => a - b);
+  const med = hs.length ? hs[Math.floor(hs.length / 2)] : 20;
+  const lines = Math.max(1, String(text || '').split('\n').length);
+  const byLines = (box[3] - box[1]) / lines * 0.55;
+  return Math.round(clamp(Math.min(med / 0.55, byLines * 1.15), 14, 44));
+}
 function replaceGroup(g, text) {
   if (!S.page) return;
   const removed = [], touched = new Set();
   for (const rf of g.refs) { const arr = layerArr(rf.layer); const i = arr.findIndex((s) => s.id === rf.id); if (i >= 0) { removed.push({ layer: rf.layer, stroke: arr[i] }); arr.splice(i, 1); touched.add(rf.layer); } }
   if (!removed.length) return;
   saveLayers(touched); drawInk();
-  const lines = Math.max(1, text.split('\n').length);
-  const h = g.box[3] - g.box[1];
-  const fs = Math.round(clamp(h / lines * 0.62, 18, 56));
-  const x = Math.round(clamp(g.box[0] - 8, 4, W - 180));
-  const it = { id: 'i' + uid(), by: DEV, type: 'text', x, y: Math.round(clamp(g.box[1] - fs * 0.45, 4, H - 40)), w: Math.round(clamp(g.box[2] - g.box[0] + fs * 5, 180, W - x - 6)), md: text, fs };
+  const fs = fontFromInk(removed.map((r) => r.stroke), g.box, text);
+  const x = Math.round(clamp(g.box[0] - 6, 4, W - 160));
+  const it = { id: 'i' + uid(), by: DEV, type: 'text', x, y: Math.round(clamp(g.box[1] - fs * 0.25, 4, H - 40)), w: Math.round(clamp(g.box[2] - g.box[0] + fs * 1.5, 160, W - x - 6)), md: text, fs };
   const before = clone(S.page.items || []);
   S.page = Object.assign({}, S.page, { items: before.concat([it]) });
   savePage(); renderItems();
@@ -3546,7 +3569,7 @@ async function readSelectionPanel() {
   const B = busyCard('แปลงเป็นตัวพิมพ์');
   const prompt = 'The image is a handwritten fragment from a Thai physics teacher\'s notebook. It may contain Thai text, equations, units or a small sketch.\n'
     + 'Transcribe it faithfully. Do not solve, simplify or correct anything. If something is ambiguous, choose the most likely reading in a physics context.\n'
-    + 'Write every piece of math as LaTeX between $ signs, for example $v = u + at$ or $t = \\sqrt{2h/g}$. Keep Thai words as Thai text. Keep the original line breaks.\n'
+    + 'Write every piece of math as LaTeX between $ signs, for example $v = u + at$ or $t = \\sqrt{2h/g}$. Keep Thai words as Thai text. Handwriting wraps only because the page is narrow, so join lines that continue the same sentence into one line (Thai words join with no space). Start a new line only for a new sentence or idea, a new equation, a list item or a heading.\n'
     + 'Reply in exactly this format and nothing else:\n'
     + '@@TEXT\n(the transcription)\n@@LATEX\n(LaTeX of the main equation without $ signs, or leave empty)\n@@CONFIDENCE high or medium or low\n@@NOTE\n(a short Thai note about anything ambiguous, or leave empty)';
   try {
@@ -7220,7 +7243,7 @@ async function pdfImport(newNb) {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793011927';
+const BUILD = '1793013424';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
@@ -7440,6 +7463,27 @@ $('#bGClose').onclick = () => { $('#graphSheet').hidden = true; };
 $('#bGCheck').onclick = () => { if (!window.math) { loadLib('math').then(() => checkGraph(true)).catch(() => {}); return; } checkGraph(true); };
 $('#bGSave').onclick = () => { if (!window.math) { loadLib('math').then(saveGraph).catch(() => {}); return; } saveGraph(); };
 $('#sGraph').onclick = graphFromSelection;
+/* join lines that only broke because the handwriting reached the edge; keep real breaks (new item, equation, list, heading) */
+function joinLines(md) {
+  const L = String(md || '').split('\n'), out = [];
+  const hard = (l) => !l.trim() || /^\s*(\d+[.)]|[-*]|\$\$|##|[กขคง]\.|\*\*)/.test(l);
+  for (const l of L) {
+    const prev = out[out.length - 1];
+    if (prev != null && prev.trim() && !hard(l) && !/[:.;!?]$|\$\$$/.test(prev.trim())) {
+      const a = prev.slice(-1), b = l.trim().charAt(0), thai = /[\u0E00-\u0E7F]/;
+      out[out.length - 1] = prev.replace(/\s+$/, '') + (thai.test(a) && thai.test(b) ? '' : ' ') + l.trim();
+    } else out.push(l);
+  }
+  return out.join('\n');
+}
+$('#sJoin').onclick = () => {
+  if (!S.sel || !S.page) return;
+  const before = clone(S.page.items || []); let n = 0;
+  const items = before.map((it) => { if (S.sel.items.includes(it.id) && (!it.type || it.type === 'text')) { const md = joinLines(it.md); if (md !== it.md) { n++; return Object.assign({}, it, { md }); } } return it; });
+  if (!n) { toast('ไม่มีบรรทัดที่ต่อกันได้', 1600); return; }
+  setItems(items, before); toast('ต่อบรรทัดแล้ว ลากแถบด้านขวาของกรอบเพื่อปรับความกว้าง ข้อความจะไหลตามเอง', 2600);
+  setTimeout(() => { if (S.sel) { S.sel.box = selBox(S.sel); drawSelBox(); } }, 120);
+};
 $('#sBig').onclick = () => scaleSelBy(1.25);
 $('#sSmall').onclick = () => scaleSelBy(0.8);
 $('#fqInsert').onclick = () => { $('#insSheet').hidden = false; };
