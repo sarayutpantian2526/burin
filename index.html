@@ -149,7 +149,12 @@ body.tv .palette .sw { width: 52px; height: 52px; }
 .sw { width: 30px; height: 30px; margin: 0 3px; border-radius: 999px; border: 0; cursor: pointer; padding: 0; }
 .sw[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px currentColor; }
 .wd { width: 40px; height: 40px; border: 0; border-radius: 10px; background: transparent; cursor: pointer; display: flex; align-items: center; justify-content: center; }
-.wd span { display: block; width: 22px; border-radius: 4px; background: var(--fg); }
+.wd span { display: block; width: 24px; border-radius: 999px; background: var(--fg); max-height: 30px; }
+.dwid { display: flex; align-items: center; }
+.dwid .wd { width: 38px; height: 40px; }
+.wslide { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--muted); }
+.wslide input { flex: 1; accent-color: var(--accent); height: 32px; }
+.wslide b { min-width: 34px; text-align: right; color: var(--fg); font-weight: 600; }
 .wd[aria-pressed="true"] { background: var(--surface-2); }
 
 body.tv .dock { top: auto; bottom: 14px; left: 14px; padding: 6px; border-radius: 24px; }
@@ -307,6 +312,20 @@ body.tv .peek.big { width: 660px; }
 .convbar button { min-height: 44px; padding: 0 14px; border-radius: 12px; border: 0; cursor: pointer; background: rgba(255, 255, 255, 0.2); color: inherit; font-size: 14px; }
 .convbar button[aria-pressed="true"] { background: var(--accent-fg); color: var(--accent); font-weight: 600; }
 body.tv .convbar { bottom: 112px; }
+.sheet .panel.wide { width: min(860px, 100%); }
+.insb.wide { grid-column: 1 / -1; }
+.mgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; margin-top: 8px; }
+.mcard { display: flex; flex-direction: column; gap: 6px; padding: 0; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); cursor: pointer; overflow: hidden; text-align: left; }
+.mcard.busy { opacity: 0.5; pointer-events: none; }
+.mthumb { position: relative; display: block; aspect-ratio: 4 / 3; background: #EEF1F5; }
+.mthumb img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.mthumb i { position: absolute; left: 6px; top: 6px; font-style: normal; font-size: 11px; font-weight: 600; padding: 2px 7px; border-radius: 999px; background: rgba(20, 24, 31, 0.72); color: #FFFFFF; }
+.mthumb .mvid { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #535E6C; }
+.mname { font-size: 12px; color: var(--muted); padding: 0 8px 8px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; line-height: 1.35; }
+.mtopic { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 8px; flex-wrap: wrap; }
+#mAutoOut h3, #mLocal h3 { margin-top: 14px; }
+.note.small { font-size: 12px; }
+.item .credit { font-family: var(--ui); font-size: 11px; line-height: 1.35; color: #6B7686; padding: 3px 2px 0; }
 .insgrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
 .insb { min-height: 96px; border-radius: 16px; border: 1px solid var(--line); background: var(--surface); cursor: pointer; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 4px; padding: 12px 14px; text-align: left; }
 .insb b { font-size: 16px; }
@@ -382,7 +401,10 @@ body.tv .convbar { bottom: 112px; }
         </span>
         <span class="sep"></span>
         <span id="recent" role="group" aria-label="สีที่ใช้ล่าสุด" style="display:flex;align-items:center"></span>
-        <button class="curc" id="curColor" aria-expanded="false" aria-controls="popColors" aria-label="สีทั้งหมด กำหนดสีเอง และขนาดเส้น"><svg viewBox="0 0 22 22" aria-hidden="true" style="width:22px;height:22px"><path d="M11 3a8 8 0 1 0 0 16c1.3 0 1.8-.9 1.4-1.9-.5-1.2.3-2.3 1.6-2.3H16a3 3 0 0 0 3-3C19 6.3 15.4 3 11 3z" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="7" cy="10" r="1.4" fill="#B42318"/><circle cx="9.5" cy="6.6" r="1.4" fill="#1D7350"/><circle cx="13.6" cy="6.6" r="1.4" fill="#2F4BB8"/><circle cx="7.6" cy="14" r="1.4" fill="#F5C542"/></svg><span class="bar" id="curBar"></span></button>
+        <button class="curc" id="curColor" aria-expanded="false" aria-controls="popColors" aria-label="สีทั้งหมด และกำหนดสีเอง"><svg viewBox="0 0 22 22" aria-hidden="true" style="width:22px;height:22px"><path d="M11 3a8 8 0 1 0 0 16c1.3 0 1.8-.9 1.4-1.9-.5-1.2.3-2.3 1.6-2.3H16a3 3 0 0 0 3-3C19 6.3 15.4 3 11 3z" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="7" cy="10" r="1.4" fill="#B42318"/><circle cx="9.5" cy="6.6" r="1.4" fill="#1D7350"/><circle cx="13.6" cy="6.6" r="1.4" fill="#2F4BB8"/><circle cx="7.6" cy="14" r="1.4" fill="#F5C542"/></svg></button>
+        <span class="sep" id="wSep"></span>
+        <span id="dockWidths" role="group" aria-label="ขนาดเส้น แตะขนาดที่เลือกอยู่อีกครั้งเพื่อปรับ" class="dwid"></span>
+        <button class="curc" id="curWidth" aria-expanded="false" aria-controls="popWidth" aria-label="ปรับขนาดเส้นเอง" title="ปรับขนาดเส้นเอง"><svg viewBox="0 0 22 22" aria-hidden="true" style="width:22px;height:22px"><path d="M4 6h14" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><path d="M4 11h14" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/><path d="M4 16.5h14" stroke="currentColor" stroke-width="4" stroke-linecap="round"/></svg></button>
         <div class="pop" id="popShape" role="group" aria-label="เลือกรูปทรง" hidden>
           <div style="display:flex;flex-direction:column;gap:8px;padding:4px">
             <span class="label">เลือกรูปทรง แล้วลากบนหน้าเพื่อกำหนดขนาด</span>
@@ -412,8 +434,13 @@ body.tv .convbar { bottom: 112px; }
             <span class="label" id="myLabel" hidden>สีของฉัน</span>
             <div id="mine" class="palette" hidden></div>
             <label class="custom"><input type="color" id="customColor" value="#2F4BB8"><span>กำหนดสีเอง</span></label>
-            <span class="label">ขนาดเส้น</span>
+          </div>
+        </div>
+        <div class="pop" id="popWidth" role="group" aria-label="ขนาดเส้น" hidden>
+          <div style="display:flex;flex-direction:column;gap:8px;padding:4px;min-width:260px">
+            <span class="label">ขนาดเส้น แสดงเท่าขนาดจริงบนหน้ากระดาษตอนนี้</span>
             <span id="widths" style="display:flex;align-items:center;gap:4px"></span>
+            <label class="wslide"><span>ปรับขนาดที่เลือก</span><input type="range" id="wRange" min="0.6" max="16" step="0.2"><b id="wVal"></b></label>
           </div>
         </div>
       </div>
@@ -433,6 +460,7 @@ body.tv .convbar { bottom: 112px; }
         <button class="main" id="sRead">อ่านลายมือ</button>
         <button id="sGraph">สร้างกราฟ</button>
         <button id="sTidy">วาดใหม่ตามหลักฟิสิกส์</button>
+        <button id="sMedia">หาสื่อประกอบ</button>
         <button id="sBig" hidden>ขยาย</button>
         <button id="sSmall" hidden>ย่อ</button>
         <button id="sGen">สร้างโจทย์จากส่วนนี้</button>
@@ -562,12 +590,36 @@ body.tv .convbar { bottom: 112px; }
   <div class="panel" role="dialog" aria-label="แทรก">
     <div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><h2>แทรกลงหน้านี้</h2><button class="btn" id="bInsClose">ปิด</button></div>
     <div class="insgrid">
+      <button class="insb wide" id="iMedia"><b>สื่อประกอบ รูป GIF และวิดีโอ</b><span>จัดชุดให้อัตโนมัติจากสิ่งที่เขียน ค้นจากเว็บ หรือเลือกจากเครื่องนี้</span></button>
       <button class="insb" id="iImg"><b>รูปภาพ</b><span>จากคลังภาพ กล้อง หรือไฟล์ วางจากคลิปบอร์ดหรือลากมาวางก็ได้</span></button>
       <button class="insb" id="iVid"><b>วิดีโอ</b><span>ไฟล์ MP4 ขนาดไม่เกิน 20 MB</span></button>
       <button class="insb" id="iGraph"><b>กราฟจากสมการ</b><span>พิมพ์สมการ แล้วปรับค่าตัวแปรด้วยแถบเลื่อน</span></button>
       <button class="insb" id="iText"><b>กล่องข้อความ</b><span>แตะบนหน้าแล้วพิมพ์ เขียนสมการใน $...$ ได้</span></button>
     </div>
     <div class="note">มีสมการที่เขียนด้วยมือแล้ว ใช้บ่วงวงสมการนั้น แล้วกด "สร้างกราฟ" ระบบจะอ่านสมการและตั้งแถบเลื่อนให้เอง</div>
+  </div>
+</div>
+
+<div class="sheet" id="mediaSheet" hidden>
+  <div class="panel wide" role="dialog" aria-label="สื่อประกอบ">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><h2>สื่อประกอบ</h2><button class="btn" id="mClose">ปิด</button></div>
+    <div class="seg" id="mTabs" role="group" aria-label="แหล่งสื่อ"><button data-t="auto">จัดชุดให้อัตโนมัติ</button><button data-t="web">ค้นจากเว็บ</button><button data-t="local">จากเครื่องนี้</button></div>
+    <div class="row2" id="mKinds" role="group" aria-label="ชนิดสื่อ"><button class="chip" data-k="all">ทั้งหมด</button><button class="chip" data-k="img">รูปและแผนภาพ</button><button class="chip" data-k="gif">GIF</button><button class="chip" data-k="video">วิดีโอ</button></div>
+    <div id="mAuto">
+      <div class="note">อ่านสิ่งที่เขียนบนหน้านี้ (หรือส่วนที่วงไว้) แล้วจัดชุดรูป แผนภาพ GIF และวิดีโอจาก Wikimedia Commons ให้ แตะสื่อเพื่อแทรก</div>
+      <div class="mtopic"><b id="mTopic"></b><button class="btn" id="mAgain">อ่านหน้าอีกครั้ง</button></div>
+      <div id="mAutoOut"></div>
+    </div>
+    <div id="mWeb" hidden>
+      <div class="row2"><label class="field" style="flex:1 1 240px"><span>คำค้น ภาษาอังกฤษได้ผลมากที่สุด</span><input id="mQuery" placeholder="เช่น projectile motion หรือ โพรเจกไทล์" autocomplete="off"></label><button class="btn solid" id="mGo" style="align-self:flex-end">ค้นหา</button></div>
+      <div id="mWebOut"></div>
+    </div>
+    <div id="mLocal" hidden>
+      <div class="row2"><button class="btn" id="mPickImg">เลือกรูปหรือ GIF จากเครื่อง</button><button class="btn" id="mPickVid">เลือกวิดีโอจากเครื่อง</button></div>
+      <h3>เคยใช้ในสมุด</h3>
+      <div id="mMine"></div>
+    </div>
+    <div class="note small">สื่อจาก Wikimedia Commons ใช้สอนได้ฟรี แอปจะใส่ชื่อผู้สร้างและสัญญาอนุญาตไว้ใต้สื่อให้เอง</div>
   </div>
 </div>
 
@@ -619,7 +671,7 @@ const DEFAULT_RECENT = ['#1F3A8A', '#14181F', '#B42318', '#1D7350'];
 const okHex = (c) => /^#[0-9a-fA-F]{6}$/.test(String(c || ''));
 function readList(k, def) { try { const v = JSON.parse(store_ls.get(k) || 'null'); return Array.isArray(v) ? v.filter(okHex) : def; } catch (e) { return def; } }
 function colorName(c) { const f = PALETTE.find((p) => p[0].toLowerCase() === String(c).toLowerCase()); return f ? f[1] : 'สี ' + c; }
-const WIDTHS = [2, 3.2, 5.2];
+const WIDTHS = [2, 3.2, 5.2]; /* default presets; the user can change each one */
 const HL = '#F5C542';
 const PAPERS = [['grid', 'ตาราง'], ['dot', 'จุด'], ['lined', 'บรรทัด'], ['mm', 'กราฟ มม.'], ['cornell', 'คอร์เนลล์'], ['blank', 'เปล่า']];
 const LEVELS = [['p', 'ประถมปลาย'], ['mt', 'ม.ต้น'], ['mp', 'ม.ปลาย'], ['olymp', 'สอวน. และ IJSO'], ['u', 'มหาวิทยาลัย']];
@@ -1161,7 +1213,8 @@ const S = {
   nbs: [], nid: null, nb: null, pid: null, page: null,
   mine: [], myRev: 0, ownLoaded: false, saving: false,
   others: {},
-  tool: 'pen', width: 1,
+  tool: 'pen', width: clamp(parseInt(store_ls.get('tp-width') || '1', 10) || 0, 0, 2),
+  widths: (() => { try { const v = JSON.parse(store_ls.get('tp-widths') || 'null'); if (Array.isArray(v) && v.length === 3 && v.every((x) => isFinite(x) && x > 0.3 && x < 30)) return v.map(Number); } catch (e) { /* defaults */ } return WIDTHS.slice(); })(),
   tabs: (() => { try { const v = JSON.parse(store_ls.get('tp-tabs') || '[]'); return Array.isArray(v) ? v.filter((x) => typeof x === 'string').slice(0, 6) : []; } catch (e) { return []; } })(),
   eraserSize: clamp(parseInt(store_ls.get('tp-esize') || '1', 10) || 0, 0, 2), eraseMode: store_ls.get('tp-emode') === 'part' ? 'part' : 'stroke',
   laserMode: store_ls.get('tp-laser') === 'line' ? 'line' : 'dot',
@@ -1199,7 +1252,8 @@ function setSync(s) {
 
 /* ---------- geometry ---------- */
 function rubber(p) { return Math.sign(p) * Math.min(110, Math.abs(p) * 0.4); }
-function applyT() { wrapEl.style.transform = 'translate(' + S.tx + 'px,' + (S.ty + rubber(S.pull || 0)) + 'px) scale(' + S.zoom + ')'; if (S.watchers && !S.present) viewLater(); }
+const widthsLater = debounce(() => { if (typeof renderWidths === 'function') renderWidths(); }, 200);
+function applyT() { widthsLater(); wrapEl.style.transform = 'translate(' + S.tx + 'px,' + (S.ty + rubber(S.pull || 0)) + 'px) scale(' + S.zoom + ')'; if (S.watchers && !S.present) viewLater(); }
 function topY() { return S.tv ? 12 : 72; }
 function bounds() {
   const vw = vp.clientWidth, vh = vp.clientHeight;
@@ -1389,11 +1443,12 @@ function buildItemEl(it, forExport) {
   d.dataset.id = it.id;
   if (it.type === 'svg') { d.innerHTML = cleanSvg(it.svg) || ''; }
   else if (it.type === 'img') {
-    if (okAsset(it.asset)) { const im = document.createElement('img'); setAssetSrc(im, it.asset); im.alt = 'ภาพที่แทรก'; im.draggable = false; d.appendChild(im); }
+    if (okAsset(it.asset) || okRemote(it.url)) { const im = document.createElement('img'); if (okAsset(it.asset)) setAssetSrc(im, it.asset); else { im.crossOrigin = 'anonymous'; im.src = it.url; } im.alt = 'ภาพที่แทรก'; im.draggable = false; d.appendChild(im); }
   } else if (it.type === 'video') {
     if (forExport) { d.innerHTML = '<div style="aspect-ratio:16/9;background:#20262F;color:#FFFFFF;display:flex;align-items:center;justify-content:center;border-radius:6px;font-family:var(--ui)">วิดีโอ ดูได้ในแอป</div>'; }
-    else if (okAsset(it.asset)) { const v = document.createElement('video'); setAssetSrc(v, it.asset); v.controls = true; v.playsInline = true; v.preload = 'metadata'; d.appendChild(v); }
-  } else if (it.type === 'graph') { buildGraph(d, it, forExport); }
+    else if (okAsset(it.asset) || okRemote(it.url)) { const v = document.createElement('video'); if (okAsset(it.asset)) setAssetSrc(v, it.asset); else { v.src = it.url; if (okRemote(it.poster)) v.poster = it.poster; } v.controls = true; v.playsInline = true; v.preload = 'metadata'; d.appendChild(v); }
+  }
+  if ((it.type === 'img' || it.type === 'video') && it.credit) { const c = document.createElement('div'); c.className = 'credit'; c.textContent = String(it.credit).slice(0, 160); d.appendChild(c); } else if (it.type === 'graph') { buildGraph(d, it, forExport); }
   else d.innerHTML = mdToHtml(it.md || '');
   return d;
 }
@@ -1561,7 +1616,7 @@ function beginTool(pt, e) {
     if (S.sel) clearSel();
     pt.mode = 'draw';
     const hl = S.tool === 'hl';
-    pt.stroke = { id: 's' + uid(), k: hl ? 'h' : 'p', c: hl ? (okHex(S.hlColor) ? S.hlColor : HL) : S.color, w: hl ? 26 : WIDTHS[S.width], p: [] };
+    pt.stroke = { id: 's' + uid(), k: hl ? 'h' : 'p', c: hl ? (okHex(S.hlColor) ? S.hlColor : HL) : S.color, w: hl ? 26 : curW(), p: [] };
     pt.live = null;
     addPoint(pt, x, y, pr(e));
     armHold(pt, x, y);
@@ -1920,10 +1975,17 @@ function tryScribble(stroke) {
   let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9, L = 0;
   for (let i = 0; i < p.length; i++) { const q = p[i]; x0 = Math.min(x0, q[0]); y0 = Math.min(y0, q[1]); x1 = Math.max(x1, q[0]); y1 = Math.max(y1, q[1]); if (i) L += Math.hypot(q[0] - p[i - 1][0], q[1] - p[i - 1][1]); }
   const w = x1 - x0, h = y1 - y0, major = Math.max(w, h);
-  if (major < 14 || L < 3.2 * major) return false;
-  const ax = w >= h ? 0 : 1; let dir = 0, rev = 0, prev = p[0][ax];
-  for (const q of p) { const dlt = q[ax] - prev; if (Math.abs(dlt) < 3) continue; const sd = Math.sign(dlt); if (dir && sd !== dir) rev++; dir = sd; prev = q[ax]; }
-  if (rev < 4) return false;
+  /* a real scribble goes back and forth over the same spot many times: at least 6 full passes,
+     each pass covering a good part of the scribble's width; normal writing, zigzags and springs do not */
+  if (major < 18 || L < 5 * major) return false;
+  const ax = w >= h ? 0 : 1; let dir = 0, rev = 0, prev = p[0][ax], ext = p[0][ax];
+  for (const q of p) {
+    const dlt = q[ax] - prev; if (Math.abs(dlt) < 3) continue;
+    const sd = Math.sign(dlt);
+    if (dir && sd !== dir) { if (Math.abs(prev - ext) >= 0.45 * major) rev++; ext = prev; }
+    dir = sd; prev = q[ax];
+  }
+  if (rev < 5) return false;
   const R = 12 + stroke.w, R2 = R * R;
   const sam = p.filter((_, i) => i % 2 === 0);
   const near = (x, y) => { for (const s of sam) { const dx = s[0] - x, dy = s[1] - y; if (dx * dx + dy * dy < R2) return true; } return false; };
@@ -1934,7 +1996,7 @@ function tryScribble(stroke) {
       if (b[2] < x0 - R || b[0] > x1 + R || b[3] < y0 - R || b[1] > y1 + R) continue;
       let cov = 0, tot = 0;
       for (let j = 0; j < s.p.length; j += 6) { tot++; if (near(s.p[j] / 10, s.p[j + 1] / 10)) cov++; }
-      if (tot && cov / tot >= 0.4) { removed.push({ layer: lid, stroke: s }); arr.splice(i, 1); touched.add(lid); }
+      if (tot && cov / tot >= 0.55) { removed.push({ layer: lid, stroke: s }); arr.splice(i, 1); touched.add(lid); }
     }
   }
   const before = clone((S.page && S.page.items) || []);
@@ -2000,7 +2062,7 @@ function shapeStrokeLists(kind, a, b) {
   }
   else if (kind === 'axes') { arrow([L, B], [R, B]); arrow([L, B], [L, T]); }
   else if (kind === 'poly') { const cx = (L + R) / 2, cy = (T + B) / 2, v = []; for (let i = 0; i < 6; i++) { const t = Math.PI / 3 * i; v.push([cx + w / 2 * Math.cos(t), cy + h / 2 * Math.sin(t)]); } st({ type: 'poly', pts: v, closed: true }); }
-  return out.map((p) => ({ id: 's' + uid(), k: 'p', c: S.color, w: WIDTHS[S.width], p }));
+  return out.map((p) => ({ id: 's' + uid(), k: 'p', c: S.color, w: curW(), p }));
 }
 function previewShape(pt) {
   const c = cLive.getContext('2d');
@@ -2067,7 +2129,18 @@ function scaleSelBy(f) {
 }
 
 /* lasso */
+/* one tool, two ways: draw a loop around the ink (lasso), or drag a straight diagonal line (rectangle from corner to corner) */
+function rectFromDrag(poly) {
+  if (poly.length < 2) return null;
+  const a = poly[0], b = poly[poly.length - 1], d = Math.hypot(b[0] - a[0], b[1] - a[1]);
+  if (d < 30 || Math.abs(b[0] - a[0]) < 12 || Math.abs(b[1] - a[1]) < 12) return null;
+  let len = 0; for (let i = 1; i < poly.length; i++) len += Math.hypot(poly[i][0] - poly[i - 1][0], poly[i][1] - poly[i - 1][1]);
+  if (len > d * 1.25) return null;
+  return [[a[0], a[1]], [b[0], a[1]], [b[0], b[1]], [a[0], b[1]]];
+}
 function drawLasso(poly) {
+  const r = rectFromDrag(poly);
+  if (r) { selEl.innerHTML = '<path d="M' + r.map((p) => p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join(' L') + ' Z" fill="rgba(47,75,184,0.07)" stroke="#2F4BB8" stroke-width="2" stroke-dasharray="7 6" vector-effect="non-scaling-stroke"/>'; return; }
   selEl.innerHTML = '<path d="M' + poly.map((p) => p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join(' L') + '" fill="rgba(47,75,184,0.07)" stroke="#2F4BB8" stroke-width="2" stroke-dasharray="7 6" vector-effect="non-scaling-stroke"/>';
 }
 function inPoly(poly, x, y) {
@@ -2084,7 +2157,9 @@ function itemBox(it) {
   return [it.x, it.y, it.x + (it.w || 600), it.y + h];
 }
 function finishLasso(poly) {
-  if (poly.length < 4) { selEl.innerHTML = ''; return; }
+  const rect = rectFromDrag(poly);
+  if (rect) poly = rect;
+  else if (poly.length < 4) { selEl.innerHTML = ''; return; }
   const strokes = [];
   for (const r of allStrokes()) {
     const p = r.s.p; let inside = 0, n = 0;
@@ -2145,6 +2220,7 @@ function showSelbar() {
   $('#sRead').hidden = !n; $('#sTidy').hidden = !n;
   const textSel = S.sel.items.some((id) => { const it = (S.page.items || []).find((t) => t.id === id); return it && (!it.type || it.type === 'text'); });
   $('#sGraph').hidden = !(n || textSel);
+  $('#sMedia').hidden = !(n || textSel);
   $('#sBig').hidden = $('#sSmall').hidden = !(n || m);
 }
 function clearSel() { S.sel = null; drawSelBox(); $('#selbar').hidden = true; drawInk(); }
@@ -3038,7 +3114,7 @@ async function exportPdf() {
       host.appendChild(pg);
       await typeset(its);
       if (document.fonts && document.fonts.ready) await document.fonts.ready;
-      const shot = await window.html2canvas(pg, { scale: 1.6, backgroundColor: '#FFFFFF', logging: false, useCORS: false });
+      const shot = await window.html2canvas(pg, { scale: 1.6, backgroundColor: '#FFFFFF', logging: false, useCORS: true });
       if (i > 0) pdf.addPage();
       pdf.addImage(shot.toDataURL('image/jpeg', 0.9), 'JPEG', 0, 0, 210, 297);
       host.removeChild(pg);
@@ -3230,8 +3306,8 @@ function renderLibrary() {
   }
 }
 function closePops() {
-  for (const id of ['#popShape', '#popColors', '#popEraser', '#popLaser']) $(id).hidden = true;
-  $('#curColor').setAttribute('aria-expanded', 'false');
+  for (const id of ['#popShape', '#popColors', '#popEraser', '#popLaser', '#popWidth']) $(id).hidden = true;
+  $('#curColor').setAttribute('aria-expanded', 'false'); $('#curWidth').setAttribute('aria-expanded', 'false');
 }
 /* 'opts' opens the options of the current tool; 'colors' always opens the palette */
 function togglePop(which) {
@@ -3271,7 +3347,6 @@ function renderShapes() {
 function renderTools() {
   document.querySelectorAll('.tool[data-tool]').forEach((b) => b.setAttribute('aria-pressed', b.dataset.tool === S.tool ? 'true' : 'false'));
   renderShapes();
-  $('#curBar').style.height = (S.tool === 'eraser' ? 2 + S.eraserSize * 3 : 2 + S.width * 2.5) + 'px';
   $('#curColor').setAttribute('aria-label', S.tool === 'eraser' ? 'ขนาดและวิธีลบของยางลบ' : (S.tool === 'laser' ? 'แบบของเลเซอร์' : 'สีทั้งหมด กำหนดสีเอง และขนาดเส้น'));
   const es = $('#eSizes'); es.innerHTML = '';
   ERASE_R.forEach((r, i) => {
@@ -3301,16 +3376,43 @@ function renderTools() {
   if (okHex(active)) $('#customColor').value = active;
   itemsEl.classList.toggle('editable', S.tool === 'text');
   vp.style.cursor = S.tool === 'text' ? 'text' : 'crosshair';
-  const wd = $('#widths'); wd.innerHTML = '';
-  WIDTHS.forEach((w, i) => {
-    const b = document.createElement('button'); b.className = 'wd'; b.type = 'button';
-    b.setAttribute('aria-label', ['เส้นบาง', 'เส้นกลาง', 'เส้นหนา'][i]);
-    b.setAttribute('aria-pressed', i === S.width ? 'true' : 'false');
-    b.innerHTML = '<span style="height:' + (2 + i * 2.5) + 'px"></span>';
-    b.onclick = () => { S.width = i; closePops(); renderTools(); };
-    wd.appendChild(b);
-  });
+  renderWidths();
 }
+function curW() { return S.widths[S.width] || WIDTHS[1]; }
+/* on-screen thickness of a pen line at normal pressure, so the buttons look exactly like what gets drawn */
+function screenW(w) { return w * (0.42 + 1.15 * 0.5) * (S.base || 1) * (S.zoom || 1); }
+function renderWidths() {
+  const show = S.tool === 'pen' || S.tool === 'shape';
+  for (const id of ['#widths', '#dockWidths']) {
+    const wd = $(id); wd.innerHTML = '';
+    if (id === '#dockWidths') { wd.hidden = !show; $('#wSep').hidden = !show; $('#curWidth').hidden = !show; }
+    S.widths.forEach((w, i) => {
+      const b = document.createElement('button'); b.className = 'wd'; b.type = 'button';
+      b.setAttribute('aria-label', ['เส้นบาง', 'เส้นกลาง', 'เส้นหนา'][i] + ' ' + fmtW(w));
+      b.setAttribute('aria-pressed', i === S.width ? 'true' : 'false');
+      const px = Math.max(1, screenW(w));
+      b.innerHTML = '<span style="height:' + px.toFixed(1) + 'px;background:' + (okHex(S.color) ? S.color : '') + '"></span>';
+      b.onclick = () => {
+        if (id === '#dockWidths' && i === S.width) { openWidthPop(); return; }
+        S.width = i; store_ls.set('tp-width', String(i)); renderTools();
+      };
+      wd.appendChild(b);
+    });
+  }
+  const r = $('#wRange'); r.value = String(curW()); $('#wVal').textContent = fmtW(curW());
+}
+function openWidthPop() {
+  const pw = $('#popWidth'), open = pw.hidden; closePops(); placeDock();
+  pw.hidden = !open; $('#curWidth').setAttribute('aria-expanded', open ? 'true' : 'false');
+  if (open) { const maxL = Math.max(0, vp.clientWidth - 24 - pw.offsetWidth - $('#dock').offsetLeft); pw.style.left = Math.min(Math.max(0, $('#dockWidths').offsetLeft - 8), maxL) + 'px'; }
+}
+$('#curWidth').onclick = openWidthPop;
+function fmtW(w) { return (Math.round(w * 10) / 10).toString(); }
+$('#wRange').addEventListener('input', () => {
+  const v = clamp(parseFloat($('#wRange').value) || 2, 0.6, 16);
+  S.widths[S.width] = v; store_ls.set('tp-widths', JSON.stringify(S.widths));
+  renderWidths();
+});
 /* recent colors keep their slots when tapped; a new color from the palette takes the first slot */
 function useColor(c, fromPalette) {
   if (!okHex(c)) return;
@@ -3397,6 +3499,224 @@ function bindAISettings() {
 }
 bindAISettings();
 
+/* ---------- teaching media: from this device, from the web (Wikimedia Commons), or an automatic set for the page ---------- */
+const MD = { tab: 'auto', kind: 'all', busy: 0, lastAuto: null };
+const okRemote = (u) => /^https:\/\/upload\.wikimedia\.org\/[^\s"'<>]+$/.test(String(u || ''));
+/* common Thai physics topics, so searching works even without AI */
+const TOPIC_EN = [
+  ['โพรเจกไทล์', 'projectile motion'], ['ฟรีฟอลล์', 'free fall'], ['ตกอิสระ', 'free fall'], ['เสรี', 'free fall'],
+  ['ความเร่ง', 'acceleration'], ['ความเร็ว', 'velocity'], ['การเคลื่อนที่แนวตรง', 'linear motion kinematics'],
+  ['วงกลม', 'circular motion'], ['ฮาร์มอนิก', 'simple harmonic motion'], ['ลูกตุ้ม', 'pendulum'], ['สปริง', 'spring oscillation'],
+  ['แรงเสียดทาน', 'friction'], ['นิวตัน', "Newton's laws of motion"], ['พื้นเอียง', 'inclined plane'], ['โมเมนตัม', 'momentum collision'],
+  ['การชน', 'elastic collision'], ['งาน', 'work energy'], ['พลังงานจลน์', 'kinetic energy'], ['พลังงานศักย์', 'potential energy'],
+  ['ทอร์ก', 'torque'], ['สมดุล', 'static equilibrium'], ['การหมุน', 'rotational motion'], ['แรงโน้มถ่วง', 'gravitation orbit'],
+  ['ดาวเทียม', 'satellite orbit'], ['คลื่น', 'wave'], ['คลื่นนิ่ง', 'standing wave'], ['เสียง', 'sound wave'], ['ดอปเพลอร์', 'Doppler effect'],
+  ['แสง', 'light optics'], ['หักเห', 'refraction'], ['สะท้อน', 'reflection'], ['เลนส์', 'lens optics'], ['กระจก', 'mirror optics'],
+  ['แทรกสอด', 'interference'], ['เลี้ยวเบน', 'diffraction'], ['ไฟฟ้าสถิต', 'electrostatics'], ['สนามไฟฟ้า', 'electric field'],
+  ['ตัวเก็บประจุ', 'capacitor'], ['วงจร', 'electric circuit'], ['กระแสไฟฟ้า', 'electric current'], ['แม่เหล็ก', 'magnetic field'],
+  ['เหนี่ยวนำ', 'electromagnetic induction'], ['ความร้อน', 'heat transfer'], ['แก๊ส', 'ideal gas kinetic theory'], ['เทอร์โม', 'thermodynamics'],
+  ['ของไหล', 'fluid pressure buoyancy'], ['ลอยตัว', 'buoyancy'], ['ความดัน', 'pressure fluid'], ['อะตอม', 'atom model'],
+  ['นิวเคลียร์', 'nuclear decay'], ['กัมมันตรังสี', 'radioactive decay'], ['สัมพัทธภาพ', 'special relativity'], ['ควอนตัม', 'quantum mechanics'],
+  ['โฟโตอิเล็กทริก', 'photoelectric effect'], ['เวกเตอร์', 'vector addition']
+];
+function guessQueries(text) {
+  const t = String(text || ''); const out = [];
+  for (const [th, en] of TOPIC_EN) if (t.includes(th) && !out.includes(en)) out.push(en);
+  const latin = (t.match(/[A-Za-z][A-Za-z ']{3,40}/g) || []).map((x) => x.trim()).filter((x) => x.split(' ').length <= 5);
+  for (const l of latin) if (!out.includes(l)) out.push(l);
+  return out.slice(0, 4);
+}
+function webBlocked() { return !!(window.claude && window.claude.use); }
+async function commonsSearch(q, kind, limit) {
+  const filt = kind === 'gif' ? ' filemime:image/gif' : kind === 'video' ? ' filetype:video' : kind === 'drawing' ? ' filetype:drawing' : ' filetype:bitmap -filemime:image/gif';
+  const prop = kind === 'video' ? 'videoinfo' : 'imageinfo', px = kind === 'video' ? 'vi' : 'ii';
+  const u = 'https://commons.wikimedia.org/w/api.php?action=query&format=json&origin=*&generator=search&gsrnamespace=6'
+    + '&gsrlimit=' + (limit || 12) + '&gsrsearch=' + encodeURIComponent(q + filt)
+    + '&prop=' + prop + '&' + px + 'prop=url|mime|size|extmetadata' + (kind === 'video' ? '|derivatives' : '')
+    + '&' + px + 'urlwidth=480&' + px + 'extmetadatafilter=Artist|LicenseShortName|ObjectName&' + px + 'extmetadatalanguage=en';
+  let r;
+  try { r = await fetch(u); } catch (e) { throw { code: 'network' }; }
+  if (!r.ok) throw { code: 'http_' + r.status };
+  const j = await r.json();
+  const pages = Object.values((j.query && j.query.pages) || {}).sort((a, b) => (a.index || 0) - (b.index || 0));
+  const strip = (h) => { const d = document.createElement('div'); d.innerHTML = String(h || ''); return (d.textContent || '').replace(/\s+/g, ' ').trim(); };
+  const out = [];
+  for (const pg of pages) {
+    const ii = (pg.imageinfo || pg.videoinfo || [])[0]; if (!ii || !okRemote(ii.url)) continue;
+    const md = ii.extmetadata || {};
+    const name = String(pg.title || '').replace(/^File:/, '').replace(/\.[a-z0-9]+$/i, '').replace(/_/g, ' ');
+    let play = ii.url;
+    if (kind === 'video') {
+      const ders = (ii.derivatives || []).filter((d) => okRemote(d.src));
+      const mp4 = ders.filter((d) => /mp4/.test(d.type || '')).sort((a, b) => (a.height || 0) - (b.height || 0));
+      const webm = ders.filter((d) => /webm/.test(d.type || '')).sort((a, b) => Math.abs((a.height || 0) - 480) - Math.abs((b.height || 0) - 480));
+      play = (mp4.find((d) => (d.height || 0) >= 360) || mp4[0] || webm[0] || { src: ii.url }).src;
+    }
+    out.push({
+      kind, name, url: ii.url, play, thumb: okRemote(ii.thumburl) ? ii.thumburl : ii.url, mime: ii.mime || '', size: ii.size || 0,
+      w: ii.width || 0, h: ii.height || 0,
+      credit: (strip(md.Artist && md.Artist.value) || 'ไม่ระบุผู้สร้าง').slice(0, 80) + ', ' + (strip(md.LicenseShortName && md.LicenseShortName.value) || 'ดูสัญญาอนุญาตที่ Wikimedia Commons') + ', Wikimedia Commons',
+      page: 'https://commons.wikimedia.org/wiki/' + encodeURIComponent(String(pg.title || '').replace(/ /g, '_'))
+    });
+  }
+  return out;
+}
+async function searchMedia(qs, kinds, per) {
+  const jobs = [];
+  for (const q of qs) for (const k of kinds) jobs.push(commonsSearch(q, k, per).catch(() => []));
+  const res = await Promise.all(jobs), seen = new Set(), out = [];
+  for (const list of res) for (const m of list) if (!seen.has(m.url)) { seen.add(m.url); out.push(m); }
+  return out;
+}
+function mediaCard(m) {
+  const b = document.createElement('button'); b.className = 'mcard'; b.type = 'button';
+  b.setAttribute('aria-label', 'แทรก ' + m.name);
+  const tag = m.kind === 'gif' ? 'GIF' : m.kind === 'video' ? 'วิดีโอ' : m.kind === 'drawing' ? 'แผนภาพ' : m.kind === 'mine' ? 'เคยใช้' : 'รูป';
+  b.innerHTML = '<span class="mthumb"><img alt="" loading="lazy"><i>' + esc(tag) + '</i></span><span class="mname"></span>';
+  const im = b.querySelector('img');
+  if (m.kind === 'mine') setAssetSrc(im, m.asset); else im.src = m.kind === 'gif' && m.size && m.size < 2.5e6 ? m.url : m.thumb;
+  if (m.kind === 'mine' && m.type === 'video') { im.remove(); b.querySelector('.mthumb').insertAdjacentHTML('afterbegin', '<b class="mvid">วิดีโอ</b>'); }
+  b.querySelector('.mname').textContent = m.name;
+  b.onclick = () => insertMedia(m, b);
+  return b;
+}
+function mediaGrid(list, empty) {
+  const g = document.createElement('div'); g.className = 'mgrid';
+  if (!list.length) { g.innerHTML = '<div class="note">' + esc(empty || 'ไม่พบสื่อ ลองคำค้นอื่น') + '</div>'; return g; }
+  for (const m of list) g.appendChild(mediaCard(m));
+  return g;
+}
+async function insertMedia(m, btn) {
+  if (!S.page) return;
+  if (btn) btn.classList.add('busy');
+  try {
+    if (m.kind === 'mine') {
+      const w = m.type === 'video' ? 560 : 480, ar = m.ar || 0.66; const [x, y] = viewSpot(w, Math.round(w * ar));
+      addItem({ type: m.type, asset: m.asset, x, y, w, ar });
+    } else if (m.kind === 'video') {
+      const ar = m.w && m.h ? Math.round(m.h / m.w * 1000) / 1000 : 0.5625, w = 560; const [x, y] = viewSpot(w, Math.round(w * ar));
+      addItem({ type: 'video', url: m.play, poster: m.thumb, x, y, w, ar, credit: m.credit, src: m.page });
+    } else {
+      const ar = m.w && m.h ? Math.round(m.h / m.w * 1000) / 1000 : 0.66, w = 480; const [x, y] = viewSpot(w, Math.round(w * ar));
+      /* keep a copy in the notebook so it works offline and in PDF; fall back to the web address */
+      let asset = null;
+      const A = await getAssets();
+      if (A) {
+        try {
+          const src = m.kind === 'gif' ? (m.size && m.size < 8e6 ? m.url : m.thumb) : m.thumb;
+          const r = await fetch(src); if (!r.ok) throw new Error('fetch');
+          const blob = await r.blob();
+          const p = m.kind === 'gif' || /svg/.test(blob.type) ? { blob, type: blob.type || 'image/png' } : await prepImage(new File([blob], 'web', { type: blob.type || 'image/jpeg' }));
+          asset = (await A.upload(p.blob, { type: p.type })).id;
+        } catch (e) { asset = null; }
+      }
+      addItem(Object.assign({ type: 'img', x, y, w, ar, credit: m.credit, src: m.page }, asset ? { asset } : { url: m.kind === 'gif' ? m.url : m.thumb }));
+    }
+    toast('แทรกแล้ว ใช้บ่วงเลือกเพื่อย้าย ขยาย หรือย่อ', 2400);
+  } catch (e) { toast('แทรกไม่สำเร็จ ลองอีกครั้ง', 3000); }
+  finally { if (btn) btn.classList.remove('busy'); }
+}
+async function myMedia() {
+  const out = [], seen = new Set();
+  let pages = [];
+  try { pages = await S.store.list('pages'); } catch (e) { pages = []; }
+  pages.sort((a, b) => (b.rev || 0) - (a.rev || 0));
+  for (const pg of pages) for (const it of (pg.items || [])) {
+    if ((it.type === 'img' || it.type === 'video') && okAsset(it.asset) && !seen.has(it.asset)) { seen.add(it.asset); out.push({ kind: 'mine', type: it.type, asset: it.asset, ar: it.ar, name: it.type === 'video' ? 'วิดีโอ' : 'รูปที่เคยใช้' }); }
+    if (out.length >= 48) return out;
+  }
+  return out;
+}
+function kindsFor(k) { return k === 'img' ? ['bitmap', 'drawing'] : k === 'gif' ? ['gif'] : k === 'video' ? ['video'] : ['bitmap', 'drawing', 'gif', 'video']; }
+function renderMediaTab() {
+  document.querySelectorAll('#mTabs button').forEach((b) => b.setAttribute('aria-pressed', b.dataset.t === MD.tab ? 'true' : 'false'));
+  document.querySelectorAll('#mKinds button').forEach((b) => b.setAttribute('aria-pressed', b.dataset.k === MD.kind ? 'true' : 'false'));
+  $('#mLocal').hidden = MD.tab !== 'local'; $('#mWeb').hidden = MD.tab !== 'web'; $('#mAuto').hidden = MD.tab !== 'auto';
+  $('#mKinds').hidden = MD.tab === 'local';
+  if (MD.tab === 'local') loadMine();
+  if (MD.tab === 'auto' && !MD.lastAuto) autoMedia();
+}
+async function loadMine() {
+  const box = $('#mMine'); box.innerHTML = '<div class="note">กำลังโหลด</div>';
+  const list = await myMedia();
+  box.innerHTML = ''; box.appendChild(mediaGrid(list, 'ยังไม่มีรูปหรือวิดีโอที่เคยแทรก'));
+}
+async function webMedia() {
+  const q = $('#mQuery').value.trim(); const out = $('#mWebOut');
+  if (!q) { out.innerHTML = '<div class="note">พิมพ์คำค้นก่อน</div>'; return; }
+  if (webBlocked()) { out.innerHTML = '<div class="note warn">ขณะเปิดใน claude.ai หน้านี้ค้นรูปจากเว็บไม่ได้ ใช้ได้เมื่อเปิดแอปจากเว็บของคุณเอง</div>'; return; }
+  const my = ++MD.busy; out.innerHTML = '<div class="note">กำลังค้นใน Wikimedia Commons</div>';
+  const qs = [q].concat(guessQueries(q).filter((x) => x.toLowerCase() !== q.toLowerCase())).slice(0, 2);
+  const list = await searchMedia(qs, kindsFor(MD.kind), MD.kind === 'all' ? 6 : 14);
+  if (my !== MD.busy) return;
+  out.innerHTML = ''; out.appendChild(mediaGrid(list, /[ก-๙]/.test(q) ? 'ไม่พบสื่อ ลองพิมพ์คำค้นเป็นภาษาอังกฤษ เช่น projectile motion' : 'ไม่พบสื่อ ลองคำค้นอื่น'));
+}
+async function autoMedia() {
+  const out = $('#mAutoOut'), head = $('#mTopic');
+  if (webBlocked()) { out.innerHTML = '<div class="note warn">ขณะเปิดใน claude.ai หน้านี้ดึงสื่อจากเว็บไม่ได้ ใช้ได้เมื่อเปิดแอปจากเว็บของคุณเอง</div>'; return; }
+  const my = ++MD.busy;
+  out.innerHTML = '<div class="note">กำลังอ่านหน้าที่เขียนและจัดชุดสื่อ</div>'; head.textContent = '';
+  let topic = '', q = { img: [], gif: [], video: [] };
+  const typed = pageText();
+  const sel = S.sel && S.sel.strokes.length ? S.sel.strokes : null;
+  if (AI.ready('read')) {
+    try {
+      const lim = AI.limits('read');
+      const img = !lim || lim.images ? await inkBlob(sel) : null;
+      if (img || typed) {
+        const prompt = 'You help a Thai physics teacher find teaching media on Wikimedia Commons for what they are writing.\n'
+          + (img ? 'The attached image is the handwriting on the current page' + (sel ? ' (the part the teacher selected)' : '') + '.\n' : '')
+          + (typed ? 'Typed text on the page:\n' + typed.slice(0, 1500) + '\n' : '')
+          + 'Identify the physics concept, then write short English search queries (2 to 4 words each) that will find good media on Wikimedia Commons.\n'
+          + 'Reply in exactly this format and nothing else:\n@@TOPIC\n(the concept in Thai, one short line)\n@@IMAGES\n(2 or 3 queries for diagrams or photos, one per line)\n@@GIFS\n(1 or 2 queries for animations, one per line)\n@@VIDEOS\n(1 or 2 queries for videos, one per line)';
+        const res = await AI.run('read', prompt, img ? { images: [img.blob] } : {});
+        const parts = sections(res.text);
+        const lines = (k) => (sec(parts, k) || '').split('\n').map((x) => x.replace(/^[-*\d.\s]+/, '').trim()).filter((x) => /^[\x20-\x7E]{3,60}$/.test(x)).slice(0, 3);
+        topic = (sec(parts, 'TOPIC') || '').split('\n')[0].trim().slice(0, 80);
+        q = { img: lines('IMAGES'), gif: lines('GIFS'), video: lines('VIDEOS') };
+      }
+    } catch (e) { /* fall back to keywords below */ }
+  }
+  if (!q.img.length && !q.gif.length && !q.video.length) {
+    const g = guessQueries(typed + ' ' + ($('#mQuery').value || ''));
+    if (!g.length) {
+      if (my !== MD.busy) return;
+      out.innerHTML = '<div class="note">' + (AI.ready('read') ? 'ยังอ่านหัวข้อจากหน้านี้ไม่ได้' : 'การจัดชุดอัตโนมัติจากลายมือต้องเปิดผู้ช่วย AI ในเมนู') + ' พิมพ์หัวข้อในแท็บ "ค้นจากเว็บ" แทนได้</div>';
+      return;
+    }
+    q = { img: g.slice(0, 2), gif: g.slice(0, 1), video: g.slice(0, 1) };
+    topic = topic || g[0];
+  }
+  const want = MD.kind;
+  const [imgs, gifs, vids] = await Promise.all([
+    want === 'all' || want === 'img' ? searchMedia(q.img, ['drawing', 'bitmap'], 5) : [],
+    want === 'all' || want === 'gif' ? searchMedia(q.gif.length ? q.gif : q.img.slice(0, 1), ['gif'], 6) : [],
+    want === 'all' || want === 'video' ? searchMedia(q.video.length ? q.video : q.img.slice(0, 1), ['video'], 6) : []
+  ]);
+  if (my !== MD.busy) return;
+  MD.lastAuto = { topic, q };
+  head.textContent = topic ? 'หัวข้อที่อ่านได้: ' + topic : '';
+  out.innerHTML = '';
+  const block = (title, list, empty) => { const h = document.createElement('h3'); h.textContent = title + (list.length ? ' (' + list.length + ')' : ''); out.appendChild(h); out.appendChild(mediaGrid(list.slice(0, 12), empty)); };
+  if (want === 'all' || want === 'img') block('รูปและแผนภาพ', imgs, 'ไม่พบรูปที่ตรงหัวข้อ');
+  if (want === 'all' || want === 'gif') block('ภาพเคลื่อนไหว GIF', gifs, 'ไม่พบ GIF ที่ตรงหัวข้อ');
+  if (want === 'all' || want === 'video') block('วิดีโอ', vids, 'ไม่พบวิดีโอที่ตรงหัวข้อ');
+}
+function openMedia(tab) {
+  closeSheets(); MD.tab = tab || MD.tab; MD.lastAuto = null;
+  $('#mediaSheet').hidden = false; renderMediaTab();
+}
+document.querySelectorAll('#mTabs button').forEach((b) => { b.onclick = () => { MD.tab = b.dataset.t; renderMediaTab(); }; });
+document.querySelectorAll('#mKinds button').forEach((b) => { b.onclick = () => { MD.kind = b.dataset.k; renderMediaTab(); if (MD.tab === 'web' && $('#mQuery').value.trim()) webMedia(); if (MD.tab === 'auto') autoMedia(); }; });
+$('#mGo').onclick = webMedia;
+$('#mQuery').addEventListener('keydown', (e) => { if (e.key === 'Enter') webMedia(); });
+$('#mAgain').onclick = () => autoMedia();
+$('#mPickImg').onclick = () => { $('#mediaSheet').hidden = true; $('#fImg').value = ''; $('#fImg').click(); };
+$('#mPickVid').onclick = () => { $('#mediaSheet').hidden = true; $('#fVid').value = ''; $('#fVid').click(); };
+$('#mClose').onclick = () => { $('#mediaSheet').hidden = true; };
+$('#iMedia').onclick = () => openMedia('auto');
+$('#sMedia').onclick = () => openMedia('auto');
+
 /* ---------- cloud account UI ---------- */
 function openAuth() { closeSheets(); $('#aMsg').innerHTML = ''; $('#authSheet').hidden = false; setTimeout(() => $('#aEmail').focus({ preventScroll: true }), 50); }
 function authErr(e) {
@@ -3464,7 +3784,7 @@ function syncToggles() {
 }
 function hideLoading() { $('#loading').hidden = true; }
 function togglePages(v) { const el = $('#pages'); el.hidden = v === undefined ? !el.hidden : !v; $('#bPages').setAttribute('aria-pressed', el.hidden ? 'false' : 'true'); setTimeout(fit, 0); }
-function closeSheets() { $('#menu').hidden = true; $('#exportSheet').hidden = true; $('#insSheet').hidden = true; }
+function closeSheets() { $('#mediaSheet').hidden = true; $('#menu').hidden = true; $('#exportSheet').hidden = true; $('#insSheet').hidden = true; }
 
 /* ---------- wiring ---------- */
 document.querySelectorAll('.tool[data-tool]').forEach((b) => {
@@ -3693,8 +4013,13 @@ function setFocus(on) {
   document.body.classList.toggle('focus', on);
   $('#bExitFull').hidden = !on;
   const de = document.documentElement;
+  /* iPad: the browser's own fullscreen adds an X button and a pull-down-to-shrink gesture that fights the toolbar,
+     so there we only hide the app bars; installed from the home screen the app already fills the screen */
+  const ipad = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  let standalone = false; try { standalone = !!(navigator.standalone || matchMedia('(display-mode: standalone)').matches || matchMedia('(display-mode: fullscreen)').matches); } catch (e) { /* ignore */ }
   try {
-    if (on) { const req = de.requestFullscreen || de.webkitRequestFullscreen; if (req) { const r = req.call(de); if (r && r.catch) r.catch(() => {}); } }
+    if (on && (ipad || standalone)) { /* bars hidden by CSS only */ }
+    else if (on) { const req = de.requestFullscreen || de.webkitRequestFullscreen; if (req) { const r = req.call(de); if (r && r.catch) r.catch(() => {}); } }
     else if (document.fullscreenElement || document.webkitFullscreenElement) { const ex = document.exitFullscreen || document.webkitExitFullscreen; if (ex) { const r = ex.call(document); if (r && r.catch) r.catch(() => {}); } }
   } catch (e) { /* the bars still hide */ }
   setTimeout(() => { fit(); placeDock(); }, 120);
@@ -3722,6 +4047,7 @@ function setDockPos(fx, fy) {
 (function dockDrag() {
   const g = $('#dockGrip'), d = $('#dock');
   let drag = null, lastTap = 0;
+  g.addEventListener('touchstart', (e) => { e.preventDefault(); }, { passive: false });
   g.addEventListener('pointerdown', (e) => {
     e.preventDefault(); closePops();
     const r = d.getBoundingClientRect();
