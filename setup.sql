@@ -63,3 +63,57 @@ create policy "shares: anyone with the link can read" on public.shares for selec
 create policy "shares: owner writes" on public.shares for all to authenticated using (owner = auth.uid()) with check (owner = auth.uid());
 grant select on public.shares to anon;
 grant select, insert, update, delete on public.shares to authenticated;
+
+-- 6) งานมอบหมายและการส่งงาน (ผู้เรียนส่งได้โดยไม่ต้องมีบัญชี เฉพาะงานที่เปิดรับ ครูเจ้าของงานเท่านั้นที่เห็นงานที่ส่ง)
+create table if not exists public.assignments (
+  id text primary key,
+  owner uuid not null default auth.uid() references auth.users (id) on delete cascade,
+  title text,
+  data jsonb not null,
+  due timestamptz,
+  open boolean not null default true,
+  created_at timestamptz not null default now()
+);
+alter table public.assignments enable row level security;
+drop policy if exists "assignments: read with the link" on public.assignments;
+drop policy if exists "assignments: owner writes" on public.assignments;
+create policy "assignments: read with the link" on public.assignments for select to anon, authenticated using (true);
+create policy "assignments: owner writes" on public.assignments for all to authenticated using (owner = auth.uid()) with check (owner = auth.uid());
+grant select on public.assignments to anon;
+grant select, insert, update, delete on public.assignments to authenticated;
+
+create table if not exists public.submissions (
+  id text primary key,
+  assignment text not null references public.assignments (id) on delete cascade,
+  name text not null,
+  data jsonb not null,
+  created_at timestamptz not null default now()
+);
+alter table public.submissions enable row level security;
+drop policy if exists "submissions: hand in to an open assignment" on public.submissions;
+drop policy if exists "submissions: teacher reads" on public.submissions;
+drop policy if exists "submissions: teacher marks" on public.submissions;
+drop policy if exists "submissions: teacher deletes" on public.submissions;
+create policy "submissions: hand in to an open assignment" on public.submissions for insert to anon, authenticated
+  with check (exists (select 1 from public.assignments a where a.id = assignment and a.open));
+create policy "submissions: teacher reads" on public.submissions for select to authenticated
+  using (exists (select 1 from public.assignments a where a.id = assignment and a.owner = auth.uid()));
+create policy "submissions: teacher marks" on public.submissions for update to authenticated
+  using (exists (select 1 from public.assignments a where a.id = assignment and a.owner = auth.uid()));
+create policy "submissions: teacher deletes" on public.submissions for delete to authenticated
+  using (exists (select 1 from public.assignments a where a.id = assignment and a.owner = auth.uid()));
+grant insert on public.submissions to anon;
+grant select, insert, update, delete on public.submissions to authenticated;
+
+insert into storage.buckets (id, name, public, file_size_limit)
+values ('burin-sub', 'burin-sub', false, 10485760)
+on conflict (id) do update set public = false, file_size_limit = 10485760;
+drop policy if exists "homework files: hand in" on storage.objects;
+drop policy if exists "homework files: teacher reads" on storage.objects;
+drop policy if exists "homework files: teacher deletes" on storage.objects;
+create policy "homework files: hand in" on storage.objects for insert to anon, authenticated
+  with check (bucket_id = 'burin-sub' and exists (select 1 from public.assignments a where a.id = (storage.foldername(name))[1] and a.open));
+create policy "homework files: teacher reads" on storage.objects for select to authenticated
+  using (bucket_id = 'burin-sub' and exists (select 1 from public.assignments a where a.id = (storage.foldername(name))[1] and a.owner = auth.uid()));
+create policy "homework files: teacher deletes" on storage.objects for delete to authenticated
+  using (bucket_id = 'burin-sub' and exists (select 1 from public.assignments a where a.id = (storage.foldername(name))[1] and a.owner = auth.uid()));

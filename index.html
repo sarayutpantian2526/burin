@@ -550,7 +550,7 @@ details.qsopt[open] { gap: 10px; }
 .sonly { display: none; }
 body.role-student .sonly { display: inline-flex; }
 body.role-student #bLive, body.role-student #bAI, body.role-student #bPresent, body.role-student #fqAI,
-body.role-student #exTabs button[data-t="build"], body.role-student #exTabs button[data-t="sets"], body.role-student #bTray, body.role-student #sKey, body.role-student #exTabs button[data-t="analysis"], body.role-student #exTabs button[data-t="bank"], body.role-student #exTabs button[data-t="grades"] { display: none !important; }
+body.role-student #exTabs button[data-t="build"], body.role-student #exTabs button[data-t="sets"], body.role-student #bTray, body.role-student #sKey, body.role-student #exTabs button[data-t="analysis"], body.role-student #exTabs button[data-t="bank"], body.role-student #exTabs button[data-t="grades"], body.role-student #exTabs button[data-t="hw"] { display: none !important; }
 body.guest #roleSeg, body.guest #bJoin { display: none !important; }
 .gwrap { overflow-x: auto; }
 .extab.grades td, .extab.grades th { text-align: center; white-space: nowrap; }
@@ -587,6 +587,13 @@ body.guest #roleSeg, body.guest #bJoin { display: none !important; }
 body.present .peekcard { display: none !important; }
 .pgchips { max-height: 120px; overflow-y: auto; }
 .note.advice { background: var(--accent-soft); color: var(--fg); }
+.hwstudent { position: fixed; inset: 0; z-index: 30; background: var(--bg); overflow-y: auto; padding: max(16px, env(safe-area-inset-top, 0px)) 14px 40px; }
+.hwpanel { max-width: 760px; margin: 0 auto; display: flex; flex-direction: column; gap: 10px; }
+.hwpanel h2 { margin: 6px 0; }
+.hwfiles { display: flex; flex-wrap: wrap; gap: 8px; }
+.hwfiles img { width: 160px; height: 200px; object-fit: cover; border-radius: 10px; border: 1px solid var(--line); }
+.pdfchip { display: inline-block; padding: 6px 10px; border-radius: 10px; background: var(--accent-soft); color: var(--accent); font-size: 13px; }
+.hwfile { font: inherit; }
 .exttl { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .exttl h2 { margin-right: auto; }
 .exwho { flex-direction: row; align-items: center; gap: 6px; }
@@ -1011,6 +1018,15 @@ body.present .peekcard { display: none !important; }
     <div class="note">แต่ละหน้าของ PDF เป็นพื้นหลังที่ล็อกไว้ เขียน วาด แทรกกล่องข้อความทับได้โดยไม่เลื่อนหลุด นำเข้าได้ครั้งละไม่เกิน 60 หน้า</div>
   </div>
 </div>
+<div class="sheet" id="hwSheet" hidden>
+  <div class="panel" role="dialog" aria-label="มอบหมายการบ้าน">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><h2>มอบหมายเป็นการบ้าน</h2><button class="btn" id="hwClose">ปิด</button></div>
+    <div id="hwBody" class="exbody"></div>
+  </div>
+</div>
+<div class="hwstudent" id="hwStudent" hidden>
+  <div class="hwpanel"><h2 id="hwsTitle">การบ้าน</h2><div id="hwsBody" class="exbody"></div></div>
+</div>
 <div class="sheet" id="hoSheet" hidden>
   <div class="panel" role="dialog" aria-label="ส่งออกเอกสารประกอบการสอน">
     <div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><h2>เอกสารประกอบการสอน</h2><button class="btn" id="hoClose">ปิด</button></div>
@@ -1064,7 +1080,7 @@ body.present .peekcard { display: none !important; }
 <div class="sheet" id="examSheet" hidden>
   <div class="panel wide" role="dialog" aria-label="ฝึกโจทย์แข่งขัน">
     <div class="exttl"><h2>ฝึกโจทย์แข่งขัน</h2><label class="field exwho"><span>ผู้ฝึก</span><select id="exWho"></select></label><span id="exAdd" hidden class="mrow"><input id="exNew" placeholder="ชื่อผู้ฝึก" maxlength="40"><button class="btn" id="exAddOk" type="button">เพิ่ม</button></span><button class="btn" id="exClose">ปิด</button></div>
-    <div class="seg" id="exTabs" role="group" aria-label="ส่วนของการฝึก"><button data-t="sets">ชุดโจทย์</button><button data-t="build">จากหน้านี้</button><button data-t="practice">ฝึกและสอบ</button><button data-t="stats">ผลและจุดอ่อน</button><button data-t="analysis">วิเคราะห์ข้อสอบ</button><button data-t="grades">สมุดคะแนน</button><button data-t="bank">คลังโจทย์</button></div>
+    <div class="seg" id="exTabs" role="group" aria-label="ส่วนของการฝึก"><button data-t="sets">ชุดโจทย์</button><button data-t="build">จากหน้านี้</button><button data-t="practice">ฝึกและสอบ</button><button data-t="stats">ผลและจุดอ่อน</button><button data-t="analysis">วิเคราะห์ข้อสอบ</button><button data-t="grades">สมุดคะแนน</button><button data-t="hw">การบ้าน</button><button data-t="bank">คลังโจทย์</button></div>
     <div id="exBody" class="exbody"></div>
   </div>
 </div>
@@ -6209,6 +6225,7 @@ function exRender() {
   else if (EX.tab === 'stats') exRenderStats(body);
   else if (EX.tab === 'analysis') exRenderAnalysis(body);
   else if (EX.tab === 'grades') exRenderGrades(body);
+  else if (EX.tab === 'hw') exRenderHW(body);
   else exRenderBank(body);
 }
 function exRenderSetup(body) {
@@ -7691,8 +7708,242 @@ function makeHandout() {
   else { saveFile((o.title || 'เอกสาร') + '.html', new Blob([html], { type: 'text/html' })); $('#hoMsg').innerHTML = '<div class="note">เบราว์เซอร์ไม่ให้เปิดหน้าต่างใหม่ จึงบันทึกเป็นไฟล์ให้แทน เปิดไฟล์แล้วสั่งพิมพ์ได้</div>'; }
 }
 
+/* ---------- homework: teacher assigns a set, students answer online and/or hand in photos or files of paper work; checked and analysed automatically ---------- */
+const HW = { list: [], subs: {}, cur: null };
+const hwLink = (id) => location.origin + location.pathname + '#hw=' + id;
+function hwSqlHint(e) { const m = String((e && (e.message || e.code)) || e); return /assignments|submissions|relation|schema cache|42P01|PGRST205|bucket/i.test(m) ? 'ยังไม่มีตารางสำหรับการบ้าน เปิด Supabase เมนู SQL Editor แล้วรันส่วนที่ 6 ของไฟล์ setup.sql (งานมอบหมายและการส่งงาน) ครั้งเดียว' : 'ไม่สำเร็จ ' + m; }
+/* ----- teacher: create ----- */
+function openAssign(set) {
+  if (CLOUD.state !== 'on') { toast('การมอบหมายงานต้องเข้าระบบคลาวด์ก่อน', 3000); return; }
+  closeSheets(); $('#hwSheet').hidden = false; HW.set = set;
+  const b = $('#hwBody'); b.innerHTML = '';
+  b.appendChild(exEl('div', 'note', 'ผู้เรียนเปิดลิงก์หรือสแกน QR แล้วทำได้เลย ไม่ต้องมีบัญชี ส่งได้ทั้งตอบในแอป และถ่ายรูปกระดาษคำตอบหรือแนบไฟล์ ระบบตรวจตัวเลือกให้ทันที ส่วนรูปและไฟล์ให้ AI อ่านและตรวจเมื่อกดตรวจอัตโนมัติ'));
+  const f = exEl('div', 'exform');
+  f.innerHTML = '<label class="field"><span>ชื่องาน</span><input id="hwTitle" maxlength="120"></label><label class="field"><span>กำหนดส่ง (เว้นว่างได้)</span><input id="hwDue" type="datetime-local"></label>';
+  b.appendChild(f); $('#hwTitle').value = 'การบ้าน ' + set.title.replace(/^ชุด /, '');
+  const opt = { online: true, files: true, instant: false };
+  HW.opt = opt;
+  exChips(b, [['online', 'ให้ตอบตัวเลือกในแอป'], ['files', 'ให้ส่งรูปถ่ายหรือไฟล์งานกระดาษ'], ['instant', 'ให้เห็นคะแนนและเฉลยทันทีหลังส่ง']], (v) => !!opt[v], (v) => { opt[v] = !opt[v]; openAssignRefresh(); });
+  b.appendChild(exEl('div', 'note small', 'ถ้าเปิด "ให้เห็นคะแนนและเฉลยทันที" เฉลยจะอยู่ในงานที่ผู้เรียนเปิด เหมาะกับแบบฝึก ไม่เหมาะกับการสอบ'));
+  const go = exEl('button', 'btn solid', 'มอบหมายงาน ' + set.qs.length + ' ข้อ'); go.onclick = createAssignment; b.appendChild(go);
+  const out = exEl('div', ''); out.id = 'hwOut'; b.appendChild(out);
+}
+function openAssignRefresh() { const o = HW.opt; document.querySelectorAll('#hwBody .chips .chip').forEach((c, i) => c.setAttribute('aria-pressed', [o.online, o.files, o.instant][i] ? 'true' : 'false')); }
+async function createAssignment() {
+  const set = HW.set, o = HW.opt, out = $('#hwOut');
+  if (!o.online && !o.files) { out.innerHTML = '<div class="note err">เลือกอย่างน้อยหนึ่งวิธีส่งงาน</div>'; return; }
+  const id = Array.from({ length: 9 }, () => CODE_ABC[Math.floor(Math.random() * CODE_ABC.length)]).join('').toLowerCase();
+  const due = $('#hwDue').value ? new Date($('#hwDue').value).toISOString() : null;
+  const qs = set.qs.map((q) => { const x = { id: q.id, t: q.t, ch: q.ch, q: q.q, c: q.c, d: q.d, fig: q.fig }; if (o.instant) { x.a = q.a || 0; x.e = q.e || ''; } return x; });
+  const data = { title: $('#hwTitle').value.trim() || set.title, setId: set.id, qs, online: o.online, files: o.files, instant: o.instant, teacher: (S.nb && S.nb.title) || '' };
+  try {
+    const { error } = await CLOUD.client.from('assignments').insert({ id, owner: CLOUD.user.id, title: data.title, data, due, open: true });
+    if (error) throw error;
+    out.innerHTML = '<div class="livetop"><div class="qr" id="hwQR"></div><div class="lcode"><span>ลิงก์การบ้าน ส่งในกลุ่มแชตของห้องได้เลย</span><small>' + esc(hwLink(id)) + '</small></div></div>';
+    const cp = exEl('button', 'btn', 'คัดลอกลิงก์'); cp.onclick = () => navigator.clipboard && navigator.clipboard.writeText(hwLink(id)).then(() => toast('คัดลอกแล้ว', 1200)).catch(() => {}); out.appendChild(cp);
+    const see = exEl('button', 'btn', 'ดูงานที่ส่งเข้ามา'); see.onclick = () => { $('#hwSheet').hidden = true; EX.tab = 'hw'; HW.cur = id; openExam(); }; out.appendChild(see);
+    drawQR($('#hwQR'), hwLink(id), 160);
+  } catch (e) { out.innerHTML = '<div class="note err">' + esc(hwSqlHint(e)) + '</div>'; }
+}
+/* ----- teacher: list, check, analyse ----- */
+async function hwLoad() {
+  const { data, error } = await CLOUD.client.from('assignments').select('id,title,data,due,open,created_at').eq('owner', CLOUD.user.id).order('created_at', { ascending: false });
+  if (error) throw error; HW.list = data || []; return HW.list;
+}
+async function hwLoadSubs(aid) {
+  const { data, error } = await CLOUD.client.from('submissions').select('id,name,data,created_at').eq('assignment', aid).order('created_at', { ascending: true });
+  if (error) throw error;
+  const latest = new Map(); for (const s of data || []) latest.set(s.name.trim(), s); /* last hand-in per learner */
+  HW.subs[aid] = [...latest.values()]; return HW.subs[aid];
+}
+function hwKeyFor(a, q) { if (q.a != null) return q.a; const set = setById(a.data.setId); const sq = set && set.qs.find((x) => x.id === q.id); return sq ? (sq.a || 0) : null; }
+function hwScore(a, s) {
+  const qs = a.data.qs, res = [];
+  for (const q of qs) {
+    const key = hwKeyFor(a, q), on = s.data.answers && s.data.answers[q.id], ai = s.data.ai && s.data.ai.q && s.data.ai.q[q.id], man = s.data.manual && s.data.manual[q.id];
+    let ok = null, src = '';
+    if (man != null) { ok = man; src = 'ครูตัดสิน'; }
+    else if (on && on[0] >= 0 && key != null) { ok = on[0] === key ? 1 : 0; src = 'ตอบในแอป'; }
+    else if (ai) { ok = ai.score; src = 'AI อ่านจากกระดาษ'; }
+    res.push({ q, key, ok, src, choice: on ? on[0] : (ai && ai.choice != null ? ai.choice : -1), note: ai && ai.note });
+  }
+  const done = res.filter((r) => r.ok != null);
+  return { res, got: done.reduce((x, r) => x + r.ok, 0), n: qs.length, checked: done.length };
+}
+async function exRenderHW(body) {
+  if (CLOUD.state !== 'on') { body.appendChild(exEl('div', 'note', 'การบ้านใช้คลาวด์ของอาจารย์ เข้าระบบก่อน')); return; }
+  body.appendChild(exEl('div', 'note', 'มอบหมายงานได้จากแท็บชุดโจทย์ กด "มอบหมายเป็นการบ้าน" ที่ชุดนั้น'));
+  let list; try { list = await hwLoad(); } catch (e) { body.appendChild(exEl('div', 'note err', esc(hwSqlHint(e)))); return; }
+  if (!list.length) { body.appendChild(exEl('div', 'note', 'ยังไม่มีงานที่มอบหมาย')); return; }
+  const a = list.find((x) => x.id === HW.cur) || list[0]; HW.cur = a.id;
+  const sel = document.createElement('select'); sel.className = 'traysel'; for (const x of list) { const o = document.createElement('option'); o.value = x.id; o.textContent = x.title + (x.open ? '' : ' (ปิดรับแล้ว)'); sel.appendChild(o); } sel.value = a.id; sel.onchange = () => { HW.cur = sel.value; exRender(); }; body.appendChild(sel);
+  const info = exEl('div', 'exch', esc(hwLink(a.id)) + (a.due ? ' กำหนดส่ง ' + new Date(a.due).toLocaleString('th-TH', { dateStyle: 'medium', timeStyle: 'short' }) : ''));
+  body.appendChild(info);
+  let subs; try { subs = await hwLoadSubs(a.id); } catch (e) { body.appendChild(exEl('div', 'note err', esc(hwSqlHint(e)))); return; }
+  const row = exEl('div', 'row2');
+  const tog = exEl('button', 'btn', a.open ? 'ปิดรับงาน' : 'เปิดรับงานอีกครั้ง'); tog.onclick = async () => { await CLOUD.client.from('assignments').update({ open: !a.open }).eq('id', a.id); exRender(); }; row.appendChild(tog);
+  const needAIChk = subs.filter((s) => (s.data.files || []).length && !s.data.ai);
+  const chk = exEl('button', 'btn solid', 'ตรวจรูปและไฟล์ด้วย AI (' + needAIChk.length + ' คน)'); chk.disabled = !needAIChk.length; chk.onclick = () => hwCheckAll(a, needAIChk); row.appendChild(chk);
+  const imp = exEl('button', 'btn', 'นำคะแนนเข้าสมุดคะแนน'); imp.onclick = () => hwImport(a, subs); row.appendChild(imp);
+  const cp = exEl('button', 'btn', 'คัดลอกลิงก์'); cp.onclick = () => navigator.clipboard && navigator.clipboard.writeText(hwLink(a.id)).then(() => toast('คัดลอกแล้ว', 1200)).catch(() => {}); row.appendChild(cp);
+  body.appendChild(row);
+  const msg = exEl('div', ''); msg.id = 'hwMsg'; body.appendChild(msg);
+  if (!subs.length) { body.appendChild(exEl('div', 'note', 'ยังไม่มีใครส่ง')); return; }
+  body.appendChild(exEl('h3', '', 'ส่งแล้ว ' + subs.length + ' คน'));
+  const tb = exEl('table', 'extab grades'); let h = '<thead><tr><th>ผู้เรียน</th><th>ส่งเมื่อ</th><th>คะแนน</th><th>วิธีส่ง</th><th></th></tr></thead><tbody>';
+  subs.forEach((s, i) => { const sc = hwScore(a, s); h += '<tr><td>' + esc(s.name) + '</td><td>' + new Date(s.created_at).toLocaleString('th-TH', { dateStyle: 'short', timeStyle: 'short' }) + '</td><td class="' + (sc.checked < sc.n ? 'na' : sc.got / sc.n < 0.5 ? 'lo' : sc.got / sc.n >= 0.8 ? 'hi' : '') + '">' + (sc.checked ? +sc.got.toFixed(1) + '/' + sc.n : 'รอตรวจ') + (sc.checked && sc.checked < sc.n ? ' (ตรวจแล้ว ' + sc.checked + ' ข้อ)' : '') + '</td><td>' + [s.data.answers && Object.keys(s.data.answers).length ? 'ตอบในแอป' : '', (s.data.files || []).length ? 'ไฟล์ ' + s.data.files.length : ''].filter(Boolean).join(' และ ') + '</td><td><button class="btn" data-i="' + i + '">ดูงาน</button></td></tr>'; });
+  tb.innerHTML = h + '</tbody>';
+  tb.querySelectorAll('button[data-i]').forEach((b) => { b.onclick = () => hwDetail(a, subs[+b.dataset.i]); });
+  const wrap = exEl('div', 'gwrap'); wrap.appendChild(tb); body.appendChild(wrap);
+  /* class-wide analysis for this homework */
+  const per = a.data.qs.map((q) => { let n = 0, ok = 0; for (const s of subs) { const r = hwScore(a, s).res.find((x) => x.q.id === q.id); if (r && r.ok != null) { n++; ok += r.ok; } } return { q, n, p: n ? ok / n : null }; });
+  body.appendChild(exEl('h3', '', 'ภาพรวมรายข้อ'));
+  const pt = exEl('div', 'exper');
+  per.forEach((x, i) => pt.appendChild(exEl('div', '', '<span>ข้อ ' + (i + 1) + ' <small>' + esc(String(x.q.q).replace(/\$[^$]*\$/g, '…').slice(0, 50)) + '</small></span><i><s style="width:' + Math.round((x.p || 0) * 100) + '%"></s></i><b>' + (x.p == null ? '-' : Math.round(x.p * 100) + '%') + '</b>')));
+  body.appendChild(pt);
+  const hard = per.filter((x) => x.p != null && x.p < 0.5);
+  if (hard.length) body.appendChild(exEl('div', 'note advice', '<b>ควรสอนซ้ำ</b> ข้อ ' + hard.map((x) => per.indexOf(x) + 1).join(', ') + ' ผู้เรียนตอบถูกไม่ถึงครึ่ง' + (hard[0].q.e ? ' เช่นข้อ ' + (per.indexOf(hard[0]) + 1) + ' ประเด็นสำคัญคือ ' + mdToHtml(hard[0].q.e) : '')));
+  typeset(body);
+}
+async function hwFileBlobs(s) {
+  const out = [];
+  for (const path of (s.data.files || []).slice(0, 6)) {
+    const { data, error } = await CLOUD.client.storage.from('burin-sub').download(path); if (error || !data) continue;
+    if (/pdf/i.test(data.type) || /\.pdf$/i.test(path)) {
+      try { await loadLib('pdfjs'); window.pdfjsLib.GlobalWorkerOptions.workerSrc = LIBS.pdfw; const doc = await window.pdfjsLib.getDocument({ data: await data.arrayBuffer() }).promise;
+        for (let i = 1; i <= Math.min(doc.numPages, 4); i++) { const pg = await doc.getPage(i), v = pg.getViewport({ scale: 1400 / pg.getViewport({ scale: 1 }).width }); const cv = document.createElement('canvas'); cv.width = v.width; cv.height = v.height; const c = cv.getContext('2d'); c.fillStyle = '#FFF'; c.fillRect(0, 0, cv.width, cv.height); await pg.render({ canvasContext: c, viewport: v }).promise; out.push(await new Promise((r) => cv.toBlob(r, 'image/jpeg', 0.85))); }
+      } catch (e) { /* unreadable pdf */ }
+    } else out.push(data);
+  }
+  return out;
+}
+async function hwCheckOne(a, s) {
+  if (!AI.ready('read')) throw { code: 'ai_off' };
+  const imgs = await hwFileBlobs(s); if (!imgs.length) throw { code: 'empty_text', why: 'เปิดไฟล์ที่ส่งมาไม่ได้' };
+  const L = 'กขคง';
+  const qs = a.data.qs.map((q, i) => { const k = hwKeyFor(a, q); return (i + 1) + ') ' + q.q + '\n   choices: ' + q.c.map((c, j) => L[j] + '. ' + c).join(' | ') + (k != null ? '\n   correct: ' + L[k] + ' (' + q.c[k] + ')' : ''); }).join('\n');
+  const prompt = 'These images are a Thai student\'s handed-in paper work for this physics assignment:\n' + qs + '\n'
+    + 'For every question, find what the student answered (a marked choice letter ก ข ค ง, or a final numeric answer, or their working). Compare with the correct answer. Give score 1 if correct, 0 if wrong or missing, or 0.5 if the method is right but the final answer is wrong. Add a short Thai note on the mistake or the good point.\n'
+    + 'Reply in exactly this format and nothing else, one block per question:\n@@Q number\nCHOICE: letter or -\nSCORE: 1 or 0.5 or 0\nNOTE: short Thai note\nThen finish with:\n@@SUMMARY\n(2 to 3 short Thai sentences: what this student understands and what to improve)';
+  const ctl = new AbortController(), lim = setTimeout(() => ctl.abort(), 150000);
+  let r; try { r = await AI.run('read', prompt, { images: imgs, signal: ctl.signal }); } finally { clearTimeout(lim); }
+  const q = {}; let summary = '';
+  for (const p of sections(r.text)) {
+    if (p.key === 'SUMMARY') { summary = (p.text || p.arg || '').trim(); continue; }
+    if (p.key !== 'Q') continue;
+    const n = parseInt(p.arg, 10) - 1, qq = a.data.qs[n]; if (!qq) continue;
+    const g = (k) => { const m = (p.text || '').match(new RegExp('^\\s*' + k + '\\s*:\\s*(.*)$', 'mi')); return m ? m[1].trim() : ''; };
+    const ch = L.indexOf(g('CHOICE').charAt(0)), sc = parseFloat(g('SCORE'));
+    q[qq.id] = { choice: ch, score: isFinite(sc) ? clamp(sc, 0, 1) : 0, note: g('NOTE') };
+  }
+  const ai = { q, summary, at: now() };
+  const data = Object.assign({}, s.data, { ai });
+  const { error } = await CLOUD.client.from('submissions').update({ data }).eq('id', s.id); if (error) throw error;
+  s.data = data; return ai;
+}
+async function hwCheckAll(a, list) {
+  const box = $('#hwMsg'); let done = 0, bad = 0;
+  const B = waitCard(box, 'AI กำลังตรวจงานกระดาษ', list.map((s) => s.name).slice(0, 8).concat(list.length > 8 ? ['และอีก ' + (list.length - 8) + ' คน'] : []));
+  for (let i = 0; i < list.length; i++) { if (B.cancelled) break; B.step(Math.min(i, 8)); try { await hwCheckOne(a, list[i]); done++; } catch (e) { bad++; } }
+  B.stop(); toast('ตรวจแล้ว ' + done + ' คน' + (bad ? ' ไม่สำเร็จ ' + bad + ' คน ลองใหม่ได้' : ''), 3000); exRender();
+}
+async function hwImport(a, subs) {
+  let n = 0;
+  for (const s of subs) {
+    const sc = hwScore(a, s); if (!sc.checked) continue;
+    const key = 'hw_' + a.id + '_' + s.name.trim().replace(/[^\wก-๙]/g, '_').slice(0, 30);
+    const items = sc.res.filter((r) => r.ok != null).map((r) => [r.q.id, (r.q.t || 'olymp') + ':' + (r.q.ch || 0), r.ok >= 1 ? 1 : 0, 0, r.choice]);
+    const rec = { key, who: s.name.trim(), at: Date.parse(s.created_at) || now(), setId: a.data.setId, title: a.title, mode: 'homework', n: items.length, ok: items.filter((x) => x[2]).length, items };
+    EX.att = EX.att.filter((x) => x.key !== key); EX.att.push(rec); await S.store.set('exa/' + key, rec).catch(() => {});
+    if (!EX.people.includes(rec.who)) { EX.people.push(rec.who); }
+    n++;
+  }
+  exSavePeople(); toast('นำคะแนน ' + n + ' คนเข้าสมุดคะแนนแล้ว ดูการวิเคราะห์รายข้อได้ที่แท็บวิเคราะห์ข้อสอบ', 3200);
+}
+async function hwDetail(a, s) {
+  const box = $('#exBody'); box.innerHTML = ''; const L = 'กขคง';
+  const back = exEl('button', 'btn', 'กลับไปรายชื่อ'); back.onclick = () => exRender(); box.appendChild(back);
+  const sc = hwScore(a, s);
+  box.appendChild(exEl('div', 'exscore', '<b>' + +sc.got.toFixed(1) + '<small> / ' + sc.n + '</small></b><span>' + esc(s.name) + ' ส่งเมื่อ ' + new Date(s.created_at).toLocaleString('th-TH') + '</span>'));
+  if (s.data.ai && s.data.ai.summary) box.appendChild(exEl('div', 'note advice', '<b>ความเห็นจาก AI</b> ' + mdToHtml(s.data.ai.summary)));
+  const files = s.data.files || [];
+  if (files.length) {
+    const g = exEl('div', 'hwfiles'); box.appendChild(g);
+    for (const p of files) { const { data } = await CLOUD.client.storage.from('burin-sub').createSignedUrl(p, 3600); if (!data) continue; const u = data.signedUrl; g.appendChild(exEl('a', '', /\.pdf$/i.test(p) ? '<span class="pdfchip">เปิดไฟล์ PDF</span>' : '<img alt="งานที่ส่ง" src="' + esc(u) + '">')).href = u; g.lastChild.target = '_blank'; }
+    if (!s.data.ai) { const b = exEl('button', 'btn solid', 'ให้ AI ตรวจงานนี้'); b.onclick = async () => { b.disabled = true; b.textContent = 'กำลังตรวจ'; try { await hwCheckOne(a, s); hwDetail(a, s); } catch (e) { b.disabled = false; b.textContent = 'ให้ AI ตรวจงานนี้'; toast(aiErr(e), 4000); } }; box.appendChild(b); }
+  }
+  for (const r of sc.res) {
+    const i = sc.res.indexOf(r);
+    const d = exEl('div', 'exrev', '<div class="exq"><b>' + (i + 1) + '.</b> ' + mdToHtml(r.q.q) + '</div><div class="note">ตอบ ' + (r.choice >= 0 ? L[r.choice] + '. ' + mdToHtml(r.q.c[r.choice] || '') : 'ไม่พบคำตอบ') + (r.key != null ? ' เฉลย ' + L[r.key] : '') + (r.src ? ' (' + r.src + ')' : '') + '</div>' + (r.note ? '<div class="note">' + mdToHtml(r.note) + '</div>' : ''));
+    const row = exEl('div', 'row2');
+    for (const [v, t] of [[1, 'ให้ถูก'], [0.5, 'ให้ครึ่งคะแนน'], [0, 'ให้ผิด']]) { const b = exEl('button', 'btn' + (r.ok === v ? ' solid' : ''), t); b.onclick = async () => { const man = Object.assign({}, s.data.manual || {}, { [r.q.id]: v }); s.data = Object.assign({}, s.data, { manual: man }); await CLOUD.client.from('submissions').update({ data: s.data }).eq('id', s.id); hwDetail(a, s); }; row.appendChild(b); }
+    d.appendChild(row); box.appendChild(d);
+  }
+  typeset(box);
+}
+/* ----- student: open the homework link, answer, hand in ----- */
+async function openHomework(id) {
+  let sb; try { sb = await cloudClient(); } catch (e) { toast('เชื่อมต่อไม่ได้', 3000); return; }
+  const { data, error } = await sb.from('assignments').select('id,title,data,due,open').eq('id', id).maybeSingle();
+  $('#loading').hidden = true;
+  const box = $('#hwStudent'); box.hidden = false; const b = $('#hwsBody'); b.innerHTML = '';
+  if (error || !data) { b.appendChild(exEl('div', 'note err', 'ไม่พบงานนี้ ตรวจลิงก์อีกครั้ง')); return; }
+  const a = data, A = a.data, L = 'กขคง', st = { answers: {}, t0: now(), files: [] };
+  $('#hwsTitle').textContent = a.title;
+  if (a.due) b.appendChild(exEl('div', 'exch', 'กำหนดส่ง ' + new Date(a.due).toLocaleString('th-TH', { dateStyle: 'medium', timeStyle: 'short' })));
+  if (!a.open) { b.appendChild(exEl('div', 'note err', 'ผู้สอนปิดรับงานนี้แล้ว')); return; }
+  const nm = exEl('label', 'field', '<span>ชื่อ นามสกุล หรือ ชื่อเล่นกับเลขที่</span>'); const ni = document.createElement('input'); ni.maxLength = 60; ni.value = store_ls.get('tp-sname') || ''; nm.appendChild(ni); b.appendChild(nm);
+  A.qs.forEach((q, i) => {
+    const w = exEl('div', 'sqq', figHtml(q, 360) + '<div class="exq"><b>' + (i + 1) + '.</b> ' + mdToHtml(q.q) + '</div>');
+    if (A.online) {
+      const opts = exEl('div', 'exopts');
+      q.c.forEach((c, o) => { const btn = exEl('button', 'exopt', '<b>' + L[o] + '</b><span>' + mdToHtml(c) + '</span>'); btn.type = 'button'; btn.onclick = () => { st.answers[q.id] = [o, Math.round((now() - st.t0) / 1000)]; opts.querySelectorAll('.exopt').forEach((x, k) => x.classList.toggle('pick', k === o)); }; opts.appendChild(btn); });
+      w.appendChild(opts);
+    } else w.appendChild(exEl('div', 'note', q.c.map((c, o) => L[o] + '. ' + mdToHtml(c)).join('&nbsp;&nbsp;&nbsp; ')));
+    b.appendChild(w);
+  });
+  if (A.files) {
+    b.appendChild(exEl('h3', '', 'แนบรูปถ่ายกระดาษคำตอบหรือไฟล์'));
+    b.appendChild(exEl('div', 'note', 'ถ่ายรูปให้เห็นทั้งหน้า แสงพอ ตัวหนังสือชัด แนบได้หลายรูปหรือไฟล์ PDF รวมไม่เกิน 6 ไฟล์ ไฟล์ละไม่เกิน 10 MB'));
+    const fi = document.createElement('input'); fi.type = 'file'; fi.accept = 'image/*,application/pdf'; fi.multiple = true; fi.className = 'hwfile';
+    const lst = exEl('div', 'hwfiles');
+    fi.onchange = () => { for (const f of fi.files) if (st.files.length < 6 && f.size <= 10 * 1024 * 1024) st.files.push(f); lst.innerHTML = st.files.map((f) => '<span class="pdfchip">' + esc(f.name) + '</span>').join(''); fi.value = ''; };
+    b.appendChild(fi); b.appendChild(lst);
+  }
+  const res = exEl('div', '');
+  const go = exEl('button', 'btn solid', 'ส่งงาน'); go.onclick = async () => {
+    const name = ni.value.trim(); if (!name) { ni.focus(); toast('ใส่ชื่อก่อนส่ง', 1800); return; }
+    if (A.files && !A.online && !st.files.length) { toast('แนบรูปหรือไฟล์งานก่อนส่ง', 2200); return; }
+    store_ls.set('tp-sname', name); go.disabled = true;
+    const W8 = waitCard(res, 'กำลังส่งงาน', ['อัปโหลดรูปและไฟล์', 'บันทึกคำตอบ']);
+    try {
+      const sid = 'w' + uid(), paths = [];
+      for (let i = 0; i < st.files.length; i++) {
+        let f = st.files[i], ext = /pdf/i.test(f.type) ? 'pdf' : 'jpg';
+        if (ext === 'jpg') { try { const p = await prepImage(f); f = p.blob; ext = /png/.test(p.type) ? 'png' : 'jpg'; } catch (e) { /* send as is */ } }
+        const path = a.id + '/' + sid + '/' + (i + 1) + '.' + ext;
+        const { error: ue } = await sb.storage.from('burin-sub').upload(path, f, { contentType: ext === 'pdf' ? 'application/pdf' : (ext === 'png' ? 'image/png' : 'image/jpeg') });
+        if (ue) throw ue; paths.push(path);
+      }
+      W8.step(1);
+      const { error: ie } = await sb.from('submissions').insert({ id: sid, assignment: a.id, name, data: { answers: st.answers, files: paths, at: now() } });
+      if (ie) throw ie;
+      W8.stop(); res.innerHTML = '';
+      res.appendChild(exEl('div', 'note ok', 'ส่งงานเรียบร้อยแล้ว ' + esc(name) + (paths.length ? ' แนบ ' + paths.length + ' ไฟล์' : '')));
+      if (A.instant && A.online) {
+        let ok = 0; A.qs.forEach((q) => { const x = st.answers[q.id]; if (x && x[0] === q.a) ok++; });
+        res.appendChild(exEl('div', 'exscore', '<b>' + ok + '<small> / ' + A.qs.length + '</small></b><span>คะแนนส่วนที่ตอบในแอป</span>'));
+        A.qs.forEach((q, i) => { const x = st.answers[q.id]; const right = x && x[0] === q.a; res.appendChild(exEl('div', 'exrev', '<b>' + (i + 1) + '. ' + (right ? 'ถูก' : 'ยังไม่ถูก เฉลย ' + L[q.a]) + '</b>' + (right ? '' : '<div class="note">' + mdToHtml(q.e || '') + '</div>'))); });
+      }
+      go.hidden = true; typeset(res);
+    } catch (e) { W8.stop(); go.disabled = false; res.innerHTML = '<div class="note err">ส่งไม่สำเร็จ ลองอีกครั้ง ' + esc((e && e.message) || '') + '</div>'; }
+  };
+  b.appendChild(go); b.appendChild(res);
+  typeset(b);
+}
+
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793049743';
+const BUILD = '1793049912';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
@@ -7802,7 +8053,7 @@ function syncToggles() {
 }
 function hideLoading() { $('#loading').hidden = true; }
 function togglePages(v) { const el = $('#pages'); el.hidden = v === undefined ? !el.hidden : !v; $('#bPages').setAttribute('aria-pressed', el.hidden ? 'false' : 'true'); setTimeout(fit, 0); }
-function closeSheets() { $('#hoSheet').hidden = true; $('#pdfSheet').hidden = true; $('#qmSheet').hidden = true; $('#liveSheet').hidden = true; $('#sqSheet').hidden = true; $('#examSheet').hidden = true; $('#aiSetup').hidden = true; $('#labSheet').hidden = true; $('#simSheet').hidden = true; $('#mediaSheet').hidden = true; $('#menu').hidden = true; $('#exportSheet').hidden = true; $('#insSheet').hidden = true; }
+function closeSheets() { $('#hwSheet').hidden = true; $('#hoSheet').hidden = true; $('#pdfSheet').hidden = true; $('#qmSheet').hidden = true; $('#liveSheet').hidden = true; $('#sqSheet').hidden = true; $('#examSheet').hidden = true; $('#aiSetup').hidden = true; $('#labSheet').hidden = true; $('#simSheet').hidden = true; $('#mediaSheet').hidden = true; $('#menu').hidden = true; $('#exportSheet').hidden = true; $('#insSheet').hidden = true; }
 
 /* ---------- wiring ---------- */
 document.querySelectorAll('.tool[data-tool]').forEach((b) => {
@@ -8208,6 +8459,7 @@ $('#bTray').onclick = () => { if ($('#qtray').hidden) openTray(); else closeTray
 $('#bTrayClose').onclick = closeTray;
 $('#hoClose').onclick = () => { $('#hoSheet').hidden = true; };
 $('#hoGo').onclick = makeHandout;
+$('#hwClose').onclick = () => { $('#hwSheet').hidden = true; };
 $('#sDel').onclick = deleteSel; $('#sClose').onclick = clearSel;
 $('#bExport').onclick = () => { $('#expMsg').innerHTML = ''; $('#exportSheet').hidden = false; };
 $('#bExpClose').onclick = closeSheets;
@@ -8260,8 +8512,8 @@ async function boot() {
   renderTools(); renderLevels(); syncToggles(); fit(); updUndo();
   const C = window.claude && typeof window.claude.use === 'function' ? window.claude : null;
   renderAIAvail(C ? 'checking' : 'none');
-  const hs = (location.hash || '').replace('#', ''), mC = hs.match(/^class=([A-Z2-9]{6})$/i), mL = hs.match(/^lecture=([a-z0-9]{6,20})$/i);
-  S.student = !!(mC || mL);
+  const hs = (location.hash || '').replace('#', ''), mC = hs.match(/^class=([A-Z2-9]{6})$/i), mL = hs.match(/^lecture=([a-z0-9]{6,20})$/i), mH = hs.match(/^hw=([a-z0-9]{6,20})$/i);
+  S.student = !!(mC || mL || mH);
   const db = C && !S.student ? await C.use('db').catch(() => null) : null;
  if (db) S.store = makeDbStore(db);
   else if (CLOUD.ready() && !S.student) {
@@ -8291,6 +8543,7 @@ async function boot() {
   if (!S.student) { watchLiveDoc(); aiCloudWatch(); }
   if (mC && CLOUD.ready()) studentJoin(mC[1].toUpperCase());
   else if (mL && CLOUD.ready()) openLecture(mL[1].toLowerCase());
+  else if (mH && CLOUD.ready()) openHomework(mH[1].toLowerCase());
   let wantPresent = store_ls.get('tp-present') === '1';
   try { if ((location.hash || '').replace('#', '') === 'present') wantPresent = true; } catch (e) {}
   if (wantPresent) enterPresent();
