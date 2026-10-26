@@ -564,7 +564,7 @@ body.guest #roleSeg, body.guest #bJoin { display: none !important; }
 .rolecard b { font-size: 17px; }
 .rolecard span { font-size: 13px; color: var(--muted); line-height: 1.5; }
 .rolecard:hover { border-color: var(--accent); }
-#roleSeg { margin-left: auto; margin-right: 8px; }
+#roleSeg { margin-left: 6px; margin-right: 8px; }
 .traysel { width: 100%; min-height: 44px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); color: var(--fg); font: inherit; font-size: 14px; padding: 0 10px; }
 .traylist { display: flex; flex-direction: column; gap: 8px; }
 .tq { display: flex; flex-direction: column; gap: 6px; padding: 10px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
@@ -612,6 +612,22 @@ body.present .peekcard { display: none !important; }
 .themecard span i { position: absolute; left: 0; top: 0; width: 100%; height: 5px; border-radius: 8px 8px 0 0; }
 .themecard b { font-size: 12px; font-weight: 600; }
 .themecard[aria-pressed="true"] { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
+.startsheet .panel { gap: 12px; }
+.starthead { display: flex; gap: 14px; align-items: center; margin-bottom: 6px; }
+.starthead .logo { width: 64px; height: 64px; border-radius: 18px; color: #FFFFFF; display: flex; align-items: center; justify-content: center; flex: none; }
+.starthead .logo svg { width: 44px; height: 44px; }
+.starthead h2 { margin: 0; font-size: 26px; }
+.starthead span { color: var(--muted); font-size: 14px; }
+.startbtn { display: flex; flex-direction: column; gap: 3px; text-align: left; padding: 16px 18px; border-radius: 16px; border: 1.5px solid var(--line); background: var(--surface); color: var(--fg); cursor: pointer; }
+.startbtn b { font-size: 18px; }
+.startbtn span { font-size: 13px; color: var(--muted); }
+.startbtn.main { background: var(--accent); border-color: var(--accent); color: #FFFFFF; }
+.startbtn.main span { color: rgba(255,255,255,.85); }
+.scanview { position: fixed; inset: 0; z-index: 70; background: #000; }
+.scanview video { width: 100%; height: 100%; object-fit: cover; }
+.scanframe { position: absolute; left: 50%; top: 45%; width: min(64vw, 64vh); aspect-ratio: 1; transform: translate(-50%, -50%); border: 3px solid rgba(255,255,255,.9); border-radius: 24px; box-shadow: 0 0 0 9999px rgba(0,0,0,.45); }
+.scanbar { position: absolute; left: 0; right: 0; bottom: 0; display: flex; gap: 10px; align-items: center; justify-content: space-between; padding: 16px max(16px, env(safe-area-inset-right, 0px)) max(20px, env(safe-area-inset-bottom, 0px)); color: #FFFFFF; font-size: 15px; }
+#bScanMenu { margin-left: auto; }
 .exttl { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .exttl h2 { margin-right: auto; }
 .exwho { flex-direction: row; align-items: center; gap: 6px; }
@@ -699,6 +715,7 @@ body.present .peekcard { display: none !important; }
     <button class="btn" id="bConvert" aria-label="แปลงเป็นตัวพิมพ์" title="แปลงเป็นตัวพิมพ์"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 15.5c2-3 3-7 4.5-7s.5 5 2 5 2-6 3.5-6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M12 4h6 M15 4v7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span class="lbl">แปลงเป็นตัวพิมพ์</span></button>
     <button class="btn" id="bInsert" aria-label="แทรก" title="แทรก"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="2.5" y="3.5" width="15" height="13" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M3 14l4.5-4.5 3.5 3.5 2-2 4 4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><circle cx="13.5" cy="7.5" r="1.5" fill="currentColor"/></svg><span class="lbl">แทรก</span></button>
     <button class="btn solid" id="bAI" aria-pressed="false" aria-label="สร้างโจทย์" title="สร้างโจทย์"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 2.5l1.8 4.6 4.7 1.9-4.7 1.9L10 15.5l-1.8-4.6L3.5 9l4.7-1.9z" fill="currentColor"/></svg><span class="lbl">สร้างโจทย์</span></button>
+    <button class="btn sonly" id="bScan" aria-label="สแกน QR" title="สแกน QR"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 7V4.5A1.5 1.5 0 0 1 4.5 3H7 M13 3h2.5A1.5 1.5 0 0 1 17 4.5V7 M17 13v2.5a1.5 1.5 0 0 1-1.5 1.5H13 M7 17H4.5A1.5 1.5 0 0 1 3 15.5V13 M6 10h8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span class="lbl">สแกน QR</span></button>
     <button class="btn sonly" id="bJoin" aria-label="เข้าห้องเรียน" title="เข้าห้องเรียน"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M8 4H4.5v12H8 M11 6.5L14.5 10 11 13.5 M14.5 10H7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="lbl">เข้าห้องเรียน</span></button>
     <button class="btn" id="bTray" aria-pressed="false" aria-label="ชุดโจทย์" title="ชุดโจทย์"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="3" y="3" width="14" height="14" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M6.5 7h7 M6.5 10h7 M6.5 13h4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span class="lbl">ชุดโจทย์</span></button>
     <button class="btn" id="bLive" aria-label="ห้องเรียนสด" title="ห้องเรียนสด"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="2.5" y="4" width="15" height="9.5" rx="1.6" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M6 17h8 M10 13.5V17" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="8.7" r="1.9" fill="currentColor"/></svg><span class="lbl">ห้องสด</span><i id="bLiveN"></i></button>
@@ -892,7 +909,7 @@ body.present .peekcard { display: none !important; }
 
 <div class="sheet" id="menu" hidden>
   <div class="panel" role="dialog" aria-label="เมนู">
-    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><h2>สมุดทั้งหมด</h2><span class="seg" id="roleSeg" role="group" aria-label="ฝั่งที่ใช้บนเครื่องนี้"><button data-r="teacher">ฝั่งครู</button><button data-r="student">ฝั่งนักเรียน</button></span><button class="btn" id="bMenuClose">กลับไปเขียน</button></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><h2>สมุดทั้งหมด</h2><button class="btn" id="bScanMenu" type="button">สแกน QR</button><span class="seg" id="roleSeg" role="group" aria-label="ฝั่งที่ใช้บนเครื่องนี้"><button data-r="teacher">ฝั่งครู</button><button data-r="student">ฝั่งนักเรียน</button></span><button class="btn" id="bMenuClose">กลับไปเขียน</button></div>
     <div id="nbList" class="shelf"></div>
     <h3>สมุดเล่มใหม่</h3>
     <div class="row2">
@@ -964,6 +981,20 @@ body.present .peekcard { display: none !important; }
   </div>
 </div>
 
+<div class="sheet startsheet" id="startSheet" hidden>
+  <div class="panel" role="dialog" aria-label="เริ่มใช้ Burin">
+    <div class="starthead"><span class="logo" id="startLogo" aria-hidden="true"></span><div><h2>Burin</h2><span>สมุดฟิสิกส์สำหรับครูและผู้เรียน</span></div></div>
+    <button class="startbtn main" id="stScan"><b>สแกน QR</b><span>เข้าห้องเรียนสด เปิดการบ้าน หรือรับเลคเชอร์จากผู้สอน</span></button>
+    <button class="startbtn" id="stCode"><b>ใส่รหัสห้องเรียน</b><span>รหัส 6 ตัวที่ผู้สอนบอก</span></button>
+    <button class="startbtn" id="stLogin"><b>เข้าระบบ หรือสร้างบัญชี</b><span>สำหรับครู และผู้เรียนที่อยากให้สมุดซิงก์ทุกเครื่อง</span></button>
+    <button class="btn" id="stLocal">ใช้จดในเครื่องนี้ไปก่อน</button>
+  </div>
+</div>
+<div class="scanview" id="scanView" hidden>
+  <video id="scanVideo" playsinline muted></video>
+  <div class="scanframe"></div>
+  <div class="scanbar"><span id="scanMsg">หันกล้องไปที่ QR ของผู้สอน</span><button class="btn" id="scanClose">ปิด</button></div>
+</div>
 <div class="sheet" id="authSheet" hidden>
   <div class="panel" role="dialog" aria-label="เข้าสู่ระบบ">
     <div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><h2>เข้าสู่ระบบ Burin</h2><button class="btn" id="bAuthClose">ใช้ในเครื่องนี้ไปก่อน</button></div>
@@ -972,6 +1003,7 @@ body.present .peekcard { display: none !important; }
     <label class="field"><span>รหัสผ่าน อย่างน้อย 8 ตัว</span><input id="aPass" type="password" autocomplete="current-password"></label>
     <div class="row2"><button class="btn solid" id="bSignIn">เข้าสู่ระบบ</button><button class="btn" id="bSignUp">สร้างบัญชีใหม่</button></div>
     <div id="aMsg"></div>
+    <button class="btn" id="bAuthBack" type="button">กลับไปหน้าเริ่มต้น (สแกน QR หรือใส่รหัสห้อง)</button>
   </div>
 </div>
 
@@ -1097,7 +1129,7 @@ body.present .peekcard { display: none !important; }
     <label class="field" id="jCodeF"><span>รหัสห้อง 6 ตัว จากผู้สอน</span><input id="jCodeIn" maxlength="6" autocomplete="off" spellcheck="false" style="text-transform:uppercase;letter-spacing:4px;font-size:22px"></label>
     <div class="chips" id="jRecent"></div>
     <label class="field"><span>ชื่อ หรือ ชื่อเล่นกับเลขที่</span><input id="jName" maxlength="40" autocomplete="name"></label>
-    <div class="row2"><button class="btn solid" id="jGo">เข้าห้อง</button><button class="btn" id="jCancel">ยกเลิก</button></div>
+    <div class="row2"><button class="btn solid" id="jGo">เข้าห้อง</button><button class="btn" id="jScan" type="button">สแกน QR แทน</button><button class="btn" id="jCancel">ยกเลิก</button></div>
   </div>
 </div>
 <div class="sheet" id="sqSheet" hidden>
@@ -6765,6 +6797,42 @@ function exRenderAnalysis(body) {
 }
 
 
+
+/* ---------- first screen and QR scanning: students can join without choosing anything ---------- */
+function openStart() { closeSheets(); $('#authSheet').hidden = true; const l = $('#startLogo'); if (l && !l.innerHTML) l.innerHTML = $('#bMenu').innerHTML; $('#startSheet').hidden = false; }
+function handleScan(text) {
+  const t = String(text || '').trim(), m = t.match(/#(class|hw|lecture)=([A-Za-z0-9]{6,20})/), code = /^[A-Za-z2-9]{6}$/.test(t) ? t.toUpperCase() : null;
+  const kind = m ? m[1] : code ? 'class' : null, val = m ? m[2] : code;
+  if (!kind) { $('#scanMsg').textContent = 'QR นี้ไม่ใช่ของ Burin ลองสแกนใหม่'; return false; }
+  stopScan();
+  if (kind === 'class' && CLOUD.state === 'on') { $('#startSheet').hidden = true; if (!isStudentSide()) setRole('student'); openJoin(val.toUpperCase()); return true; }
+  location.hash = kind + '=' + (kind === 'class' ? val.toUpperCase() : val.toLowerCase()); location.reload(); return true;
+}
+let scanStream = null, scanRaf = 0;
+async function startScan() {
+  closeSheets(); $('#startSheet').hidden = true; $('#joinSheet').hidden = true;
+  const v = $('#scanVideo'); $('#scanView').hidden = false; $('#scanMsg').textContent = 'กำลังเปิดกล้อง';
+  try { scanStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } }, audio: false }); }
+  catch (e) { $('#scanMsg').textContent = 'เปิดกล้องไม่ได้ อนุญาตให้ใช้กล้องในการตั้งค่าเบราว์เซอร์ หรือใช้กล้องของเครื่องสแกนแทน'; return; }
+  v.srcObject = scanStream; await v.play().catch(() => {});
+  $('#scanMsg').textContent = 'หันกล้องไปที่ QR ของผู้สอน';
+  let det = null; try { if ('BarcodeDetector' in window) det = new window.BarcodeDetector({ formats: ['qr_code'] }); } catch (e) { det = null; }
+  if (!det) { try { await loadScript('https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js'); } catch (e) { $('#scanMsg').textContent = 'โหลดตัวอ่าน QR ไม่ได้ ใช้กล้องของเครื่องสแกนแทน'; return; } }
+  const cv = document.createElement('canvas'), c = cv.getContext('2d', { willReadFrequently: true });
+  let busy = false;
+  const tick = async () => {
+    if (!scanStream) return;
+    scanRaf = requestAnimationFrame(tick);
+    if (busy || v.readyState < 2) return; busy = true;
+    try {
+      if (det) { const r = await det.detect(v); if (r && r[0] && handleScan(r[0].rawValue)) return; }
+      else { const w = Math.min(720, v.videoWidth), h = Math.round(v.videoHeight * w / v.videoWidth); cv.width = w; cv.height = h; c.drawImage(v, 0, 0, w, h); const r = window.jsQR(c.getImageData(0, 0, w, h).data, w, h); if (r && r.data && handleScan(r.data)) return; }
+    } catch (e) { /* next frame */ }
+    busy = false;
+  };
+  tick();
+}
+function stopScan() { cancelAnimationFrame(scanRaf); if (scanStream) scanStream.getTracks().forEach((t) => t.stop()); scanStream = null; $('#scanView').hidden = true; }
 /* ---------- teacher side and student side: chosen per device; a QR / class link always opens the student side only ---------- */
 function isStudentSide() { return !!S.student || S.role === 'student'; }
 function sideMatch(nb) { return isStudentSide() ? nb.side === 'student' : nb.side !== 'student'; }
@@ -8189,7 +8257,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793050204';
+const BUILD = '1793050462';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
@@ -8290,6 +8358,14 @@ $('#cSave').onclick = () => {
 $('#bSignIn').onclick = () => doAuth(false);
 $('#bSignUp').onclick = () => doAuth(true);
 $('#bAuthClose').onclick = () => { $('#authSheet').hidden = true; };
+$('#bAuthBack').onclick = openStart;
+$('#stScan').onclick = startScan;
+$('#stCode').onclick = () => { $('#startSheet').hidden = true; openJoin(''); };
+$('#stLogin').onclick = () => { $('#startSheet').hidden = true; openAuth(); };
+$('#stLocal').onclick = () => { $('#startSheet').hidden = true; };
+$('#scanClose').onclick = () => { stopScan(); if (CLOUD.state === 'signedout') openStart(); };
+$('#bScan').onclick = startScan;
+$('#bScanMenu').onclick = startScan;
 $('#aPass').addEventListener('keydown', (e) => { if (e.key === 'Enter') doAuth(false); });
 
 function syncToggles() {
@@ -8299,7 +8375,7 @@ function syncToggles() {
 }
 function hideLoading() { $('#loading').hidden = true; }
 function togglePages(v) { const el = $('#pages'); el.hidden = v === undefined ? !el.hidden : !v; $('#bPages').setAttribute('aria-pressed', el.hidden ? 'false' : 'true'); setTimeout(fit, 0); }
-function closeSheets() { $('#deckSheet').hidden = true; $('#hwSheet').hidden = true; $('#hoSheet').hidden = true; $('#pdfSheet').hidden = true; $('#qmSheet').hidden = true; $('#liveSheet').hidden = true; $('#sqSheet').hidden = true; $('#examSheet').hidden = true; $('#aiSetup').hidden = true; $('#labSheet').hidden = true; $('#simSheet').hidden = true; $('#mediaSheet').hidden = true; $('#menu').hidden = true; $('#exportSheet').hidden = true; $('#insSheet').hidden = true; }
+function closeSheets() { $('#startSheet').hidden = true; $('#deckSheet').hidden = true; $('#hwSheet').hidden = true; $('#hoSheet').hidden = true; $('#pdfSheet').hidden = true; $('#qmSheet').hidden = true; $('#liveSheet').hidden = true; $('#sqSheet').hidden = true; $('#examSheet').hidden = true; $('#aiSetup').hidden = true; $('#labSheet').hidden = true; $('#simSheet').hidden = true; $('#mediaSheet').hidden = true; $('#menu').hidden = true; $('#exportSheet').hidden = true; $('#insSheet').hidden = true; }
 
 /* ---------- wiring ---------- */
 document.querySelectorAll('.tool[data-tool]').forEach((b) => {
@@ -8364,7 +8440,8 @@ $('#jGo').onclick = () => {
   if (LIVE.ch && LIVE.role === 'student' && LIVE.code !== code) leaveClass();
   studentJoin(code);
 };
-$('#jCancel').onclick = () => { $('#joinSheet').hidden = true; };
+$('#jCancel').onclick = () => { $('#joinSheet').hidden = true; if (CLOUD.state === 'signedout' && !S.student) openStart(); };
+$('#jScan').onclick = startScan;
 $('#bJoin').onclick = () => openJoin('');
 document.querySelectorAll('#roleSheet .rolecard').forEach((b) => { b.onclick = () => { $('#roleSheet').hidden = true; store_ls.set('tp-role', b.dataset.r); S.role = null; setRole(b.dataset.r); }; });
 $('#lpPull').onclick = () => { if (!LIVE.ready) { toast('ยังไม่ได้เชื่อมต่อห้อง', 1600); return; } liveSend('pullall', { sid: LIVE.sid }); toast('ขอหน้าทั้งหมดของคาบนี้จากผู้สอนแล้ว หน้าจะทยอยเข้ามาในสมุด', 2600); };
@@ -8818,7 +8895,7 @@ async function boot() {
   } else { AI.claudeState = 'none'; setupRoom(CLOUD.state === 'on' ? makeCloudRoom(CLOUD.client, CLOUD.user) : makeLocalRoom()); renderAIAvail(); }
   renderAISettings(); renderCloud();
   try { const qp = new URLSearchParams(location.search); if (qp.get('code') && store_ls.get('tp-or')) { const c = qp.get('code'), st = qp.get('state'); history.replaceState(null, '', location.pathname + location.hash); setTimeout(() => orFinish(c, st), 600); } } catch (e) { /* no query */ }
-  if (CLOUD.state === 'signedout' && !S.present && !S.student) openAuth();
+  if (CLOUD.state === 'signedout' && !S.present && !S.student) openStart();
   else if (!S.student && !S.present && !store_ls.get('tp-role') && CLOUD.state === 'on') setTimeout(() => { if (!store_ls.get('tp-role')) { closeSheets(); $('#roleSheet').hidden = false; } }, 900);
   setTimeout(() => { if (!S.pid) { const l = $('#loading'); l.querySelector('span').textContent = 'ยังเชื่อมต่อไม่ได้ ตรวจอินเทอร์เน็ตแล้วเปิดหน้านี้ใหม่'; } }, 12000);
 }
