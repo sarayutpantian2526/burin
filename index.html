@@ -197,6 +197,28 @@ body.tv .toast { bottom: 112px; }
   #syncT { display: none; }
   #sync { padding: 0 10px; min-height: 30px; }
 }
+#pages { width: 236px; }
+#pages .ph { display: flex; align-items: baseline; gap: 8px; }
+#pages .ph small { font-weight: 500; font-size: 12px; color: var(--muted); }
+.pbody { padding-top: 2px; }
+.pgrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 10px; align-content: start; }
+.pthumb { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 0; border: 0; background: transparent; cursor: pointer; color: var(--muted); font-size: 12px; -webkit-touch-callout: none; }
+.pthumb .pc { position: relative; width: 100%; aspect-ratio: 1000 / 1414; border-radius: 6px; background: #FFFFFF; box-shadow: 0 0 0 1px var(--line), 0 1px 3px rgba(16, 24, 40, 0.08); overflow: hidden; }
+.pthumb canvas { width: 100%; height: 100%; display: block; }
+.pthumb[aria-current="true"] .pc { box-shadow: 0 0 0 2.5px var(--accent), 0 2px 6px rgba(47, 75, 184, 0.25); }
+.pthumb[aria-current="true"] { color: var(--accent); font-weight: 700; }
+.pthumb.add .pc { display: flex; align-items: center; justify-content: center; background: transparent; box-shadow: inset 0 0 0 1.5px var(--line); color: var(--muted); }
+.pthumb.add svg { width: 26px; height: 26px; }
+.pfoot { border-top: 1px solid var(--line); padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 8px; }
+.pfrow { display: flex; align-items: center; justify-content: space-between; }
+.pmove { display: flex; gap: 4px; }
+.btn.icon.sm { min-width: 36px; min-height: 36px; width: 36px; height: 36px; padding: 0; }
+.papers { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.pap { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 4px 2px; border-radius: 10px; border: 1px solid transparent; background: transparent; cursor: pointer; font-size: 11px; color: var(--muted); }
+.pap canvas { width: 40px; height: 52px; border-radius: 3px; box-shadow: 0 0 0 1px var(--line); background: #FFFFFF; }
+.pap[aria-pressed="true"] { border-color: var(--accent); color: var(--fg); font-weight: 600; background: var(--accent-soft, rgba(47,75,184,0.08)); }
+.btn.danger { color: #B42318; border-color: rgba(180, 35, 24, 0.35); }
+body.tv #pages { width: 300px; }
 .thumb { display: flex; align-items: center; gap: 10px; min-height: 52px; padding: 6px 8px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); cursor: pointer; text-align: left; }
 .thumb .n { width: 38px; height: 50px; flex: none; border-radius: 4px; background: #FFFFFF; border: 1px solid var(--line); display: flex; align-items: flex-end; justify-content: center; font-size: 12px; color: #535E6C; padding-bottom: 3px; box-sizing: border-box; }
 .thumb[aria-current="true"] { border: 2px solid var(--accent); }
@@ -374,12 +396,16 @@ body.tv .convbar { bottom: 112px; }
 
   <div id="stage">
     <aside class="drawer" id="pages" hidden aria-label="หน้าในสมุด">
-      <header><span>หน้า</span><button class="btn icon" id="bAddPage" aria-label="เพิ่มหน้า"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 4v12 M4 10h12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button></header>
-      <div class="body">
-        <div id="pageList" style="display:flex;flex-direction:column;gap:8px"></div>
-        <span class="label">กระดาษหน้านี้</span>
-        <div class="chips" id="paperChips"></div>
-        <button class="btn" id="bDelPage">ลบหน้านี้</button>
+      <header><span class="ph"><b>หน้า</b><small id="pageCount"></small></span><button class="btn icon" id="bAddPage" aria-label="เพิ่มหน้าต่อจากหน้านี้" title="เพิ่มหน้าต่อจากหน้านี้"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 4v12 M4 10h12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button></header>
+      <div class="body pbody">
+        <div id="pageList" class="pgrid" role="list"></div>
+      </div>
+      <div class="pfoot">
+        <div class="pfrow"><span class="label" id="curPageLabel">หน้านี้</span>
+          <span class="pmove"><button class="btn icon sm" id="bPgUp" aria-label="เลื่อนหน้านี้ขึ้น" title="เลื่อนขึ้น"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 12l5-5 5 5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button><button class="btn icon sm" id="bPgDown" aria-label="เลื่อนหน้านี้ลง" title="เลื่อนลง"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 8l5 5 5-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button></span>
+        </div>
+        <div class="papers" id="paperChips" role="group" aria-label="ชนิดกระดาษ"></div>
+        <button class="btn danger" id="bDelPage">ลบหน้านี้</button>
         <div id="delConfirm" hidden class="note err">ลบหน้านี้และลายมือทั้งหมดในหน้า ย้อนกลับไม่ได้ <div class="row2" style="margin-top:8px"><button class="btn" id="bDelYes">ลบเลย</button><button class="btn" id="bDelNo">ยกเลิก</button></div></div>
       </div>
     </aside>
@@ -1441,6 +1467,7 @@ function drawInto(c, list, selected) {
   }
 }
 function drawInk() {
+  if (typeof refreshCurThumb === 'function') refreshCurThumb();
   const c = cInk.getContext('2d');
   c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, cInk.width, cInk.height);
   c.setTransform(S.res, 0, 0, S.res, 0, 0);
@@ -1483,6 +1510,7 @@ function visibleItems() { return (S.page && S.page.items) || []; }
 let editing = null;
 function renderItems() {
   if (editing) return;
+  if (typeof refreshCurThumb === 'function') refreshCurThumb();
   itemsEl.innerHTML = '';
   let needMath = false;
   for (const it of visibleItems()) {
@@ -1645,7 +1673,7 @@ vp.addEventListener('pointercancel', onUp);
 vp.addEventListener('contextmenu', (e) => e.preventDefault());
 
 function onDown(e) {
-  if (e.target.closest('.no-ink')) return;
+  if (e.target.closest('.no-ink') && !(S.tool === 'lasso' && e.target.closest('.item.live') && !e.target.closest('input,button,video'))) return;
   if (S.present) { e.preventDefault(); presentTap(); return; }
   closePops();
   if (editing && !e.target.closest('.item')) { commitEdit(); }
@@ -1672,6 +1700,10 @@ function onDown(e) {
 }
 function beginTool(pt, e) {
   const [x, y] = toLogical(e.clientX, e.clientY);
+  if ((S.tool === 'pen' || S.tool === 'hl') && S.sel && S.sel.items.length && inBox(S.sel.box, x, y)) {
+    /* a picture or box picked by pressing and holding: drag it with the pen too */
+    pt.mode = 'move'; pt.last = [x, y]; pt.dx = 0; pt.dy = 0; return;
+  }
   if (S.tool === 'pen' || S.tool === 'hl') {
     if (S.sel) clearSel();
     pt.mode = 'draw';
@@ -1680,13 +1712,25 @@ function beginTool(pt, e) {
     pt.live = null;
     addPoint(pt, x, y, pr(e));
     armHold(pt, x, y);
+    /* press and hold on a picture, graph or text box (without moving) to pick it up */
+    const hit = itemAt(x, y);
+    if (hit) pt.itemT = setTimeout(() => {
+      if (P.get(pt.id) !== pt || pt.mode !== 'draw' || pt.moved > 10) return;
+      clearTimeout(pt.holdT); clearLive();
+      selectItem(hit); pt.mode = 'move'; pt.last = [x, y]; pt.dx = 0; pt.dy = 0;
+      toast('เลือกแล้ว ลากเพื่อย้าย หรือใช้ปุ่มด้านล่างเพื่อลบ ขยาย หรือย่อ', 2600);
+    }, 480);
   } else if (S.tool === 'eraser') {
     pt.mode = 'erase'; pt.removed = []; pt.snap = {}; pt.r = ERASE_R[S.eraserSize];
     eraseAt(x, y, pt.r, pt); drawCursor(x, y, pt.r);
   } else if (S.tool === 'lasso') {
     if (S.sel && nearHandle(S.sel.box, x, y)) { startScale(pt); }
     else if (S.sel && inBox(S.sel.box, x, y)) { pt.mode = 'move'; pt.last = [x, y]; pt.dx = 0; pt.dy = 0; }
-    else { clearSel(); pt.mode = 'lasso'; pt.poly = [[x, y]]; }
+    else {
+      const hit = itemAt(x, y);
+      if (hit) { selectItem(hit); pt.mode = 'move'; pt.last = [x, y]; pt.dx = 0; pt.dy = 0; }
+      else { clearSel(); pt.mode = 'lasso'; pt.poly = [[x, y]]; }
+    }
   } else if (S.tool === 'laser') {
     pt.mode = 'laser'; pt.lz = [[x, y]]; drawLasers(); emitLaserPt(x, y, true);
   } else if (S.tool === 'shape') {
@@ -2235,6 +2279,16 @@ function finishLasso(poly) {
   if (S.pendingConvert && strokes.length) { S.pendingConvert = false; readSelection(); }
 }
 function findStroke(r) { const arr = r.layer === DEV ? S.mine : (S.others[r.layer] || []); return arr.find((s) => s.id === r.id); }
+/* the topmost picture, graph, video or text box under a point */
+function itemAt(x, y) {
+  const its = visibleItems();
+  for (let i = its.length - 1; i >= 0; i--) { const b = itemBox(its[i]); if (x >= b[0] && x <= b[2] && y >= b[1] && y <= b[3]) return its[i]; }
+  return null;
+}
+function selectItem(it) {
+  S.sel = { strokes: [], items: [it.id], box: null };
+  S.sel.box = selBox(S.sel); drawInk(); drawSelBox(); showSelbar();
+}
 function selBox(sel) {
   let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
   for (const r of sel.strokes) { const s = findStroke(r); if (!s) continue; boxCache.delete(s); const b = sbox(s); x0 = Math.min(x0, b[0] - s.w); y0 = Math.min(y0, b[1] - s.w); x1 = Math.max(x1, b[2] + s.w); y1 = Math.max(y1, b[3] + s.w); }
@@ -3209,29 +3263,111 @@ function renderTitle() {
     ? '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 4v12 M4 10h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>'
     : '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7.5 4.5L13 10l-5.5 5.5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 }
+/* ---------- page panel: real thumbnails in a grid, drawn only when scrolled into view ---------- */
+const TH = { key: new Map(), io: null };
+async function pageData(pid) {
+  if (pid === S.pid) return { page: S.page, strokes: allStrokes() };
+  const page = await S.store.get('pages/' + pid).catch(() => null);
+  const ls = await S.store.list('pages/' + pid + '/layers').catch(() => []);
+  const strokes = []; for (const l of ls) for (const s of (l.strokes || [])) strokes.push({ s });
+  return { page, strokes };
+}
+async function drawThumb(pid, cv) {
+  const { page, strokes } = await pageData(pid);
+  const key = JSON.stringify([page && page.rev, page && page.paper, (page && page.items || []).length, strokes.length, strokes.length ? strokes[strokes.length - 1].s.id : '']);
+  if (TH.key.get(cv) === key && pid !== S.pid) return;
+  TH.key.set(cv, key);
+  const dpr = Math.min(2, window.devicePixelRatio || 1), w = Math.round(cv.clientWidth * dpr) || 200, h = Math.round(w * H / W);
+  cv.width = w; cv.height = h;
+  const c = cv.getContext('2d'), k = w / W;
+  c.setTransform(k, 0, 0, k, 0, 0);
+  c.fillStyle = '#FFFFFF'; c.fillRect(0, 0, W, H);
+  paper(c, (page && page.paper) || 'grid');
+  for (const it of ((page && page.items) || [])) {
+    const x = it.x || 0, y = it.y || 0, iw = it.w || 600;
+    if (it.type === 'img' || it.type === 'video' || it.type === 'graph' || it.type === 'svg') {
+      const ih = it.type === 'graph' ? 440 : iw * (it.ar || 0.62);
+      const u = it.asset && blobUrls.get(it.asset);
+      c.fillStyle = it.type === 'video' ? '#2A313C' : '#E8ECF2'; c.fillRect(x, y, iw, ih);
+      if (u && it.type === 'img') { await new Promise((res) => { const im = new Image(); im.onload = () => { try { c.drawImage(im, x, y, iw, ih); } catch (e) { /* skip */ } res(); }; im.onerror = res; im.src = u; }); }
+      if (it.type === 'graph') { c.strokeStyle = '#2F4BB8'; c.lineWidth = 6; c.beginPath(); for (let i = 0; i <= 40; i++) { const t = i / 40; c.lineTo(x + 30 + t * (iw - 60), y + ih / 2 - Math.sin(t * Math.PI * 2) * ih * 0.3); } c.stroke(); }
+    } else {
+      const lines = String(it.md || '').split('\n').slice(0, 12), fs = it.fs || 24;
+      c.fillStyle = '#9AA4B2';
+      lines.forEach((ln, i) => { const len = Math.min(iw - 20, Math.max(40, ln.length * fs * 0.5)); c.fillRect(x + 10, y + 10 + i * fs * 1.6, len, fs * 0.55); });
+    }
+  }
+  /* on a small thumbnail thin pen lines would vanish: draw them at least about 1.3 screen pixels wide */
+  const minW = 1.3 * dpr / k / 1.0;
+  drawInto(c, strokes.map((r) => (r.s.k === 'h' ? r : { s: Object.assign({}, r.s, { w: Math.max(r.s.w, minW) }) })), null);
+}
+function thumbObserver() {
+  if (TH.io || !('IntersectionObserver' in window)) return TH.io;
+  TH.io = new IntersectionObserver((ents) => { for (const e of ents) if (e.isIntersecting) { const cv = e.target; TH.io.unobserve(cv); drawThumb(cv.dataset.pid, cv).catch(() => {}); } }, { root: $('#pageList').parentNode, rootMargin: '200px' });
+  return TH.io;
+}
 function renderPageList() {
   const el = $('#pageList'); el.innerHTML = '';
   const pages = (S.nb && S.nb.pages) || [];
+  const cur = pages.indexOf(S.pid);
+  $('#pageCount').textContent = pages.length ? pages.length + ' หน้า' : '';
+  $('#curPageLabel').textContent = cur >= 0 ? 'หน้า ' + (cur + 1) : 'หน้านี้';
+  $('#bPgUp').disabled = cur <= 0; $('#bPgDown').disabled = cur < 0 || cur >= pages.length - 1;
+  const io = thumbObserver();
   pages.forEach((pid, i) => {
     const b = document.createElement('button');
-    b.className = 'thumb'; b.type = 'button';
+    b.className = 'pthumb'; b.type = 'button'; b.setAttribute('role', 'listitem');
     b.setAttribute('aria-current', pid === S.pid ? 'true' : 'false');
-    b.innerHTML = '<span class="n">' + (i + 1) + '</span><span>หน้า ' + (i + 1) + '</span>';
+    b.setAttribute('aria-label', 'หน้า ' + (i + 1));
+    b.innerHTML = '<span class="pc"><canvas></canvas></span><span>' + (i + 1) + '</span>';
+    const cv = b.querySelector('canvas'); cv.dataset.pid = pid;
     holdable(b, () => { openPage(pid); if (window.innerWidth < 900) togglePages(false); }, () => { openPeek(S.nid, pid); toast('เปิดหน้า ' + (i + 1) + ' ดูคู่กันแล้ว', 1800); });
     b.title = 'แตะเพื่อเปิด แตะค้างเพื่อดูคู่กัน';
     el.appendChild(b);
+    if (io) io.observe(cv); else setTimeout(() => drawThumb(pid, cv).catch(() => {}), 30 * i);
   });
+  const add = document.createElement('button'); add.className = 'pthumb add'; add.type = 'button';
+  add.innerHTML = '<span class="pc"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 4v12 M4 10h12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span><span>เพิ่มหน้าท้ายสมุด</span>';
+  add.onclick = () => addPageAt(pages.length);
+  el.appendChild(add);
+  const curEl = el.querySelector('[aria-current="true"]');
+  if (curEl && !$('#pages').hidden) setTimeout(() => curEl.scrollIntoView({ block: 'nearest' }), 0);
 }
+/* keep the current page's thumbnail fresh while writing */
+const refreshCurThumb = debounce(() => {
+  if ($('#pages').hidden) return;
+  const cv = $('#pageList').querySelector('[aria-current="true"] canvas'); if (cv) drawThumb(S.pid, cv).catch(() => {});
+}, 900);
 function renderPaperChips() {
   const el = $('#paperChips'); el.innerHTML = '';
   const cur = (S.page && S.page.paper) || 'grid';
   for (const [k, n] of PAPERS) {
-    const b = document.createElement('button'); b.className = 'chip'; b.type = 'button'; b.textContent = n;
-    b.setAttribute('aria-pressed', k === cur ? 'true' : 'false');
-    b.onclick = () => setPaper(k);
+    const b = document.createElement('button'); b.className = 'pap'; b.type = 'button';
+    b.setAttribute('aria-pressed', k === cur ? 'true' : 'false'); b.setAttribute('aria-label', 'กระดาษ' + n);
+    b.innerHTML = '<canvas width="80" height="104"></canvas><span></span>';
+    b.querySelector('span').textContent = n;
+    /* a zoomed corner of the paper, so the pattern is easy to see */
+    const c = b.querySelector('canvas').getContext('2d'); c.setTransform(0.4, 0, 0, 0.4, 0, 0); c.fillStyle = '#FFFFFF'; c.fillRect(0, 0, 200, 260);
+    if (k === 'cornell') { c.setTransform(0.08, 0, 0, 0.074, 0, 0); }
+    paper(c, k);
+    b.onclick = () => { setPaper(k); refreshCurThumb(); };
     el.appendChild(b);
   }
 }
+async function addPageAt(index) {
+  const pid = await addPage(); if (!pid || !S.nb) return;
+  const pages = (S.nb.pages || []).filter((p) => p !== pid); pages.splice(clamp(index, 0, pages.length), 0, pid);
+  try { await S.store.update('notebooks/' + S.nid, { pages, updatedAt: now() }); S.nb = Object.assign({}, S.nb, { pages }); renderPageList(); renderTitle(); } catch (e) { onStoreError(e); }
+}
+async function movePage(d) {
+  if (!S.nb) return;
+  const pages = (S.nb.pages || []).slice(), i = pages.indexOf(S.pid), j = i + d;
+  if (i < 0 || j < 0 || j >= pages.length) return;
+  pages.splice(i, 1); pages.splice(j, 0, S.pid);
+  try { await S.store.update('notebooks/' + S.nid, { pages, updatedAt: now() }); S.nb = Object.assign({}, S.nb, { pages }); renderPageList(); renderTitle(); toast('ย้ายเป็นหน้า ' + (j + 1) + ' แล้ว', 1500); } catch (e) { onStoreError(e); }
+}
+$('#bPgUp').onclick = () => movePage(-1);
+$('#bPgDown').onclick = () => movePage(1);
 /* ---------- open notebooks as small tabs, and a side-by-side peek window ---------- */
 function saveTabs() { store_ls.set('tp-tabs', JSON.stringify(S.tabs)); }
 function addTab(nid) {
