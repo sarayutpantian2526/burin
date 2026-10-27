@@ -8600,7 +8600,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793063673';
+const BUILD = '1793063827';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
@@ -9168,8 +9168,10 @@ vp.addEventListener('wheel', (e) => {
   applyT();
 }, { passive: false });
 document.addEventListener('keydown', (e) => {
-  if (editing || e.target.closest('input,select,textarea,[contenteditable="true"]')) return;
-  const k = e.key.toLowerCase();
+  if (editing || (e.target.closest && e.target.closest('input,select,textarea,[contenteditable="true"]'))) return;
+  /* letter shortcuts work with any keyboard language: a Thai, Chinese or Russian layout sends its own letter, so fall back to the physical key */
+  let k = String(e.key || '').toLowerCase();
+  if (k.length === 1 && !/[a-z]/.test(k)) { const m = /^Key([A-Z])$/.exec(e.code || ''); if (m) k = m[1].toLowerCase(); }
   if ((e.ctrlKey || e.metaKey) && k === 'z') { e.preventDefault(); if (e.shiftKey) redo(); else undo(); return; }
   if ((e.ctrlKey || e.metaKey) && k === 'y') { e.preventDefault(); redo(); return; }
   if (e.ctrlKey || e.metaKey || e.altKey) return;
