@@ -715,6 +715,13 @@ body.present .peekcard { display: none !important; }
 .handopt[aria-pressed="true"] { border-color: #2F4BB8; background: #EEF2FB; }
 .handopt b { display: block; font-family: var(--ui); font-size: 14px; color: #2F4BB8; }
 .handopt span { display: block; font-size: 26px; line-height: 1.5; }
+
+.tsep { flex: none; width: 1px; height: 26px; background: var(--line); margin: 0 2px; }
+.top.compact .tsep { margin: 0; }
+.menutabs, .exgroups { display: flex; width: 100%; margin: 4px 0 12px; }
+.menutabs button, .exgroups button { flex: 1 1 0; font-size: 14px; min-height: 42px; }
+#exTabs { margin-bottom: 8px; }
+[data-mp][hidden] { display: none !important; }
 </style>
 </head>
 <body>
@@ -727,16 +734,20 @@ body.present .peekcard { display: none !important; }
     <div class="title"><b id="tTitle">กำลังเปิดสมุด</b><span id="tSub"></span></div>
     <div class="tabs" id="tabs" role="group" aria-label="สมุดที่เปิดค้างไว้ แตะเพื่อสลับ แตะค้างเพื่อเปิดดูคู่กัน"></div>
     <span class="pill" id="sync" data-s="local"><i></i><span id="syncT">กำลังเชื่อมต่อ</span></span>
+    <span class="tsep" aria-hidden="true"></span>
     <button class="btn icon" id="bUndo" aria-label="ย้อนกลับ"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7.5 4.5L3.5 8.5l4 4 M3.5 8.5h8.5a4.5 4.5 0 0 1 0 9H10" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
     <button class="btn icon" id="bRedo" aria-label="ทำซ้ำ"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M12.5 4.5l4 4-4 4 M16.5 8.5H8a4.5 4.5 0 0 0 0 9h2" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+    <span class="tsep" aria-hidden="true"></span>
     <button class="btn" id="bConvert" aria-label="แปลงเป็นตัวพิมพ์" title="แปลงเป็นตัวพิมพ์"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 15.5c2-3 3-7 4.5-7s.5 5 2 5 2-6 3.5-6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M12 4h6 M15 4v7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span class="lbl">แปลงเป็นตัวพิมพ์</span></button>
     <button class="btn" id="bInsert" aria-label="แทรก" title="แทรก"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="2.5" y="3.5" width="15" height="13" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M3 14l4.5-4.5 3.5 3.5 2-2 4 4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><circle cx="13.5" cy="7.5" r="1.5" fill="currentColor"/></svg><span class="lbl">แทรก</span></button>
     <button class="btn solid" id="bAI" aria-pressed="false" aria-label="สร้างโจทย์" title="สร้างโจทย์"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 2.5l1.8 4.6 4.7 1.9-4.7 1.9L10 15.5l-1.8-4.6L3.5 9l4.7-1.9z" fill="currentColor"/></svg><span class="lbl">สร้างโจทย์</span></button>
+    <span class="tsep" aria-hidden="true"></span>
     <button class="btn sonly" id="bScan" aria-label="สแกน QR" title="สแกน QR"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 7V4.5A1.5 1.5 0 0 1 4.5 3H7 M13 3h2.5A1.5 1.5 0 0 1 17 4.5V7 M17 13v2.5a1.5 1.5 0 0 1-1.5 1.5H13 M7 17H4.5A1.5 1.5 0 0 1 3 15.5V13 M6 10h8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span class="lbl">สแกน QR</span></button>
     <button class="btn sonly" id="bJoin" aria-label="เข้าห้องเรียน" title="เข้าห้องเรียน"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M8 4H4.5v12H8 M11 6.5L14.5 10 11 13.5 M14.5 10H7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="lbl">เข้าห้องเรียน</span></button>
     <button class="btn" id="bTray" aria-pressed="false" aria-label="ชุดโจทย์" title="ชุดโจทย์"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="3" y="3" width="14" height="14" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M6.5 7h7 M6.5 10h7 M6.5 13h4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span class="lbl">ชุดโจทย์</span></button>
     <button class="btn" id="bLive" aria-label="ห้องเรียนสด" title="ห้องเรียนสด"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="2.5" y="4" width="15" height="9.5" rx="1.6" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M6 17h8 M10 13.5V17" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="8.7" r="1.9" fill="currentColor"/></svg><span class="lbl">ห้องสด</span><i id="bLiveN"></i></button>
     <button class="btn" id="bExam" aria-label="ฝึกโจทย์แข่งขัน" title="ฝึกโจทย์แข่งขัน"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6 3.5h8v3.5a4 4 0 0 1-8 0z M6 5H3.5v1a3 3 0 0 0 3 3 M14 5h2.5v1a3 3 0 0 1-3 3 M10 11v3 M7 16.5h6 M8 14h4v2.5H8z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/></svg><span class="lbl">ฝึกแข่งขัน</span></button>
+    <span class="tsep" aria-hidden="true"></span>
     <button class="btn" id="bExport" aria-label="ส่งออก PDF" title="ส่งออก PDF"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3v9 M6.5 8.5L10 12l3.5-3.5 M4 14.5V17h12v-2.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="lbl">ส่งออก</span></button>
     <button class="btn icon" id="bFull" aria-label="เต็มหน้าจอ" title="เต็มหน้าจอ"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 7.5V3h4.5 M12.5 3H17v4.5 M17 12.5V17h-4.5 M7.5 17H3v-4.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
   </div>
@@ -928,7 +939,9 @@ body.present .peekcard { display: none !important; }
 
 <div class="sheet" id="menu" hidden>
   <div class="panel" role="dialog" aria-label="เมนู">
-    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><h2>สมุดทั้งหมด</h2><button class="btn" id="bScanMenu" type="button">สแกน QR</button><span class="seg" id="roleSeg" role="group" aria-label="ฝั่งที่ใช้บนเครื่องนี้"><button data-r="teacher">ฝั่งครู</button><button data-r="student">ฝั่งนักเรียน</button></span><button class="btn" id="bMenuClose">กลับไปเขียน</button></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><h2>เมนู</h2><button class="btn" id="bScanMenu" type="button">สแกน QR</button><span class="seg" id="roleSeg" role="group" aria-label="ฝั่งที่ใช้บนเครื่องนี้"><button data-r="teacher">ฝั่งครู</button><button data-r="student">ฝั่งนักเรียน</button></span><button class="btn" id="bMenuClose">กลับไปเขียน</button></div>
+    <div class="seg menutabs" id="menuTabs" role="group" aria-label="ส่วนของเมนู"><button data-m="nb">สมุดทั้งหมด</button><button data-m="acc">บัญชี ซิงก์ และ AI</button><button data-m="set">การเขียนและจอ</button></div>
+    <div data-mp="nb">
     <div id="nbList" class="shelf"></div>
     <h3>สมุดเล่มใหม่</h3>
     <div class="row2">
@@ -936,9 +949,25 @@ body.present .peekcard { display: none !important; }
       <label class="field" style="flex:0 1 170px"><span>ระดับ</span><select id="nbLevel"></select></label>
     </div>
     <button class="btn solid" id="bNewNb">สร้างสมุด</button>
+    </div>
+    <div data-mp="set" hidden>
     <h3>จอสำหรับผู้ชม</h3>
     <div class="note">ใช้ตอนแชร์หน้าจอหรือฉายขึ้นทีวี ผู้ชมจะเห็นเฉพาะกระดาษและสิ่งที่อยู่บนกระดาษ ไม่เห็นแถบเครื่องมือ จอผู้ชมจะเปลี่ยนหน้าและเลื่อนตามเครื่องที่เขียน เห็นลายมือและเลเซอร์ทันที<br><br>เปิดแอปนี้อีกหน้าต่างหนึ่งหรือบนอีกเครื่อง แล้วกดปุ่มด้านล่าง จากนั้นแชร์เฉพาะหน้าต่างนั้นในโปรแกรมประชุม ออกจากจอผู้ชมได้ด้วยการแตะจอสามครั้งติดกัน</div>
     <button class="btn" id="bPresent">ใช้หน้าต่างนี้เป็นจอผู้ชม</button>
+    <h3>การเขียนและจอ</h3>
+    <div class="switch"><span><b>นิ้ววาดได้</b><small>ปิดไว้ นิ้วจะใช้เลื่อนและซูม ปากกาเขียนอย่างเดียว ระบบปิดให้เองเมื่อพบปากกา</small></span><button class="tg" id="tgFinger" role="switch" aria-checked="true" aria-label="นิ้ววาดได้"><i></i></button></div>
+    <div class="switch"><span><b>วางฝ่ามือเพื่อลบ</b><small>สำหรับทีวีทัชสกรีนที่บอกขนาดพื้นที่สัมผัสได้</small></span><button class="tg" id="tgPalm" role="switch" aria-checked="true" aria-label="วางฝ่ามือเพื่อลบ"><i></i></button></div>
+    <div class="switch"><span><b>ลากค้างให้เป็นรูปทรง</b><small>ลากเส้นแล้วกดค้างไว้ครู่หนึ่ง จะได้เส้นตรง วงกลม วงรี สามเหลี่ยม หรือสี่เหลี่ยม เส้นตรงลากปรับปลายต่อได้ก่อนยกปากกา</small></span><button class="tg" id="tgShape" role="switch" aria-checked="true" aria-label="ลากค้างให้เป็นรูปทรง"><i></i></button></div>
+    <div class="switch"><span><b>ขีดทับเพื่อลบ</b><small>ขีดไปมาทับลายมือหรือกล่องข้อความด้วยปากกา ระบบจะลบส่วนนั้นให้ ภาพสปริงที่วาดบนที่ว่างไม่ถูกลบ</small></span><button class="tg" id="tgScribble" role="switch" aria-checked="true" aria-label="ขีดทับเพื่อลบ"><i></i></button></div>
+    <div class="switch"><span><b>โหมดจอใหญ่</b><small>สำหรับทีวีทัชสกรีน ปุ่มใหญ่และอยู่ด้านล่าง เอื้อมถึงขณะยืนสอน</small></span><button class="tg" id="tgTV" role="switch" aria-checked="false" aria-label="โหมดจอใหญ่"><i></i></button></div>
+    <h3>ท่าทางสัมผัส</h3>
+    <div class="gest">
+      <span><b>ถ่างสองนิ้ว</b> ซูมเข้าออก</span><span><b>ลากสองนิ้ว</b> เลื่อนหน้ากระดาษ</span>
+      <span><b>แตะสองนิ้ว</b> ย้อนกลับ</span><span><b>แตะสามนิ้ว</b> ทำซ้ำ</span>
+      <span><b>บ่วงเลือกแล้วลาก</b> ย้ายลายมือ</span><span><b>คีย์ P H E L T K</b> เปลี่ยนเครื่องมือ</span>
+    </div>
+    </div>
+    <div data-mp="acc" hidden>
     <div id="cloudBox" hidden>
       <h3>ซิงก์ข้ามเครื่อง</h3>
       <div class="note" id="cloudNote"></div>
@@ -984,19 +1013,8 @@ body.present .peekcard { display: none !important; }
         <div class="switch"><span><b>ใช้คีย์นี้กับทุกเครื่องที่เข้าระบบบัญชีเดียวกัน</b><small id="kSyncNote">ใส่ครั้งเดียว iPad คอมพิวเตอร์ และทีวีใช้ได้หมด คีย์เก็บในคลาวด์ของบัญชีนี้ คนอื่นอ่านไม่ได้ ถ้าปิด คีย์อยู่เฉพาะเครื่องนี้</small></span><button class="tg" id="tgKSync" role="switch" aria-checked="true" aria-label="ใช้คีย์นี้กับทุกเครื่อง"><i></i></button></div>
       </div>
     </details>
-    <h3>การเขียนและจอ</h3>
-    <div class="switch"><span><b>นิ้ววาดได้</b><small>ปิดไว้ นิ้วจะใช้เลื่อนและซูม ปากกาเขียนอย่างเดียว ระบบปิดให้เองเมื่อพบปากกา</small></span><button class="tg" id="tgFinger" role="switch" aria-checked="true" aria-label="นิ้ววาดได้"><i></i></button></div>
-    <div class="switch"><span><b>วางฝ่ามือเพื่อลบ</b><small>สำหรับทีวีทัชสกรีนที่บอกขนาดพื้นที่สัมผัสได้</small></span><button class="tg" id="tgPalm" role="switch" aria-checked="true" aria-label="วางฝ่ามือเพื่อลบ"><i></i></button></div>
-    <div class="switch"><span><b>ลากค้างให้เป็นรูปทรง</b><small>ลากเส้นแล้วกดค้างไว้ครู่หนึ่ง จะได้เส้นตรง วงกลม วงรี สามเหลี่ยม หรือสี่เหลี่ยม เส้นตรงลากปรับปลายต่อได้ก่อนยกปากกา</small></span><button class="tg" id="tgShape" role="switch" aria-checked="true" aria-label="ลากค้างให้เป็นรูปทรง"><i></i></button></div>
-    <div class="switch"><span><b>ขีดทับเพื่อลบ</b><small>ขีดไปมาทับลายมือหรือกล่องข้อความด้วยปากกา ระบบจะลบส่วนนั้นให้ ภาพสปริงที่วาดบนที่ว่างไม่ถูกลบ</small></span><button class="tg" id="tgScribble" role="switch" aria-checked="true" aria-label="ขีดทับเพื่อลบ"><i></i></button></div>
-    <div class="switch"><span><b>โหมดจอใหญ่</b><small>สำหรับทีวีทัชสกรีน ปุ่มใหญ่และอยู่ด้านล่าง เอื้อมถึงขณะยืนสอน</small></span><button class="tg" id="tgTV" role="switch" aria-checked="false" aria-label="โหมดจอใหญ่"><i></i></button></div>
-    <h3>ท่าทางสัมผัส</h3>
-    <div class="gest">
-      <span><b>ถ่างสองนิ้ว</b> ซูมเข้าออก</span><span><b>ลากสองนิ้ว</b> เลื่อนหน้ากระดาษ</span>
-      <span><b>แตะสองนิ้ว</b> ย้อนกลับ</span><span><b>แตะสามนิ้ว</b> ทำซ้ำ</span>
-      <span><b>บ่วงเลือกแล้วลาก</b> ย้ายลายมือ</span><span><b>คีย์ P H E L T K</b> เปลี่ยนเครื่องมือ</span>
-    </div>
     <div class="note" id="syncNote"></div>
+    </div>
   </div>
 </div>
 
@@ -1180,7 +1198,8 @@ body.present .peekcard { display: none !important; }
 <div class="sheet" id="examSheet" hidden>
   <div class="panel wide" role="dialog" aria-label="ฝึกโจทย์แข่งขัน">
     <div class="exttl"><h2>ฝึกโจทย์แข่งขัน</h2><label class="field exwho"><span>ผู้ฝึก</span><select id="exWho"></select></label><span id="exAdd" hidden class="mrow"><input id="exNew" placeholder="ชื่อผู้ฝึก" maxlength="40"><button class="btn" id="exAddOk" type="button">เพิ่ม</button></span><button class="btn" id="exClose">ปิด</button></div>
-    <div class="seg" id="exTabs" role="group" aria-label="ส่วนของการฝึก"><button data-t="cls">ห้องเรียนและคะแนน</button><button data-t="sets">ชุดโจทย์</button><button data-t="build">จากหน้านี้</button><button data-t="practice">ฝึกและสอบ</button><button data-t="stats">ผลและจุดอ่อน</button><button data-t="analysis">วิเคราะห์ข้อสอบ</button><button data-t="grades">สมุดคะแนน</button><button data-t="hw">การบ้าน</button><button data-t="bank">คลังโจทย์</button></div>
+    <div class="seg exgroups" id="exGroups" role="group" aria-label="หมวด"></div>
+    <div class="seg" id="exTabs" role="group" aria-label="ส่วนในหมวด"><button data-t="cls">ห้องและคะแนน</button><button data-t="hw">การบ้าน</button><button data-t="sets">ชุดโจทย์ของฉัน</button><button data-t="build">จากหน้านี้</button><button data-t="bank">คลังโจทย์</button><button data-t="analysis">วิเคราะห์ข้อสอบ</button><button data-t="practice">ฝึกและสอบ</button><button data-t="stats">ผลและจุดอ่อน</button><button data-t="grades">คะแนนผู้ฝึก</button></div>
     <div id="exBody" class="exbody"></div>
   </div>
 </div>
@@ -6367,10 +6386,21 @@ function exRenderWho() {
   const o = document.createElement('option'); o.value = '+'; o.textContent = 'เพิ่มผู้ฝึก'; sel.appendChild(o);
   sel.value = EX.who;
 }
+const EX_GROUPS = [['class', 'ห้องเรียนและงาน', ['cls', 'hw']], ['sets', 'ชุดโจทย์', ['sets', 'build', 'bank', 'analysis']], ['train', 'ฝึกแข่งขัน', ['practice', 'stats', 'grades']]];
+const exGroupOf = (t) => (EX_GROUPS.find((g) => g[2].includes(t)) || EX_GROUPS[2]);
+function exRenderNav() {
+  const g = exGroupOf(EX.tab), gb = $('#exGroups'), stu = isStudentSide();
+  EX.lastTab = EX.lastTab || {}; EX.lastTab[g[0]] = EX.tab;
+  gb.innerHTML = ''; gb.hidden = !!EX.run || stu;
+  for (const [k, name, tabs] of EX_GROUPS) { const b = document.createElement('button'); b.type = 'button'; b.textContent = name; b.setAttribute('aria-pressed', k === g[0] ? 'true' : 'false'); b.onclick = () => { EX.tab = EX.lastTab[k] || tabs[0]; exRender(); }; gb.appendChild(b); }
+  $('#exTabs').hidden = !!EX.run;
+  $('#exTabs').querySelectorAll('button').forEach((b) => { b.hidden = !g[2].includes(b.dataset.t); b.setAttribute('aria-pressed', b.dataset.t === EX.tab ? 'true' : 'false'); });
+  const who = document.querySelector('#examSheet .exwho'); if (who) who.hidden = g[0] !== 'train';
+  if (g[0] !== 'train') $('#exAdd').hidden = true;
+}
 function exRender() {
   const body = $('#exBody'); body.innerHTML = '';
-  $('#exTabs').hidden = !!(EX.run);
-  $('#exTabs').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', b.dataset.t === EX.tab ? 'true' : 'false'));
+  exRenderNav();
   if (EX.run) return exRenderRun(body);
   if (EX.tab === 'sets') exRenderSets(body);
   else if (EX.tab === 'build') exRenderBuild(body);
@@ -8570,7 +8600,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793062615';
+const BUILD = '1793063673';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
@@ -8783,7 +8813,7 @@ $('#qsAgree').onchange = syncAgree;
 $('#qsOR').onclick = orStart;
 $('#qsORGo').onclick = () => { const c = $('#qsORCode').value.trim(); if (c) orFinish(c, null); };
 $('#qsKey').addEventListener('input', () => { const g = detectVendor($('#qsKey').value); $('#qsWho').textContent = g ? 'ดูจากคีย์แล้ว เป็นของ ' + KEY_VENDORS[g].name.replace(/\s*\(.*\)/, '') + (g === 'openai' ? ' หรือ Typhoon' : '') : 'ระบบดูจากคีย์ว่าเป็นของผู้ให้บริการไหน'; }); $('#qsClose').onclick = () => { $('#aiSetup').hidden = true; };
-$('#qsMore').onclick = () => { $('#aiSetup').hidden = true; $('#menu').hidden = false; const c = $('#cfgKey'); if (c) { c.open = true; setTimeout(() => c.scrollIntoView({ block: 'center' }), 50); } };
+$('#qsMore').onclick = () => { $('#aiSetup').hidden = true; menuTab('acc'); $('#menu').hidden = false; const c = $('#cfgKey'); if (c) { c.open = true; setTimeout(() => c.scrollIntoView({ block: 'center' }), 50); } };
 $('#iLab').onclick = () => { closeSheets(); renderLabPicker(); $('#labSheet').hidden = false; };
 $('#bLabClose').onclick = () => { $('#labSheet').hidden = true; };
 $('#iSim').onclick = () => { closeSheets(); renderSimPicker(); $('#simSheet').hidden = false; };
@@ -8988,9 +9018,15 @@ $('#bAddPage').onclick = addPage;
 $('#bDelPage').onclick = () => { $('#delConfirm').hidden = false; };
 $('#bDelNo').onclick = () => { $('#delConfirm').hidden = true; };
 $('#bDelYes').onclick = () => { $('#delConfirm').hidden = true; deletePage(); };
-$('#bMenu').onclick = () => { renderLibrary(); $('#menu').hidden = false; };
+function menuTab(t) {
+  $('#menuTabs').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', b.dataset.m === t ? 'true' : 'false'));
+  document.querySelectorAll('#menu [data-mp]').forEach((p) => { p.hidden = p.dataset.mp !== t; });
+}
+$('#menuTabs').querySelectorAll('button').forEach((b) => { b.onclick = () => menuTab(b.dataset.m); });
+menuTab('nb');
+$('#bMenu').onclick = () => { renderLibrary(); menuTab('nb'); $('#menu').hidden = false; };
 $('#tTitle').title = 'แตะเพื่อแก้ชื่อสมุด';
-$('#tTitle').onclick = () => { if (!S.nid || S.present || S.student) return; S.editNb = S.nid; renderLibrary(); $('#menu').hidden = false; };
+$('#tTitle').onclick = () => { if (!S.nid || S.present || S.student) return; S.editNb = S.nid; renderLibrary(); menuTab('nb'); $('#menu').hidden = false; };
 $('#bMenuClose').onclick = closeSheets;
 $('#menu').addEventListener('click', (e) => { if (e.target.id === 'menu') closeSheets(); });
 $('#exportSheet').addEventListener('click', (e) => { if (e.target.id === 'exportSheet') closeSheets(); });
