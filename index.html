@@ -766,6 +766,8 @@ body.present .exmini, body.role-student .exmini { display: none !important; }
 .scanbar .btn { min-height: 48px; background: rgba(255,255,255,0.94); color: #14181F; border: 0; font-weight: 600; }
 .scanbar .btn.solid { background: var(--accent, #2F4BB8); color: #FFFFFF; }
 #scanMsg { flex: 1 1 auto; }
+
+.tabchip.cur { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); font-weight: 700; }
 </style>
 </head>
 <body>
@@ -4754,14 +4756,16 @@ function holdable(el, onTap, onHold) {
 function renderTabs() {
   setTimeout(fitTop, 0);
   const el = $('#tabs'); el.innerHTML = '';
-  for (const nid of S.tabs) {
-    if (nid === S.nid) continue;
+  /* the notebook being written in is shown too, highlighted, so every colour on the bar matches its cover */
+  const ids = S.tabs.slice(); if (S.nid && !ids.includes(S.nid)) ids.unshift(S.nid);
+  for (const nid of ids) {
     const nb = S.nbs.find((n) => n.id === nid); if (!nb) continue;
-    const b = document.createElement('button'); b.className = 'tabchip'; b.type = 'button';
+    const b = document.createElement('button'); b.className = 'tabchip' + (nid === S.nid ? ' cur' : ''); b.type = 'button';
+    if (nid === S.nid) { b.setAttribute('aria-current', 'true'); b.innerHTML = '<i></i><span></span>'; b.querySelector('i').style.background = coverColor(nb); b.querySelector('span').textContent = nb.title || 'สมุด'; b.title = 'เล่มที่เขียนอยู่: ' + (nb.title || 'สมุด'); b.onclick = () => { renderLibrary(); $('#menu').hidden = false; }; el.appendChild(b); continue; }
     b.title = (nb.title || 'สมุด') + ' แตะเพื่อสลับ แตะค้างเพื่อดูคู่กัน';
     b.setAttribute('aria-label', 'สลับไปสมุด ' + (nb.title || ''));
     b.innerHTML = '<i></i><span></span>';
-    b.querySelector('i').style.background = COVERS.includes(nb.color) ? nb.color : COVERS[0];
+    b.querySelector('i').style.background = coverColor(nb);
     b.querySelector('span').textContent = nb.title || 'สมุด';
     holdable(b, () => openNotebook(nid), () => showTabMenu(nid, b));
     el.appendChild(b);
@@ -8929,7 +8933,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793086580';
+const BUILD = '1793086993';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
