@@ -152,6 +152,8 @@ body.tv .palette .sw { width: 52px; height: 52px; }
 .pull.ready { background: var(--accent); color: var(--accent-fg); }
 .addpage { position: absolute; left: 50%; transform: translateX(-50%); margin-top: 22px; min-height: 56px; padding: 0 22px; border-radius: 16px; border: 2px dashed #9AA5B4; background: rgba(255, 255, 255, 0.7); color: #2F3A48; font-size: 16px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 8px; white-space: nowrap; }
 .addpage svg { width: 20px; height: 20px; }
+@media (max-width: 1366px) { body.focus .dock .tool { width: 42px; } }
+.tool:disabled { opacity: 0.35; cursor: default; }
 .tool { width: 46px; height: 46px; border-radius: 13px; border: 0; background: transparent; cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--fg); }
 .tool svg { width: 23px; height: 23px; }
 .tool[aria-pressed="true"] { background: var(--chrome); color: var(--chrome-fg); }
@@ -781,6 +783,8 @@ body.present .peekcard { display: none !important; }
         </span>
         <span class="sep fonly"></span>
         <span class="fonly" style="align-items:center;gap:2px">
+          <button class="tool" id="fqUndo" aria-label="ย้อนกลับ" title="ย้อนกลับ"><svg viewBox="0 0 22 22"><path d="M8.5 5.5L4.5 9.5l4 4 M4.5 9.5H13a4.5 4.5 0 0 1 0 9h-2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+          <button class="tool" id="fqRedo" aria-label="ทำซ้ำ" title="ทำซ้ำ"><svg viewBox="0 0 22 22"><path d="M13.5 5.5l4 4-4 4 M17.5 9.5H9a4.5 4.5 0 0 0 0 9h2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
           <button class="tool" id="fqInsert" aria-label="แทรกรูป วิดีโอ กราฟ หรือข้อความ" title="แทรก"><svg viewBox="0 0 22 22"><rect x="3" y="4.5" width="16" height="13" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M3.5 15l4.5-4.5 3.5 3.5 2-2 5 4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg></button>
           <button class="tool" id="fqConvert" aria-label="แปลงลายมือเป็นตัวพิมพ์" title="แปลงเป็นตัวพิมพ์"><svg viewBox="0 0 22 22"><path d="M3 16.5c2-3 3-7 4.5-7s.5 5 2 5 2-6 3.5-6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M13 5h6 M16 5v8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button>
           <button class="tool" id="fqAI" aria-label="สร้างโจทย์จากหน้านี้" title="สร้างโจทย์"><svg viewBox="0 0 22 22"><path d="M11 3l1.9 4.9 5.1 2.1-5.1 2.1L11 17l-1.9-4.9L4 10l5.1-2.1z" fill="currentColor"/></svg></button>
@@ -2356,7 +2360,7 @@ function saveLayers(lids) { for (const l of lids) { if (l === DEV) saveMine(); e
 
 /* ---------- undo ---------- */
 function pushUndo(op) { op.pid = S.pid; S.undo.push(op); if (S.undo.length > 120) S.undo.shift(); S.redo = []; updUndo(); }
-function updUndo() { $('#bUndo').disabled = !S.undo.length; $('#bRedo').disabled = !S.redo.length; }
+function updUndo() { $('#bUndo').disabled = $('#fqUndo').disabled = !S.undo.length; $('#bRedo').disabled = $('#fqRedo').disabled = !S.redo.length; }
 function layerArr(lid) { if (lid === DEV) return S.mine; if (!S.others[lid]) S.others[lid] = []; return S.others[lid]; }
 function applyOp(op, dir) {
   if (op.pid !== S.pid) return;
@@ -8566,7 +8570,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793051847';
+const BUILD = '1793062615';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
@@ -8978,7 +8982,7 @@ vp.addEventListener('drop', (e) => {
   const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]; if (!f) return;
   if (f.type === 'application/pdf' || /\.pdf$/i.test(f.name || '')) openPdfFile(f); else if (f.type.startsWith('image/')) insertImage(f); else if (f.type.startsWith('video/')) insertVideo(f);
 });
-$('#bUndo').onclick = undo; $('#bRedo').onclick = redo;
+$('#bUndo').onclick = undo; $('#bRedo').onclick = redo; $('#fqUndo').onclick = undo; $('#fqRedo').onclick = redo;
 $('#bPages').onclick = () => togglePages();
 $('#bAddPage').onclick = addPage;
 $('#bDelPage').onclick = () => { $('#delConfirm').hidden = false; };
