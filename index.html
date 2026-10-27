@@ -729,6 +729,17 @@ body.lang-en .item.teacher::before { content: "Answer"; }
 
 .subjpick { display: flex; flex-direction: column; gap: 6px; }
 .subjpick input { min-height: 44px; border-radius: 12px; border: 1px solid var(--line); padding: 0 12px; font: inherit; background: var(--surface); color: var(--fg); }
+
+.exnums { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 4px; }
+.exnums button { min-width: 40px; height: 40px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); color: var(--fg); font: inherit; font-size: 15px; cursor: pointer; }
+.exnums button.cur { background: var(--accent); border-color: var(--accent); color: #FFFFFF; font-weight: 700; }
+.exnums button.ok { border-color: var(--ok); color: var(--ok); }
+.exnums button.no { border-color: var(--danger); color: var(--danger); }
+.exnums button.did { background: var(--surface-2); }
+.exmini { position: absolute; left: 14px; bottom: 14px; z-index: 8; display: flex; align-items: center; gap: 4px; padding: 5px; border-radius: 16px; background: var(--chrome); color: var(--chrome-fg); box-shadow: var(--shadow); }
+.exmini button { min-height: 44px; min-width: 44px; padding: 0 12px; border: 0; border-radius: 12px; background: transparent; color: inherit; font: inherit; font-size: 14px; cursor: pointer; }
+.exmini button.main { background: rgba(255, 255, 255, 0.16); font-weight: 600; }
+body.present .exmini, body.role-student .exmini { display: none !important; }
 </style>
 </head>
 <body>
@@ -872,6 +883,7 @@ body.lang-en .item.teacher::before { content: "Answer"; }
       <button class="pexit no-ink" id="presentExit" hidden>ออกจากจอผู้ชม</button>
       <div class="pwait no-ink" id="presentWait" hidden>จอผู้ชมพร้อมแล้ว<br>เปิดสมุดบนเครื่องที่ใช้เขียน แล้วหน้านั้นจะขึ้นที่นี่</div>
       <button class="exitfull no-ink" id="bExitFull" hidden aria-label="ออกจากเต็มหน้าจอ"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7.5 3v4.5H3 M17 7.5h-4.5V3 M12.5 17v-4.5H17 M3 12.5h4.5V17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      <div class="exmini no-ink" id="exMini" role="group" aria-label="ชุดโจทย์ที่ย่อไว้" hidden><button id="emPrev" aria-label="ข้อก่อนหน้า">ก่อนหน้า</button><button id="emOpen" class="main"></button><button id="emNext" aria-label="ข้อต่อไป">ต่อไป</button><button id="emPlace">วางข้อนี้ลงหน้า</button></div>
       <div class="pagenav no-ink" role="group" aria-label="เปลี่ยนหน้า">
         <button id="pgPrev" aria-label="หน้าก่อน"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M12.5 4.5L7 10l5.5 5.5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
         <button class="num" id="pgNum" aria-label="ดูทุกหน้า">1 / 1</button>
@@ -1208,7 +1220,7 @@ body.lang-en .item.teacher::before { content: "Answer"; }
 
 <div class="sheet" id="examSheet" hidden>
   <div class="panel wide" role="dialog" aria-label="ฝึกโจทย์แข่งขัน">
-    <div class="exttl"><h2>ฝึกโจทย์แข่งขัน</h2><label class="field exwho"><span>ผู้ฝึก</span><select id="exWho"></select></label><span id="exAdd" hidden class="mrow"><input id="exNew" placeholder="ชื่อผู้ฝึก" maxlength="40"><button class="btn" id="exAddOk" type="button">เพิ่ม</button></span><button class="btn" id="exClose">ปิด</button></div>
+    <div class="exttl"><h2>ฝึกโจทย์แข่งขัน</h2><label class="field exwho"><span>ผู้ฝึก</span><select id="exWho"></select></label><span id="exAdd" hidden class="mrow"><input id="exNew" placeholder="ชื่อผู้ฝึก" maxlength="40"><button class="btn" id="exAddOk" type="button">เพิ่ม</button></span><button class="btn solid" id="exMinBtn" type="button" hidden>ย่อไว้ก่อน</button><button class="btn" id="exClose">ปิด</button></div>
     <div class="seg exgroups" id="exGroups" role="group" aria-label="หมวด"></div>
     <div class="seg" id="exTabs" role="group" aria-label="ส่วนในหมวด"><button data-t="cls">ห้องและคะแนน</button><button data-t="hw">การบ้าน</button><button data-t="sets">ชุดโจทย์ของฉัน</button><button data-t="build">จากหน้านี้</button><button data-t="bank">คลังโจทย์</button><button data-t="analysis">วิเคราะห์ข้อสอบ</button><button data-t="practice">ฝึกและสอบ</button><button data-t="stats">ผลและจุดอ่อน</button><button data-t="grades">คะแนนผู้ฝึก</button></div>
     <div id="exBody" class="exbody"></div>
@@ -2379,7 +2391,7 @@ let lastEmit = 0;
 function emitLaser() { lastEmit = now(); }
 
 /* ---------- items ---------- */
-function visibleItems() { return (S.page && S.page.items) || []; }
+function visibleItems() { const a = (S.page && S.page.items) || []; return S.present || S.student ? a.filter((it) => !it.teacher) : a; }
 let editing = null;
 function renderItems() {
   if (editing) return;
@@ -6416,6 +6428,53 @@ const EXAM_BANK = {
 
 /* ---------- competition prep: practice, scores and weak topics ---------- */
 const EX = { who: store_ls.get('tp-exwho') || 'ตัวฉัน', people: [], att: [], own: [], tab: 'build', sets: [], anSet: null, track: store_ls.get('tp-extrack') || 'olymp', chs: new Set(), n: 10, mode: 'practice', run: null, loaded: false };
+const BANK_META = /*BANK_META*/{"olymp":{"th":"สอวน. ฟิสิกส์ (ขอบข่าย IPhO)","subject":"phys","file":false,"n":0,"v":"528356a1","chapters":[{"th":"คณิตศาสตร์และการประมาณ","en":"","subs":[["เวกเตอร์","vector addition components"],["แคลคูลัสในฟิสิกส์","calculus derivative physics"],["การวิเคราะห์มิติ","dimensional analysis"],["การประมาณค่า","Fermi estimation small angle approximation"]],"objectives":[]},{"th":"จลนศาสตร์","en":"","subs":[["การเคลื่อนที่สัมพัทธ์","relative velocity frames"],["การเคลื่อนที่แนวโค้ง","curvilinear motion radius of curvature"],["พิกัดเชิงขั้ว","polar coordinates motion"],["ข้อจำกัดการเคลื่อนที่","constrained motion pulley"]],"objectives":[]},{"th":"พลศาสตร์และกฎของนิวตัน","en":"","subs":[["แรงในระบบหลายวัตถุ","multiple body free body diagram"],["แรงเสียดทานและเชือก","friction rope capstan"],["กรอบอ้างอิงไม่เฉื่อย","non inertial frame pseudo force"],["แรงหนีศูนย์กลาง คอริออลิส","Coriolis centrifugal force"]],"objectives":[]},{"th":"งาน พลังงาน โมเมนตัม","en":"","subs":[["กฎการอนุรักษ์","conservation laws mechanics"],["การชนและการระเบิด","collision explosion momentum"],["ระบบมวลแปรผัน","rocket equation variable mass"],["ศูนย์กลางมวล","center of mass frame"]],"objectives":[]},{"th":"การหมุนของวัตถุแข็งเกร็ง","en":"","subs":[["โมเมนต์ความเฉื่อย","moment of inertia parallel axis"],["โมเมนตัมเชิงมุม","angular momentum conservation"],["การกลิ้ง","rolling without slipping"],["ไจโรสโคป","gyroscope precession"]],"objectives":[]},{"th":"สถิตยศาสตร์","en":"","subs":[["สมดุลของวัตถุแข็งเกร็ง","rigid body equilibrium"],["เสถียรภาพ","stable unstable equilibrium potential"],["โครงสร้าง","truss forces bridge"]],"objectives":[]},{"th":"กลศาสตร์ท้องฟ้า","en":"","subs":[["กฎของเคปเลอร์","Kepler laws"],["วงโคจรวงรี","elliptical orbit energy"],["ความเร็วหลุดพ้น","escape velocity"],["น้ำขึ้นน้ำลง","tidal force"]],"objectives":[]},{"th":"ของไหล","en":"","subs":[["อุทกสถิต","hydrostatics pressure"],["แรงลอยตัว","buoyancy floating stability"],["สมการความต่อเนื่องและแบร์นูลลี","Bernoulli continuity equation"],["ความตึงผิว","surface tension capillary"]],"objectives":[]},{"th":"การสั่นและคลื่น","en":"","subs":[["การสั่นแบบหน่วงและบังคับ","damped driven oscillation resonance"],["การสั่นเล็กน้อยรอบสมดุล","small oscillations equilibrium"],["คลื่นนิ่งและฮาร์มอนิก","standing wave harmonics"],["ดอปเพลอร์และบีต","Doppler effect beats"]],"objectives":[]},{"th":"ไฟฟ้าสถิต","en":"","subs":[["ศักย์ไฟฟ้าและพลังงาน","electric potential energy"],["ตัวนำและตัวเก็บประจุ","conductor capacitor"],["ไดอิเล็กทริก","dielectric polarization"],["ประจุภาพ","method of images"]],"objectives":[]},{"th":"ไฟฟ้ากระแสและวงจร","en":"","subs":[["กฎของเคอร์ชอฟฟ์","Kirchhoff circuit laws"],["วงจร RC","RC circuit transient"],["วงจรไม่เชิงเส้น","diode nonlinear circuit"],["เครื่องวัดไฟฟ้า","ammeter voltmeter wheatstone bridge"]],"objectives":[]},{"th":"แม่เหล็กและการเหนี่ยวนำ","en":"","subs":[["กฎของบีโอต์ซาวาร์ต","Biot Savart law"],["อนุภาคประจุในสนาม","charged particle magnetic field cyclotron"],["การเหนี่ยวนำและตัวเหนี่ยวนำ","Faraday law inductance"],["วงจรไฟฟ้ากระแสสลับ RLC","RLC AC circuit phasor"]],"objectives":[]},{"th":"คลื่นแม่เหล็กไฟฟ้าและแสง","en":"","subs":[["ทัศนศาสตร์เชิงเรขาคณิต","geometrical optics lens mirror"],["การแทรกสอด","interference Young double slit"],["การเลี้ยวเบน","diffraction grating resolution"],["โพลาไรเซชัน","polarization Brewster angle"]],"objectives":[]},{"th":"อุณหพลศาสตร์","en":"","subs":[["กฎข้อที่หนึ่ง","first law thermodynamics"],["กระบวนการแก๊ส","isothermal adiabatic process"],["วัฏจักรและประสิทธิภาพ","Carnot cycle heat engine"],["เอนโทรปี","entropy second law"],["การนำความร้อนและการแผ่รังสี","heat conduction Stefan Boltzmann"]],"objectives":[]},{"th":"ฟิสิกส์เชิงสถิติ","en":"","subs":[["ทฤษฎีจลน์ของแก๊ส","kinetic theory molecular speed"],["การกระจายโบลต์ซมันน์","Boltzmann distribution"],["การแผ่รังสีวัตถุดำ","black body radiation Planck"]],"objectives":[]},{"th":"สัมพัทธภาพพิเศษ","en":"","subs":[["การแปลงลอเรนซ์","Lorentz transformation"],["การยืดของเวลาและการหดของความยาว","time dilation length contraction"],["พลังงานและโมเมนตัมเชิงสัมพัทธภาพ","relativistic energy momentum"],["ดอปเพลอร์เชิงสัมพัทธภาพ","relativistic Doppler"]],"objectives":[]},{"th":"ฟิสิกส์ควอนตัม","en":"","subs":[["โฟตอนและปรากฏการณ์คอมป์ตัน","photon Compton scattering"],["คลื่นเดอบรอยล์","de Broglie wavelength"],["หลักความไม่แน่นอน","uncertainty principle"],["อะตอมไฮโดรเจน","hydrogen energy levels"],["ฟิสิกส์นิวเคลียร์","radioactive decay nuclear reaction"]],"objectives":[]},{"th":"ปฏิบัติการและการวิเคราะห์ข้อมูล","en":"","subs":[["ความคลาดเคลื่อนและการแพร่ความคลาดเคลื่อน","error propagation uncertainty"],["การทำกราฟเชิงเส้น","linearization graph slope"],["เครื่องมือวัด","laboratory measuring instruments"],["การออกแบบการทดลอง","physics experiment setup"]],"objectives":[]}]},"ijso":{"th":"IJSO (ส่วนฟิสิกส์)","subject":"phys","file":false,"n":0,"v":"e7bd880b","chapters":[{"th":"การวัดและหน่วย","en":"","subs":[["หน่วย SI","SI units"],["ความคลาดเคลื่อนในการวัด","measurement error"],["การอ่านกราฟ","interpreting graphs"]],"objectives":[]},{"th":"การเคลื่อนที่","en":"","subs":[["อัตราเร็ว ความเร็ว ความเร่ง","speed velocity acceleration"],["กราฟการเคลื่อนที่","distance time graph"],["การตกอิสระ","free fall"]],"objectives":[]},{"th":"แรงและกฎของนิวตัน","en":"","subs":[["แรงลัพธ์","resultant force"],["แรงเสียดทาน","friction"],["โมเมนต์และคาน","moments lever"]],"objectives":[]},{"th":"งาน พลังงาน กำลัง","en":"","subs":[["พลังงานกลและการอนุรักษ์","mechanical energy conservation"],["เครื่องกล","simple machines efficiency"],["แหล่งพลังงาน","energy resources"]],"objectives":[]},{"th":"ความดันและของไหล","en":"","subs":[["ความดัน","pressure"],["แรงลอยตัว","Archimedes principle"],["ความหนาแน่น","density measurement"]],"objectives":[]},{"th":"ความร้อน","en":"","subs":[["ความจุความร้อน","specific heat capacity"],["ความร้อนแฝง","latent heat"],["การถ่ายโอนความร้อน","conduction convection radiation"]],"objectives":[]},{"th":"คลื่น เสียง แสง","en":"","subs":[["สมบัติคลื่น","wave properties"],["เสียง","sound waves"],["การสะท้อนและหักเห","reflection refraction light"],["เลนส์","lens image formation"],["สเปกตรัมแม่เหล็กไฟฟ้า","electromagnetic spectrum"]],"objectives":[]},{"th":"ไฟฟ้าและแม่เหล็ก","en":"","subs":[["ไฟฟ้าสถิต","static electricity"],["วงจรไฟฟ้า","series parallel circuit"],["พลังงานไฟฟ้า","electrical power"],["แม่เหล็กไฟฟ้า","electromagnet motor"],["การเหนี่ยวนำ","electromagnetic induction generator"]],"objectives":[]},{"th":"ฟิสิกส์ยุคใหม่และดาราศาสตร์","en":"","subs":[["อะตอมและนิวเคลียส","atomic structure nucleus"],["กัมมันตภาพรังสี","radioactivity half life"],["ระบบสุริยะ","solar system"],["ดาวฤกษ์และเอกภพ","stars universe"]],"objectives":[]},{"th":"ทักษะปฏิบัติการ","en":"","subs":[["การจัดการข้อมูล","data table graph"],["การออกแบบการทดลอง","experiment variables control"],["อุปกรณ์ปฏิบัติการ","laboratory equipment"]],"objectives":[]}]},"chem":{"th":"เคมี","subject":"chem","file":false,"n":0,"v":"bc52ac50","chapters":[{"th":"ความปลอดภัยและทักษะในปฏิบัติการเคมี","en":"","subs":[],"objectives":[]},{"th":"อะตอมและสมบัติของธาตุ","en":"","subs":[],"objectives":[]},{"th":"พันธะเคมี","en":"","subs":[],"objectives":[]},{"th":"โมลและสูตรเคมี","en":"","subs":[],"objectives":[]},{"th":"สารละลาย","en":"","subs":[],"objectives":[]},{"th":"ปริมาณสัมพันธ์","en":"","subs":[],"objectives":[]},{"th":"แก๊สและสมบัติของแก๊ส","en":"","subs":[],"objectives":[]},{"th":"อัตราการเกิดปฏิกิริยาเคมี","en":"","subs":[],"objectives":[]},{"th":"สมดุลเคมี","en":"","subs":[],"objectives":[]},{"th":"กรด เบส","en":"","subs":[],"objectives":[]},{"th":"ไฟฟ้าเคมี","en":"","subs":[],"objectives":[]},{"th":"เคมีอินทรีย์และพอลิเมอร์","en":"","subs":[],"objectives":[]}]},"bio":{"th":"ชีววิทยา","subject":"bio","file":false,"n":0,"v":"789fe6aa","chapters":[{"th":"การศึกษาชีววิทยาและสารเคมีในเซลล์","en":"","subs":[],"objectives":[]},{"th":"เซลล์และการแบ่งเซลล์","en":"","subs":[],"objectives":[]},{"th":"การหายใจระดับเซลล์","en":"","subs":[],"objectives":[]},{"th":"พันธุศาสตร์และการถ่ายทอดลักษณะ","en":"","subs":[],"objectives":[]},{"th":"เทคโนโลยีทางดีเอ็นเอ","en":"","subs":[],"objectives":[]},{"th":"วิวัฒนาการ","en":"","subs":[],"objectives":[]},{"th":"ความหลากหลายทางชีวภาพ","en":"","subs":[],"objectives":[]},{"th":"โครงสร้าง การลำเลียง และการสังเคราะห์ด้วยแสงของพืช","en":"","subs":[],"objectives":[]},{"th":"การสืบพันธุ์และการควบคุมการเจริญเติบโตของพืช","en":"","subs":[],"objectives":[]},{"th":"ระบบย่อยอาหาร หายใจ หมุนเวียนเลือด และขับถ่าย","en":"","subs":[],"objectives":[]},{"th":"ระบบประสาท ฮอร์โมน และภูมิคุ้มกัน","en":"","subs":[],"objectives":[]},{"th":"นิเวศวิทยาและสิ่งแวดล้อม","en":"","subs":[],"objectives":[]}]},"earth":{"th":"โลก ดาราศาสตร์ และอวกาศ","subject":"earth","file":false,"n":0,"v":"eb1f23c7","chapters":[{"th":"โครงสร้างโลกและธรณีแปรสัณฐาน","en":"","subs":[],"objectives":[]},{"th":"แร่ หิน และวัฏจักรหิน","en":"","subs":[],"objectives":[]},{"th":"ธรณีประวัติและซากดึกดำบรรพ์","en":"","subs":[],"objectives":[]},{"th":"ธรณีพิบัติภัย","en":"","subs":[],"objectives":[]},{"th":"บรรยากาศและสมบัติของอากาศ","en":"","subs":[],"objectives":[]},{"th":"ลมฟ้าอากาศและการพยากรณ์อากาศ","en":"","subs":[],"objectives":[]},{"th":"ภูมิอากาศและการเปลี่ยนแปลงภูมิอากาศ","en":"","subs":[],"objectives":[]},{"th":"มหาสมุทรและการหมุนเวียนของน้ำ","en":"","subs":[],"objectives":[]},{"th":"ดวงอาทิตย์และระบบสุริยะ","en":"","subs":[],"objectives":[]},{"th":"ดาวฤกษ์ กาแล็กซี และเอกภพ","en":"","subs":[],"objectives":[]},{"th":"ทรงกลมฟ้าและการสังเกตท้องฟ้า","en":"","subs":[],"objectives":[]},{"th":"เทคโนโลยีอวกาศ","en":"","subs":[],"objectives":[]}]},"sci":{"th":"วิทยาศาสตร์ ม.ต้น","subject":"sci","file":false,"n":0,"v":"7b074c1d","chapters":[{"th":"ทักษะกระบวนการทางวิทยาศาสตร์","en":"","subs":[],"objectives":[]},{"th":"สารและสมบัติของสาร","en":"","subs":[],"objectives":[]},{"th":"การเปลี่ยนแปลงของสารและปฏิกิริยาเคมี","en":"","subs":[],"objectives":[]},{"th":"เซลล์และระบบในร่างกายมนุษย์","en":"","subs":[],"objectives":[]},{"th":"พืชและการดำรงชีวิตของพืช","en":"","subs":[],"objectives":[]},{"th":"พันธุกรรมและความหลากหลายทางชีวภาพ","en":"","subs":[],"objectives":[]},{"th":"ระบบนิเวศและสิ่งแวดล้อม","en":"","subs":[],"objectives":[]},{"th":"แรงและการเคลื่อนที่","en":"","subs":[],"objectives":[]},{"th":"พลังงาน งาน และความร้อน","en":"","subs":[],"objectives":[]},{"th":"คลื่น แสง และเสียง","en":"","subs":[],"objectives":[]},{"th":"ไฟฟ้าและอิเล็กทรอนิกส์เบื้องต้น","en":"","subs":[],"objectives":[]},{"th":"โลก ดาราศาสตร์ และอวกาศ","en":"","subs":[],"objectives":[]}]},"math":{"th":"คณิตศาสตร์","subject":"math","file":false,"n":0,"v":"7833e7c0","chapters":[{"th":"เซตและตรรกศาสตร์","en":"","subs":[],"objectives":[]},{"th":"จำนวนจริงและพหุนาม","en":"","subs":[],"objectives":[]},{"th":"ฟังก์ชัน","en":"","subs":[],"objectives":[]},{"th":"ฟังก์ชันเอกซ์โพเนนเชียลและลอการิทึม","en":"","subs":[],"objectives":[]},{"th":"เรขาคณิตวิเคราะห์และภาคตัดกรวย","en":"","subs":[],"objectives":[]},{"th":"ฟังก์ชันตรีโกณมิติ","en":"","subs":[],"objectives":[]},{"th":"เมทริกซ์","en":"","subs":[],"objectives":[]},{"th":"เวกเตอร์ในสามมิติ","en":"","subs":[],"objectives":[]},{"th":"จำนวนเชิงซ้อน","en":"","subs":[],"objectives":[]},{"th":"ลำดับและอนุกรม","en":"","subs":[],"objectives":[]},{"th":"แคลคูลัสเบื้องต้น","en":"","subs":[],"objectives":[]},{"th":"หลักการนับและความน่าจะเป็น","en":"","subs":[],"objectives":[]},{"th":"สถิติและการแจกแจงความน่าจะเป็น","en":"","subs":[],"objectives":[]}]}}/*END_BANK_META*/;
+/* ---------- built-in question bank by subject: one file per track, loaded on demand and kept for offline use.
+   Every item carries its learning objective (o), subtopic (s), thinking level (b), difficulty (d) and the misconception behind each wrong choice (w). ---------- */
+const BLOOM = [['R', 'จำ'], ['U', 'เข้าใจ'], ['Ap', 'ประยุกต์ใช้'], ['An', 'วิเคราะห์'], ['E', 'ประเมินค่า']];
+const bloomName = (b) => (BLOOM.find((x) => x[0] === b) || ['', ''])[1];
+const BANKS = {}, BANK_LOADING = {};
+const trackSubj = (t) => (BANK_META[t] ? BANK_META[t].subject : 'phys');
+for (const [t, m] of Object.entries(BANK_META)) if (!CURRIC[t]) CURRIC[t] = [m.th, m.chapters.map((c) => [c.th, c.subs || []])];
+function objOf(t, ch, o) { const m = BANK_META[t]; const c = m && m.chapters[ch]; const x = c && (c.objectives || []).find((y) => y.id === o); return x ? x.th : ''; }
+function bankFiles() { return Object.keys(BANK_META).filter((t) => BANK_META[t].file); }
+async function bankEnsure(tracks) {
+  const need = (tracks || bankFiles()).filter((t) => BANK_META[t] && BANK_META[t].file && !BANKS[t]);
+  await Promise.all(need.map((t) => BANK_LOADING[t] || (BANK_LOADING[t] = fetch('bank/' + t + '.json?v=' + BANK_META[t].v).then((r) => (r.ok ? r.json() : null)).then((j) => { BANKS[t] = j && Array.isArray(j.items) ? j.items : []; }).catch(() => { BANKS[t] = []; }).finally(() => { BANK_LOADING[t] = null; }))));
+  return need.length;
+}
+function bankQs() {
+  const out = [];
+  for (const [t, items] of Object.entries(BANKS)) for (const it of items) out.push({ id: 'k-' + it.id, t, ch: it.ch, d: it.d, q: it.q, c: it.c, a: 0, e: it.e || '', w: it.w, o: it.o, s: it.s, b: it.b, src: 'bank' });
+  return out;
+}
+/* tracks for the notebook's subject (physics keeps its olympiad tracks) */
+function subjTracks() { const sj = curSubj()[0]; return Object.keys(CURRIC).filter((t) => (BANK_META[t] ? BANK_META[t].subject === sj : sj === 'phys')); }
+/* mastery by objective and by thinking level, from the answers of one learner (or everyone) */
+function exMastery(who, track) {
+  const map = new Map(exAllQs().map((q) => [q.id, q]));
+  const byO = {}, byB = {};
+  for (const a of EX.att) {
+    if (who && a.who !== who) continue;
+    for (const it of a.items || []) {
+      const q = map.get(it[0]); if (!q || (track && q.t !== track)) continue;
+      if (q.o) { const k = q.t + ':' + q.ch + ':' + q.o; const s = byO[k] || (byO[k] = { t: q.t, ch: q.ch, o: q.o, n: 0, ok: 0 }); s.n++; if (it[2]) s.ok++; }
+      if (q.b) { const s = byB[q.b] || (byB[q.b] = { n: 0, ok: 0 }); s.n++; if (it[2]) s.ok++; }
+    }
+  }
+  return { byO, byB };
+}
+function masteryHtml(byO, byB, minN) {
+  let h = '';
+  const bl = BLOOM.filter(([k]) => byB[k] && byB[k].n);
+  if (bl.length) h += '<h3>ระดับการคิด</h3><div class="exper">' + bl.map(([k, n]) => { const s = byB[k], p = s.ok / s.n; return '<div><span>' + n + '</span><i><s style="width:' + Math.round(p * 100) + '%"></s></i><b>' + s.ok + '/' + s.n + '</b></div>'; }).join('') + '</div>';
+  const os = Object.values(byO).filter((s) => s.n >= (minN || 2)).map((s) => Object.assign(s, { p: s.ok / s.n })).sort((a, b) => a.p - b.p);
+  if (os.length) {
+    h += '<h3>จุดประสงค์การเรียนรู้ เรียงจากที่ยังไม่ผ่าน</h3><div class="exper">' + os.slice(0, 15).map((s) => '<div><span>' + esc(objOf(s.t, s.ch, s.o) || s.o) + ' <small>' + esc(exChName(s.t, s.ch)) + '</small>' + (s.p < 0.6 ? ' <em>ยังไม่ผ่าน</em>' : s.p >= 0.8 ? ' <em class="good">ผ่าน</em>' : '') + '</span><i><s style="width:' + Math.round(s.p * 100) + '%"></s></i><b>' + s.ok + '/' + s.n + '</b></div>').join('') + '</div>';
+    h += '<div class="note small">ผ่านคือถูกตั้งแต่ร้อยละ 80 ยังไม่ผ่านคือต่ำกว่าร้อยละ 60 คิดจากข้อที่ตอบแล้วอย่างน้อย ' + (minN || 2) + ' ข้อต่อจุดประสงค์</div>';
+  }
+  return h;
+}
 const exTrackName = (t) => (CURRIC[t] ? CURRIC[t][0] : t);
 const exChName = (t, ch) => (CURRIC[t] && CURRIC[t][1][ch] ? CURRIC[t][1][ch][0] : 'บทที่ ' + (ch + 1));
 function exAllQs() {
@@ -6425,6 +6484,7 @@ function exAllQs() {
     for (const r of list) { const k = r[0]; seen[k] = (seen[k] || 0) + 1; out.push({ id: 'b-' + t + '-' + k + '-' + seen[k], t, ch: r[0], d: r[1], q: r[2], c: r[3], a: 0, e: r[4] || '', src: 'bank' }); }
   }
   for (const q of EX.own) out.push(Object.assign({ src: 'own' }, q, { id: 'u-' + q.id }));
+  out.push(...bankQs());
   return out.filter((q) => CURRIC[q.t] && q.c && q.c.length >= 2);
 }
 async function exLoad() {
@@ -6495,6 +6555,16 @@ function exAnswer(i) {
   x.pick = i; x.sec += (now() - x.t0) / 1000; x.t0 = now();
   exRender();
 }
+/* the open set folds into a small bar on the teacher's screen: teach on the page, then pick the next question */
+function exMinimize() { $('#examSheet').hidden = true; exMiniSync(); }
+function exMiniSync() {
+  const R = EX.run, bar = $('#exMini'); if (!bar) return;
+  const show = !!(R && !R.done && $('#examSheet').hidden && !S.present && !isStudentSide());
+  bar.hidden = !show; if (!show) return;
+  $('#emOpen').textContent = 'ข้อ ' + (R.i + 1) + ' จาก ' + R.items.length + ' เปิดชุด';
+  $('#emPrev').disabled = R.i === 0; $('#emNext').disabled = R.i === R.items.length - 1;
+}
+function exMiniStep(d) { const R = EX.run; if (!R) return; const x = R.items[R.i]; if (x.pick < 0) x.sec += (now() - x.t0) / 1000; R.i = clamp(R.i + d, 0, R.items.length - 1); R.items[R.i].t0 = now(); exMiniSync(); }
 function exGo(d) {
   const R = EX.run, x = R.items[R.i];
   if (x.pick < 0) x.sec += (now() - x.t0) / 1000;
@@ -6527,6 +6597,7 @@ function exRenderWho() {
 const EX_GROUPS = [['class', 'ห้องเรียนและงาน', ['cls', 'hw']], ['sets', 'ชุดโจทย์', ['sets', 'build', 'bank', 'analysis']], ['train', 'ฝึกแข่งขัน', ['practice', 'stats', 'grades']]];
 const exGroupOf = (t) => (EX_GROUPS.find((g) => g[2].includes(t)) || EX_GROUPS[2]);
 function exRenderNav() {
+  $('#exMinBtn').hidden = !(EX.run && !EX.run.done) || isStudentSide();
   const g = exGroupOf(EX.tab), gb = $('#exGroups'), stu = isStudentSide();
   EX.lastTab = EX.lastTab || {}; EX.lastTab[g[0]] = EX.tab;
   gb.innerHTML = ''; gb.hidden = !!EX.run || stu;
@@ -6538,6 +6609,7 @@ function exRenderNav() {
 }
 function exRender() {
   const body = $('#exBody'); body.innerHTML = '';
+  if (!EX.bankAsked) { EX.bankAsked = true; bankEnsure(subjTracks()).then((n) => { EX.bankAsked = false; if (n && !$('#examSheet').hidden && !EX.run) exRender(); }); }
   exRenderNav();
   if (EX.run) return exRenderRun(body);
   if (EX.tab === 'sets') exRenderSets(body);
@@ -6552,7 +6624,10 @@ function exRender() {
 }
 function exRenderSetup(body) {
   const all = exAllQs();
-  const tracks = Object.keys(CURRIC).filter((t) => all.some((q) => q.t === t));
+  const st = subjTracks();
+  if (st.some((t) => BANK_META[t] && BANK_META[t].file && !BANKS[t])) { body.appendChild(exEl('div', 'note', 'กำลังเปิดคลังโจทย์')); bankEnsure(st).then(() => { if (!$('#examSheet').hidden) exRender(); }); return; }
+  const tracks = st.filter((t) => all.some((q) => q.t === t));
+  if (!tracks.length) { body.appendChild(exEl('div', 'note', 'ยังไม่มีโจทย์ในคลังของวิชา' + esc(subjName(curSubj()[0], S.nb)) + ' ไปที่หมวดชุดโจทย์ แท็บคลังโจทย์ เพื่อเพิ่มโจทย์เองหรือให้ AI ร่าง')); return; }
   if (!tracks.includes(EX.track)) EX.track = tracks[0];
   body.appendChild(exEl('span', 'label', 'สนามสอบ'));
   exChips(body, tracks.map((t) => [t, exTrackName(t)]), (v) => v === EX.track, (v) => { EX.track = v; EX.chs.clear(); store_ls.set('tp-extrack', v); exRender(); });
@@ -6582,6 +6657,7 @@ function exRenderRun(body) {
   const tm = exEl('span', 'extime'); head.appendChild(tm);
   body.appendChild(head);
   const bar = exEl('div', 'exbar'); for (let k = 0; k < R.items.length; k++) { const s = exEl('i'); const it = R.items[k]; if (k === R.i) s.className = 'cur'; else if (it.pick >= 0) s.className = R.mode === 'practice' ? (it.pick === it.key ? 'ok' : 'no') : 'did'; s.onclick = () => { exGo(k - R.i); }; bar.appendChild(s); } body.appendChild(bar);
+  if (R.items.length > 1) { const nums = exEl('div', 'exnums'); R.items.forEach((it, k) => { const b = exEl('button', k === R.i ? 'cur' : it.pick >= 0 ? (R.mode === 'practice' ? (it.pick === it.key ? 'ok' : 'no') : 'did') : '', String(k + 1)); b.type = 'button'; b.setAttribute('aria-label', 'ข้อ ' + (k + 1)); b.onclick = () => exGo(k - R.i); nums.appendChild(b); }); body.appendChild(nums); }
   body.appendChild(exEl('div', 'exch', esc(exTrackName(x.q.t) + ' : ' + exChName(x.q.t, x.q.ch)) + ' ' + '<span>' + ['', 'พื้นฐาน', 'กลาง', 'ท้าทาย'][x.q.d || 1] + '</span>'));
   if (x.q.fig) body.appendChild(exEl('div', '', figHtml(x.q, 360)));
   const qd = exEl('div', 'exq', mdToHtml(x.q.q)); body.appendChild(qd);
@@ -6605,6 +6681,7 @@ function exRenderRun(body) {
   }
   else mk(last ? 'ส่งคำตอบ' : 'ข้อต่อไป', 'solid', () => { if (!last) exGo(1); else { const left = R.items.filter((y) => y.pick < 0).length; if (left && !EX.confirmSend) { EX.confirmSend = true; toast('ยังไม่ได้ตอบ ' + left + ' ข้อ กดส่งอีกครั้งเพื่อยืนยัน', 2600); return; } EX.confirmSend = false; exFinish(); } });
   mk('วางโจทย์ลงหน้า', '', () => exPutOnPage(x, reveal));
+  mk('ย่อไว้ก่อน', '', exMinimize);
   mk('เลิกทำ', '', () => { clearInterval(EX.tick); EX.run = null; exRender(); });
   body.appendChild(nav);
   const upd = () => {
@@ -6668,6 +6745,7 @@ function exRenderResult(body) {
     body.appendChild(exEl('h3', '', 'ทบทวนข้อที่ยังไม่ถูก'));
     for (const x of wrong) {
       const d = exEl('div', 'exrev', '<div class="exq">' + mdToHtml(x.q.q) + '</div><div class="note">' + (x.pick < 0 ? 'ไม่ได้ตอบ' : 'ตอบ ' + mdToHtml(x.q.c[x.order[x.pick]])) + ' คำตอบที่ถูก ' + mdToHtml(x.q.c[x.q.a]) + '</div><div class="note">' + mdToHtml(x.q.e || '') + '</div>');
+      { const oi = x.pick >= 0 ? x.order[x.pick] : -1; const mis = oi > 0 && x.q.w && x.q.w[oi - 1]; if (mis) d.appendChild(exEl('div', 'note advice', '<b>ที่เลือกข้อนี้ อาจเป็นเพราะ</b> ' + mdToHtml(mis))); if (x.q.o) d.appendChild(exEl('div', 'note small', 'จุดประสงค์: ' + esc(objOf(x.q.t, x.q.ch, x.q.o)) + (x.q.b ? ' : ระดับการคิด ' + bloomName(x.q.b) : ''))); }
       const b = exEl('button', 'btn', 'วางลงหน้าพร้อมเฉลย'); b.onclick = () => exPutOnPage(x, true); d.appendChild(b);
       body.appendChild(d);
     }
@@ -6700,6 +6778,7 @@ function exRenderStats(body) {
     d.onclick = () => { EX.track = r.t; EX.chs = new Set([r.ch]); EX.tab = 'practice'; exRender(); }; d.title = 'แตะเพื่อฝึกบทนี้'; tb.appendChild(d);
   }
   body.appendChild(tb);
+  { const M = exMastery(EX.who); const h = masteryHtml(M.byO, M.byB, 2); if (h) body.appendChild(exEl('div', '', h)); }
   const row = exEl('div', 'row2');
   const b = exEl('button', 'btn solid', 'ฝึกจุดอ่อน 10 ข้อ'); b.onclick = exStartWeak; row.appendChild(b);
   const c = exEl('button', 'btn', 'ส่งออกคะแนนทุกคน CSV'); c.onclick = exCsv; row.appendChild(c);
@@ -6749,7 +6828,7 @@ function exRenderGrades(body) {
 }
 function exRenderBank(body) {
   const all = exAllQs();
-  const tracks = Object.keys(CURRIC);
+  const tracks = subjTracks().length ? subjTracks() : Object.keys(CURRIC);
   body.appendChild(exEl('div', 'note', 'คลังในแอปมีโจทย์ ' + all.filter((q) => q.src === 'bank').length + ' ข้อ เขียนขึ้นใหม่สำหรับ Burin ครอบคลุมทุกบทของ สอวน. และ IJSO ส่วนฟิสิกส์ อาจารย์เพิ่มโจทย์ของตัวเอง หรือให้ AI ร่างโจทย์ตามบทแล้วตรวจก่อนเก็บก็ได้ โจทย์ที่เพิ่มซิงก์ข้ามเครื่อง'));
   const f = exEl('div', 'exform');
   f.innerHTML = '<div class="row2"><label class="field"><span>สนาม</span><select id="eqT"></select></label><label class="field" style="flex:2 1 260px"><span>บท</span><select id="eqC"></select></label><label class="field" style="flex:0 1 120px"><span>ระดับ</span><select id="eqD"><option value="1">พื้นฐาน</option><option value="2">กลาง</option><option value="3">ท้าทาย</option></select></label></div>'
@@ -6828,7 +6907,7 @@ async function exAIDraft(t, ch, d) {
 }
 async function openExam() {
   closeSheets();
-  $('#examSheet').hidden = false;
+  $('#examSheet').hidden = false; $('#exMini').hidden = true;
   if (!EX.loaded) { $('#exBody').innerHTML = '<div class="note">กำลังโหลดคะแนน</div>'; await exLoad(); }
   else exLoad().then(() => { if (!EX.run) exRender(); });
   exRenderWho(); exRender();
@@ -6988,7 +7067,7 @@ async function exAIFromPage() {
 async function exSaveSet(qs) {
   const id = 's' + now().toString(36) + uid().slice(0, 3);
   const title = 'ชุด ' + [...new Set(qs.map((q) => exChName(q.t, q.ch)))].slice(0, 2).join(' + ') + ' ' + new Date().toLocaleDateString(LOC, { day: 'numeric', month: 'short' });
-  const set = { id, title, at: now(), qs: qs.map((q) => ({ id: q.id, t: q.t, ch: q.ch, d: q.d, k: q.k, q: q.q, c: q.c, a: q.a || 0, e: q.e || '', fig: q.fig || undefined, src: q.src })) };
+  const set = { id, title, at: now(), qs: qs.map((q) => ({ id: q.id, t: q.t, ch: q.ch, d: q.d, k: q.k, q: q.q, c: q.c, a: q.a || 0, e: q.e || '', fig: q.fig || undefined, src: q.src, o: q.o, s: q.s, b: q.b, w: q.w })) };
   EX.sets = EX.sets || []; EX.sets.push(set);
   await S.store.set('exs/' + id, Object.assign({}, set, { id: undefined })).catch(() => {});
   return set;
@@ -7051,6 +7130,9 @@ function exRenderAnalysis(body) {
     tr.title = it.q.q; tbody.appendChild(tr);
   });
   tb.appendChild(tbody); body.appendChild(tb);
+  { const byO = {}, byB = {}; A.items.forEach((it) => { const q = it.q; if (q.o) { const k = q.t + ':' + q.ch + ':' + q.o; const s2 = byO[k] || (byO[k] = { t: q.t, ch: q.ch, o: q.o, n: 0, ok: 0 }); s2.n += A.N; s2.ok += it.p * A.N; } if (q.b) { const s3 = byB[q.b] || (byB[q.b] = { n: 0, ok: 0 }); s3.n += A.N; s3.ok += it.p * A.N; } });
+    for (const o of Object.values(byO).concat(Object.values(byB))) o.ok = Math.round(o.ok);
+    const h = masteryHtml(byO, byB, 1); if (h) body.appendChild(exEl('div', '', '<h3>ผลทั้งห้องตามจุดประสงค์และระดับการคิด</h3>' + h)); }
   body.appendChild(exEl('div', 'note', 'ตัวเลือก ก ถึง ง ในตารางเรียงตามที่บันทึกในชุด ผู้เรียนแต่ละคนเห็นตัวเลือกสลับลำดับ ระบบแปลงกลับให้แล้ว'));
 }
 
@@ -7158,6 +7240,7 @@ async function signedUrl(asset, secs) {
 async function shareItems(items, secs) {
   const out = [];
   for (const it of items || []) {
+    if (it.teacher) continue; /* the teacher's answer boxes stay on the teacher's screen */
     const o = clone(it);
     if ((o.type === 'img' || o.type === 'video') && okAsset(o.asset)) { const u = await signedUrl(o.asset, secs); if (!u) continue; o.url = u; delete o.asset; }
     o.by = 'teacher'; out.push(o);
@@ -8058,7 +8141,7 @@ function exRenderSetEditor(body) {
   const row = exEl('div', 'row2');
   const sv = exEl('button', 'btn solid', 'บันทึกชุด'); sv.onclick = async () => {
     st.title = (st.title || '').trim() || 'ชุดโจทย์'; st.at = st.at || now();
-    const data = { title: st.title, at: st.at, qs: st.qs.map((q) => ({ id: q.id, t: q.t, ch: q.ch, d: q.d, k: q.k, q: q.q, c: q.c, a: q.a || 0, e: q.e || '', fig: q.fig || undefined, src: q.src })) };
+    const data = { title: st.title, at: st.at, qs: st.qs.map((q) => ({ id: q.id, t: q.t, ch: q.ch, d: q.d, k: q.k, q: q.q, c: q.c, a: q.a || 0, e: q.e || '', fig: q.fig || undefined, src: q.src, o: q.o, s: q.s, b: q.b, w: q.w })) };
     await S.store.set('exs/' + st.id, data).catch(onStoreError);
     EX.sets = (EX.sets || []).filter((x) => x.id !== st.id).concat([Object.assign({ id: st.id }, data)]);
     EX.editSet = null; toast('บันทึกชุดแล้ว', 1400); exRender();
@@ -8741,7 +8824,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793067047';
+const BUILD = '1793080064';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
@@ -8935,7 +9018,11 @@ $('#jName').onkeydown = (e) => { if (e.key === 'Enter') $('#jGo').click(); };
 $('#sqHide').onclick = () => { $('#sqSheet').hidden = true; };
 $('#lpFollow').onclick = () => { LIVE.follow = !LIVE.follow; store_ls.set('tp-follow', LIVE.follow ? '1' : '0'); $('#lpFollow').setAttribute('aria-pressed', LIVE.follow ? 'true' : 'false'); if (LIVE.follow && LIVE.cur && S.pid !== LIVE.cur) openPage(LIVE.cur); };
 $('#lpQuiz').onclick = () => { if (LIVE.quiz) { renderStudentQuiz(); $('#sqSheet').hidden = false; } else toast('ยังไม่มีแบบฝึกจากผู้สอน', 1600); };
-$('#exClose').onclick = () => { $('#examSheet').hidden = true; };
+$('#exClose').onclick = () => { $('#examSheet').hidden = true; exMiniSync(); };
+$('#emOpen').onclick = () => { $('#examSheet').hidden = false; $('#exMini').hidden = true; exRender(); };
+$('#exMinBtn').onclick = exMinimize;
+$('#emPrev').onclick = () => exMiniStep(-1); $('#emNext').onclick = () => exMiniStep(1);
+$('#emPlace').onclick = () => { const R = EX.run; if (!R) return; const x = R.items[R.i]; exPutOnPage(x, R.mode === 'practice' && x.pick >= 0); };
 $('#exTabs').querySelectorAll('button').forEach((b) => { b.onclick = () => { EX.tab = b.dataset.t; exRender(); }; });
 $('#exWho').onchange = () => {
   const v = $('#exWho').value;
