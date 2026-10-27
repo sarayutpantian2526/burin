@@ -848,15 +848,33 @@ body.present .exmini, body.role-student .exmini { display: none !important; }
   .top .tsep, .top #sync, .top .title { display: none !important; }
   .tabrow .tabchip { flex: 1 1 auto; max-width: none; }
   .tabbtn { padding: 0 10px; }
-  .dock { left: 6px; top: 6px; max-width: calc(100% - 12px); padding: 3px; gap: 0; border-radius: 16px; }
-  .tool, .curc { width: 40px; height: 40px; }
-  .tool svg { width: 21px; height: 21px; }
-  .grip { height: 40px; width: 22px; }
-  .rsw { width: 26px; height: 26px; margin: 0 3px; }
+  /* the tool dock is one slim row that scrolls sideways; its popups float above or below it */
+  /* two slim rows: the tools (swipe sideways if they do not fit), then colours and line sizes */
+  .dock { left: 6px; top: 6px; max-width: calc(100% - 12px); padding: 2px 4px; gap: 0; border-radius: 14px; flex-wrap: wrap; }
+  #toolRow { flex: 1 1 calc(100% - 20px); min-width: 0; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; overscroll-behavior-x: contain; touch-action: pan-x; }
+  #toolRow::-webkit-scrollbar { display: none; }
+  #toolRow > * { flex: none; }
+  .dock > .sep { display: none; }
+  .dock #curWidth { display: none !important; }
+  #dockWidths > * { min-width: 32px; width: 32px; }
+  .tool, .curc { width: 36px; height: 36px; border-radius: 10px; }
+  .tool svg { width: 20px; height: 20px; }
+  .curc .dot { width: 18px; height: 18px; }
+  .grip { height: 36px; width: 16px; }
+  .rsw { width: 24px; height: 24px; margin: 0 3px; }
+  .dock .sep { margin: 0 2px; }
+  .dock .pop.phone { position: fixed; left: 8px !important; right: 8px; width: auto; max-width: none; overflow-y: auto; z-index: 40; }
   .pagenav { right: 6px; bottom: 6px; padding: 3px; }
   .pagenav button { min-width: 40px; height: 40px; }
   .pagenav .num { padding: 0 6px; }
   .pagenav #zOut, .pagenav #zIn, .pagenav .zsep { display: none; }
+}
+
+@media (max-width: 360px) {
+  .dock .rsw { width: 22px; height: 22px; margin: 0 2px; }
+  .dock .curc { width: 32px; }
+  #dockWidths > * { min-width: 30px; width: 30px; }
+  .dock .tool { width: 34px; }
 }
 </style>
 </head>
@@ -9356,7 +9374,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793095919';
+const BUILD = '1793098471';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
@@ -9853,6 +9871,17 @@ $('#bFull').onclick = () => setFocus(true);
 $('#bExitFull').onclick = () => setFocus(false);
 
 /* the tool dock can be dragged anywhere; it remembers where */
+/* phones: popups of the scrolling tool dock are pinned to the screen, just above or below the dock */
+const PHONE = window.matchMedia('(max-width: 520px)');
+function placePhonePop(p) {
+  if (p.hidden || !PHONE.matches) { if (p.classList.contains('phone')) { p.classList.remove('phone'); p.style.top = p.style.bottom = p.style.maxHeight = ''; } return; }
+  const r = $('#dock').getBoundingClientRect(), vh = window.innerHeight;
+  p.classList.add('phone');
+  if (r.top + r.height / 2 < vh / 2) { p.style.top = Math.round(r.bottom + 6) + 'px'; p.style.bottom = 'auto'; p.style.maxHeight = Math.round(vh - r.bottom - 14) + 'px'; }
+  else { p.style.bottom = Math.round(vh - r.top + 6) + 'px'; p.style.top = 'auto'; p.style.maxHeight = Math.round(r.top - 14) + 'px'; }
+}
+{ const mo = new MutationObserver((ms) => ms.forEach((m) => placePhonePop(m.target))); document.querySelectorAll('.dock .pop').forEach((p) => mo.observe(p, { attributes: true, attributeFilter: ['hidden'] })); }
+PHONE.addEventListener && PHONE.addEventListener('change', () => document.querySelectorAll('.dock .pop').forEach(placePhonePop));
 function placeDock() {
   const d = $('#dock'), r = d.getBoundingClientRect(), v = vp.getBoundingClientRect();
   d.classList.toggle('flip-y', r.top - v.top > v.height * 0.55);
