@@ -777,7 +777,7 @@ body.present .exmini, body.role-student .exmini { display: none !important; }
 .drag { box-shadow: 0 8px 22px rgba(0,0,0,0.28); opacity: 0.92; transition: none !important; }
 .droptarget { outline: 2px dashed var(--accent); outline-offset: 3px; }
 .tabchip, .bcard, .nbprow, .rsw { touch-action: pan-x pan-y; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
-.nbpicker { position: fixed; z-index: 31; width: 320px; max-height: min(70vh, 560px); overflow-y: auto; background: var(--surface); border-radius: 16px; box-shadow: var(--shadow); padding: 10px; display: flex; flex-direction: column; gap: 6px; }
+.nbpicker { position: fixed; z-index: 31; width: min(320px, calc(100vw - 16px)); box-sizing: border-box; max-height: min(70vh, 560px); overflow-y: auto; background: var(--surface); border-radius: 16px; box-shadow: var(--shadow); padding: 10px; display: flex; flex-direction: column; gap: 6px; }
 .nbpicker b { padding: 2px 6px; } .nbpicker small { padding: 0 6px 4px; color: var(--muted); }
 .nbplist { display: flex; flex-direction: column; gap: 4px; }
 .nbprow { display: flex; align-items: center; gap: 10px; min-height: 46px; padding: 0 10px; border-radius: 12px; cursor: pointer; background: var(--surface); }
@@ -836,6 +836,28 @@ body.present .exmini, body.role-student .exmini { display: none !important; }
 .pop { max-height: calc(100vh - 150px); overflow-y: auto; }
 #nbPicker { max-width: calc(100vw - 16px); }
 .sheet .panel { max-width: 100%; }
+
+#toolRow { display: flex; flex-wrap: wrap; align-items: center; gap: 2px; min-width: 0; max-width: 100%; }
+.pagenav { max-width: calc(100% - 16px); }
+.pagenav .num { white-space: nowrap; }
+/* phones */
+@media (max-width: 520px) {
+  #app { padding-left: max(8px, env(safe-area-inset-left, 0px)); padding-right: max(8px, env(safe-area-inset-right, 0px)); gap: 6px; }
+  .top { gap: 4px; }
+  .top .btn.icon, .top .logo, #bMore { width: 40px; height: 40px; min-width: 40px; min-height: 40px; }
+  .top .tsep, .top #sync, .top .title { display: none !important; }
+  .tabrow .tabchip { flex: 1 1 auto; max-width: none; }
+  .tabbtn { padding: 0 10px; }
+  .dock { left: 6px; top: 6px; max-width: calc(100% - 12px); padding: 3px; gap: 0; border-radius: 16px; }
+  .tool, .curc { width: 40px; height: 40px; }
+  .tool svg { width: 21px; height: 21px; }
+  .grip { height: 40px; width: 22px; }
+  .rsw { width: 26px; height: 26px; margin: 0 3px; }
+  .pagenav { right: 6px; bottom: 6px; padding: 3px; }
+  .pagenav button { min-width: 40px; height: 40px; }
+  .pagenav .num { padding: 0 6px; }
+  .pagenav #zOut, .pagenav #zIn, .pagenav .zsep { display: none; }
+}
 </style>
 </head>
 <body>
@@ -2245,7 +2267,7 @@ function releasePull() {
 const wheelRelease = debounce(releasePull, 220);
 /* the top bar stays on one line: when it runs out of room, buttons show icons only */
 /* the main bar never runs off the screen: first labels go, then the least used buttons move into a "more" menu */
-const TOP_OVERFLOW = ['bExport', 'bExam', 'bLive', 'bTray', 'bScan', 'bJoin', 'bConvert', 'bInsert', 'bAI', 'bPages'];
+const TOP_OVERFLOW = ['bExport', 'bExam', 'bLive', 'bTray', 'bScan', 'bJoin', 'bConvert', 'bInsert', 'bAI', 'bPages', 'bFull', 'bRedo'];
 function fitTop() {
   const t = document.querySelector('.top'); if (!t) return;
   t.classList.remove('compact'); t.querySelectorAll('.ovf').forEach((x) => x.classList.remove('ovf'));
@@ -4928,7 +4950,7 @@ function renderTabs() {
   const cur = el.querySelector('.tabchip.cur'); if (cur) setTimeout(() => cur.scrollIntoView({ block: 'nearest', inline: 'nearest' }), 0);
 }
 /* every notebook in one list: tap to open, drag to change the order (the shelf uses the same order) */
-function toggleNbPicker() { const p = $('#nbPicker'); if (!p.hidden) { p.hidden = true; return; } renderNbPicker(); const r = $('#bAllNb').getBoundingClientRect(); p.style.top = Math.round(r.bottom + 6) + 'px'; p.style.left = Math.round(clamp(r.right - 320, 8, window.innerWidth - 330)) + 'px'; p.hidden = false; }
+function toggleNbPicker() { const p = $('#nbPicker'); if (!p.hidden) { p.hidden = true; return; } renderNbPicker(); const r = $('#bAllNb').getBoundingClientRect(); p.style.top = Math.round(r.bottom + 6) + 'px'; p.hidden = false; p.style.left = Math.round(clamp(r.right - p.offsetWidth, 8, window.innerWidth - p.offsetWidth - 8)) + 'px'; }
 function renderNbPicker() {
   const p = $('#nbPicker'); if (!p) return; p.innerHTML = '<b>สมุดทั้งหมด</b><small>แตะเพื่อเปิด ลากเพื่อย้ายตำแหน่ง</small>';
   const box = document.createElement('div'); box.className = 'nbplist'; p.appendChild(box);
@@ -9334,7 +9356,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793095534';
+const BUILD = '1793095919';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
