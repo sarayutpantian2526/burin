@@ -6264,6 +6264,7 @@ class G3 {
   ball(p, r, col, o) { const q = this.P(p[0], p[1], p[2]); this.L.push({ t: 'b', d: q[2] - 1e-6, q, r: Math.max(2, r * q[3]), col, glow: o && o.glow }); }
   arrow(a, b, col, lw) { const A = this.P(a[0], a[1], a[2]), B = this.P(b[0], b[1], b[2]); this.L.push({ t: 'a', d: (A[2] + B[2]) / 2 - 1e-4, A, B, col, lw: lw || 2.4 }); }
   text(p, s, col, size, align) { const q = this.P(p[0], p[1], p[2]); this.L.push({ t: 't', d: -1e9, q, s, col, size, align }); }
+  poly(pts, fill, stroke) { const q = pts.map((p) => this.P(p[0], p[1], p[2])); this.L.push({ t: 'p', d: q.reduce((a, x) => a + x[2], 0) / q.length, q, fill, stroke }); }
   draw(c) {
     this.L.sort((m, n) => n.d - m.d);
     c.lineCap = 'round';
@@ -6279,6 +6280,7 @@ class G3 {
         g.addColorStop(0, '#FFFFFF'); g.addColorStop(0.25, e.col); g.addColorStop(1, shade(e.col, 0.45));
         c.fillStyle = g; c.beginPath(); c.arc(x, y, r, 0, 6.283); c.fill();
       } else if (e.t === 'a') { c.globalAlpha = 1; c.setLineDash([]); simArrow(c, e.A[0], e.A[1], e.B[0], e.B[1], e.col, e.lw); }
+      else if (e.t === 'p') { c.globalAlpha = 1; c.setLineDash([]); c.fillStyle = e.fill; c.beginPath(); e.q.forEach((x, i) => (i ? c.lineTo(x[0], x[1]) : c.moveTo(x[0], x[1]))); c.closePath(); c.fill(); if (e.stroke) { c.strokeStyle = e.stroke; c.lineWidth = 0.6; c.stroke(); } }
     }
     c.globalAlpha = 1; c.setLineDash([]);
     for (const e of this.L) if (e.t === 't') simLabel(c, e.s, e.q[0], e.q[1], e.col || INK, e.size || 13, e.align);
@@ -6587,6 +6589,7 @@ function scClean(sp) {
   const o = { v: 1, domain: dom, title: scTxt(sp.title || 'แบบจำลอง', 60), note: scTxt(sp.note, 200) };
   const params = Array.isArray(sp.params) ? sp.params.slice(0, 8) : [];
   o.params = params.map((p) => ({ key: scTxt(p.key, 40).replace(/[^A-Za-z0-9_.]/g, ''), label: scTxt(p.label, 40), min: scNum(p.min, 0, -1e6, 1e6), max: scNum(p.max, 10, -1e6, 1e6), step: scNum(p.step, 0.1, 1e-6, 1e5) })).filter((p) => p.key && p.max > p.min);
+  if (sp.dim === 3) return sc3Clean(sp, o);
   if (dom === 'phys') {
     const wd = sp.world || {};
     o.bare = !!sp.bare;
@@ -6636,11 +6639,13 @@ function scClean(sp) {
 }
 /* sliders change one number inside the spec: "B1.m", "g", "S1.mu", "F1.fx", "T", "A.n", "a" */
 function scGet(sp, key) {
+  if (sp.dim === 3) return sc3Get(sp, key);
   const [h, k] = key.split('.');
   if (!k) { if (sp.domain === 'math') return sp.vars ? sp.vars[h] : undefined; if (h === 'g') return sp.world && sp.world.g; if (h === 'T') return sp.T; if (h === 'B') return sp.fields && sp.fields.B; if (h === 'drag') return sp.fields && sp.fields.drag; if (h === 'speed') return sp.speed; if (h === 'mu') return sp.surfaces && sp.surfaces[0] ? sp.surfaces[0].mu : 0; return undefined; }
   const arr = scTarget(sp, h); return arr ? arr[k] : undefined;
 }
 function scSet(sp, key, v) {
+  if (sp.dim === 3) { sc3Set(sp, key, v); return; }
   const [h, k] = key.split('.');
   if (!k) { if (sp.domain === 'math') { sp.vars = sp.vars || {}; sp.vars[h] = v; } else if (h === 'g') sp.world.g = v; else if (h === 'T') sp.T = v; else if (h === 'B') sp.fields.B = v; else if (h === 'drag') sp.fields.drag = v; else if (h === 'speed') sp.speed = v; else if (h === 'mu') (sp.surfaces || []).forEach((x) => { x.mu = v; x.mus = v * 1.3; }); return; }
   const t = scTarget(sp, h); if (t && k in t) t[k] = k === 'n' ? Math.round(v) : v;
@@ -7100,6 +7105,7 @@ function scRuntime(it) {
 }
 function scReset(it, r) {
   const sp = it.spec; r.traces = {}; r.ended = false; r.E0 = null; r.bind = null; r.back = null; r.roll = 0; r.lastPos = null;
+  if (sp.dim === 3) { sc3Reset(sp, r); return; }
   if (sp.domain === 'phys') {
     r.st = phInit(sp);
     let maxF = 0; for (const b of r.st.bodies) if (!b.fixed) maxF = Math.max(maxF, b.m * sp.world.g, Math.hypot(...(sp.forces.find((f) => f.on === b.id) ? [sp.forces.find((f) => f.on === b.id).fx, sp.forces.find((f) => f.on === b.id).fy] : [0, 0])));
@@ -7117,6 +7123,7 @@ function scTick(ts) {
   for (const [id, r] of SCN) {
     if (!r.playing) continue; const it = findItem(id); if (!it || !r.cv || !r.cv.isConnected) { r.playing = false; continue; }
     any = true; const sp = it.spec;
+    if (sp.dim === 3) { sc3Tick(sp, r, dtw); scRender(it, r); continue; }
     if (sp.domain === 'phys') { const sim = dtw * (sp.speed || 1) * (r.slow ? 0.25 : 1), n = Math.max(1, Math.ceil(sim / 0.004)); for (let i = 0; i < n; i++) phStep(sp, r.st, sim / n); for (const b of r.st.bodies) { b.trail.push([b.x, b.y]); if (b.trail.length > 400) b.trail.shift(); }
       const pick = sp.show.graph; if (pick !== 'none') { r.st.hist.push([r.st.t].concat(r.st.bodies.filter((b) => !b.fixed).map((b) => pick === 'x' ? b.x : pick === 'y' ? b.y : pick === 'vx' ? b.vx : pick === 'vy' ? b.vy : pick === 'grf' ? (b.F.N ? b.F.N[1] : 0) : Math.hypot(b.vx, b.vy)))); if (r.st.hist.length > 600) r.st.hist.shift(); }
       const [x0, y0, x1, y1] = phBounds(sp, r.st), far = sp.bare ? 0.3 : Math.max(x1 - x0, y1 - y0) * 3; if (sp.bare && r.st.bodies.some((b) => b.shape === 'person' && (b.x < x0 - 0.5 || b.x > x1 + 0.5))) { r.playing = false; r.ended = true; } if (!r.st.bodies.some((b) => b.shape === 'person') && r.st.bodies.every((b) => b.fixed || b.x < x0 - far || b.x > x1 + far || b.y < y0 - far || b.y > y1 + far)) { r.playing = false; r.ended = true; } }
@@ -7134,6 +7141,7 @@ function scRender(it, r) {
   let c = cv.getContext('2d');
   if (sp.bare) { const cap = Math.min(dpr, Math.sqrt(9e6 / Math.max(1, w * h))); if (cv.width !== Math.round(w * cap) || cv.height !== Math.round(h * cap)) { cv.width = Math.round(w * cap); cv.height = Math.round(h * cap); } c.setTransform(cap, 0, 0, cap, 0, 0); c.clearRect(0, 0, w, h); }
   else { c.setTransform(dpr, 0, 0, dpr, 0, 0); c.fillStyle = '#FFFFFF'; c.fillRect(0, 0, w, h); }
+  if (sp.dim === 3) { if (sc3Render(c, w, h, sp, r) === false) loadLib('math').then(() => scRender(it, r)).catch(() => {}); if (r.ro) r.ro.innerHTML = (r.read || []).map(([k, v]) => '<span><b>' + esc(String(k)) + '</b> ' + esc(String(v)) + '</span>').join(''); return; }
   if (sp.domain === 'phys') {
     const gh = sp.show.graph !== 'none' && r.showGraph && !sp.bare ? Math.round(h * 0.28) : 0, ah = h - gh;
     const span = Math.min(sp.world.w, sp.world.h), pxPerM = Math.min((w - 32) / sp.world.w, (ah - 32) / sp.world.h);
@@ -7163,7 +7171,10 @@ function buildScene(d, it, forExport) {
   if (!forExport && sp.domain !== 'math') {
     const tg = document.createElement('div'); tg.className = 'scntog';
     const tog = (label, get, set) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'chip'; b.textContent = label; b.setAttribute('aria-pressed', get() ? 'true' : 'false'); b.onclick = () => { const live = findItem(it.id) || it; set(live.spec, !get(live.spec)); b.setAttribute('aria-pressed', get(live.spec) ? 'true' : 'false'); scRender(live, r); savePage(); }; tg.appendChild(b); };
-    if (sp.domain === 'phys') {
+    if (sp.domain === 'phys' && sp.dim === 3) {
+      tog('แผนภาพแรง', (s) => (s || sp).show.fbd, (s, v) => { s.show.fbd = v; }); tog('แรงลัพธ์', (s) => (s || sp).show.net, (s, v) => { s.show.net = v; });
+      tog('ความเร็ว', (s) => (s || sp).show.v, (s, v) => { s.show.v = v; }); tog('เส้นทาง', (s) => (s || sp).show.trail, (s, v) => { s.show.trail = v; });
+    } else if (sp.domain === 'phys') {
       tog('แผนภาพแรง', (s) => (s || sp).show.fbd, (s, v) => { s.show.fbd = v; }); tog('แรงลัพธ์', (s) => (s || sp).show.net, (s, v) => { s.show.net = v; });
       tog('ความเร็ว', (s) => (s || sp).show.v, (s, v) => { s.show.v = v; }); tog('ความเร่ง', (s) => (s || sp).show.a, (s, v) => { s.show.a = v; });
       tog('พลังงาน', (s) => (s || sp).show.energy, (s, v) => { s.show.energy = v; }); tog('เส้นทาง', (s) => (s || sp).show.trail, (s, v) => { s.show.trail = v; });
@@ -7187,7 +7198,8 @@ function buildScene(d, it, forExport) {
   }
   d.appendChild(g);
   /* paused: drag a body to put it somewhere else, then play */
-  if (!forExport && sp.domain === 'phys') {
+  if (!forExport && sp.dim === 3) sc3Bind(cv, it, r);
+  if (!forExport && sp.domain === 'phys' && sp.dim !== 3) {
     cv.addEventListener('pointerdown', (e) => {
       const live = findItem(it.id) || it, R = scRuntime(live); if (R.playing || !R.map) return;
       const rc = cv.getBoundingClientRect(), mx = (e.clientX - rc.left) * (cv.clientWidth / rc.width), my = (e.clientY - rc.top) * (cv.clientHeight / rc.height);
@@ -7264,7 +7276,7 @@ const SCENE_TPL = {
     ['ผลรวมรีมันน์', 'สี่เหลี่ยมยิ่งแคบ ผลรวมยิ่งใกล้พื้นที่ใต้กราฟ', { domain: 'math', title: 'พื้นที่ใต้กราฟ y = x²', view: { xmin: -0.5, xmax: 3.5, ymin: -1, ymax: 9.5 }, t: { min: 0, max: 0, speed: 0 }, vars: { n: 6 }, items: [{ type: 'func', expr: 'x^2', color: '#2F4BB8' }, { type: 'area', of: 0, a: '0', b: '3', n: 'n', color: '#E39B2D' }], params: [{ key: 'n', label: 'จำนวนสี่เหลี่ยม', min: 1, max: 60, step: 1 }], note: 'พื้นที่จริงคือ 9' }]
   ]
 };
-const SCENE_SUBJ = [['phys', 'ฟิสิกส์'], ['person', 'ร่างกายและการเคลื่อนไหว'], ['chem', 'เคมี'], ['bio', 'ชีววิทยา'], ['math', 'คณิตศาสตร์']];
+const SCENE_SUBJ = [['phys', 'ฟิสิกส์'], ['person', 'ร่างกายและการเคลื่อนไหว'], ['chem', 'เคมี'], ['bio', 'ชีววิทยา'], ['math', 'คณิตศาสตร์'], ['3d', 'สามมิติ']];
 function sceneDomainFor() { const sj = curSubj()[0]; return sj === 'sport' ? 'person' : sj === 'chem' ? 'chem' : sj === 'bio' || sj === 'med' || sj === 'nurse' || sj === 'ph' ? 'bio' : sj === 'math' || sj === 'stat' ? 'math' : 'phys'; }
 
 /* ---------- from a sketch or a sentence to a model, with the connected AI ---------- */
@@ -7287,6 +7299,10 @@ function sceneSchema() {
     + ' MATHS: "view":{"xmin":..,"xmax":..,"ymin":..,"ymax":..},"t":{"min":..,"max":..,"speed":units per second,"loop":true},"vars":{"a":1},\n'
     + '  "items":[{"type":"func","expr":"a*sin(x)"},{"type":"curve","x":"cos(t)","y":"sin(t)","tmin":"0","tmax":"2*pi"},{"type":"point","x":"cos(t)","y":"sin(t)","trace":true,"label":"P"},{"type":"segment|vector","x1":"0","y1":"0","x2":"..","y2":".."},{"type":"tangent","of":0,"at":"t"},{"type":"area","of":0,"a":"0","b":"t","n":"0 or count"},{"type":"text","x":"..","y":"..","text":".."}]  (math.js expressions of x, t and vars),\n'
     + ' ALL: "params":[{"key":"A.m | B.vx | S1.mu | K1.k | F1.fx | R1.Ea | g | T | B | E.y | A.n | a","label":"Thai with unit","min":..,"max":..,"step":..}] (2 to 4 sliders that matter most for the lesson)}\n'
+    + ' 3D (only when the user asks for three dimensions or the idea needs depth, e.g. helix in a magnetic field, conical pendulum, inclined orbit, gas in a box, surfaces z=f(x,y)): add "dim":3, z is up.\n'
+    + '  PHYSICS 3D: "world":{"size":half width in m,"g":9.8,"ground":true|false,"mu":0.3},"bodies":[{"id":"A","shape":"ball|box","m":kg,"r":m,"p":[x,y,z],"v":[vx,vy,vz],"q":C,"e":0..1,"color":"#hex"}],"planes":[{"p":[x,y,z],"n":[nx,ny,nz],"mu":..,"size":m}],"ropes":[{"b":"A","anchor":[x,y,z]}],"springs":[{"a":"","b":"A","anchor":[x,y,z],"k":..,"L0":..}],"forces":[{"on":"A","f":[fx,fy,fz]}],"fields":{"E":[..],"B":[..],"central":{"p":[0,0,0],"GM":..,"r":..},"drag":..},"show":{"fbd":true,"v":false,"trail":true,"net":false}; slider keys A.x A.vz A.m B.z E.x K1.k F1.y g mu\n'
+    + '  CHEM/BIO 3D: "box":{"w":60,"h":40,"d":40},"T":300,"species":[{"id","label","n" up to 160,"r","m","color","side"}],"reactions":[...],"membrane":{"x","pass"}; slider keys T, A.n, RX1.Ea\n'
+    + '  MATHS 3D: "view":{"L":3},"t":{..},"vars":{..},"items":[{"type":"surface","expr":"f(x,y,t)"},{"type":"curve","x":"..(s)","y":"..","z":"..","s0":"0","s1":"2*pi"},{"type":"point|tangent","x":"..(t)","y":"..","z":".."},{"type":"vector","x","y","z"}]\n'
     + 'Make the numbers realistic and the scene fit inside the world box with some margin. Use bright, distinct colours.';
 }
 async function sceneFromAI(desc, img) {
@@ -7659,6 +7675,273 @@ function renderScenePicker(box, dom) {
   }
   box.appendChild(grid);
 }
+
+
+/* ---------- living models in three dimensions: z is up. Physics (bodies, planes, ropes, springs, fields),
+   particles in a box (chemistry, biology) and surfaces or curves (maths). Drag to turn, pinch or wheel to zoom. ---------- */
+const v3 = (a) => (Array.isArray(a) ? [scNum(a[0], 0, -1e9, 1e9), scNum(a[1], 0, -1e9, 1e9), scNum(a[2], 0, -1e9, 1e9)] : [0, 0, 0]);
+const vAdd = (a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]], vSub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]], vMul = (a, k) => [a[0] * k, a[1] * k, a[2] * k];
+const vDot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2], vLen = (a) => Math.hypot(a[0], a[1], a[2]), vCross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+const vUnit = (a) => { const L = vLen(a) || 1; return [a[0] / L, a[1] / L, a[2] / L]; };
+function sc3Clean(sp, o) {
+  o.dim = 3;
+  if (o.domain === 'phys') {
+    const wd = sp.world || {};
+    o.world = { size: scNum(wd.size, 4, 0.1, 1e9), g: scNum(wd.g, 9.8, 0, 1000), ground: wd.ground !== false, mu: scNum(wd.mu, 0.3, 0, 5), tz: scNum(wd.tz, 0, -1e9, 1e9) };
+    o.bodies = (Array.isArray(sp.bodies) ? sp.bodies : []).slice(0, 8).map((b, i) => ({ id: scTxt(b.id || 'B' + (i + 1), 8).replace(/[^A-Za-z0-9_]/g, '') || 'B' + (i + 1), label: scTxt(b.label || '', 20), shape: b.shape === 'box' ? 'box' : 'ball', m: scNum(b.m, 1, 1e-6, 1e30), r: scNum(b.r, 0.2, 1e-6, 1e9), p: v3(b.p), v: v3(b.v), q: scNum(b.q, 0, -1e3, 1e3), e: scNum(b.e, 0.6, 0, 1), fixed: !!b.fixed, color: scCol(b.color, SC_PAL[i % SC_PAL.length]) }));
+    o.planes = (Array.isArray(sp.planes) ? sp.planes : []).slice(0, 4).map((q) => ({ p: v3(q.p), n: vUnit(v3(q.n)), mu: scNum(q.mu, 0.3, 0, 5), size: scNum(q.size, 2, 0.1, 1e6) }));
+    o.springs = (Array.isArray(sp.springs) ? sp.springs : []).slice(0, 6).map((s) => ({ a: scTxt(s.a, 8), b: scTxt(s.b, 8), anchor: v3(s.anchor), k: scNum(s.k, 20, 1e-6, 1e9), L0: scNum(s.L0, 1, 0, 1e9) }));
+    o.ropes = (Array.isArray(sp.ropes) ? sp.ropes : []).slice(0, 6).map((r) => ({ b: scTxt(r.b, 8), anchor: v3(r.anchor), L: r.L == null ? null : scNum(r.L, 1, 0, 1e9) }));
+    o.forces = (Array.isArray(sp.forces) ? sp.forces : []).slice(0, 6).map((f) => ({ on: scTxt(f.on, 8), f: v3(f.f), label: scTxt(f.label || 'F', 6) }));
+    const fl = sp.fields || {};
+    o.fields = { E: fl.E ? v3(fl.E) : null, B: fl.B ? v3(fl.B) : null, drag: scNum(fl.drag, 0, 0, 1e6), central: fl.central ? { p: v3(fl.central.p), GM: scNum(fl.central.GM, 1, 0, 1e30), r: scNum(fl.central.r, 0.3, 0, 1e9), label: scTxt(fl.central.label || '', 16) } : null };
+    const sh = sp.show || {}; o.show = { fbd: sh.fbd !== false, v: !!sh.v, trail: sh.trail !== false, net: !!sh.net };
+    o.speed = scNum(sp.speed, 1, 0.01, 1e6);
+  } else if (o.domain === 'chem' || o.domain === 'bio') {
+    const bx = sp.box || {}; o.box = { w: scNum(bx.w, 60, 10, 200), h: scNum(bx.h, 40, 10, 200), d: scNum(bx.d, 40, 10, 200) };
+    o.T = scNum(sp.T, 300, 1, 5000);
+    o.species = (Array.isArray(sp.species) ? sp.species : []).slice(0, 6).map((s, i) => ({ id: scTxt(s.id || 'S' + i, 10).replace(/[^A-Za-z0-9_]/g, '') || 'S' + i, label: scTxt(s.label || s.id, 20), color: scCol(s.color, SC_PAL[i % SC_PAL.length]), n: Math.round(scNum(s.n, 20, 0, 160)), r: scNum(s.r, 1.4, 0.3, 6), m: scNum(s.m, 1, 0.05, 100), side: ['left', 'right', 'all'].includes(s.side) ? s.side : 'all' }));
+    o.reactions = (Array.isArray(sp.reactions) ? sp.reactions : []).slice(0, 6).map((r) => ({ from: (Array.isArray(r.from) ? r.from : []).slice(0, 2).map((x) => scTxt(x, 10)), to: (Array.isArray(r.to) ? r.to : []).slice(0, 2).map((x) => scTxt(x, 10)), Ea: scNum(r.Ea, 1, 0, 100), k: scNum(r.k, 0, 0, 100) })).filter((r) => r.from.length && r.to.length);
+    o.membrane = sp.membrane ? { x: scNum(sp.membrane.x, 0.5, 0.05, 0.95), pass: (Array.isArray(sp.membrane.pass) ? sp.membrane.pass : []).slice(0, 6).map((x) => scTxt(x, 10)) } : null;
+  } else {
+    const vw = sp.view || {}; o.view = { L: scNum(vw.L, 3, 0.1, 1e6) };
+    const t = sp.t || {}; o.t = { min: scNum(t.min, 0, -1e6, 1e6), max: scNum(t.max, 6.2832, -1e6, 1e6), speed: scNum(t.speed, 1, 0, 1e4), loop: t.loop !== false };
+    o.vars = {}; for (const [k, v] of Object.entries(sp.vars || {}).slice(0, 8)) if (/^[a-zA-Z]\w{0,9}$/.test(k) && !/^(t|x|y|z|e|pi)$/.test(k)) o.vars[k] = scNum(v, 1, -1e9, 1e9);
+    const ex = (s) => scTxt(s, 140).replace(/[^0-9A-Za-z_+\-*/^().,\s<>=!]/g, '');
+    o.items = (Array.isArray(sp.items) ? sp.items : []).slice(0, 8).map((it, i) => ({ type: ['surface', 'curve', 'point', 'vector', 'tangent'].includes(it.type) ? it.type : 'surface', color: scCol(it.color, SC_PAL[i % SC_PAL.length]), label: scTxt(it.label, 24), expr: ex(it.expr), x: ex(it.x), y: ex(it.y), z: ex(it.z), s0: ex(it.s0), s1: ex(it.s1), n: Math.round(scNum(it.n, 26, 6, 48)), range: Array.isArray(it.range) ? it.range.slice(0, 4).map((v) => scNum(v, 0, -1e6, 1e6)) : null, trace: !!it.trace }));
+  }
+  return o;
+}
+function sc3Target(sp, h) {
+  const b = (sp.bodies || []).find((x) => x.id === h); if (b) return { get m() { return b.m; }, set m(v) { b.m = v; }, get q() { return b.q; }, set q(v) { b.q = v; }, get e() { return b.e; }, set e(v) { b.e = v; }, get r() { return b.r; }, set r(v) { b.r = v; }, get x() { return b.p[0]; }, set x(v) { b.p[0] = v; }, get y() { return b.p[1]; }, set y(v) { b.p[1] = v; }, get z() { return b.p[2]; }, set z(v) { b.p[2] = v; }, get vx() { return b.v[0]; }, set vx(v) { b.v[0] = v; }, get vy() { return b.v[1]; }, set vy(v) { b.v[1] = v; }, get vz() { return b.v[2]; }, set vz(v) { b.v[2] = v; } };
+  const vec = (a) => a && { get x() { return a[0]; }, set x(v) { a[0] = v; }, get y() { return a[1]; }, set y(v) { a[1] = v; }, get z() { return a[2]; }, set z(v) { a[2] = v; } };
+  if (h === 'B' && sp.fields) return vec(sp.fields.B); if (h === 'E' && sp.fields) return vec(sp.fields.E);
+  if (h === 'C' && sp.fields && sp.fields.central) return sp.fields.central;
+  let m = h.match(/^K(\d+)$/); if (m && sp.springs && sp.springs[m[1] - 1]) return sp.springs[m[1] - 1];
+  m = h.match(/^R(\d+)$/); if (m && sp.ropes && sp.ropes[m[1] - 1]) return sp.ropes[m[1] - 1];
+  m = h.match(/^F(\d+)$/); if (m && sp.forces && sp.forces[m[1] - 1]) return vec(sp.forces[m[1] - 1].f);
+  m = h.match(/^RX(\d+)$/); if (m && sp.reactions && sp.reactions[m[1] - 1]) return sp.reactions[m[1] - 1];
+  if (sp.species) { const s = sp.species.find((x) => x.id === h); if (s) return s; }
+  return null;
+}
+function sc3Get(sp, key) { const [h, k] = key.split('.'); if (!k) { if (sp.domain === 'math') return sp.vars[h]; if (h === 'g') return sp.world.g; if (h === 'T') return sp.T; if (h === 'drag') return sp.fields.drag; if (h === 'mu') return sp.world.mu; return undefined; } const t = sc3Target(sp, h); return t ? t[k] : undefined; }
+function sc3Set(sp, key, v) { const [h, k] = key.split('.'); if (!k) { if (sp.domain === 'math') sp.vars[h] = v; else if (h === 'g') sp.world.g = v; else if (h === 'T') sp.T = v; else if (h === 'drag') sp.fields.drag = v; else if (h === 'mu') { sp.world.mu = v; (sp.planes || []).forEach((q) => { q.mu = v; }); } return; } const t = sc3Target(sp, h); if (t) t[k] = k === 'n' ? Math.round(v) : v; }
+
+/* ----- physics ----- */
+function p3Init(sp) {
+  const st = { t: 0, bodies: sp.bodies.map((b) => ({ id: b.id, b, p: b.p.slice(), v: b.v.slice(), F: {}, trail: [] })), hist: [] };
+  for (const r of sp.ropes) if (r.L == null) { const B = st.bodies.find((x) => x.id === r.b); r.L = B ? vLen(vSub(B.p, r.anchor)) || 1 : 1; }
+  return st;
+}
+function p3Add(B, k, f) { const o = B.F[k] || (B.F[k] = [0, 0, 0]); o[0] += f[0]; o[1] += f[1]; o[2] += f[2]; }
+function p3Step(sp, st, dt) {
+  const g = sp.world.g, fl = sp.fields, BB = st.bodies.filter((x) => !x.b.fixed);
+  for (const B of st.bodies) B.F = {};
+  for (const B of BB) {
+    const b = B.b; if (g) p3Add(B, 'W', [0, 0, -b.m * g]);
+    if (fl.E && b.q) p3Add(B, 'FE', vMul(fl.E, b.q));
+    if (fl.B && b.q) p3Add(B, 'FB', vMul(vCross(B.v, fl.B), b.q));
+    if (fl.central) { const d = vSub(fl.central.p, B.p), r = vLen(d) || 1e-9; p3Add(B, 'Fg', vMul(d, fl.central.GM * b.m / Math.max(r * r * r, 1e-12))); }
+    if (fl.drag) p3Add(B, 'D', vMul(B.v, -fl.drag));
+  }
+  for (const f of sp.forces) { const B = BB.find((x) => x.id === f.on); if (B) p3Add(B, 'F', f.f); }
+  for (const s of sp.springs) {
+    const A = st.bodies.find((x) => x.id === s.a), Bq = st.bodies.find((x) => x.id === s.b), pa = A ? A.p : s.anchor, pb = Bq ? Bq.p : s.anchor;
+    const d = vSub(pb, pa), L = vLen(d) || 1e-9, f = vMul(d, s.k * (L - s.L0) / L);
+    if (A && !A.b.fixed) p3Add(A, 'Fs', f); if (Bq && !Bq.b.fixed) p3Add(Bq, 'Fs', vMul(f, -1));
+  }
+  const p0 = new Map();
+  for (const B of BB) { let F = [0, 0, 0]; for (const v of Object.values(B.F)) F = vAdd(F, v); B.v = vAdd(B.v, vMul(F, dt / B.b.m)); p0.set(B, B.p.slice()); B.p = vAdd(B.p, vMul(B.v, dt)); }
+  /* constraints on positions, the impulse they needed becomes tension, normal force and friction */
+  const planes = sp.planes.slice(); if (sp.world.ground) planes.unshift({ p: [0, 0, 0], n: [0, 0, 1], mu: sp.world.mu, ground: true });
+  for (const B of BB) {
+    const b = B.b, vin = B.v.slice();
+    for (const r of sp.ropes) if (r.b === B.id) { const d = vSub(B.p, r.anchor), L = vLen(d); if (L > r.L) { const u = vMul(d, 1 / L); B.p = vAdd(r.anchor, vMul(u, r.L)); const vr = vDot(B.v, u); if (vr > 0) { B.v = vSub(B.v, vMul(u, vr)); p3Add(B, 'T', vMul(u, -b.m * vr / dt)); } } }
+    for (const q of planes) {
+      const rad = b.r, d = vDot(vSub(B.p, q.p), q.n); if (d >= rad) continue;
+      if (!q.ground) { const w = vSub(vSub(B.p, q.p), vMul(q.n, d)); if (Math.abs(w[0]) > q.size || Math.abs(w[1]) > q.size * 1.5 || d < -rad * 2) continue; }
+      B.p = vAdd(B.p, vMul(q.n, rad - d));
+      const vn = vDot(B.v, q.n); if (vn < 0) {
+        const bounce = vn < -1 ? -b.e * vn : 0, dvn = bounce - vn; B.v = vAdd(B.v, vMul(q.n, dvn)); p3Add(B, 'N', vMul(q.n, b.m * dvn / dt));
+        const vt = vSub(B.v, vMul(q.n, vDot(B.v, q.n))), vtl = vLen(vt), cut = Math.min(vtl, q.mu * dvn * (bounce ? 0.3 : 1));
+        if (vtl > 1e-9 && cut > 0) { const dv = vMul(vt, -cut / vtl); B.v = vAdd(B.v, dv); p3Add(B, 'f', vMul(dv, b.m / dt)); }
+      }
+    }
+    void vin;
+  }
+  for (let i = 0; i < BB.length; i++) for (let j = i + 1; j < BB.length; j++) {
+    const A = BB[i], C = BB[j], d = vSub(C.p, A.p), L = vLen(d), R = A.b.r + C.b.r; if (L >= R || L < 1e-9) continue;
+    const n = vMul(d, 1 / L), rv = vDot(vSub(C.v, A.v), n); if (rv >= 0) continue;
+    const e = Math.min(A.b.e, C.b.e), J = -(1 + e) * rv / (1 / A.b.m + 1 / C.b.m);
+    A.v = vSub(A.v, vMul(n, J / A.b.m)); C.v = vAdd(C.v, vMul(n, J / C.b.m)); const push = (R - L) / 2; A.p = vSub(A.p, vMul(n, push)); C.p = vAdd(C.p, vMul(n, push));
+  }
+  for (const B of BB) { let F = [0, 0, 0]; for (const [k, v] of Object.entries(B.F)) if (k !== 'net') F = vAdd(F, v); B.F.net = F; B.a = vMul(F, 1 / B.b.m); }
+  st.t += dt;
+}
+function p3Draw(c, w, h, sp, st, rt) {
+  const L = sp.world.size, P = cam3(rt, w, h, L, sp.world.tz), g = new G3(P);
+  if (sp.world.ground) {
+    const n = 8, s = L * 1.1; c.save();
+    const corner = [[-s, -s], [s, -s], [s, s], [-s, s]].map((q) => P(q[0], q[1], 0)); c.fillStyle = 'rgba(214,226,240,0.45)'; c.beginPath(); corner.forEach((q, i) => (i ? c.lineTo(q[0], q[1]) : c.moveTo(q[0], q[1]))); c.closePath(); c.fill(); c.restore();
+    for (let i = -n; i <= n; i++) { const t = i / n * s; g.line([[t, -s, 0], [t, s, 0]], '#C9D3E0', 1, { alpha: 0.7, bias: 1e3 }); g.line([[-s, t, 0], [s, t, 0]], '#C9D3E0', 1, { alpha: 0.7, bias: 1e3 }); }
+    /* shadows */
+    for (const B of st.bodies) { const q = P(B.p[0], B.p[1], 0), r = Math.max(2, B.b.r * q[3]); c.fillStyle = 'rgba(20,26,34,' + clamp(0.28 - B.p[2] / (L * 6), 0.05, 0.28) + ')'; c.beginPath(); c.ellipse(q[0], q[1], r, r * 0.45, 0, 0, 6.283); c.fill(); }
+  }
+  for (const q of sp.planes) {
+    const u = vUnit(Math.abs(q.n[2]) < 0.9 ? vCross(q.n, [0, 0, 1]) : vCross(q.n, [1, 0, 0])), v = vCross(q.n, u), s = q.size;
+    const pts = [[-s, -s * 1.5], [s, -s * 1.5], [s, s * 1.5], [-s, s * 1.5]].map(([a, b]) => vAdd(q.p, vAdd(vMul(u, a), vMul(v, b))));
+    const pp = pts.map((x) => P(...x)); c.fillStyle = 'rgba(176,150,110,0.35)'; c.beginPath(); pp.forEach((x, i) => (i ? c.lineTo(x[0], x[1]) : c.moveTo(x[0], x[1]))); c.closePath(); c.fill();
+    g.line(pts.concat([pts[0]]), '#8A6B44', 1.6);
+  }
+  axes3(g, L * 0.35, ['x', 'y', 'z']);
+  const fl = sp.fields;
+  if (fl.B && vLen(fl.B) > 1e-9) { const u = vUnit(fl.B); for (const a of [-1, 0, 1]) for (const b2 of [-1, 1]) { const o = vAdd([a * L * 0.6, b2 * L * 0.6, 0], vMul(u, -L * 0.5)); g.arrow(o, vAdd(o, vMul(u, L * 0.35)), '#0E9AA7', 1.4); } g.text(vAdd([L * 0.6, L * 0.6, 0], vMul(u, -L * 0.1)), 'B', '#0E9AA7', 14); }
+  if (fl.E && vLen(fl.E) > 1e-9) { const u = vUnit(fl.E); for (const a of [-1, 1]) for (const b2 of [-1, 1]) { const o = [a * L * 0.5, b2 * L * 0.5, L * 0.3]; g.arrow(o, vAdd(o, vMul(u, L * 0.3)), '#E0A100', 1.4); } }
+  if (fl.central) g.ball(fl.central.p, fl.central.r, '#E39B2D', { glow: true });
+  for (const s of sp.springs) {
+    const A = st.bodies.find((x) => x.id === s.a), Bq = st.bodies.find((x) => x.id === s.b), pa = A ? A.p : s.anchor, pb = Bq ? Bq.p : s.anchor, d = vSub(pb, pa), Ld = vLen(d) || 1e-9, ax = vMul(d, 1 / Ld);
+    const u = vUnit(Math.abs(ax[2]) < 0.9 ? vCross(ax, [0, 0, 1]) : vCross(ax, [1, 0, 0])), v = vCross(ax, u), rr = L * 0.04, pts = [pa];
+    for (let i = 1; i < 60; i++) { const t = i / 60, a = t * 14 * Math.PI; pts.push(vAdd(vAdd(pa, vMul(d, t)), vAdd(vMul(u, rr * Math.cos(a)), vMul(v, rr * Math.sin(a))))); } pts.push(pb);
+    g.line(pts, '#D14D8B', 1.8); if (!A) g.ball(s.anchor, L * 0.025, '#3B4350');
+  }
+  for (const r of sp.ropes) { const B = st.bodies.find((x) => x.id === r.b); if (!B) continue; g.line([r.anchor, B.p], '#6B5B45', 1.6); g.ball(r.anchor, L * 0.025, '#3B4350'); }
+  if (sp.show.trail) for (const B of st.bodies) if (B.trail.length > 1) g.line(B.trail, B.b.color, 1.6, { alpha: 0.45 });
+  for (const B of st.bodies) {
+    const b = B.b;
+    if (b.shape === 'box') { const s = b.r, cs = [-1, 1]; const V = []; for (const x of cs) for (const y of cs) for (const z of cs) V.push(vAdd(B.p, [x * s, y * s, z * s])); for (const [i, j] of [[0, 1], [2, 3], [4, 5], [6, 7], [0, 2], [1, 3], [4, 6], [5, 7], [0, 4], [1, 5], [2, 6], [3, 7]]) g.line([V[i], V[j]], b.color, 2.4); }
+    else g.ball(B.p, b.r, b.color);
+    if (b.label) g.text(vAdd(B.p, [0, 0, b.r * 1.6]), b.label, '#14181F', 13);
+  }
+  const fs = rt.fscale3 || 1, vs = rt.vscale3 || 1, used = new Set();
+  for (const B of st.bodies) {
+    if (B.b.fixed) continue;
+    if (sp.show.fbd) for (const [k, f] of Object.entries(B.F)) { if (k === 'net' || vLen(f) * fs < L * 0.02) continue; const tip = vAdd(B.p, vMul(f, fs)); g.arrow(B.p, tip, SC_COL[k] || '#333', 2.6); g.text(tip, SC_SYM[k] || k, SC_COL[k] || '#333', 14); used.add(k); }
+    if (sp.show.net && B.F.net && vLen(B.F.net) * fs > L * 0.02) { const tip = vAdd(B.p, vMul(B.F.net, fs)); g.arrow(B.p, tip, SC_COL.net, 2); g.text(tip, 'ΣF', SC_COL.net, 14); used.add('net'); }
+    if (sp.show.v && vLen(B.v) * vs > L * 0.02) { const tip = vAdd(B.p, vMul(B.v, vs)); g.arrow(B.p, tip, SC_COL.v, 2); g.text(tip, 'v', SC_COL.v, 14); }
+  }
+  g.draw(c);
+  if (used.size) { let lx = w - 8, ly = 16; c.font = '12px Sarabun, sans-serif'; for (const k of used) { const t = SC_FNAME[k] || k, tw = c.measureText(t).width; c.fillStyle = SC_COL[k] || '#333'; c.fillRect(lx - tw - 18, ly - 8, 10, 3); c.fillStyle = '#3B4350'; c.fillText(t, lx - tw, ly - 3); ly += 16; } }
+}
+/* ----- particles in a box ----- */
+function c3Init(sp) {
+  const P = [], B = sp.box, mx = sp.membrane ? sp.membrane.x * B.w : B.w / 2;
+  sp.species.forEach((s, si) => { for (let i = 0; i < s.n; i++) P.push(c3Make(sp, si, s.side === 'left' ? [s.r, mx - s.r] : s.side === 'right' ? [mx + s.r, B.w - s.r] : [s.r, B.w - s.r])); });
+  return { t: 0, P, hist: [], hits: 0, pres: 0, lastH: 0 };
+}
+function c3Make(sp, si, xr) { const s = sp.species[si], B = sp.box, sd = 12 * Math.sqrt((sp.T / 300) / s.m), gs = () => { let u = 0; for (let k = 0; k < 6; k++) u += Math.random(); return (u - 3) / 1.4; }; return { s: si, p: [xr[0] + Math.random() * (xr[1] - xr[0]), s.r + Math.random() * (B.d - 2 * s.r), s.r + Math.random() * (B.h - 2 * s.r)], v: [gs() * sd, gs() * sd, gs() * sd] }; }
+function c3Step(sp, st, dt) {
+  const B = sp.box, P = st.P, dims = [B.w, B.d, B.h], kT = 72 * sp.T / 300, mx = sp.membrane ? sp.membrane.x * B.w : null;
+  for (const q of P) {
+    const s = sp.species[q.s]; for (let k = 0; k < 3; k++) { q.p[k] += q.v[k] * dt; if (q.p[k] < s.r) { q.p[k] = s.r; q.v[k] = Math.abs(q.v[k]); st.hits += s.m * Math.abs(q.v[k]); } if (q.p[k] > dims[k] - s.r) { q.p[k] = dims[k] - s.r; q.v[k] = -Math.abs(q.v[k]); st.hits += s.m * Math.abs(q.v[k]); } }
+    if (mx != null && !sp.membrane.pass.includes(s.id)) { const prev = q.p[0] - q.v[0] * dt; if ((prev - mx) * (q.p[0] - mx) < 0 || Math.abs(q.p[0] - mx) < s.r) { q.p[0] = prev < mx ? mx - s.r : mx + s.r; q.v[0] = -q.v[0]; } }
+  }
+  const dead = new Set(), born = [];
+  for (let i = 0; i < P.length; i++) { if (dead.has(i)) continue; const a = P[i], sa = sp.species[a.s];
+    for (let j = i + 1; j < P.length; j++) { if (dead.has(j)) continue; const b = P[j], sb = sp.species[b.s], d = vSub(b.p, a.p), R = sa.r + sb.r; if (Math.abs(d[0]) > R || Math.abs(d[1]) > R || Math.abs(d[2]) > R) continue; const L = vLen(d); if (L >= R || L < 1e-9) continue;
+      const n = vMul(d, 1 / L), rv = vDot(vSub(b.v, a.v), n); if (rv >= 0) continue;
+      const rx = sp.reactions.find((r) => r.from.length === 2 && ((r.from[0] === sa.id && r.from[1] === sb.id) || (r.from[1] === sa.id && r.from[0] === sb.id)));
+      const mu = sa.m * sb.m / (sa.m + sb.m), En = 0.5 * mu * rv * rv;
+      if (rx && En > rx.Ea * kT) { dead.add(i); dead.add(j); const M = sa.m + sb.m, vcm = vMul(vAdd(vMul(a.v, sa.m), vMul(b.v, sb.m)), 1 / M), cen = vMul(vAdd(a.p, b.p), 0.5); rx.to.forEach((id, k) => { const si = sp.species.findIndex((s) => s.id === id); if (si >= 0) born.push({ s: si, p: vAdd(cen, [k ? 1.5 : -1.5, 0, 0]), v: vAdd(vcm, [k ? 3 : -3, 0, 0]) }); }); break; }
+      const J = 2 * rv / (1 / sa.m + 1 / sb.m); a.v = vAdd(a.v, vMul(n, J / sa.m)); b.v = vSub(b.v, vMul(n, J / sb.m)); const push = (R - L) / 2; a.p = vSub(a.p, vMul(n, push)); b.p = vAdd(b.p, vMul(n, push));
+    } }
+  for (const r of sp.reactions) if (r.from.length === 1 && r.k > 0) { const si = sp.species.findIndex((s) => s.id === r.from[0]); P.forEach((q, i) => { if (q.s === si && !dead.has(i) && Math.random() < r.k * dt) { dead.add(i); r.to.forEach((id, k) => { const sj = sp.species.findIndex((s) => s.id === id); if (sj >= 0) born.push({ s: sj, p: vAdd(q.p, [k ? 1 : -1, 0, 0]), v: q.v.slice() }); }); } }); }
+  if (dead.size) st.P = P.filter((_, i) => !dead.has(i)).concat(born.slice(0, 400 - P.length + dead.size));
+  /* thermostat: keep the set temperature */
+  let K = 0, n = 0; for (const q of st.P) { K += 0.5 * sp.species[q.s].m * vDot(q.v, q.v); n++; } if (n) { const target = n * 1.5 * (144 * sp.T / 300), f = Math.sqrt(target / Math.max(K, 1e-9)); const k = Math.pow(f, Math.min(1, dt * 4)); for (const q of st.P) q.v = vMul(q.v, k); }
+  st.t += dt;
+}
+function c3Draw(c, w, h, sp, st, rt) {
+  const B = sp.box, gh = rt.showGraph ? Math.round(h * 0.28) : 0, ah = h - gh, L = Math.max(B.w, B.d, B.h) * 0.62, P = cam3(rt, w, ah, L, 0), g = new G3((x, y, z) => P(x - B.w / 2, y - B.d / 2, z - B.h / 2));
+  const V = []; for (const x of [0, B.w]) for (const y of [0, B.d]) for (const z of [0, B.h]) V.push([x, y, z]);
+  for (const [i, j] of [[0, 1], [2, 3], [4, 5], [6, 7], [0, 2], [1, 3], [4, 6], [5, 7], [0, 4], [1, 5], [2, 6], [3, 7]]) g.line([V[i], V[j]], '#3B4350', 1.4, { alpha: 0.7 });
+  if (sp.membrane) { const x = sp.membrane.x * B.w; g.line([[x, 0, 0], [x, B.d, 0], [x, B.d, B.h], [x, 0, B.h], [x, 0, 0]], '#B8860B', 2, { dash: [6, 5] }); }
+  for (const q of st.P) { const s = sp.species[q.s]; g.ball(q.p, s.r, s.color); }
+  g.draw(c);
+  if (gh) scGraph(c, 8, ah + 2, w - 16, gh - 8, st.hist, sp.species.map((s) => s.color), sp.species.map((s) => s.label), 't (s)', 'จำนวนอนุภาค');
+}
+/* ----- maths: surfaces and curves ----- */
+function m3Scope(sp, t, extra) { return Object.assign({ t, pi: Math.PI, e: Math.E }, sp.vars || {}, extra || {}); }
+function m3Col(f) { const a = [[47, 75, 184], [14, 154, 167], [46, 139, 87], [227, 155, 45], [194, 87, 26]], x = clamp(f, 0, 0.9999) * 4, i = Math.floor(x), u = x - i, A = a[i], Bc = a[i + 1]; return 'rgb(' + Math.round(A[0] + (Bc[0] - A[0]) * u) + ',' + Math.round(A[1] + (Bc[1] - A[1]) * u) + ',' + Math.round(A[2] + (Bc[2] - A[2]) * u) + ')'; }
+function m3Draw(c, w, h, sp, st, rt) {
+  if (!window.math) { c.fillStyle = '#5A6472'; c.font = '14px Sarabun, sans-serif'; c.fillText('กำลังโหลดเครื่องคำนวณ', 16, 24); return false; }
+  const L = sp.view.L, P = cam3(rt, w, h, L * 1.2, 0), g = new G3(P), t = st.t;
+  axes3(g, L, ['x', 'y', 'z'], { neg: [1, 1, 1] });
+  for (const it of sp.items) {
+    if (it.type === 'surface' && it.expr) {
+      const [x0, x1, y0, y1] = it.range && it.range.length === 4 ? it.range : [-L, L, -L, L], n = it.n, Z = [];
+      let zmin = 1e9, zmax = -1e9;
+      for (let i = 0; i <= n; i++) { Z.push([]); for (let j = 0; j <= n; j++) { const x = x0 + (x1 - x0) * i / n, y = y0 + (y1 - y0) * j / n, z = mtEval(it.expr, m3Scope(sp, t, { x, y }), rt); Z[i].push(isFinite(z) ? clamp(z, -L * 3, L * 3) : NaN); if (isFinite(z)) { zmin = Math.min(zmin, z); zmax = Math.max(zmax, z); } } }
+      for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) {
+        const xs = [x0 + (x1 - x0) * i / n, x0 + (x1 - x0) * (i + 1) / n], ys = [y0 + (y1 - y0) * j / n, y0 + (y1 - y0) * (j + 1) / n], zz = [Z[i][j], Z[i + 1][j], Z[i + 1][j + 1], Z[i][j + 1]];
+        if (zz.some((v) => !isFinite(v))) continue; const zm = (zz[0] + zz[1] + zz[2] + zz[3]) / 4;
+        g.poly([[xs[0], ys[0], zz[0]], [xs[1], ys[0], zz[1]], [xs[1], ys[1], zz[2]], [xs[0], ys[1], zz[3]]], m3Col((zm - zmin) / Math.max(zmax - zmin, 1e-9)), 'rgba(255,255,255,0.35)');
+      }
+    } else if (it.type === 'curve') {
+      const s0 = mtEval(it.s0 || '0', m3Scope(sp, t), rt), s1 = mtEval(it.s1 || '2*pi', m3Scope(sp, t), rt), pts = [];
+      for (let k = 0; k <= 160; k++) { const s = s0 + (s1 - s0) * k / 160, sc = m3Scope(sp, t, { s }), p = [mtEval(it.x, sc, rt), mtEval(it.y, sc, rt), mtEval(it.z, sc, rt)]; if (p.every(isFinite)) pts.push(p); }
+      g.line(pts, it.color, 2.4);
+    } else if (it.type === 'point' || it.type === 'tangent') {
+      const sc = m3Scope(sp, t, { s: t }), p = [mtEval(it.x, sc, rt), mtEval(it.y, sc, rt), mtEval(it.z, sc, rt)]; if (!p.every(isFinite)) continue;
+      g.ball(p, L * 0.035, it.color); if (it.label) g.text(vAdd(p, [0, 0, L * 0.08]), it.label, it.color, 13);
+      if (it.type === 'tangent') { const hh = 1e-3, sc2 = m3Scope(sp, t, { s: t + hh }), q = [mtEval(it.x, sc2, rt), mtEval(it.y, sc2, rt), mtEval(it.z, sc2, rt)], d = vUnit(vSub(q, p)); g.arrow(p, vAdd(p, vMul(d, L * 0.45)), '#C2571A', 2.4); }
+      if (it.trace) { const tr = rt.traces[it.label || 'p'] || (rt.traces[it.label || 'p'] = []); tr.push(p); if (tr.length > 600) tr.shift(); g.line(tr, it.color, 1.6, { alpha: 0.55 }); }
+    } else if (it.type === 'vector') {
+      const sc = m3Scope(sp, t), p = [mtEval(it.x, sc, rt), mtEval(it.y, sc, rt), mtEval(it.z, sc, rt)]; if (p.every(isFinite)) { g.arrow([0, 0, 0], p, it.color, 2.4); if (it.label) g.text(p, it.label, it.color, 13); }
+    }
+  }
+  g.draw(c); return true;
+}
+/* ----- one entry for the runtime ----- */
+function sc3Reset(sp, r) {
+  if (sp.domain === 'phys') {
+    r.st = p3Init(sp); let mf = 0; for (const B of r.st.bodies) mf = Math.max(mf, B.b.m * sp.world.g); if (sp.fields.central) for (const B of r.st.bodies) { const d = vLen(vSub(B.p, sp.fields.central.p)); mf = Math.max(mf, sp.fields.central.GM * B.b.m / Math.max(d * d, 1e-9)); }
+    if (sp.fields.B) for (const B of r.st.bodies) mf = Math.max(mf, Math.abs(B.b.q) * vLen(vCross(B.v, sp.fields.B))); for (const s of sp.springs) mf = Math.max(mf, s.k * sp.world.size * 0.3); for (const f of sp.forces) mf = Math.max(mf, vLen(f.f));
+    let vm = 0; for (const B of r.st.bodies) vm = Math.max(vm, vLen(B.v)); r.fscale3 = sp.world.size * 0.35 / (mf || 1); r.vscale3 = sp.world.size * 0.35 / (vm || Math.sqrt(sp.world.g * sp.world.size) || 1);
+  } else if (sp.domain === 'math') r.st = { t: sp.t.min };
+  else r.st = c3Init(sp);
+}
+function sc3Tick(sp, r, dtw) {
+  const sim = dtw * (sp.speed || 1) * (r.slow ? 0.25 : 1);
+  if (sp.domain === 'phys') { const n = Math.max(1, Math.ceil(sim / 0.002)); for (let i = 0; i < n; i++) p3Step(sp, r.st, sim / n); for (const B of r.st.bodies) { B.trail.push(B.p.slice()); if (B.trail.length > 500) B.trail.shift(); } }
+  else if (sp.domain === 'math') { r.st.t += dtw * sp.t.speed * (r.slow ? 0.25 : 1); if (r.st.t > sp.t.max) { if (sp.t.loop) { r.st.t = sp.t.min; r.traces = {}; } else { r.st.t = sp.t.max; r.playing = false; r.ended = true; } } }
+  else { const s2 = dtw * (r.slow ? 0.25 : 1), n = Math.max(1, Math.ceil(s2 / 0.01)); for (let i = 0; i < n; i++) c3Step(sp, r.st, s2 / n); if (r.st.t - r.st.lastH > 0.2) { r.st.lastH = r.st.t; r.st.hist.push([r.st.t].concat(sp.species.map((_, i) => r.st.P.filter((q) => q.s === i).length))); if (r.st.hist.length > 500) r.st.hist.shift(); } }
+}
+function sc3Render(c, w, h, sp, r) {
+  if (sp.domain === 'phys') {
+    p3Draw(c, w, h, sp, r.st, r);
+    const live = r.st.bodies.filter((B) => !B.b.fixed);
+    r.read = [['t', fmtNum(+r.st.t.toFixed(2)) + ' s']].concat(live.slice(0, 3).map((B) => [B.b.label || B.id, 'v = ' + fmtNum(+vLen(B.v).toFixed(2)) + ' m/s, สูง ' + fmtNum(+B.p[2].toFixed(2)) + ' m']));
+    if (sp.show.fbd) for (const B of live.slice(0, 2)) { const parts = Object.entries(B.F).filter(([k, v]) => k !== 'net' && vLen(v) > 1e-6).map(([k, v]) => (SC_SYM[k] || k) + ' ' + fmtNum(+vLen(v).toFixed(2))); if (parts.length) r.read.push(['แรงบน ' + (B.b.label || B.id) + ' (N)', parts.join(', ')]); }
+  } else if (sp.domain === 'math') { r.read = [['t', fmtNum(+r.st.t.toFixed(2))]]; return m3Draw(c, w, h, sp, r.st, r); }
+  else { c3Draw(c, w, h, sp, r.st, r); r.read = sp.species.map((s, i) => [s.label, r.st.P.filter((q) => q.s === i).length]).concat([['อุณหภูมิ', sp.T + ' K']]); }
+  return true;
+}
+/* drag to turn, two fingers or the wheel to zoom, double tap to face front */
+function sc3Bind(cv, it, r) {
+  const pts = new Map(); let pinch0 = 0, zoom0 = 1, lastTap = 0; cv.style.touchAction = 'none';
+  const cam = () => r.cam || (r.cam = Object.assign({}, CAM0));
+  const redraw = () => { if (!r.playing) scRender(findItem(it.id) || it, r); };
+  cv.addEventListener('pointerdown', (e) => { e.stopPropagation(); try { cv.setPointerCapture(e.pointerId); } catch (x) { /* fine */ } pts.set(e.pointerId, [e.clientX, e.clientY]); if (pts.size === 2) { const [a, b] = [...pts.values()]; pinch0 = Math.hypot(a[0] - b[0], a[1] - b[1]); zoom0 = cam().zoom; } const t = now(); if (pts.size === 1 && t - lastTap < 320) { r.cam = Object.assign({}, CAM0); redraw(); } lastTap = t; });
+  cv.addEventListener('pointermove', (e) => { if (!pts.has(e.pointerId)) return; e.stopPropagation(); const p0 = pts.get(e.pointerId), dx = e.clientX - p0[0], dy = e.clientY - p0[1]; pts.set(e.pointerId, [e.clientX, e.clientY]); const c = cam(); if (pts.size >= 2) { const [a, b] = [...pts.values()]; if (pinch0) c.zoom = clamp(zoom0 * Math.hypot(a[0] - b[0], a[1] - b[1]) / pinch0, 0.4, 4); } else { c.yaw -= dx * 0.009; c.pitch = clamp(c.pitch + dy * 0.009, -1.5707, 1.5707); } redraw(); });
+  const up = (e) => { pts.delete(e.pointerId); if (pts.size < 2) pinch0 = 0; }; cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
+  cv.addEventListener('wheel', (e) => { e.preventDefault(); e.stopPropagation(); const c = cam(); c.zoom = clamp(c.zoom * Math.exp(-e.deltaY * 0.0015), 0.4, 4); redraw(); }, { passive: false });
+}
+const SCENE_TPL3 = [
+  ['โพรเจกไทล์ 3 มิติ มีลมด้านข้าง', 'ลมผลักด้านข้างด้วยแรงคงที่ เส้นทางเบนออกจากระนาบ', { domain: 'phys', dim: 3, title: 'โพรเจกไทล์มีลมพัด', world: { size: 12, mu: 0.4 }, bodies: [{ id: 'A', label: '', r: 0.3, m: 0.5, p: [-8, -4, 0.3], v: [9, 3, 11], e: 0.4 }], forces: [{ on: 'A', f: [0, 0.8, 0], label: 'F' }], params: [{ key: 'F1.y', label: 'แรงลมด้านข้าง (N)', min: -2, max: 2, step: 0.1 }, { key: 'A.vz', label: 'ความเร็วต้นแนวดิ่ง (m/s)', min: 2, max: 16, step: 0.5 }], show: { v: true } }],
+  ['ลูกตุ้มกรวย', 'มวลวนเป็นวงกลมแนวราบ แรงตึงเชือกกับน้ำหนักรวมกันเป็นแรงสู่ศูนย์กลาง', { domain: 'phys', dim: 3, title: 'ลูกตุ้มกรวย', world: { size: 2.5, ground: false }, bodies: [{ id: 'A', label: '', r: 0.12, m: 0.5, p: [1.25, 0, 0.83], v: [0, 2.66, 0] }], ropes: [{ b: 'A', anchor: [0, 0, 3], L: 2.5 }], params: [{ key: 'A.vy', label: 'ความเร็วต้น (m/s)', min: 0.5, max: 5, step: 0.05 }], show: { net: true, trail: true }, note: 'ความเร็วที่พอดีทำให้วนเป็นวงกลมราบ ถ้าเร็วหรือช้ากว่านี้ทางเดินจะส่ายขึ้นลง' }],
+  ['ประจุเคลื่อนเป็นเกลียว', 'ความเร็วส่วนที่ขนานกับ B คงที่ ส่วนที่ตั้งฉากวนเป็นวงกลม จึงได้เกลียว', { domain: 'phys', dim: 3, title: 'ประจุในสนามแม่เหล็ก 3 มิติ', world: { size: 3, g: 0, ground: false, tz: 1.5 }, bodies: [{ id: 'A', label: '', r: 0.08, m: 1, q: 1, p: [0, -1, 0], v: [1, 0, 0.35] }], fields: { B: [0, 0, 1] }, params: [{ key: 'A.vz', label: 'ความเร็วแนวขนาน B (m/s)', min: 0, max: 1, step: 0.05 }, { key: 'B.z', label: 'B (T)', min: 0.3, max: 3, step: 0.1 }], show: { v: true, fbd: true } }],
+  ['ดาวเทียมวงโคจรเอียง', 'แรงโน้มถ่วงชี้เข้าศูนย์กลางเสมอ ระนาบวงโคจรคงที่', { domain: 'phys', dim: 3, title: 'วงโคจรในสามมิติ', world: { size: 5, g: 0, ground: false }, bodies: [{ id: 'A', label: '', r: 0.12, m: 1, p: [3.5, 0, 0], v: [0, 1.9, 1.1] }], fields: { central: { p: [0, 0, 0], GM: 16, r: 0.6, label: 'โลก' } }, params: [{ key: 'A.vy', label: 'ความเร็วต้นแนว y (m/s)', min: 0.5, max: 3, step: 0.05 }, { key: 'A.vz', label: 'ความเร็วต้นแนว z (m/s)', min: 0, max: 2, step: 0.05 }], show: { v: true } }],
+  ['มวลแขวนสปริงแกว่งสามมิติ', 'สปริงดึงกลับเข้าหาจุดแขวน น้ำหนักดึงลง เส้นทางเป็นวงรีหมุน', { domain: 'phys', dim: 3, title: 'มวลติดสปริงสามมิติ', world: { size: 2.5, ground: false, tz: 1.2 }, bodies: [{ id: 'A', label: '', r: 0.12, m: 0.5, p: [0.8, 0, 1.2], v: [0, 1.2, 0] }], springs: [{ a: '', b: 'A', anchor: [0, 0, 3], k: 12, L0: 1.2 }], params: [{ key: 'K1.k', label: 'k (N/m)', min: 4, max: 40, step: 1 }, { key: 'A.vy', label: 'ความเร็วต้นด้านข้าง (m/s)', min: 0, max: 3, step: 0.1 }], show: { trail: true } }],
+  ['ลูกบอลตกกระดอนบนพื้นเอียง', 'กระดอนออกตามแนวตั้งฉากพื้นเอียง แล้วไถลลงตามความชัน', { domain: 'phys', dim: 3, title: 'ลูกบอลกับพื้นเอียง', world: { size: 4, mu: 0.3 }, bodies: [{ id: 'A', label: '', r: 0.2, m: 0.5, p: [-1, 0, 3.2], v: [0, 0, 0], e: 0.7 }], planes: [{ p: [0, 0, 1], n: [0.42, 0, 0.91], mu: 0.3, size: 2.2 }], params: [{ key: 'A.e', label: 'การกระดอน e', min: 0, max: 0.95, step: 0.05 }, { key: 'mu', label: 'μ', min: 0, max: 1, step: 0.05 }], show: { trail: true } }],
+  ['การชนสองมิติบนโต๊ะลื่น', 'ชนเยื้องศูนย์ โมเมนตัมรวมคงที่ทั้งสองแกน', { domain: 'phys', dim: 3, title: 'การชนเยื้องศูนย์', world: { size: 3, g: 0, ground: false }, bodies: [{ id: 'A', label: 'A', r: 0.25, m: 1, p: [-2, -0.2, 0], v: [2, 0, 0], e: 1 }, { id: 'B', label: 'B', r: 0.25, m: 1, p: [0, 0.15, 0], v: [0, 0, 0], e: 1, color: '#C2571A' }], params: [{ key: 'B.y', label: 'ระยะเยื้อง (m)', min: -0.45, max: 0.45, step: 0.01 }, { key: 'B.m', label: 'มวล B (kg)', min: 0.5, max: 4, step: 0.1 }], show: { v: true, fbd: false, trail: true } }],
+  ['แก๊สในกล่องสามมิติ', 'อนุภาควิ่งทุกทิศ อุณหภูมิสูงขึ้นวิ่งเร็วขึ้น', { domain: 'chem', dim: 3, title: 'แก๊สในกล่อง 3 มิติ', box: { w: 60, h: 40, d: 40 }, T: 300, species: [{ id: 'G', label: 'โมเลกุลแก๊ส', n: 70, r: 1.5, color: '#2F4BB8' }], params: [{ key: 'T', label: 'อุณหภูมิ (K)', min: 50, max: 1200, step: 10 }] }],
+  ['ปฏิกิริยา A + B ในสามมิติ', 'ชนแรงพอจึงเกิดปฏิกิริยา เพิ่มอุณหภูมิแล้ว C เกิดเร็วขึ้น', { domain: 'chem', dim: 3, title: 'A + B → C แบบ 3 มิติ', box: { w: 60, h: 40, d: 40 }, T: 300, species: [{ id: 'A', label: 'A', n: 60, r: 1.4, color: '#2F4BB8' }, { id: 'B', label: 'B', n: 60, r: 1.4, color: '#C2571A' }, { id: 'C', label: 'C', n: 0, r: 1.9, m: 2, color: '#2E8B57' }], reactions: [{ from: ['A', 'B'], to: ['C'], Ea: 1.6 }], params: [{ key: 'T', label: 'อุณหภูมิ (K)', min: 100, max: 1200, step: 10 }, { key: 'RX1.Ea', label: 'พลังงานก่อกัมมันต์', min: 0, max: 5, step: 0.1 }] }],
+  ['การแพร่ผ่านเยื่อในสามมิติ', 'โมเลกุลเล็กผ่านเยื่อได้ โมเลกุลใหญ่ผ่านไม่ได้', { domain: 'bio', dim: 3, title: 'เยื่อเลือกผ่าน 3 มิติ', box: { w: 70, h: 40, d: 40 }, T: 310, species: [{ id: 'W', label: 'น้ำ', n: 90, r: 1, color: '#4C8DF6', side: 'left' }, { id: 'S', label: 'น้ำตาล', n: 25, r: 2.2, m: 6, color: '#E39B2D', side: 'right' }], membrane: { x: 0.5, pass: ['W'] } }],
+  ['พื้นผิวคลื่น', 'z = sin(r − t) คลื่นวงกลมแผ่ออกจากจุดกลาง', { domain: 'math', dim: 3, title: 'พื้นผิว z = a sin(√(x² + y²) − t)', view: { L: 4 }, t: { min: 0, max: 62.8, speed: 2 }, vars: { a: 0.8 }, items: [{ type: 'surface', expr: 'a*sin(sqrt(x^2+y^2)*1.6-t)', n: 30 }], params: [{ key: 'a', label: 'แอมพลิจูด', min: 0, max: 1.5, step: 0.05 }] }],
+  ['เกลียวกับเวกเตอร์สัมผัส', 'จุดเดินบนเกลียว ลูกศรคือทิศของความเร็ว', { domain: 'math', dim: 3, title: 'เกลียว r(s) = (cos s, sin s, s/4)', view: { L: 2.5 }, t: { min: 0, max: 18.85, speed: 1.2 }, items: [{ type: 'curve', x: 'cos(s)', y: 'sin(s)', z: 's/4-2.3', s0: '0', s1: '6*pi', color: '#2F4BB8' }, { type: 'tangent', x: 'cos(s)', y: 'sin(s)', z: 's/4-2.3', label: 'P', color: '#C2571A' }] }],
+  ['พื้นผิวอานม้า', 'z = (x² − y²)/4 จุดอานม้าเป็นได้ทั้งต่ำสุดและสูงสุดตามแนวที่มอง', { domain: 'math', dim: 3, title: 'z = (x² − y²)/4', view: { L: 3 }, t: { min: 0, max: 6.2832, speed: 1 }, vars: { k: 4 }, items: [{ type: 'surface', expr: '(x^2-y^2)/k', n: 26 }, { type: 'point', x: '2.2*cos(t)', y: '2.2*sin(t)', z: '(4.84*cos(t)^2-4.84*sin(t)^2)/k', label: 'P', trace: true, color: '#C2571A' }], params: [{ key: 'k', label: 'k', min: 1, max: 10, step: 0.5 }] }]
+];
+SCENE_TPL['3d'] = SCENE_TPL3;
 
 function insertSim(kind) {
   if (!S.page || !SIMS[kind]) return;
@@ -11021,7 +11304,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793178618';
+const BUILD = '1793182623';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
