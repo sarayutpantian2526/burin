@@ -932,6 +932,11 @@ body.tv .livepill { bottom: 14px; }
 .scnai { display: flex; flex-direction: column; gap: 6px; margin: 8px 0 12px; }
 .scnprev { display: block; width: 100%; height: 150px; border-radius: 8px; background: #FFFFFF; }
 #scnPick .chips { margin-bottom: 4px; }
+
+.item .tsize { position: absolute; right: -16px; top: -16px; width: 36px; height: 36px; border-radius: 999px; border: 1px solid #C9D2E3; background: rgba(255,255,255,0.95); color: #5F6F94; display: grid; place-items: center; pointer-events: auto; cursor: nwse-resize; touch-action: none; z-index: 2; box-shadow: 0 1px 4px rgba(0,0,0,0.12); }
+.item .tsize svg { width: 18px; height: 18px; }
+body.present .item .tsize, body.role-student .item .tsize { display: none; }
+.item.sim .scncv { height: auto !important; aspect-ratio: 16 / 10; }
 </style>
 </head>
 <body>
@@ -2452,7 +2457,8 @@ function drawSharp() {
   drawInto(c, allStrokes(), S.sel ? new Set(S.sel.strokes.map((r) => r.id)) : null);
   cSharp.hidden = false;
 }
-function sharpLater() { clearTimeout(sharpT); sharpT = setTimeout(drawSharp, 160); }
+function redrawLiveBoxes() { try { if (typeof SCN !== 'undefined') for (const [id, r] of SCN) { const it = findItem(id); if (it && r.cv && r.cv.isConnected) scRender(it, r); } for (const el of itemsEl.querySelectorAll('.item.sim')) { const it = findItem(el.dataset.id), cv = el.querySelector('canvas.simcv:not(.scncv)'); if (it && it.type === 'sim' && cv) simRender(it, cv, el.querySelector('.sro')); } } catch (e) { /* not ready yet */ } }
+function sharpLater() { clearTimeout(sharpT); sharpT = setTimeout(() => { drawSharp(); redrawLiveBoxes(); }, 160); }
 function drawBg() {
   if (!cSharp.hidden) sharpLater();
   const c = cBg.getContext('2d');
@@ -2700,7 +2706,8 @@ function buildItemEl(it, forExport) {
   else if (it.type === 'scene') { buildScene(d, it, forExport); }
   else if (it.type === 'lab') { buildLab(d, it, forExport); }
   else { d.innerHTML = mdToHtml(it.md || ''); if (it.hand && HAND_IDS.includes(it.hand)) { d.classList.add('hand', 'hand-' + it.hand); if (okHex(it.ink)) d.style.color = it.ink; } }
-  if (!forExport && !it.lock && it.by !== 'teacher' && (!it.type || it.type === 'text' || it.type === 'img' || it.type === 'svg')) { const g = document.createElement('button'); g.type = 'button'; g.className = 'tgrab'; g.setAttribute('aria-label', 'จับเพื่อเลือก ย้าย หรือลบ'); g.innerHTML = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 2.5v15 M2.5 10h15 M10 2.5l-2.2 2.2 M10 2.5l2.2 2.2 M10 17.5l-2.2-2.2 M10 17.5l2.2-2.2 M2.5 10l2.2-2.2 M2.5 10l2.2 2.2 M17.5 10l-2.2-2.2 M17.5 10l-2.2 2.2" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>'; d.appendChild(g); }
+  if (!forExport && !it.lock && it.by !== 'teacher' && ['graph', 'sim', 'scene', 'lab', 'video'].includes(it.type)) { const z = document.createElement('button'); z.type = 'button'; z.className = 'tsize'; z.setAttribute('aria-label', 'ลากเพื่อย่อหรือขยายกล่อง'); z.title = 'ลากเพื่อย่อหรือขยาย'; z.innerHTML = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M8 4h8v8 M16 4L4 16 M4 8v8h8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>'; d.appendChild(z); }
+  if (!forExport && !it.lock && it.by !== 'teacher' && (!it.type || it.type === 'text' || it.type === 'img' || it.type === 'svg' || ['graph', 'sim', 'scene', 'lab', 'video'].includes(it.type))) { const g = document.createElement('button'); g.type = 'button'; g.className = 'tgrab'; g.setAttribute('aria-label', 'จับเพื่อเลือก ย้าย หรือลบ'); g.innerHTML = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 2.5v15 M2.5 10h15 M10 2.5l-2.2 2.2 M10 2.5l2.2 2.2 M10 17.5l-2.2-2.2 M10 17.5l2.2-2.2 M2.5 10l2.2-2.2 M2.5 10l2.2 2.2 M17.5 10l-2.2-2.2 M17.5 10l-2.2 2.2" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>'; d.appendChild(g); }
   if (!forExport && it.qref && !isStudentSide()) {
     const kb = document.createElement('button'); kb.type = 'button'; kb.className = 'qkey no-ink'; kb.textContent = 'เฉลย'; kb.title = 'ดูเฉลยข้อนี้ เห็นเฉพาะเครื่องนี้ ผู้เรียนและจอฉายไม่เห็น';
     kb.addEventListener('pointerdown', (e) => { e.stopPropagation(); }, true); kb.addEventListener('pointerup', (e) => e.stopPropagation());
@@ -2847,6 +2854,14 @@ vp.addEventListener('contextmenu', (e) => e.preventDefault());
 
 function onDown(e) {
   /* the grab bar of a video, and the title bar of a graph or simulation, pick the item up with any tool */
+  if (!S.present && e.target.closest('.item .tsize')) {
+    const el = e.target.closest('.item'), it = el && findItem(el.dataset.id);
+    if (it) {
+      e.preventDefault(); closePops(); try { vp.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+      selectItem(it); const pt = { id: e.pointerId, type: e.pointerType, sx: e.clientX, sy: e.clientY, lx: e.clientX, ly: e.clientY, t0: now(), moved: 0 };
+      startScale(pt, 4); P.set(e.pointerId, pt); return;
+    }
+  }
   const grab = !S.present && (e.target.closest('.item .tgrab') || (e.target.closest('.item.live .vbar, .item.live .gh') && !e.target.closest('input,button,select,textarea')));
   if (grab) {
     const el = e.target.closest('.item'), it = el && findItem(el.dataset.id);
@@ -2860,7 +2875,7 @@ function onDown(e) {
       return;
     }
   }
-  if (e.target.closest('.no-ink') && !(S.tool === 'lasso' && e.target.closest('.item.live') && !e.target.closest('input,button,video'))) return;
+  if (e.target.closest('.no-ink') && !(S.tool === 'lasso' && e.target.closest('.item.live') && !e.target.closest('input,button,video')) && !(e.pointerType === 'touch' && e.target.closest('.item.live') && !e.target.closest('input,button,select,textarea,video,.gsl,.scntog'))) return;
   if (S.present) { e.preventDefault(); presentTap(); return; }
   closePops();
   if (editing && !e.target.closest('.item')) { commitEdit(); }
@@ -6535,7 +6550,7 @@ function scClean(sp) {
     const wd = sp.world || {};
     o.world = { w: scNum(wd.w, 10, 0.1, 1e9), h: scNum(wd.h, 6, 0.1, 1e9), g: scNum(wd.g, 9.8, 0, 1000), x0: scNum(wd.x0, 0, -1e9, 1e9), y0: scNum(wd.y0, 0, -1e9, 1e9) };
     o.bodies = (Array.isArray(sp.bodies) ? sp.bodies : []).slice(0, 8).map((b, i) => ({
-      id: scTxt(b.id || 'B' + (i + 1), 8).replace(/[^A-Za-z0-9_]/g, '') || 'B' + (i + 1), label: scTxt(b.label || b.id || 'วัตถุ', 20), shape: b.shape === 'ball' ? 'ball' : 'box',
+      id: scTxt(b.id || 'B' + (i + 1), 8).replace(/[^A-Za-z0-9_]/g, '') || 'B' + (i + 1), label: scTxt(b.label || b.id || 'วัตถุ', 20), shape: b.shape === 'ball' ? 'ball' : b.shape === 'person' ? 'person' : 'box', act: ['stand', 'walk', 'run', 'jump', 'longjump', 'fall', 'squat'].includes(b.act) ? b.act : 'walk', hgt: scNum(b.hgt, 1.7, 0.5, 2.5), v: scNum(b.v, b.act === 'run' ? 4 : b.act === 'jump' ? 2.6 : b.act === 'longjump' ? 6 : 1.4, 0, 12), ang: scNum(b.ang, 20, 0, 80), push: scNum(b.push, 0.6, 0, 5),
       m: scNum(b.m, 1, 1e-6, 1e30), x: scNum(b.x, 1, -1e12, 1e12), y: scNum(b.y, 1, -1e12, 1e12), vx: scNum(b.vx, 0, -1e9, 1e9), vy: scNum(b.vy, 0, -1e9, 1e9),
       w: scNum(b.w, 0.6, 1e-6, 1e12), h: scNum(b.h, 0.4, 1e-6, 1e12), r: scNum(b.r, 0.25, 1e-6, 1e12), q: scNum(b.q, 0, -1e3, 1e3), e: scNum(b.e, b.shape === 'ball' ? 0.5 : 0, 0, 1),
       fixed: !!b.fixed, color: scCol(b.color, SC_PAL[i % SC_PAL.length])
@@ -6548,7 +6563,7 @@ function scClean(sp) {
     o.fields = { E: Array.isArray(fl.E) ? [scNum(fl.E[0], 0, -1e9, 1e9), scNum(fl.E[1], 0, -1e9, 1e9)] : null, B: fl.B == null ? 0 : scNum(fl.B, 0, -1e6, 1e6), drag: scNum(fl.drag, 0, 0, 1e6),
       central: fl.central ? { x: scNum(fl.central.x, 0, -1e12, 1e12), y: scNum(fl.central.y, 0, -1e12, 1e12), GM: scNum(fl.central.GM, 1, 0, 1e30), r: scNum(fl.central.r, 0.3, 0, 1e12), label: scTxt(fl.central.label || '', 16) } : null };
     const sh = sp.show || {};
-    o.show = { fbd: sh.fbd !== false, v: !!sh.v, a: !!sh.a, net: !!sh.net, trail: sh.trail !== false, energy: !!sh.energy, graph: ['x', 'y', 'v', 'vx', 'vy', 'none'].includes(sh.graph) ? sh.graph : 'v' };
+    o.show = { fbd: sh.fbd !== false, v: !!sh.v, a: !!sh.a, net: !!sh.net, trail: sh.trail !== false, energy: !!sh.energy, graph: ['x', 'y', 'v', 'vx', 'vy', 'grf', 'none'].includes(sh.graph) ? sh.graph : 'v' };
     o.speed = scNum(sp.speed, 1, 0.01, 1e6);
   } else if (dom === 'chem' || dom === 'bio') {
     const bx = sp.box || {};
@@ -6606,9 +6621,10 @@ function scTarget(sp, h) {
 
 /* ---------- physics: impulses per step so contact and rope forces come out as real numbers for the diagram ---------- */
 function phInit(sp) {
-  const st = { t: 0, bodies: sp.bodies.map((b) => Object.assign({}, b, { ang: 0, F: {}, trail: [], contact: null })), hist: [], acc: {} };
+  const st = { t: 0, bodies: sp.bodies.map((b) => Object.assign({}, b, { ang: 0, F: {}, trail: [], contact: null, x0: b.x })), hist: [], acc: {} };
+  for (const b of st.bodies) if (b.shape === 'person') { psStep(sp, { t: -0.004 }, b, 0.004); }
   /* a body drawn slightly into a surface starts resting on it */
-  for (const b of st.bodies) for (const s of sp.surfaces) {
+  for (const b of st.bodies) if (b.shape !== 'person') for (const s of sp.surfaces) {
     const ex = s.x2 - s.x1, ey = s.y2 - s.y1, L2 = ex * ex + ey * ey || 1e-12, u = clamp(((b.x - s.x1) * ex + (b.y - s.y1) * ey) / L2, 0, 1);
     const px = s.x1 + ex * u, py = s.y1 + ey * u, d = Math.hypot(b.x - px, b.y - py), pen = phR(b) - d;
     if (pen > 0 && d > 1e-9 && u > 0 && u < 1) { const L = Math.sqrt(L2); let nx = -ey / L, ny = ex / L; if (nx * (b.x - px) + ny * (b.y - py) < 0) { nx = -nx; ny = -ny; } b.x = px + nx * phR(b); b.y = py + ny * phR(b); }
@@ -6623,8 +6639,90 @@ function phTan(r, e, other) { if (!r.via) return null; const side = e.x < r.via[
 function phRopeLen(st, r) { const a = phEnd(st, r.a, r.ax, r.ay), b = phEnd(st, r.b, r.ax, r.ay); if (r.via) { const ta = phTan(r, a, b), tb = phTan(r, b, a); return Math.hypot(a.x - ta[0], a.y - ta[1]) + Math.hypot(b.x - tb[0], b.y - tb[1]); } return Math.hypot(a.x - b.x, a.y - b.y); }
 const phR = (b) => (b.shape === 'ball' ? b.r : b.h / 2);
 function phAdd(b, k, fx, fy) { const o = b.F[k] || (b.F[k] = [0, 0]); o[0] += fx; o[1] += fy; }
+
+/* ---------- a person: the centre of mass moves by mechanics (inverted pendulum when walking, spring-mass when running,
+   free flight when jumping, rotation about the feet when falling); arms and legs follow it; the ground force comes
+   out of the motion itself: N = m(g + ay), friction = m ax ---------- */
+function psGround(sp, x) { let best = null; for (const s of sp.surfaces) { if (Math.abs(s.y2 - s.y1) > Math.abs(s.x2 - s.x1) * 0.2) continue; const a = Math.min(s.x1, s.x2), b = Math.max(s.x1, s.x2); if (x < a || x > b) continue; const y = s.y1 + (s.y2 - s.y1) * (x - s.x1) / ((s.x2 - s.x1) || 1); if (best == null || y > best) best = y; } return best == null ? 0 : best; }
+function psKin(b, sp, t) {
+  const g = sp.world.g || 9.8, H = b.hgt, Lg = 0.5 * H, ys = Lg * 0.98, x0 = b.x0, gr = psGround(sp, x0);
+  const K = { hx: x0, hy: gr + ys, fl: [x0 - 0.06 * H, gr], fr: [x0 + 0.06 * H, gr], lean: 0, swing: 0, air: false, tuck: 0, phase: 'ยืน', rot: 0 };
+  const walkLike = (v, tt, run) => {
+    if (!run) {
+      const sl = 0.42 * H, xh = x0 + v * tt, k = Math.floor((xh - x0) / sl), xf = x0 + sl * (k + 0.5), u = ((xh - x0) / sl) - k;
+      /* the hip rises over the stance leg and dips when both feet are down: about 5 cm up and down per step */
+      const A = clamp(0.025 * (H / 1.7) * (v / 1.4), 0.008, 0.04); K.hx = xh; K.hy = gr + ys - 0.02 - A * Math.cos(2 * Math.PI * u);
+      const sw = [xf - sl + 2 * sl * u, gr + 0.07 * Lg * Math.sin(Math.PI * u)];
+      if (k % 2) { K.fl = [xf, gr]; K.fr = sw; } else { K.fr = [xf, gr]; K.fl = sw; }
+      K.swing = (k % 2 ? 1 : -1) * Math.cos(Math.PI * u); K.phase = 'เดิน: ขาหลักแกว่งแบบลูกตุ้มกลับหัว'; K.lean = 0.04;
+    } else {
+      const Tst = Math.max(0.18, 0.33 - 0.02 * v), Tf = 0.12 + 0.015 * v, T = Tst + Tf, vy0 = g * Tf / 2, A = vy0 * Tst / Math.PI, k = Math.floor(tt / T), u = tt / T - k;
+      const xh = x0 + v * tt; K.hx = xh; const y0 = gr + Lg * 0.95;
+      if (u * T < Tst) { const w = u * T / Tst; K.hy = y0 - A * Math.sin(Math.PI * w); const xf = x0 + v * (k * T + Tst / 2); if (k % 2) { K.fl = [xf, gr]; K.fr = [xh - 0.15 * H, gr + 0.28 * Lg]; } else { K.fr = [xf, gr]; K.fl = [xh - 0.15 * H, gr + 0.28 * Lg]; } K.phase = 'วิ่ง: เท้าแตะพื้น'; }
+      else { const tf = u * T - Tst; K.hy = y0 + vy0 * tf - 0.5 * g * tf * tf; K.air = true; const fw = [xh + 0.18 * H, gr + 0.12 * Lg + (K.hy - y0)], bk = [xh - 0.2 * H, gr + 0.3 * Lg + (K.hy - y0)]; if (k % 2) { K.fl = bk; K.fr = fw; } else { K.fr = bk; K.fl = fw; } K.phase = 'วิ่ง: ลอยตัว'; }
+      K.swing = (k % 2 ? 1 : -1) * Math.cos(Math.PI * 2 * u) * 1.4; K.lean = 0.12 + 0.01 * v;
+    }
+  };
+  if (b.act === 'walk') walkLike(b.v, t, false);
+  else if (b.act === 'run') walkLike(b.v, t, true);
+  else if (b.act === 'squat') { const c = 0.32 * Lg, T = 2.4, u = (t % T) / T; K.hy = gr + ys - c * (1 - Math.cos(2 * Math.PI * u)) / 2; K.phase = 'สควอต'; }
+  else if (b.act === 'jump' || b.act === 'longjump') {
+    const c = 0.24 * Lg, run = b.act === 'longjump', vr = run ? clamp(b.v, 2, 11) : 0, ang = (run ? b.ang : 90) * Math.PI / 180;
+    const vyT = run ? clamp(vr * Math.tan(ang), 0.5, 6) : Math.max(0.3, b.v), vxT = run ? vr : 0;
+    const Tc = run ? 0.16 : 0.45, Ta = 2 * c / Math.max(vyT, 0.3), Tfl = 2 * vyT / g, Tl = 2 * c / Math.max(vyT, 0.3), Tr = 0.6, Tw = 0.4, Trun = run ? 1.6 : 0;
+    let tt = t; const xRun = run ? x0 + vr * Trun : x0;
+    if (run && tt < Trun) { walkLike(vr, tt, true); K.phase = 'วิ่งเข้าหา'; }
+    else {
+      tt -= Trun;
+      const ph = [Tw, Tc, Ta, Tfl, Tl, Tr]; let i = 0; while (i < ph.length && tt > ph[i]) { tt -= ph[i]; i++; }
+      const xs = xRun; K.hx = xs; K.fl = [xs - 0.06 * H, gr]; K.fr = [xs + 0.06 * H, gr];
+      if (i === 0) { K.hy = gr + ys; K.phase = 'เตรียม'; }
+      else if (i === 1) { K.hy = gr + ys - c * (1 - Math.cos(Math.PI * tt / Tc)) / 2; K.phase = run ? 'วางเท้าถีบ' : 'ย่อตัว'; if (run) { K.hx = xs + vr * tt; K.fl = [xs + vr * Tc * 0.6, gr]; K.fr = [K.hx - 0.2 * H, gr + 0.3 * Lg]; } }
+      else if (i === 2) { const a = vyT * vyT / (2 * c); K.hy = gr + ys - c + 0.5 * a * tt * tt; K.hx = xs + (run ? vr * (Tc + tt) : 0); if (run) { K.fl = [xs + vr * Tc * 0.6, gr]; K.fr = [K.hx + 0.15 * H, gr + 0.35 * Lg]; } K.phase = 'ถีบตัว แรงจากพื้นมากกว่าน้ำหนัก'; K.swing = -1.6 * tt / Ta; }
+      else if (i === 3) { K.air = true; K.hy = gr + ys + vyT * tt - 0.5 * g * tt * tt; K.hx = xs + vxT * (Tc + Ta + tt); K.tuck = Math.sin(Math.PI * tt / Tfl) * 0.8; const dy = K.hy - (gr + ys); K.fl = [K.hx - 0.06 * H + (run ? 0.25 * H * tt / Tfl : 0), gr + dy + 0.02]; K.fr = [K.hx + 0.06 * H + (run ? 0.25 * H * tt / Tfl : 0), gr + dy + 0.02]; K.phase = 'ลอยตัว มีแต่น้ำหนักกระทำ'; K.swing = -1.6; }
+      else { const xl = xs + vxT * (Tc + Ta + Tfl); K.hx = xl + (i === 4 && run ? vxT * tt * (1 - tt / (2 * Tl)) : run ? vxT * Tl / 2 : 0); K.fl = [ (run ? xl + vxT * Tl / 2 : xl) - 0.06 * H, gr]; K.fr = [(run ? xl + vxT * Tl / 2 : xl) + 0.06 * H, gr];
+        if (i === 4) { const a = vyT * vyT / (2 * c); K.hy = gr + ys - vyT * tt + 0.5 * a * tt * tt; K.phase = 'ลงพื้น งอเข่ารับแรงกระแทก'; }
+        else if (i === 5) { K.hy = gr + ys - c + c * (1 - Math.cos(Math.PI * Math.min(1, tt / Tr))) / 2; K.phase = 'ยืดตัวกลับ'; }
+        else { K.hy = gr + ys; K.phase = 'ยืน'; } }
+    }
+  } else if (b.act === 'fall') {
+    const T0 = 0.6, L = ys + 0.25 * H; let th = 0;
+    if (t > T0) { /* rigid fall about the feet: theta'' = (g/L) sin(theta), started by a push */
+      const n = Math.ceil((t - T0) / 0.002); let a = 0.02, w = b.push / L; for (let i = 0; i < n; i++) { const dt = (t - T0) / n; w += (g / L) * Math.sin(a) * dt * 1.5; a += w * dt; if (a > 1.45) { a = 1.45; w = 0; } } th = a; }
+    K.rot = th; K.hx = x0 + L * Math.sin(th) * (ys / L); K.hy = gr + ys * Math.cos(th); K.phase = t < T0 ? 'ยืน แล้วถูกผลัก' : th >= 1.45 ? 'ล้มลงพื้น' : 'หมุนรอบเท้า';
+  }
+  return K;
+}
+function psStep(sp, st, b, dt) {
+  const t = st.t + dt, h = 0.004, k0 = psKin(b, sp, t - h), k1 = psKin(b, sp, t), k2 = psKin(b, sp, t + h);
+  const g = sp.world.g || 9.8; b.x = k1.hx; b.y = k1.hy; b.vx = (k2.hx - k0.hx) / (2 * h); b.vy = (k2.hy - k0.hy) / (2 * h);
+  const ax = (k2.hx - 2 * k1.hx + k0.hx) / (h * h), ay = (k2.hy - 2 * k1.hy + k0.hy) / (h * h);
+  b.ax = clamp(ax, -4 * g, 4 * g); b.ay = clamp(ay, -g, 5 * g); /* impacts are capped so the graph stays readable */ b.kin = k1; b.F = {};
+  phAdd(b, 'W', 0, -b.m * g);
+  const N = b.m * (g + b.ay); const onG = !k1.air && N > 1e-6;
+  if (onG) { phAdd(b, 'N', 0, N); if (Math.abs(b.ax) > 0.05) phAdd(b, 'f', b.m * b.ax, 0); }
+  const fs = [k1.fl, k1.fr].filter((f) => f[1] <= psGround(sp, f[0]) + 0.02); b.foot = fs.length ? [fs.reduce((a, f) => a + f[0], 0) / fs.length, fs[0][1]] : null;
+  b.F.net = [onG ? b.m * b.ax : 0, -b.m * g + (onG ? N : 0)];
+}
+function psIK(H, F, L1, L2, dir) { const dx = F[0] - H[0], dy = F[1] - H[1], d = Math.min(Math.hypot(dx, dy), L1 + L2 - 1e-6), a = Math.atan2(dy, dx), c = clamp((L1 * L1 + d * d - L2 * L2) / (2 * L1 * d || 1), -1, 1), k = a + dir * Math.acos(c); return [H[0] + L1 * Math.cos(k), H[1] + L1 * Math.sin(k)]; }
+function psDraw(c, b, X, Y, sc) {
+  const K = b.kin || { hx: b.x, hy: b.y, fl: [b.x - 0.1, b.y - 0.8], fr: [b.x + 0.1, b.y - 0.8], lean: 0, swing: 0, tuck: 0, rot: 0 };
+  const H = b.hgt, Lg = 0.5 * H, hip = [K.hx, K.hy], dir = (b.vx || 0) >= 0 ? 1 : -1, rot = K.rot || 0, lean = (K.lean || 0) * dir + rot;
+  const tor = 0.3 * H, sh = [hip[0] + tor * Math.sin(lean), hip[1] + tor * Math.cos(lean)], head = [sh[0] + 0.1 * H * Math.sin(lean), sh[1] + 0.1 * H * Math.cos(lean)];
+  const lw = Math.max(3, 0.045 * H * sc), col = b.color;
+  const seg = (a, z, w2, cl) => { c.strokeStyle = cl || col; c.lineWidth = w2 || lw; c.lineCap = 'round'; c.beginPath(); c.moveTo(X(a[0]), Y(a[1])); c.lineTo(X(z[0]), Y(z[1])); c.stroke(); };
+  const leg = (F, back) => { let foot = F; if (rot) { const L = Math.hypot(F[0] - hip[0], F[1] - hip[1]); foot = F; void L; } const kn = psIK(hip, foot, Lg / 2, Lg / 2, dir * (K.tuck ? 1 : 1) * 1); seg(hip, kn, lw, back ? scTint(col, 0.35) : col); seg(kn, foot, lw, back ? scTint(col, 0.35) : col); seg(foot, [foot[0] + 0.07 * H * dir, foot[1]], lw * 0.8, back ? scTint(col, 0.35) : col); };
+  const arm = (s, back) => { const a = -s * 0.7 + (K.air ? -1.2 * dir * 0 : 0), el = [sh[0] + 0.16 * H * Math.sin(a + rot), sh[1] - 0.16 * H * Math.cos(a + rot)], hd = [el[0] + 0.15 * H * Math.sin(a + 0.5 * dir + rot), el[1] - 0.15 * H * Math.cos(a + 0.5 * dir + rot)]; const cl = back ? scTint(col, 0.35) : col; seg(sh, el, lw * 0.85, cl); seg(el, hd, lw * 0.85, cl); };
+  arm(-(K.swing || 0), true); leg(K.fl, true);
+  seg(hip, sh, lw * 1.2);
+  leg(K.fr, false); arm(K.swing || 0, false);
+  c.fillStyle = '#FFFFFF'; c.strokeStyle = col; c.lineWidth = lw * 0.8; c.beginPath(); c.arc(X(head[0]), Y(head[1]), Math.max(5, 0.065 * H * sc), 0, 6.283); c.fill(); c.stroke();
+  /* centre of mass marker */
+  const cx = X(hip[0]), cy = Y(hip[1] + 0.03 * H), r = Math.max(4, 0.03 * H * sc); c.fillStyle = '#FFFFFF'; c.beginPath(); c.arc(cx, cy, r, 0, 6.283); c.fill(); c.fillStyle = '#14181F'; c.beginPath(); c.moveTo(cx, cy); c.arc(cx, cy, r, 0, Math.PI / 2); c.lineTo(cx, cy); c.moveTo(cx, cy); c.arc(cx, cy, r, Math.PI, Math.PI * 1.5); c.lineTo(cx, cy); c.fill(); c.strokeStyle = '#14181F'; c.lineWidth = 1; c.beginPath(); c.arc(cx, cy, r, 0, 6.283); c.stroke();
+}
 function phStep(sp, st, dt) {
-  const g = sp.world.g, B = st.bodies, fl = sp.fields;
+  const g = sp.world.g, B = st.bodies.filter((b) => b.shape !== 'person'), fl = sp.fields;
+  for (const b of st.bodies) if (b.shape === 'person') psStep(sp, st, b, dt);
   for (const b of B) b.F = {};
   for (const b of B) {
     if (b.fixed) continue;
@@ -6699,7 +6797,9 @@ function phStep(sp, st, dt) {
   st.t += dt;
 }
 function phBounds(sp, st) {
-  let x0 = sp.world.x0, y0 = sp.world.y0, x1 = x0 + sp.world.w, y1 = y0 + sp.world.h; return [x0, y0, x1, y1];
+  let x0 = sp.world.x0, y0 = sp.world.y0;
+  const p = st.bodies.find((b) => b.shape === 'person' && ['walk', 'run', 'longjump'].includes(b.act)); if (p) x0 = Math.max(x0, p.x - sp.world.w * 0.35);
+  const x1 = x0 + sp.world.w, y1 = y0 + sp.world.h; return [x0, y0, x1, y1];
 }
 function phDraw(c, w, h, sp, st, rt) {
   const [x0, y0, x1, y1] = phBounds(sp, st), pad = 16, sc = Math.min((w - 2 * pad) / (x1 - x0), (h - 2 * pad) / (y1 - y0));
@@ -6733,6 +6833,7 @@ function phDraw(c, w, h, sp, st, rt) {
   if (sp.show.trail) for (const b of st.bodies) { if (b.trail.length < 2) continue; c.strokeStyle = b.color + '55'; c.lineWidth = 2; c.setLineDash([3, 4]); c.beginPath(); b.trail.forEach((p, i) => (i ? c.lineTo(X(p[0]), Y(p[1])) : c.moveTo(X(p[0]), Y(p[1])))); c.stroke(); c.setLineDash([]); }
   /* bodies */
   for (const b of st.bodies) {
+    if (b.shape === 'person') { psDraw(c, b, X, Y, sc); continue; }
     const bx = X(b.x), by = Y(b.y);
     c.save(); c.translate(bx, by); c.rotate(-b.ang);
     const grad = c.createLinearGradient(0, -20, 0, 20); grad.addColorStop(0, scTint(b.color, 0.35)); grad.addColorStop(1, b.color);
@@ -6741,6 +6842,7 @@ function phDraw(c, w, h, sp, st, rt) {
     else { const ww = Math.max(10, b.w * sc), hh = Math.max(8, b.h * sc); scRound(c, -ww / 2, -hh / 2, ww, hh, 4); c.fill(); c.stroke(); }
     c.restore();
     c.fillStyle = '#FFFFFF'; c.font = 'bold 12px Sarabun, sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(b.label.slice(0, 6), bx, by); c.textAlign = 'left'; c.textBaseline = 'alphabetic';
+    if (b.shape === 'person') continue;
     if (b.q) { c.fillStyle = b.q > 0 ? '#C2410C' : '#1F6FD1'; c.font = 'bold 13px sans-serif'; c.fillText(b.q > 0 ? '+' : '−', bx + Math.max(6, (b.shape === 'ball' ? b.r : b.w / 2) * sc) + 2, by - 6); }
   }
   /* free-body diagrams */
@@ -6749,7 +6851,8 @@ function phDraw(c, w, h, sp, st, rt) {
     if (b.fixed) continue; const bx = X(b.x), by = Y(b.y);
     if (sp.show.fbd) for (const [k, v] of Object.entries(b.F)) {
       if (k === 'net') continue; const L = Math.hypot(v[0], v[1]); if (L < 1e-9 || L * fs < 3) continue; used.add(k);
-      const ex = bx + v[0] * fs, ey = by - v[1] * fs; scArrow(c, bx, by, ex, ey, SC_COL[k] || '#333', 2.6, 9);
+      const at = b.shape === 'person' && (k === 'N' || k === 'f') && b.foot ? [X(b.foot[0]), Y(b.foot[1])] : [bx, by];
+      const ex = at[0] + v[0] * fs, ey = at[1] - v[1] * fs; scArrow(c, at[0], at[1], ex, ey, SC_COL[k] || '#333', 2.6, 9);
       scLabel(c, SC_SYM[k] || k, ex + (v[0] >= 0 ? 4 : -22), ey + (v[1] >= 0 ? -4 : 14), SC_COL[k]);
     }
     if (sp.show.net && b.F.net) { const v = b.F.net; if (Math.hypot(v[0], v[1]) * fs > 3) { c.setLineDash([6, 4]); scArrow(c, bx, by, bx + v[0] * fs, by - v[1] * fs, SC_COL.net, 2, 9); c.setLineDash([]); used.add('net'); } }
@@ -6945,8 +7048,8 @@ function scTick(ts) {
     if (!r.playing) continue; const it = findItem(id); if (!it || !r.cv || !r.cv.isConnected) { r.playing = false; continue; }
     any = true; const sp = it.spec;
     if (sp.domain === 'phys') { const sim = dtw * (sp.speed || 1) * (r.slow ? 0.25 : 1), n = Math.max(1, Math.ceil(sim / 0.004)); for (let i = 0; i < n; i++) phStep(sp, r.st, sim / n); for (const b of r.st.bodies) { b.trail.push([b.x, b.y]); if (b.trail.length > 400) b.trail.shift(); }
-      const pick = sp.show.graph; if (pick !== 'none') { r.st.hist.push([r.st.t].concat(r.st.bodies.filter((b) => !b.fixed).map((b) => pick === 'x' ? b.x : pick === 'y' ? b.y : pick === 'vx' ? b.vx : pick === 'vy' ? b.vy : Math.hypot(b.vx, b.vy)))); if (r.st.hist.length > 600) r.st.hist.shift(); }
-      const [x0, y0, x1, y1] = phBounds(sp, r.st), far = Math.max(x1 - x0, y1 - y0) * 3; if (r.st.bodies.every((b) => b.fixed || b.x < x0 - far || b.x > x1 + far || b.y < y0 - far || b.y > y1 + far)) { r.playing = false; r.ended = true; } }
+      const pick = sp.show.graph; if (pick !== 'none') { r.st.hist.push([r.st.t].concat(r.st.bodies.filter((b) => !b.fixed).map((b) => pick === 'x' ? b.x : pick === 'y' ? b.y : pick === 'vx' ? b.vx : pick === 'vy' ? b.vy : pick === 'grf' ? (b.F.N ? b.F.N[1] : 0) : Math.hypot(b.vx, b.vy)))); if (r.st.hist.length > 600) r.st.hist.shift(); }
+      const [x0, y0, x1, y1] = phBounds(sp, r.st), far = Math.max(x1 - x0, y1 - y0) * 3; if (!r.st.bodies.some((b) => b.shape === 'person') && r.st.bodies.every((b) => b.fixed || b.x < x0 - far || b.x > x1 + far || b.y < y0 - far || b.y > y1 + far)) { r.playing = false; r.ended = true; } }
     else if (sp.domain === 'math') { r.st.t += dtw * sp.t.speed * (r.slow ? 0.25 : 1); if (r.st.t > sp.t.max) { if (sp.t.loop) { r.st.t = sp.t.min; r.traces = {}; } else { r.st.t = sp.t.max; r.playing = false; r.ended = true; } } }
     else { const sim = dtw * (r.slow ? 0.25 : 1), n = Math.max(1, Math.ceil(sim / 0.01)); for (let i = 0; i < n; i++) ptStep(sp, r.st, sim / n); if (!r.st.lastH || r.st.t - r.st.lastH > 0.2) { r.st.lastH = r.st.t; r.st.hist.push([r.st.t].concat(sp.species.map((_, i) => r.st.P.filter((p) => p.s === i).length))); if (r.st.hist.length > 500) r.st.hist.shift(); } }
     scRender(it, r);
@@ -6955,7 +7058,7 @@ function scTick(ts) {
 }
 function scRender(it, r) {
   const cv = r.cv; if (!cv) return; const sp = it.spec;
-  const w = cv.clientWidth || 520, h = cv.clientHeight || 320, dpr = Math.min(window.devicePixelRatio || 1, 2) * (S.zoom > 1.2 ? Math.min(S.zoom, 2.5) : 1);
+  const w = cv.clientWidth || 520, h = cv.clientHeight || 320, dpr = Math.min(4, (window.devicePixelRatio || 1) * Math.max(1, (S.base || 1) * (S.zoom || 1)));
   if (cv.width !== Math.round(w * dpr) || cv.height !== Math.round(h * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); }
   const c = cv.getContext('2d'); c.setTransform(dpr, 0, 0, dpr, 0, 0); c.fillStyle = '#FFFFFF'; c.fillRect(0, 0, w, h);
   if (sp.domain === 'phys') {
@@ -6965,8 +7068,9 @@ function scRender(it, r) {
     phDraw(c, w, ah, sp, r.st, r);
     const live = r.st.bodies.filter((b) => !b.fixed);
     r.read = [['t', fmtNum(+r.st.t.toFixed(2)) + ' s']].concat(live.slice(0, 3).map((b) => [b.label, 'v = ' + fmtNum(+Math.hypot(b.vx, b.vy).toFixed(2)) + ' m/s' + (b.ax != null ? ', a = ' + fmtNum(+Math.hypot(b.ax, b.ay).toFixed(2)) + ' m/s²' : '')]));
+    for (const b of live.filter((x) => x.shape === 'person').slice(0, 2)) { const N = b.F.N ? b.F.N[1] : 0; r.read.push([b.label || 'คน', (b.kin ? b.kin.phase + ', ' : '') + 'แรงจากพื้น ' + fmtNum(Math.round(N)) + ' N = ' + fmtNum(+(N / (b.m * (sp.world.g || 9.8))).toFixed(2)) + ' เท่าของน้ำหนัก']); }
     if (sp.show.fbd) for (const b of live.slice(0, 2)) { const parts = Object.entries(b.F).filter(([k, v]) => k !== 'net' && Math.hypot(v[0], v[1]) > 1e-6).map(([k, v]) => (SC_SYM[k] || k) + ' ' + fmtNum(+Math.hypot(v[0], v[1]).toFixed(2))); if (parts.length) r.read.push(['แรงบน ' + b.label + ' (N)', parts.join(', ')]); }
-    if (gh) scGraph(c, 8, ah + 2, w - 16, gh - 8, r.st.hist, live.map((b) => b.color), live.map((b) => b.label), 't (s)', { x: 'x (m)', y: 'y (m)', vx: 'vx (m/s)', vy: 'vy (m/s)', v: 'อัตราเร็ว (m/s)' }[sp.show.graph] || '');
+    if (gh) scGraph(c, 8, ah + 2, w - 16, gh - 8, r.st.hist, live.map((b) => b.color), live.map((b) => b.label), 't (s)', { x: 'x (m)', y: 'y (m)', vx: 'vx (m/s)', vy: 'vy (m/s)', v: 'อัตราเร็ว (m/s)', grf: 'แรงปฏิกิริยาจากพื้น (N)' }[sp.show.graph] || '');
   } else if (sp.domain === 'math') {
     if (!window.math) { c.fillStyle = '#5A6472'; c.font = '14px Sarabun, sans-serif'; c.fillText('กำลังโหลดเครื่องคำนวณ', 16, 24); loadLib('math').then(() => scRender(it, r)).catch(() => {}); return; }
     mtDraw(c, w, h, sp, r.st, r);
@@ -6990,7 +7094,7 @@ function buildScene(d, it, forExport) {
       tog('ความเร็ว', (s) => (s || sp).show.v, (s, v) => { s.show.v = v; }); tog('ความเร่ง', (s) => (s || sp).show.a, (s, v) => { s.show.a = v; });
       tog('พลังงาน', (s) => (s || sp).show.energy, (s, v) => { s.show.energy = v; }); tog('เส้นทาง', (s) => (s || sp).show.trail, (s, v) => { s.show.trail = v; });
       const gs = document.createElement('select'); gs.className = 'traysel'; gs.setAttribute('aria-label', 'กราฟ');
-      for (const [k, n] of [['v', 'กราฟอัตราเร็ว'], ['x', 'กราฟตำแหน่ง x'], ['y', 'กราฟตำแหน่ง y'], ['vx', 'กราฟ vx'], ['vy', 'กราฟ vy'], ['none', 'ไม่แสดงกราฟ']]) { const o = document.createElement('option'); o.value = k; o.textContent = n; if (sp.show.graph === k) o.selected = true; gs.appendChild(o); }
+      for (const [k, n] of [['v', 'กราฟอัตราเร็ว'], ['x', 'กราฟตำแหน่ง x'], ['y', 'กราฟตำแหน่ง y'], ['vx', 'กราฟ vx'], ['vy', 'กราฟ vy'], ['grf', 'กราฟแรงปฏิกิริยาจากพื้น'], ['none', 'ไม่แสดงกราฟ']]) { const o = document.createElement('option'); o.value = k; o.textContent = n; if (sp.show.graph === k) o.selected = true; gs.appendChild(o); }
       gs.onchange = () => { const live = findItem(it.id) || it; live.spec.show.graph = gs.value; r.st.hist = []; scRender(live, r); savePage(); }; tg.appendChild(gs);
     } else { const b = document.createElement('button'); b.type = 'button'; b.className = 'chip'; b.textContent = 'กราฟ'; b.setAttribute('aria-pressed', r.showGraph ? 'true' : 'false'); b.onclick = () => { r.showGraph = !r.showGraph; b.setAttribute('aria-pressed', r.showGraph ? 'true' : 'false'); scRender(findItem(it.id) || it, r); }; tg.appendChild(b); }
     d.appendChild(tg);
@@ -7029,7 +7133,7 @@ function buildScene(d, it, forExport) {
   sb.onclick = () => { r.slow = !r.slow; sb.setAttribute('aria-pressed', r.slow ? 'true' : 'false'); };
 }
 function insertScene(spec, at) {
-  if (!S.page) return; const w = 640; const [x, y] = at || viewSpot(w, 560);
+  if (!S.page) return; const w = 520; const [x, y] = at || viewSpot(w, 520);
   addItem({ type: 'scene', spec: scClean(spec), x, y, w });
   toast('วางแบบจำลองแล้ว กดเล่น เปิดปิดแผนภาพแรงและกราฟได้ เลื่อนแถบเพื่อเปลี่ยนค่า', 3000);
 }
@@ -7046,6 +7150,14 @@ const SCENE_TPL = {
     ['ดาวเทียมโคจร', 'แรงโน้มถ่วงชี้เข้าศูนย์กลางตลอด ความเร็วตั้งฉากกับแรง', { domain: 'phys', title: 'ดาวเทียมโคจรรอบโลก', world: { w: 12, h: 8, x0: -6, y0: -4, g: 0 }, bodies: [{ id: 'A', label: '', shape: 'ball', r: 0.15, m: 1, x: 0, y: 3, vx: 2.3, vy: 0 }], fields: { central: { x: 0, y: 0, GM: 16, r: 0.8, label: 'โลก' } }, params: [{ key: 'A.vx', label: 'ความเร็วต้น (m/s)', min: 0.5, max: 4, step: 0.05 }], show: { v: true, graph: 'v' } }],
     ['ประจุในสนามแม่เหล็ก', 'แรงแม่เหล็กตั้งฉากกับความเร็ว อนุภาคเคลื่อนเป็นวงกลม', { domain: 'phys', title: 'ประจุในสนามแม่เหล็ก', world: { w: 10, h: 7, x0: -5, y0: -3.5, g: 0 }, bodies: [{ id: 'A', label: '', shape: 'ball', r: 0.15, m: 1, q: 1, x: 0, y: -2, vx: 2, vy: 0 }], fields: { B: 1 }, params: [{ key: 'B', label: 'B (T)', min: -2, max: 2, step: 0.1 }, { key: 'A.vx', label: 'ความเร็ว (m/s)', min: 0.5, max: 4, step: 0.1 }], show: { v: true } }],
     ['ประจุในสนามไฟฟ้า', 'แรงไฟฟ้าคงที่ เส้นทางเป็นพาราโบลาแบบโพรเจกไทล์', { domain: 'phys', title: 'ประจุในสนามไฟฟ้า', world: { w: 10, h: 6, x0: 0, y0: -3, g: 0 }, bodies: [{ id: 'A', label: '', shape: 'ball', r: 0.15, m: 1, q: 1, x: 0.5, y: 0, vx: 3, vy: 0 }], fields: { E: [0, 1] }, params: [{ key: 'E.y', label: 'E (N/C)', min: -3, max: 3, step: 0.1 }, { key: 'A.q', label: 'ประจุ q (C)', min: -2, max: 2, step: 0.1 }], show: { v: true, graph: 'vy' } }]
+  ],
+  person: [
+    ['คนเดิน', 'จุดศูนย์กลางมวลขึ้นลงเป็นส่วนโค้ง แรงจากพื้นเปลี่ยนตามจังหวะก้าว', { domain: 'phys', title: 'การเดิน', world: { w: 6, h: 2.6 }, bodies: [{ id: 'P', label: 'คน', shape: 'person', act: 'walk', m: 60, hgt: 1.7, x: 1, y: 1, v: 1.4, color: '#2F4BB8' }], surfaces: [{ x1: -5, y1: 0.3, x2: 400, y2: 0.3, mu: 0.6 }], params: [{ key: 'P.v', label: 'ความเร็วเดิน (m/s)', min: 0.5, max: 2.2, step: 0.1 }, { key: 'P.m', label: 'มวล (kg)', min: 20, max: 120, step: 1 }], show: { graph: 'grf', trail: false } }],
+    ['คนวิ่ง', 'มีช่วงลอยตัว แรงจากพื้นตอนเท้าแตะสูงกว่าน้ำหนักหลายเท่า', { domain: 'phys', title: 'การวิ่ง', world: { w: 7, h: 2.8 }, bodies: [{ id: 'P', label: 'คน', shape: 'person', act: 'run', m: 60, hgt: 1.7, x: 1, y: 1, v: 4, color: '#C2571A' }], surfaces: [{ x1: -5, y1: 0.3, x2: 800, y2: 0.3, mu: 0.8 }], params: [{ key: 'P.v', label: 'ความเร็ววิ่ง (m/s)', min: 2, max: 9, step: 0.5 }, { key: 'P.m', label: 'มวล (kg)', min: 20, max: 120, step: 1 }], show: { graph: 'grf', trail: false } }],
+    ['กระโดดตัวตรง', 'ย่อ ถีบ ลอย ลง ดูแรงจากพื้นแต่ละช่วงเทียบกับน้ำหนัก', { domain: 'phys', title: 'กระโดดตัวตรง', world: { w: 3, h: 3 }, bodies: [{ id: 'P', label: 'คน', shape: 'person', act: 'jump', m: 60, hgt: 1.7, x: 1.5, y: 1, v: 2.6, color: '#2E8B57' }], surfaces: [{ x1: 0, y1: 0.3, x2: 3, y2: 0.3 }], params: [{ key: 'P.v', label: 'ความเร็วตอนพ้นพื้น (m/s)', min: 0.5, max: 4, step: 0.1 }, { key: 'P.m', label: 'มวล (kg)', min: 20, max: 120, step: 1 }], show: { graph: 'grf', trail: true }, note: 'ช่วงถีบตัวแรงจากพื้นมากกว่าน้ำหนัก ช่วงลอยตัวแรงจากพื้นเป็นศูนย์ ลองเพิ่มความเร็วตอนพ้นพื้นแล้วดูความสูง' }],
+    ['กระโดดไกล', 'วิ่งเข้าหาแล้วกระโดด จุดศูนย์กลางมวลเคลื่อนที่แบบโพรเจกไทล์', { domain: 'phys', title: 'กระโดดไกล', world: { w: 9, h: 3 }, bodies: [{ id: 'P', label: 'คน', shape: 'person', act: 'longjump', m: 60, hgt: 1.7, x: 0.5, y: 1, v: 6, ang: 20, color: '#7B4FC9' }], surfaces: [{ x1: -5, y1: 0.3, x2: 200, y2: 0.3, mu: 0.8 }], params: [{ key: 'P.v', label: 'ความเร็ววิ่งเข้าหา (m/s)', min: 2, max: 10, step: 0.5 }, { key: 'P.ang', label: 'มุมกระโดด (องศา)', min: 5, max: 45, step: 1 }], show: { graph: 'y', trail: true } }],
+    ['คนถูกผลักล้ม', 'เมื่อจุดศูนย์กลางมวลพ้นฐานรองรับ ร่างกายหมุนรอบเท้าลงพื้น', { domain: 'phys', title: 'สมดุลและการล้ม', world: { w: 3.4, h: 2.4 }, bodies: [{ id: 'P', label: 'คน', shape: 'person', act: 'fall', m: 60, hgt: 1.7, x: 0.8, y: 1, push: 0.6, color: '#D14D8B' }], surfaces: [{ x1: 0, y1: 0.3, x2: 3.4, y2: 0.3, mu: 0.8 }], params: [{ key: 'P.push', label: 'แรงผลัก (ความเร็วเชิงมุมเริ่มต้น)', min: 0.1, max: 2, step: 0.1 }], show: { graph: 'grf', trail: true } }],
+    ['สควอต', 'ย่อขึ้นลง แรงจากพื้นต่ำกว่าน้ำหนักตอนเริ่มย่อ สูงกว่าตอนชะลอ', { domain: 'phys', title: 'สควอต', world: { w: 2.4, h: 2.4 }, bodies: [{ id: 'P', label: 'คน', shape: 'person', act: 'squat', m: 60, hgt: 1.7, x: 1.2, y: 1, color: '#0E9AA7' }], surfaces: [{ x1: 0, y1: 0.3, x2: 2.4, y2: 0.3 }], params: [{ key: 'P.m', label: 'มวล (kg)', min: 20, max: 150, step: 1 }], show: { graph: 'grf', trail: false } }]
   ],
   chem: [
     ['แก๊สในกล่อง', 'อุณหภูมิสูงขึ้น อนุภาคเร็วขึ้น ชนผนังแรงขึ้น ความดันสูงขึ้น', { domain: 'chem', title: 'ทฤษฎีจลน์ของแก๊ส', box: { w: 100, h: 60 }, T: 300, species: [{ id: 'G', label: 'โมเลกุลแก๊ส', n: 60, r: 1.4, color: '#2F4BB8' }], params: [{ key: 'T', label: 'อุณหภูมิ (K)', min: 50, max: 1200, step: 10 }, { key: 'G.n', label: 'จำนวนโมเลกุล', min: 5, max: 200, step: 5 }] }],
@@ -7066,20 +7178,21 @@ const SCENE_TPL = {
     ['ผลรวมรีมันน์', 'สี่เหลี่ยมยิ่งแคบ ผลรวมยิ่งใกล้พื้นที่ใต้กราฟ', { domain: 'math', title: 'พื้นที่ใต้กราฟ y = x²', view: { xmin: -0.5, xmax: 3.5, ymin: -1, ymax: 9.5 }, t: { min: 0, max: 0, speed: 0 }, vars: { n: 6 }, items: [{ type: 'func', expr: 'x^2', color: '#2F4BB8' }, { type: 'area', of: 0, a: '0', b: '3', n: 'n', color: '#E39B2D' }], params: [{ key: 'n', label: 'จำนวนสี่เหลี่ยม', min: 1, max: 60, step: 1 }], note: 'พื้นที่จริงคือ 9' }]
   ]
 };
-const SCENE_SUBJ = [['phys', 'ฟิสิกส์'], ['chem', 'เคมี'], ['bio', 'ชีววิทยา'], ['math', 'คณิตศาสตร์']];
-function sceneDomainFor() { const sj = curSubj()[0]; return sj === 'chem' ? 'chem' : sj === 'bio' || sj === 'med' || sj === 'nurse' || sj === 'ph' ? 'bio' : sj === 'math' || sj === 'stat' ? 'math' : 'phys'; }
+const SCENE_SUBJ = [['phys', 'ฟิสิกส์'], ['person', 'ร่างกายและการเคลื่อนไหว'], ['chem', 'เคมี'], ['bio', 'ชีววิทยา'], ['math', 'คณิตศาสตร์']];
+function sceneDomainFor() { const sj = curSubj()[0]; return sj === 'sport' ? 'person' : sj === 'chem' ? 'chem' : sj === 'bio' || sj === 'med' || sj === 'nurse' || sj === 'ph' ? 'bio' : sj === 'math' || sj === 'stat' ? 'math' : 'phys'; }
 
 /* ---------- from a sketch or a sentence to a model, with the connected AI ---------- */
 function sceneSchema() {
   return 'Reply with one JSON object only (no markdown), using this format. Every number in SI units; coordinates in metres with y pointing up.\n'
     + '{"domain":"phys|chem|bio|math","title":"short Thai title","note":"one Thai sentence telling the teacher what to try",\n'
     + ' PHYSICS: "world":{"w":width,"h":height,"x0":left,"y0":bottom,"g":9.8},\n'
-    + '  "bodies":[{"id":"A","label":"A","shape":"box|ball","m":kg,"x":..,"y":..,"vx":..,"vy":..,"w":..,"h":..,"r":..,"q":charge,"e":bounce 0..1,"fixed":false,"color":"#RRGGBB"}],\n'
+    + '  "bodies":[{"id":"A","label":"A","shape":"box|ball|person","m":kg,"x":..,"y":..,"vx":..,"vy":..,"w":..,"h":..,"r":..,"q":charge,"e":bounce 0..1,"fixed":false,"color":"#RRGGBB"}],\n'
+    + '  for a human figure (stick figure) use "shape":"person","act":"stand|walk|run|jump|longjump|fall|squat","hgt":height m,"v":walking/running speed or take-off vertical speed,"ang":long-jump angle deg,"push":push for fall, with x = where the person stands and a long horizontal ground surface (make it long, the view follows a moving person),\n'
     + '  "surfaces":[{"x1":..,"y1":..,"x2":..,"y2":..,"mu":kinetic,"mus":static}]  (ground, inclines and walls as line segments; a resting box centre is h/2 above its surface along the normal),\n'
     + '  "springs":[{"a":"bodyId or empty for a wall point","b":"bodyId","ax":wallX,"ay":wallY,"k":N/m,"L0":natural length}],\n'
     + '  "ropes":[{"a":"bodyId or empty","b":"bodyId or empty","ax":anchorX,"ay":anchorY,"via":[pulleyX,pulleyY] or null,"pr":pulley radius (bodies hang straight below pulleyX-pr and pulleyX+pr),"rod":false}]  (length is taken from the start positions),\n'
     + '  "forces":[{"on":"A","fx":N,"fy":N,"label":"F"}], "fields":{"E":[Ex,Ey],"B":Bz (out of screen positive),"drag":b,"central":{"x":..,"y":..,"GM":..,"r":drawRadius,"label":"Thai"}},\n'
-    + '  "show":{"fbd":true,"net":false,"v":false,"a":false,"energy":false,"trail":true,"graph":"v|x|y|vx|vy|none"},\n'
+    + '  "show":{"fbd":true,"net":false,"v":false,"a":false,"energy":false,"trail":true,"graph":"v|x|y|vx|vy|grf|none"} (grf = ground reaction force, good for people),\n'
     + ' CHEMISTRY or BIOLOGY (particles in a box, box about 100 x 60 units): "box":{"w":100,"h":60},"T":kelvin,\n'
     + '  "species":[{"id":"A","label":"Thai","n":count<=200,"r":1..3,"m":1..10,"color":"#RRGGBB","side":"left|right|all","fixed":false,\n'
     + '    for living things also "agent":true,"speed":5..12,"eats":["id"],"gain":energy per meal,"burn":energy per second,"birth":energy to reproduce,"life":seconds or 0; for plants "fixed":true,"regrow":per second,"cap":max}],\n'
@@ -10231,7 +10344,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793174904';
+const BUILD = '1793175852';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
