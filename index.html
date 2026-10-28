@@ -587,6 +587,14 @@ body.guest #roleSeg, body.guest #bJoin { display: none !important; }
 .mvai { margin-top: 12px; }
 @media (max-width: 520px) { .mvtop { flex-direction: column; align-items: flex-start; } }
 .tqimg img { display: block; width: 100%; height: auto; border-radius: 8px; border: 1px solid var(--line); background: #FFFFFF; }
+.pdfchips { margin: 6px 0; }
+.pdfstrip { display: flex; gap: 8px; overflow-x: auto; padding: 6px 2px 10px; margin-bottom: 6px; }
+.pth { position: relative; flex: none; width: 104px; padding: 4px; border: 2px solid var(--line); border-radius: 10px; background: var(--surface); cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 2px; font: inherit; color: var(--fg); }
+.pth canvas { width: 96px; height: auto; min-height: 120px; background: #FFFFFF; border-radius: 4px; }
+.pth span { font-size: 12px; color: var(--muted); }
+.pth.in { border-color: var(--accent); background: var(--accent-soft, #E8EDFB); }
+.pth.edge span { color: var(--accent); font-weight: 700; }
+.pth .pkw { position: absolute; top: 6px; left: 6px; font-style: normal; font-size: 10.5px; padding: 1px 6px; border-radius: 999px; background: #1F7A4D; color: #FFFFFF; }
 .pqoffer { display: flex; flex-direction: column; gap: 4px; padding: 10px; border: 1px dashed var(--line); border-radius: 12px; margin: 8px 0; }
 .pqlist { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr)); gap: 10px; margin: 10px 0; max-height: 58vh; overflow: auto; padding: 2px; }
 .pqcard { display: flex; flex-direction: column; gap: 6px; padding: 10px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); min-width: 0; }
@@ -954,6 +962,19 @@ body.tv .livepill { bottom: 14px; }
 .item .tsize svg { width: 18px; height: 18px; }
 body.present .item .tsize, body.role-student .item .tsize { display: none; }
 .item.sim .scncv { height: auto !important; aspect-ratio: 16 / 10; }
+.item.graph.bare { background: none; border: 0; box-shadow: none; padding: 0; pointer-events: none; }
+.item.sim.bare .scncv { height: var(--bh) !important; aspect-ratio: auto; border-radius: 0; pointer-events: none; }
+.item.bare .tgrab, .item.bare .tsize { display: none; }
+.item.sim.bare .scncv { background: transparent; border: 0; }
+.scnpill { position: absolute; pointer-events: auto; display: flex; flex-direction: column; gap: 4px; padding: 5px 7px; max-width: min(440px, 92vw); background: rgba(255,255,255,0.96); border: 1px solid #D6DCE4; border-radius: 12px; box-shadow: 0 4px 14px rgba(20,26,34,0.14); font-family: var(--ui); font-size: 13px; color: #14181F; }
+.scnpill .gh { margin: 0; }
+.scnpill .gh > span:first-child { display: none; }
+.scnpill .sbtns { display: flex; flex-wrap: wrap; gap: 4px; }
+.scnpill .sbtns button { font-size: 12.5px; padding: 3px 9px; min-height: 28px; }
+.scnpill:not(.open) .sro span:nth-child(n+3) { display: none; }
+.scnpill:not(.open) .scntog, .scnpill:not(.open) .gsl, .scnpill:not(.open) .shint { display: none; }
+.scnpill .sro { font-size: 12px; }
+body.role-student .scnpill .sbtns button[data-s="back"], body.role-student .scnpill .sbtns button:last-child { display: none; }
 </style>
 </head>
 <body>
@@ -1351,8 +1372,9 @@ body.present .item .tsize, body.role-student .item .tsize { display: none; }
     <div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><h2>นำเข้า PDF</h2><button class="btn" id="pdfClose">ยกเลิก</button></div>
     <div class="note" id="pdfInfo"></div>
     <div class="row2"><label class="field"><span>ตั้งแต่หน้า</span><input id="pdfFrom" type="number" min="1" value="1"></label><label class="field"><span>ถึงหน้า</span><input id="pdfTo" type="number" min="1" value="1"></label></div>
+    <div id="pdfRange"></div>
     <div class="row2"><button class="btn solid" id="pdfHere">ใส่ต่อจากหน้านี้</button><button class="btn" id="pdfNew">สร้างสมุดเล่มใหม่จาก PDF</button></div>
-    <div class="pqoffer"><button class="btn solid" id="pdfSplit">แยกตัวอย่างและแบบฝึกเป็นรายข้อ พร้อมเฉลย</button><span class="note small">ใช้ AI อ่านหน้าที่เลือก (ไม่เกิน 20 หน้า) ตัดภาพแต่ละข้อจากต้นฉบับ เก็บเป็นชุดโจทย์ให้วางสอนทีละข้อ และเขียนเฉลยละเอียด 5 ขั้นให้ทุกข้อ</span></div>
+    <div class="pqoffer"><button class="btn solid" id="pdfSplit">แยกตัวอย่างและแบบฝึกเป็นรายข้อ พร้อมเฉลย</button><span class="note small">ใช้ AI อ่านหน้าที่เลือก (ครั้งละไม่เกิน 80 หน้า ระหว่างอ่านกดหยุดได้ ข้อที่อ่านแล้วยังอยู่) ตัดภาพแต่ละข้อจากต้นฉบับ เก็บเป็นชุดโจทย์ให้วางสอนทีละข้อ และเขียนเฉลยละเอียด 5 ขั้นให้ทุกข้อ</span></div>
     <div id="pdfMsg"></div>
     <div class="note">นำเข้าเป็นพื้นหลัง: แต่ละหน้าของ PDF เป็นพื้นหลังที่ล็อกไว้ เขียน วาด แทรกกล่องข้อความทับได้โดยไม่เลื่อนหลุด นำเข้าได้ครั้งละไม่เกิน 60 หน้า</div>
   </div>
@@ -3602,7 +3624,7 @@ function finishLasso(poly) {
     if (n && inside / n >= 0.55) strokes.push({ layer: r.layer, id: r.s.id });
   }
   const items = [];
-  for (const it of visibleItems()) { if (it.lock || it.by === 'teacher') continue; const b = itemBox(it); if (inPoly(poly, (b[0] + b[2]) / 2, (b[1] + b[3]) / 2)) items.push(it.id); }
+  for (const it of visibleItems()) { if (it.lock || it.by === 'teacher' || (it.spec && it.spec.bare)) continue; const b = itemBox(it); if (inPoly(poly, (b[0] + b[2]) / 2, (b[1] + b[3]) / 2)) items.push(it.id); }
   if (!strokes.length && !items.length) { selEl.innerHTML = ''; toast('ไม่พบลายมือในบริเวณที่วง', 1600); return; }
   S.sel = { strokes, items, box: null };
   S.sel.box = selBox(S.sel);
@@ -6567,16 +6589,17 @@ function scClean(sp) {
   o.params = params.map((p) => ({ key: scTxt(p.key, 40).replace(/[^A-Za-z0-9_.]/g, ''), label: scTxt(p.label, 40), min: scNum(p.min, 0, -1e6, 1e6), max: scNum(p.max, 10, -1e6, 1e6), step: scNum(p.step, 0.1, 1e-6, 1e5) })).filter((p) => p.key && p.max > p.min);
   if (dom === 'phys') {
     const wd = sp.world || {};
+    o.bare = !!sp.bare;
     o.world = { w: scNum(wd.w, 10, 0.1, 1e9), h: scNum(wd.h, 6, 0.1, 1e9), g: scNum(wd.g, 9.8, 0, 1000), x0: scNum(wd.x0, 0, -1e9, 1e9), y0: scNum(wd.y0, 0, -1e9, 1e9) };
     o.bodies = (Array.isArray(sp.bodies) ? sp.bodies : []).slice(0, 8).map((b, i) => ({
       id: scTxt(b.id || 'B' + (i + 1), 8).replace(/[^A-Za-z0-9_]/g, '') || 'B' + (i + 1), label: scTxt(b.label || b.id || 'วัตถุ', 20), shape: b.shape === 'ball' ? 'ball' : b.shape === 'person' ? 'person' : 'box', act: ['stand', 'walk', 'run', 'jump', 'longjump', 'fall', 'squat'].includes(b.act) ? b.act : 'walk', hgt: scNum(b.hgt, 1.7, 0.5, 2.5), v: scNum(b.v, b.act === 'run' ? 4 : b.act === 'jump' ? 2.6 : b.act === 'longjump' ? 6 : 1.4, 0, 12), ang: scNum(b.ang, 20, 0, 80), push: scNum(b.push, 0.6, 0, 5),
       m: scNum(b.m, 1, 1e-6, 1e30), x: scNum(b.x, 1, -1e12, 1e12), y: scNum(b.y, 1, -1e12, 1e12), vx: scNum(b.vx, 0, -1e9, 1e9), vy: scNum(b.vy, 0, -1e9, 1e9),
       w: scNum(b.w, 0.6, 1e-6, 1e12), h: scNum(b.h, 0.4, 1e-6, 1e12), r: scNum(b.r, 0.25, 1e-6, 1e12), q: scNum(b.q, 0, -1e3, 1e3), e: scNum(b.e, b.shape === 'ball' ? 0.5 : 0, 0, 1),
-      fixed: !!b.fixed, color: scCol(b.color, SC_PAL[i % SC_PAL.length]), img: okAsset(b.img) ? b.img : ''
+      fixed: !!b.fixed, color: scCol(b.color, SC_PAL[i % SC_PAL.length]), img: okAsset(b.img) ? b.img : '', ink: !!b.ink
     }));
-    o.surfaces = (Array.isArray(sp.surfaces) ? sp.surfaces : []).slice(0, 12).map((s) => ({ x1: scNum(s.x1, 0, -1e12, 1e12), y1: scNum(s.y1, 0, -1e12, 1e12), x2: scNum(s.x2, 10, -1e12, 1e12), y2: scNum(s.y2, 0, -1e12, 1e12), mu: scNum(s.mu, 0, 0, 5), mus: scNum(s.mus != null ? s.mus : s.mu, 0, 0, 5) }));
+    o.surfaces = (Array.isArray(sp.surfaces) ? sp.surfaces : []).slice(0, sp.bare ? 40 : 12).map((s) => ({ x1: scNum(s.x1, 0, -1e12, 1e12), y1: scNum(s.y1, 0, -1e12, 1e12), x2: scNum(s.x2, 10, -1e12, 1e12), y2: scNum(s.y2, 0, -1e12, 1e12), mu: scNum(s.mu, 0, 0, 5), mus: scNum(s.mus != null ? s.mus : s.mu, 0, 0, 5) }));
     o.springs = (Array.isArray(sp.springs) ? sp.springs : []).slice(0, 6).map((s) => ({ a: scTxt(s.a, 8), b: scTxt(s.b, 8), ax: scNum(s.ax, 0, -1e12, 1e12), ay: scNum(s.ay, 0, -1e12, 1e12), k: scNum(s.k, 20, 1e-6, 1e9), L0: scNum(s.L0, 1, 0, 1e12) }));
-    o.ropes = (Array.isArray(sp.ropes) ? sp.ropes : []).slice(0, 6).map((r) => ({ a: scTxt(r.a, 8), b: scTxt(r.b, 8), ax: scNum(r.ax, 0, -1e12, 1e12), ay: scNum(r.ay, 0, -1e12, 1e12), via: Array.isArray(r.via) && r.via.length === 2 ? [scNum(r.via[0], 0, -1e12, 1e12), scNum(r.via[1], 0, -1e12, 1e12)] : null, pr: scNum(r.pr, 0, 0, 1e9), L: r.L == null ? null : scNum(r.L, 1, 0, 1e12), rod: !!r.rod }));
+    o.ropes = (Array.isArray(sp.ropes) ? sp.ropes : []).slice(0, 6).map((r) => ({ a: scTxt(r.a, 8), b: scTxt(r.b, 8), ax: scNum(r.ax, 0, -1e12, 1e12), ay: scNum(r.ay, 0, -1e12, 1e12), via: Array.isArray(r.via) && r.via.length === 2 ? [scNum(r.via[0], 0, -1e12, 1e12), scNum(r.via[1], 0, -1e12, 1e12)] : null, pr: scNum(r.pr, 0, 0, 1e9), L: r.L == null ? null : scNum(r.L, 1, 0, 1e12), rod: !!r.rod, snap: !!r.snap }));
     o.forces = (Array.isArray(sp.forces) ? sp.forces : []).slice(0, 8).map((f) => ({ on: scTxt(f.on, 8), fx: scNum(f.fx, 0, -1e12, 1e12), fy: scNum(f.fy, 0, -1e12, 1e12), label: scTxt(f.label || 'F', 6) }));
     const fl = sp.fields || {};
     o.fields = { E: Array.isArray(fl.E) ? [scNum(fl.E[0], 0, -1e9, 1e9), scNum(fl.E[1], 0, -1e9, 1e9)] : null, B: fl.B == null ? 0 : scNum(fl.B, 0, -1e6, 1e6), drag: scNum(fl.drag, 0, 0, 1e6),
@@ -6614,12 +6637,12 @@ function scClean(sp) {
 /* sliders change one number inside the spec: "B1.m", "g", "S1.mu", "F1.fx", "T", "A.n", "a" */
 function scGet(sp, key) {
   const [h, k] = key.split('.');
-  if (!k) { if (sp.domain === 'math') return sp.vars ? sp.vars[h] : undefined; if (h === 'g') return sp.world && sp.world.g; if (h === 'T') return sp.T; if (h === 'B') return sp.fields && sp.fields.B; if (h === 'drag') return sp.fields && sp.fields.drag; if (h === 'speed') return sp.speed; return undefined; }
+  if (!k) { if (sp.domain === 'math') return sp.vars ? sp.vars[h] : undefined; if (h === 'g') return sp.world && sp.world.g; if (h === 'T') return sp.T; if (h === 'B') return sp.fields && sp.fields.B; if (h === 'drag') return sp.fields && sp.fields.drag; if (h === 'speed') return sp.speed; if (h === 'mu') return sp.surfaces && sp.surfaces[0] ? sp.surfaces[0].mu : 0; return undefined; }
   const arr = scTarget(sp, h); return arr ? arr[k] : undefined;
 }
 function scSet(sp, key, v) {
   const [h, k] = key.split('.');
-  if (!k) { if (sp.domain === 'math') { sp.vars = sp.vars || {}; sp.vars[h] = v; } else if (h === 'g') sp.world.g = v; else if (h === 'T') sp.T = v; else if (h === 'B') sp.fields.B = v; else if (h === 'drag') sp.fields.drag = v; else if (h === 'speed') sp.speed = v; return; }
+  if (!k) { if (sp.domain === 'math') { sp.vars = sp.vars || {}; sp.vars[h] = v; } else if (h === 'g') sp.world.g = v; else if (h === 'T') sp.T = v; else if (h === 'B') sp.fields.B = v; else if (h === 'drag') sp.fields.drag = v; else if (h === 'speed') sp.speed = v; else if (h === 'mu') (sp.surfaces || []).forEach((x) => { x.mu = v; x.mus = v * 1.3; }); return; }
   const t = scTarget(sp, h); if (t && k in t) t[k] = k === 'n' ? Math.round(v) : v;
 }
 function scTarget(sp, h) {
@@ -6649,6 +6672,7 @@ function phInit(sp) {
     if (pen > 0 && d > 1e-9 && u > 0 && u < 1) { const L = Math.sqrt(L2); let nx = -ey / L, ny = ex / L; if (nx * (b.x - px) + ny * (b.y - py) < 0) { nx = -nx; ny = -ny; } b.x = px + nx * phR(b); b.y = py + ny * phR(b); }
     else if (pen > 0 && d > 1e-9) { b.x += (b.x - px) / d * pen; b.y += (b.y - py) / d * pen; }
   }
+  for (const r of sp.ropes) if (r.snap && r.L && !r.via && !r.a) { const b = phBody(st, r.b); if (b) { let dx = b.x - r.ax, dy = b.y - r.ay; if (Math.abs(dx) > r.L * 0.98) dx = Math.sign(dx) * r.L * 0.98; dy = -Math.sqrt(Math.max(0, r.L * r.L - dx * dx)); b.x = r.ax + dx; b.y = r.ay + dy; } }
   for (const r of sp.ropes) if (r.L == null) r.L = phRopeLen(st, r) || 1;
   return st;
 }
@@ -6818,11 +6842,11 @@ function phStep(sp, st, dt) {
 }
 function phBounds(sp, st) {
   let x0 = sp.world.x0, y0 = sp.world.y0;
-  const p = st.bodies.find((b) => b.shape === 'person' && ['walk', 'run', 'longjump'].includes(b.act)); if (p) x0 = Math.max(x0, p.x - sp.world.w * 0.35);
+  const p = !sp.bare && st.bodies.find((b) => b.shape === 'person' && ['walk', 'run', 'longjump'].includes(b.act)); if (p) x0 = Math.max(x0, p.x - sp.world.w * 0.35);
   const x1 = x0 + sp.world.w, y1 = y0 + sp.world.h; return [x0, y0, x1, y1];
 }
 function phDraw(c, w, h, sp, st, rt) {
-  const [x0, y0, x1, y1] = phBounds(sp, st), pad = 16, sc = Math.min((w - 2 * pad) / (x1 - x0), (h - 2 * pad) / (y1 - y0));
+  const [x0, y0, x1, y1] = phBounds(sp, st), pad = sp.bare ? 0 : 16, sc = Math.min((w - 2 * pad) / (x1 - x0), (h - 2 * pad) / (y1 - y0));
   const ox = pad + ((w - 2 * pad) - (x1 - x0) * sc) / 2, oy = pad + ((h - 2 * pad) - (y1 - y0) * sc) / 2;
   const X = (x) => ox + (x - x0) * sc, Y = (y) => h - oy - (y - y0) * sc; rt.map = { X, Y, sc, x0, y0, ox, oy, h };
   /* fields */
@@ -6831,7 +6855,7 @@ function phDraw(c, w, h, sp, st, rt) {
   if (fl.B) { c.fillStyle = 'rgba(14,154,167,0.45)'; c.font = '14px sans-serif'; for (let i = 1; i < 8; i++) for (let j = 1; j < 5; j++) { const px = ox + (w - 2 * ox) * i / 8, py = oy + (h - 2 * oy) * j / 5; c.fillText(fl.B > 0 ? '•' : '×', px - 3, py + 4); } c.fillStyle = '#0B7480'; c.font = '13px Sarabun, sans-serif'; c.fillText('สนามแม่เหล็ก B ' + (fl.B > 0 ? 'พุ่งออกจากจอ' : 'พุ่งเข้าจอ'), 10, fl.E ? 36 : 18); }
   if (fl.central) { const cx = X(fl.central.x), cy = Y(fl.central.y), r = Math.max(6, fl.central.r * sc); const gr = c.createRadialGradient(cx - r * 0.3, cy - r * 0.3, r * 0.1, cx, cy, r); gr.addColorStop(0, '#FFE08A'); gr.addColorStop(1, '#E39B2D'); c.fillStyle = gr; c.beginPath(); c.arc(cx, cy, r, 0, 6.283); c.fill(); if (fl.central.label) { c.fillStyle = '#7A4A0C'; c.font = '13px Sarabun, sans-serif'; c.fillText(fl.central.label, cx + r + 4, cy - r); } }
   /* surfaces with hatching */
-  for (const s of sp.surfaces) {
+  for (const s of sp.bare ? [] : sp.surfaces) {
     c.strokeStyle = '#3B4350'; c.lineWidth = 3; c.beginPath(); c.moveTo(X(s.x1), Y(s.y1)); c.lineTo(X(s.x2), Y(s.y2)); c.stroke();
     const L = Math.hypot(X(s.x2) - X(s.x1), Y(s.y2) - Y(s.y1)), n = Math.floor(L / 12), dx = (X(s.x2) - X(s.x1)) / L, dy = (Y(s.y2) - Y(s.y1)) / L;
     c.strokeStyle = 'rgba(59,67,80,0.35)'; c.lineWidth = 1; c.beginPath(); for (let i = 0; i <= n; i++) { const px = X(s.x1) + dx * i * 12, py = Y(s.y1) + dy * i * 12; c.moveTo(px, py); c.lineTo(px - 7 * dy - 5 * dx, py + 7 * dx - 5 * dy); } c.stroke();
@@ -6853,6 +6877,7 @@ function phDraw(c, w, h, sp, st, rt) {
   if (sp.show.trail) for (const b of st.bodies) { if (b.trail.length < 2) continue; c.strokeStyle = b.color + '55'; c.lineWidth = 2; c.setLineDash([3, 4]); c.beginPath(); b.trail.forEach((p, i) => (i ? c.lineTo(X(p[0]), Y(p[1])) : c.moveTo(X(p[0]), Y(p[1])))); c.stroke(); c.setLineDash([]); }
   /* bodies */
   for (const b of st.bodies) {
+    if (b.ink && rt.inkDraw) { rt.inkDraw(c, b, X, Y); continue; }
     if (b.shape === 'person') { psDraw(c, b, X, Y, sc); continue; }
     const bx = X(b.x), by = Y(b.y);
     if (b.img) { const im = scSprite(b.img), ww = Math.max(10, b.w * sc), hh = Math.max(8, b.h * sc); c.save(); c.translate(bx, by); c.rotate(-b.ang); if (im) c.drawImage(im, -ww / 2, -hh / 2, ww, hh); else { c.setLineDash([4, 3]); c.strokeStyle = '#9AA3B2'; c.strokeRect(-ww / 2, -hh / 2, ww, hh); c.setLineDash([]); } c.restore(); continue; }
@@ -6881,7 +6906,7 @@ function phDraw(c, w, h, sp, st, rt) {
     if (sp.show.a && b.ax != null) { const as = rt.ascale; if (Math.hypot(b.ax, b.ay) * as > 3) { scArrow(c, bx, by, bx + b.ax * as, by - b.ay * as, SC_COL.a, 2, 8); scLabel(c, 'a', bx + b.ax * as + 4, by - b.ay * as - 4, SC_COL.a); } }
   }
   /* legend */
-  if (sp.show.fbd && used.size) { let lx = w - 8, ly = 16; c.font = '12px Sarabun, sans-serif'; for (const k of [...used]) { const t = SC_FNAME[k] || k, tw = c.measureText(t).width; c.fillStyle = SC_COL[k] || '#333'; c.fillRect(lx - tw - 18, ly - 8, 10, 3); c.fillStyle = '#3B4350'; c.fillText(t, lx - tw, ly - 3); ly += 16; } }
+  if (sp.show.fbd && used.size && !sp.bare) { let lx = w - 8, ly = 16; c.font = '12px Sarabun, sans-serif'; for (const k of [...used]) { const t = SC_FNAME[k] || k, tw = c.measureText(t).width; c.fillStyle = SC_COL[k] || '#333'; c.fillRect(lx - tw - 18, ly - 8, 10, 3); c.fillStyle = '#3B4350'; c.fillText(t, lx - tw, ly - 3); ly += 16; } }
   if (sp.show.energy) phEnergy(c, w, h, sp, st);
 }
 function phEnergy(c, w, h, sp, st) {
@@ -7050,7 +7075,7 @@ function scRuntime(it) {
   return r;
 }
 function scReset(it, r) {
-  const sp = it.spec; r.traces = {}; r.ended = false;
+  const sp = it.spec; r.traces = {}; r.ended = false; r.E0 = null; r.roll = 0; r.lastPos = null;
   if (sp.domain === 'phys') {
     r.st = phInit(sp);
     let maxF = 0; for (const b of r.st.bodies) if (!b.fixed) maxF = Math.max(maxF, b.m * sp.world.g, Math.hypot(...(sp.forces.find((f) => f.on === b.id) ? [sp.forces.find((f) => f.on === b.id).fx, sp.forces.find((f) => f.on === b.id).fy] : [0, 0])));
@@ -7070,7 +7095,7 @@ function scTick(ts) {
     any = true; const sp = it.spec;
     if (sp.domain === 'phys') { const sim = dtw * (sp.speed || 1) * (r.slow ? 0.25 : 1), n = Math.max(1, Math.ceil(sim / 0.004)); for (let i = 0; i < n; i++) phStep(sp, r.st, sim / n); for (const b of r.st.bodies) { b.trail.push([b.x, b.y]); if (b.trail.length > 400) b.trail.shift(); }
       const pick = sp.show.graph; if (pick !== 'none') { r.st.hist.push([r.st.t].concat(r.st.bodies.filter((b) => !b.fixed).map((b) => pick === 'x' ? b.x : pick === 'y' ? b.y : pick === 'vx' ? b.vx : pick === 'vy' ? b.vy : pick === 'grf' ? (b.F.N ? b.F.N[1] : 0) : Math.hypot(b.vx, b.vy)))); if (r.st.hist.length > 600) r.st.hist.shift(); }
-      const [x0, y0, x1, y1] = phBounds(sp, r.st), far = Math.max(x1 - x0, y1 - y0) * 3; if (!r.st.bodies.some((b) => b.shape === 'person') && r.st.bodies.every((b) => b.fixed || b.x < x0 - far || b.x > x1 + far || b.y < y0 - far || b.y > y1 + far)) { r.playing = false; r.ended = true; } }
+      const [x0, y0, x1, y1] = phBounds(sp, r.st), far = sp.bare ? 0.3 : Math.max(x1 - x0, y1 - y0) * 3; if (sp.bare && r.st.bodies.some((b) => b.shape === 'person' && (b.x < x0 - 0.5 || b.x > x1 + 0.5))) { r.playing = false; r.ended = true; } if (!r.st.bodies.some((b) => b.shape === 'person') && r.st.bodies.every((b) => b.fixed || b.x < x0 - far || b.x > x1 + far || b.y < y0 - far || b.y > y1 + far)) { r.playing = false; r.ended = true; } }
     else if (sp.domain === 'math') { r.st.t += dtw * sp.t.speed * (r.slow ? 0.25 : 1); if (r.st.t > sp.t.max) { if (sp.t.loop) { r.st.t = sp.t.min; r.traces = {}; } else { r.st.t = sp.t.max; r.playing = false; r.ended = true; } } }
     else { const sim = dtw * (r.slow ? 0.25 : 1), n = Math.max(1, Math.ceil(sim / 0.01)); for (let i = 0; i < n; i++) ptStep(sp, r.st, sim / n); if (!r.st.lastH || r.st.t - r.st.lastH > 0.2) { r.st.lastH = r.st.t; r.st.hist.push([r.st.t].concat(sp.species.map((_, i) => r.st.P.filter((p) => p.s === i).length))); if (r.st.hist.length > 500) r.st.hist.shift(); } }
     scRender(it, r);
@@ -7081,9 +7106,11 @@ function scRender(it, r) {
   const cv = r.cv; if (!cv) return; const sp = it.spec;
   const w = cv.clientWidth || 520, h = cv.clientHeight || 320, dpr = Math.min(4, (window.devicePixelRatio || 1) * Math.max(1, (S.base || 1) * (S.zoom || 1)));
   if (cv.width !== Math.round(w * dpr) || cv.height !== Math.round(h * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); }
-  const c = cv.getContext('2d'); c.setTransform(dpr, 0, 0, dpr, 0, 0); c.fillStyle = '#FFFFFF'; c.fillRect(0, 0, w, h);
+  let c = cv.getContext('2d');
+  if (sp.bare) { const cap = Math.min(dpr, Math.sqrt(9e6 / Math.max(1, w * h))); if (cv.width !== Math.round(w * cap) || cv.height !== Math.round(h * cap)) { cv.width = Math.round(w * cap); cv.height = Math.round(h * cap); } c.setTransform(cap, 0, 0, cap, 0, 0); c.clearRect(0, 0, w, h); }
+  else { c.setTransform(dpr, 0, 0, dpr, 0, 0); c.fillStyle = '#FFFFFF'; c.fillRect(0, 0, w, h); }
   if (sp.domain === 'phys') {
-    const gh = sp.show.graph !== 'none' && r.showGraph ? Math.round(h * 0.28) : 0, ah = h - gh;
+    const gh = sp.show.graph !== 'none' && r.showGraph && !sp.bare ? Math.round(h * 0.28) : 0, ah = h - gh;
     const span = Math.min(sp.world.w, sp.world.h), pxPerM = Math.min((w - 32) / sp.world.w, (ah - 32) / sp.world.h);
     r.fscale = (span * 0.22 * pxPerM) / (r.fmax || 1); r.vscale = (span * 0.25 * pxPerM) / (r.vmax || 1); r.ascale = (span * 0.22 * pxPerM) / Math.max(sp.world.g || 1, 1e-9);
     phDraw(c, w, ah, sp, r.st, r);
@@ -7103,6 +7130,7 @@ function scRender(it, r) {
 function buildScene(d, it, forExport) {
   it.spec = scClean(it.spec);
   const sp = it.spec, r = scRuntime(it);
+  if (sp.bare) { d.classList.add('bare'); d.style.setProperty('--bh', (it.h || 400) + 'px'); r.inkDraw = (c, b, X, Y) => ipDrawInk(c, findItem(it.id) || it, r, b, X, Y); }
   const head = document.createElement('div'); head.className = 'gh';
   head.innerHTML = '<span></span>' + (forExport ? '' : '<span class="sbtns"><button type="button" data-s="play">เล่น</button><button type="button" data-s="reset">เริ่มใหม่</button><button type="button" data-s="slow" aria-pressed="false">ช้า</button>' + ((it.ink && it.ink.length) || (it.pics && it.pics.length) ? '<button type="button" data-s="back" title="เอาภาพเดิมกลับมาบนหน้า">คืนเป็นภาพวาด</button>' : '') + '</span>');
   head.firstChild.textContent = sp.title; d.appendChild(head);
@@ -7145,7 +7173,7 @@ function buildScene(d, it, forExport) {
       cv.addEventListener('pointermove', move); cv.addEventListener('pointerup', up);
     });
   }
-  if (forExport) { const tmp = { st: null, cache: new Map(), traces: {}, showGraph: false, read: [], cv }; SCN.set('__x' + it.id, tmp); scReset(it, tmp); if (sp.domain === 'math') tmp.st.t = (sp.t.min + sp.t.max) / 2; requestAnimationFrame(() => { scRender(it, tmp); SCN.delete('__x' + it.id); }); return; }
+  if (forExport) { const tmp = { st: null, cache: new Map(), traces: {}, showGraph: false, read: [], cv, inkDraw: sp.bare ? (c, b, X, Y) => ipDrawInk(c, it, tmp, b, X, Y) : null }; SCN.set('__x' + it.id, tmp); scReset(it, tmp); if (sp.domain === 'math') tmp.st.t = (sp.t.min + sp.t.max) / 2; requestAnimationFrame(() => { scRender(it, tmp); SCN.delete('__x' + it.id); }); return; }
   requestAnimationFrame(() => scRender(findItem(it.id) || it, r));
   const pb = head.querySelector('[data-s="play"]'), rb = head.querySelector('[data-s="reset"]'), sb = head.querySelector('[data-s="slow"]');
   pb.textContent = r.playing ? 'หยุด' : 'เล่น'; sb.setAttribute('aria-pressed', r.slow ? 'true' : 'false');
@@ -7153,6 +7181,17 @@ function buildScene(d, it, forExport) {
   rb.onclick = () => { const live = findItem(it.id) || it, R = scRuntime(live); R.playing = false; scReset(live, R); pb.textContent = 'เล่น'; scRender(live, R); };
   sb.onclick = () => { r.slow = !r.slow; sb.setAttribute('aria-pressed', r.slow ? 'true' : 'false'); };
   const bk = head.querySelector('[data-s="back"]'); if (bk) bk.onclick = () => restoreInk(findItem(it.id));
+  if (sp.bare) {
+    /* a small floating bar beside the drawing instead of a box */
+    const pill = document.createElement('div'); pill.className = 'scnpill no-ink'; const ctl = it.ctl || [20, 20]; pill.style.left = ctl[0] + 'px'; pill.style.top = Math.max(0, ctl[1]) + 'px';
+    const sb2 = head.querySelector('.sbtns');
+    const fb = document.createElement('button'); fb.type = 'button'; fb.textContent = 'แรง'; fb.setAttribute('aria-pressed', sp.show.fbd ? 'true' : 'false'); fb.onclick = () => { const live = findItem(it.id) || it; live.spec.show.fbd = !live.spec.show.fbd; fb.setAttribute('aria-pressed', live.spec.show.fbd ? 'true' : 'false'); scRender(live, r); savePage(); };
+    const mb = document.createElement('button'); mb.type = 'button'; mb.textContent = 'ปรับค่า'; mb.setAttribute('aria-pressed', 'false'); mb.onclick = () => { const o = pill.classList.toggle('open'); mb.setAttribute('aria-pressed', o ? 'true' : 'false'); };
+    sb2.insertBefore(fb, bk || null); sb2.insertBefore(mb, bk || null);
+    const del = document.createElement('button'); del.type = 'button'; del.textContent = 'ลบ'; del.onclick = () => { const live = findItem(it.id); if (!live) return; const before = clone(S.page.items || []); setItems(before.filter((t) => t.id !== it.id), before); SCN.delete(it.id); }; sb2.appendChild(del);
+    [...d.children].filter((x) => x !== cv).forEach((x) => pill.appendChild(x));
+    d.appendChild(pill);
+  }
 }
 function insertScene(spec, at) {
   if (!S.page) return; const w = 520; const [x, y] = at || viewSpot(w, 520);
@@ -7292,19 +7331,27 @@ async function openMotionPick() {
   if (!sh) { sh = document.createElement('div'); sh.className = 'sheet'; sh.id = 'motionSheet'; sh.innerHTML = '<div class="panel wide" role="dialog" aria-label="เลือกการเคลื่อนที่"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><h2>ให้ภาพนี้เคลื่อนที่แบบไหน</h2><button class="btn" type="button" data-a="x">ยกเลิก</button></div><div class="mvbody"></div></div>'; document.body.appendChild(sh); sh.querySelector('[data-a="x"]').onclick = () => { sh.hidden = true; }; }
   const body = sh.querySelector('.mvbody'); body.innerHTML = '';
   const url = URL.createObjectURL(sp.blob);
-  const top = document.createElement('div'); top.className = 'mvtop'; top.innerHTML = '<img alt="ภาพที่เลือก"><div class="note">ภาพที่วงไว้จะกลายเป็นวัตถุในแบบจำลอง เคลื่อนที่ตามกฎของนิวตัน มีแผนภาพแรง กราฟ และแถบปรับค่า ภาพเดิมบนหน้าจะถูกย้ายเข้าไปในกล่อง กดคืนเป็นภาพวาดได้ภายหลัง</div>'; top.querySelector('img').src = url; body.appendChild(top);
-  const grid = document.createElement('div'); grid.className = 'mvgrid';
+  const top = document.createElement('div'); top.className = 'mvtop'; top.innerHTML = '<img alt="ภาพที่เลือก"><div class="note">ภาพที่วงไว้จะเคลื่อนที่ตามกฎของนิวตันบนกระดาษตรงที่วาด เส้นอื่นที่วาดไว้รอบ ๆ เช่น พื้น พื้นเอียง ผนัง จะเป็นพื้นผิวที่ภาพชนและไถลไปตาม กดคืนเป็นภาพวาดได้ทุกเมื่อ</div>'; top.querySelector('img').src = url; body.appendChild(top);
   const go = async (make, person) => {
     sh.hidden = true;
     try { await placeMotion(sp, make, person); } catch (e) { toast('ทำให้ภาพเคลื่อนที่ไม่สำเร็จ ' + (e && e.code ? assetErr(e) : ''), 3500); }
     URL.revokeObjectURL(url);
   };
+  const goHere = async (kind, act) => { sh.hidden = true; try { await placeInPlace(sp, kind, act); } catch (e) { toast('ทำให้ภาพเคลื่อนที่ไม่สำเร็จ', 3000); } URL.revokeObjectURL(url); };
+  body.appendChild(exEl('h3', '', 'ขยับบนกระดาษตรงที่วาด'));
+  const g1 = document.createElement('div'); g1.className = 'mvgrid';
+  for (const [k, name, hint] of IP_KINDS) { const b = document.createElement('button'); b.type = 'button'; b.className = 'mvopt'; b.dataset.ip = k; b.innerHTML = '<b></b><span></span>'; b.querySelector('b').textContent = name; b.querySelector('span').textContent = hint; b.onclick = () => goHere(k); g1.appendChild(b); }
+  body.appendChild(g1);
+  if (sp.refs.length) {
+    body.appendChild(exEl('h3', '', 'ภาพนี้เป็นคน ให้แขนขาของภาพที่วาดขยับตามการเคลื่อนไหวจริง'));
+    const pc = document.createElement('div'); pc.className = 'chips';
+    for (const [act, name] of PERSON_MOVES) { const b = document.createElement('button'); b.type = 'button'; b.className = 'chip'; b.dataset.act = act; b.textContent = name; b.onclick = () => goHere(null, act); pc.appendChild(b); }
+    body.appendChild(pc);
+  }
+  body.appendChild(exEl('h3', '', 'หรือแยกเป็นกล่องแบบจำลอง มีกราฟและแผนภาพแรงครบ'));
+  const grid = document.createElement('div'); grid.className = 'mvgrid';
   for (const [k, name, hint, make] of MOTIONS) { const b = document.createElement('button'); b.type = 'button'; b.className = 'mvopt'; b.dataset.k = k; b.innerHTML = '<b></b><span></span>'; b.querySelector('b').textContent = name; b.querySelector('span').textContent = hint; b.onclick = () => go(make); grid.appendChild(b); }
   body.appendChild(grid);
-  body.appendChild(exEl('h3', '', 'ถ้าภาพนี้เป็นคน ให้ขยับแขนขาตามการเคลื่อนไหวจริง'));
-  const pg = document.createElement('div'); pg.className = 'chips';
-  for (const [act, name] of PERSON_MOVES) { const b = document.createElement('button'); b.type = 'button'; b.className = 'chip'; b.textContent = name; b.onclick = () => go(null, act); pg.appendChild(b); }
-  body.appendChild(pg);
   if (AI.ready('draw')) { const ai = document.createElement('button'); ai.type = 'button'; ai.className = 'btn mvai'; ai.textContent = 'ให้ AI ดูภาพแล้วสร้างสถานการณ์ให้เอง'; ai.onclick = () => go('ai'); body.appendChild(ai); }
   sh.hidden = false;
 }
@@ -7338,11 +7385,205 @@ async function placeMotion(sp, make, person) {
 function restoreInk(it) {
   if (!it || !S.page) return;
   const mine = layerArr(DEV), have = new Set(mine.map((s) => s.id));
-  for (const s of it.ink || []) if (!have.has(s.id)) mine.push(clone(s));
-  if ((it.ink || []).length) { saveLayers(new Set([DEV])); drawInk(); }
+  for (const s of (it.ink || []).concat(it.hide || [])) if (!have.has(s.id)) mine.push(clone(s));
+  if ((it.ink || []).length || (it.hide || []).length) { saveLayers(new Set([DEV])); drawInk(); }
   const before = clone(S.page.items || []);
-  setItems(before.filter((t) => t.id !== it.id).concat((it.pics || []).map(clone)), before);
+  setItems(before.filter((t) => t.id !== it.id).concat((it.back || (it.spec && it.spec.bare ? [] : it.pics) || []).map(clone)), before);
   SCN.delete(it.id);
+}
+
+/* ---------- the drawing moves right on the paper: the lines around it become the floor, slopes and walls it meets;
+   a drawn string becomes a pendulum, a drawn zigzag a spring; a drawn stick figure walks with its own arms and legs ---------- */
+const ipPts = (s) => { const o = []; for (let i = 0; i + 1 < s.p.length; i += 3) o.push([s.p[i] / 10, s.p[i + 1] / 10]); return o; };
+const ipLen = (pts) => { let L = 0; for (let i = 1; i < pts.length; i++) L += Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]); return L; };
+function ipSegD(p, a, b) { const ex = b[0] - a[0], ey = b[1] - a[1], L2 = ex * ex + ey * ey || 1e-9, u = clamp(((p[0] - a[0]) * ex + (p[1] - a[1]) * ey) / L2, 0, 1); return Math.hypot(p[0] - a[0] - ex * u, p[1] - a[1] - ey * u); }
+function ipRdp(pts, eps) {
+  if (pts.length < 3) return pts.slice();
+  let mi = 0, md = 0; for (let i = 1; i < pts.length - 1; i++) { const d = ipSegD(pts[i], pts[0], pts[pts.length - 1]); if (d > md) { md = d; mi = i; } }
+  if (md <= eps) return [pts[0], pts[pts.length - 1]];
+  const a = ipRdp(pts.slice(0, mi + 1), eps), b = ipRdp(pts.slice(mi), eps); return a.slice(0, -1).concat(b);
+}
+const ipWrap = (a) => { while (a > Math.PI) a -= 2 * Math.PI; while (a < -Math.PI) a += 2 * Math.PI; return a; };
+const ipAng = (a, b) => Math.atan2(b[1] - a[1], b[0] - a[0]);
+const ipRot = (p, o, th, n) => { const c = Math.cos(th), s = Math.sin(th), dx = p[0] - o[0], dy = p[1] - o[1]; return [n[0] + c * dx - s * dy, n[1] + s * dx + c * dy]; };
+function ipBox(strokes, pics) {
+  let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+  for (const s of strokes) for (const p of ipPts(s)) { x0 = Math.min(x0, p[0]); y0 = Math.min(y0, p[1]); x1 = Math.max(x1, p[0]); y1 = Math.max(y1, p[1]); }
+  for (const q of pics || []) { x0 = Math.min(x0, q.x); y0 = Math.min(y0, q.y); x1 = Math.max(x1, q.x + q.w); y1 = Math.max(y1, q.y + q.h); }
+  return [x0, y0, x1, y1];
+}
+/* where the joints of a drawn stick figure are */
+function ipRig(strokes) {
+  const B = ipBox(strokes), Hd = Math.max(20, B[3] - B[1]), all = []; for (const s of strokes) for (const p of ipPts(s)) all.push(p);
+  let headC = null, headR = 0;
+  for (const s of strokes) { const P = ipPts(s); if (P.length < 6) continue; const b = ipBox([s]), bw = b[2] - b[0], bh = b[3] - b[1], sz = Math.max(bw, bh); if (Math.hypot(P[0][0] - P[P.length - 1][0], P[0][1] - P[P.length - 1][1]) < 0.4 * sz && bh > 0.06 * Hd && bh < 0.45 * Hd && (b[1] + b[3]) / 2 < B[1] + 0.4 * Hd && bw / Math.max(1, bh) > 0.5 && bw / Math.max(1, bh) < 2) { if (!headC || b[1] < headC[1] - headR) { headC = [(b[0] + b[2]) / 2, (b[1] + b[3]) / 2]; headR = sz / 2; } } }
+  if (!headC) { const top = all.filter((p) => p[1] < B[1] + 0.1 * Hd); headC = [top.reduce((a, p) => a + p[0], 0) / Math.max(1, top.length) || (B[0] + B[2]) / 2, B[1] + 0.1 * Hd]; headR = 0.1 * Hd; }
+  const neck = [headC[0], headC[1] + headR];
+  const hipY = neck[1] + 0.44 * (B[3] - neck[1]); const band = all.filter((p) => Math.abs(p[1] - hipY) < 0.05 * Hd).map((p) => p[0]).sort((a, b) => a - b);
+  const hip = [band.length ? band[Math.floor(band.length / 2)] : neck[0], hipY];
+  const sh = [neck[0] + 0.2 * (hip[0] - neck[0]), neck[1] + 0.2 * (hip[1] - neck[1])];
+  const near = (grp, q) => { let best = null, bd = 1e9; for (const p of grp) { const d = Math.hypot(p[0] - q[0], p[1] - q[1]); if (d < bd) { bd = d; best = p; } } return best; };
+  const legs = [all.filter((p) => p[1] > hip[1] + 0.1 * Hd && p[0] < hip[0]), all.filter((p) => p[1] > hip[1] + 0.1 * Hd && p[0] >= hip[0])].map((g) => {
+    if (g.length < 2) return null; let ft = g[0]; for (const p of g) if (p[1] > ft[1] + 0.5 || (Math.abs(p[1] - ft[1]) <= 0.5 && Math.abs(p[0] - hip[0]) > Math.abs(ft[0] - hip[0]))) ft = p;
+    const mid = [(hip[0] + ft[0]) / 2, (hip[1] + ft[1]) / 2], k = near(g, mid), L = Math.hypot(ft[0] - hip[0], ft[1] - hip[1]);
+    return { kn: k && Math.hypot(k[0] - mid[0], k[1] - mid[1]) < 0.25 * L ? k : mid, ft };
+  });
+  if (!legs[0] && legs[1]) legs[0] = { kn: [2 * hip[0] - legs[1].kn[0], legs[1].kn[1]], ft: [2 * hip[0] - legs[1].ft[0], legs[1].ft[1]] };
+  if (!legs[1] && legs[0]) legs[1] = { kn: [2 * hip[0] - legs[0].kn[0], legs[0].kn[1]], ft: [2 * hip[0] - legs[0].ft[0], legs[0].ft[1]] };
+  const tx = (y) => neck[0] + (hip[0] - neck[0]) * clamp((y - neck[1]) / ((hip[1] - neck[1]) || 1), 0, 1);
+  const armPts = all.filter((p) => p[1] > neck[1] && p[1] < hip[1] + 0.1 * Hd && Math.abs(p[0] - tx(p[1])) > 0.07 * Hd && Math.hypot(p[0] - headC[0], p[1] - headC[1]) > headR * 1.2);
+  const arms = [armPts.filter((p) => p[0] < tx(p[1])), armPts.filter((p) => p[0] >= tx(p[1]))].map((g) => {
+    if (g.length < 3) return null; let hd = g[0]; for (const p of g) if (Math.hypot(p[0] - sh[0], p[1] - sh[1]) > Math.hypot(hd[0] - sh[0], hd[1] - sh[1])) hd = p;
+    const mid = [(sh[0] + hd[0]) / 2, (sh[1] + hd[1]) / 2], e = near(g, mid); return { el: e || mid, hd };
+  });
+  return { kind: 'person', headC, headR, neck, sh, hip, legs, arms, foot: Math.max(...legs.filter(Boolean).map((l) => l.ft[1]), B[3]) };
+}
+/* bones of the drawing, each point of the ink follows the nearest bone */
+function ipBones(R) {
+  const b = [['torso', R.hip, R.sh], ['head', R.sh, R.headC]];
+  R.legs.forEach((l, i) => { if (l) { b.push(['th' + i, R.hip, l.kn]); b.push(['sh' + i, l.kn, l.ft]); } });
+  R.arms.forEach((a, i) => { if (a) { b.push(['ua' + i, R.sh, a.el]); b.push(['fa' + i, a.el, a.hd]); } });
+  return b;
+}
+function ipBind(strokes, R) {
+  const bones = ipBones(R);
+  return strokes.map((s) => ipPts(s).map((p) => {
+    if (Math.hypot(p[0] - R.headC[0], p[1] - R.headC[1]) < R.headR * 1.25) return 1;
+    let bi = 0, bd = 1e9; bones.forEach((bn, i) => { if (i === 1) return; const d = ipSegD(p, bn[1], bn[2]); if (d < bd - 0.01) { bd = d; bi = i; } }); return bi;
+  }));
+}
+/* joints of the model person in world units */
+function psJoints(b) {
+  const K = b.kin || { hx: b.x, hy: b.y, fl: [b.x - 0.1, b.y - 0.8], fr: [b.x + 0.1, b.y - 0.8], lean: 0, swing: 0, tuck: 0, rot: 0 };
+  const H = b.hgt, Lg = 0.5 * H, hip = [K.hx, K.hy], dir = (b.vx || 0) >= 0 ? 1 : -1, rot = K.rot || 0, lean = (K.lean || 0) * dir + rot;
+  const tor = 0.3 * H, sh = [hip[0] + tor * Math.sin(lean), hip[1] + tor * Math.cos(lean)], head = [sh[0] + 0.1 * H * Math.sin(lean), sh[1] + 0.1 * H * Math.cos(lean)];
+  const arm = (s) => { const a = -s * 0.7, el = [sh[0] + 0.16 * H * Math.sin(a + rot), sh[1] - 0.16 * H * Math.cos(a + rot)], hd = [el[0] + 0.15 * H * Math.sin(a + 0.5 * dir + rot), el[1] - 0.15 * H * Math.cos(a + 0.5 * dir + rot)]; return [el, hd]; };
+  const [eB, hB] = arm(-(K.swing || 0)), [eF, hF] = arm(K.swing || 0);
+  return { K, H, Lg, hip, sh, head, dir, fl: K.fl, fr: K.fr, kl: psIK(hip, K.fl, Lg / 2, Lg / 2, dir), kr: psIK(hip, K.fr, Lg / 2, Lg / 2, dir), eB, hB, eF, hF };
+}
+/* draw the moving ink of a body (rigid, with turning wheels) or of a drawn person */
+function ipDrawInk(c, it, r, b, X, Y) {
+  const rig = it.rig || {}, ry = it.y || 0, P = (w) => [X(w[0]), Y(w[1]) + ry];
+  c.save(); c.translate(0, -ry);
+  if (rig.kind === 'person') {
+    const J = psJoints(b), E0 = r.E0 || (r.E0 = J), d = (k) => [P(J[k])[0] - P(E0[k])[0], P(J[k])[1] - P(E0[k])[1]];
+    const A = (j, a, z) => ipAng(P(j[a]), P(j[z]));
+    const R = rig, hipN = [R.hip[0] + d('hip')[0], R.hip[1] + d('hip')[1]];
+    const Jn = psJoints(Object.assign({}, b, { kin: Object.assign({}, J.K, { swing: 0 }) }));
+    const dT = ipWrap(A(J, 'hip', 'sh') - A(E0, 'hip', 'sh')), shN = ipRot(R.sh, R.hip, dT, hipN);
+    const T = [[R.hip, hipN, dT], [R.sh, shN, dT]];
+    const pdir = -J.dir;
+    R.legs.forEach((l, i) => {
+      if (!l) return; const fk = i ? 'fr' : 'fl', df = d(fk), ft = [l.ft[0] + df[0], l.ft[1] + df[1]];
+      const L1 = Math.hypot(l.kn[0] - R.hip[0], l.kn[1] - R.hip[1]), L2 = Math.hypot(l.ft[0] - l.kn[0], l.ft[1] - l.kn[1]);
+      const kn = psIK(hipN, ft, L1, L2, pdir), ftN = (() => { const a = ipAng(kn, ft); return [kn[0] + L2 * Math.cos(a), kn[1] + L2 * Math.sin(a)]; })();
+      T.push([R.hip, hipN, ipWrap(ipAng(hipN, kn) - ipAng(R.hip, l.kn))]); T.push([l.kn, kn, ipWrap(ipAng(kn, ftN) - ipAng(l.kn, l.ft))]);
+    });
+    R.arms.forEach((a, i) => {
+      if (!a) return; const ek = i ? 'eF' : 'eB', hk = i ? 'hF' : 'hB';
+      const du = 0.6 * ipWrap(A(J, 'sh', ek) - A(Jn, 'sh', ek)), elN = ipRot(a.el, R.sh, du, shN);
+      const df = 0.6 * ipWrap(A(J, ek, hk) - A(Jn, ek, hk));
+      T.push([R.sh, shN, du]); T.push([a.el, elN, df]);
+    });
+    /* bone order matches ipBones: torso, head, then legs, then arms */
+    const binds = r.bind || (r.bind = ipBind(it.ink, rig));
+    it.ink.forEach((s, si) => {
+      const bi = binds[si], q = s.p.slice();
+      for (let k = 0, j = 0; k + 1 < q.length; k += 3, j++) { const t = T[bi[j]] || T[0], np = ipRot([s.p[k] / 10, s.p[k + 1] / 10], t[0], t[2], t[1]); q[k] = np[0] * 10; q[k + 1] = np[1] * 10; }
+      drawStroke(c, Object.assign({}, s, { p: q }));
+    });
+  } else {
+    const at = P([b.x, b.y]);
+    c.translate(at[0], at[1]); c.rotate(-b.ang); c.translate(-rig.cx, -rig.cy);
+    const wheels = rig.wheels || [], inW = new Set(); wheels.forEach((w) => w.i.forEach((k) => inW.add(k)));
+    if (wheels.length) { const last = r.lastPos || [b.x, b.y]; const ds = (b.x - last[0]) * Math.cos(b.ang) + (b.y - last[1]) * Math.sin(b.ang); r.roll = (r.roll || 0) + ds; r.lastPos = [b.x, b.y]; }
+    for (const q of it.pics || []) { const im = q.asset && scSprite(q.asset); if (im) c.drawImage(im, q.x, q.y, q.w, q.h); }
+    it.ink.forEach((s, k) => { if (!inW.has(k)) drawStroke(c, s); });
+    for (const w of wheels) { const kpx = rig.K || 100; c.save(); c.translate(w.cx, w.cy); c.rotate((r.roll || 0) * kpx / Math.max(4, w.r)); c.translate(-w.cx, -w.cy); w.i.forEach((k) => it.ink[k] && drawStroke(c, it.ink[k])); c.restore(); }
+  }
+  c.restore();
+}
+/* build the moving drawing from the selection */
+const IP_KINDS = [
+  ['fall', 'ปล่อยให้ตก', 'ตกลงมา ชน ไถล หรือกลิ้งไปตามเส้นที่วาดไว้รอบ ๆ'],
+  ['throw', 'ขว้างออกไป', 'มีความเร็วต้น เคลื่อนที่แบบโพรเจกไทล์ แล้วชนเส้นที่วาด'],
+  ['push', 'ถูกดึงไปทางขวา', 'แรงดึงคงที่ สู้กับแรงเสียดทานของพื้นที่วาด'],
+  ['const', 'เลื่อนด้วยความเร็วคงที่', 'ไม่มีแรงลัพธ์ ไม่มีแรงโน้มถ่วง'],
+  ['pend', 'แกว่งเป็นลูกตุ้ม', 'ใช้เส้นเชือกที่วาดต่อกับภาพ ปลายอีกข้างเป็นจุดหมุน'],
+  ['spring', 'สั่นติดสปริง', 'ใช้สปริงซิกแซกที่วาดต่อกับภาพ']
+];
+function ipAttach(B, others, want) {
+  let best = null;
+  for (const r of others) {
+    const P = ipPts(r.s); if (P.length < 2) continue; const a = P[0], z = P[P.length - 1], chord = Math.hypot(z[0] - a[0], z[1] - a[1]); if (chord < 25) continue;
+    const ratio = ipLen(P) / chord, isS = ratio > 1.45, ok = want === 'spring' ? isS : !isS && ratio < 1.25; if (!ok) continue;
+    const inB = (p) => p[0] > B[0] - 16 && p[0] < B[2] + 16 && p[1] > B[1] - 16 && p[1] < B[3] + 16;
+    const end = inB(a) && !inB(z) ? z : inB(z) && !inB(a) ? a : null; if (!end) continue;
+    if (!best || chord > best.chord) best = { r, end, chord };
+  }
+  return best;
+}
+async function placeInPlace(sp, kind, act) {
+  const body = sp.refs.map((r) => { const s = findStroke(r); return s ? { r, s: clone(s) } : null; }).filter(Boolean);
+  const pics = sp.items.map(findItem).filter(Boolean).map((it) => { const b = itemBox(it); return { asset: it.asset, x: b[0], y: b[1], w: b[2] - b[0], h: b[3] - b[1], item: clone(it) }; }).filter((q) => okAsset(q.asset));
+  if (!body.length && !pics.length) throw { code: 'empty' };
+  const B = ipBox(body.map((x) => x.s), pics), sel = new Set(sp.refs.map((r) => r.layer + ':' + r.id));
+  const others = allStrokes().filter((r) => r.layer !== 'teacher' && !sel.has(r.layer + ':' + r.s.id));
+  const att = kind === 'pend' || kind === 'spring' ? ipAttach(B, others, kind) : null;
+  const person = !!act;
+  let rig, K = 100;
+  if (person) { rig = ipRig(body.map((x) => x.s)); K = (rig.foot - (rig.headC[1] - rig.headR)) / (0.95 * 1.7); }
+  const toW = (p) => [p[0] / K, (H - p[1]) / K];
+  let top = B[1]; if (att) top = Math.min(top, att.end[1]);
+  const ry0 = Math.round(clamp(top - 90, 0, H - 200)), ry1 = H;
+  const surf = [];
+  for (const r of others) { if (att && r === att.r) continue; const P = ipRdp(ipPts(r.s), 3); for (let i = 1; i < P.length && surf.length < 40; i++) { const a = P[i - 1], z = P[i]; if (Math.hypot(z[0] - a[0], z[1] - a[1]) < 18) continue; if (Math.max(a[1], z[1]) < ry0) continue; const A = toW(a), Z = toW(z); surf.push({ x1: +A[0].toFixed(3), y1: +A[1].toFixed(3), x2: +Z[0].toFixed(3), y2: +Z[1].toFixed(3), mu: 0.25, mus: 0.35 }); } }
+  const spec = { domain: 'phys', bare: true, title: '', world: { w: W / K, h: (ry1 - ry0) / K, x0: 0, y0: 0, g: kind === 'const' ? 0 : 9.8 }, bodies: [], surfaces: surf, ropes: [], springs: [], forces: [], params: [], show: { fbd: false, trail: false, graph: 'none' } };
+  const c = [(B[0] + B[2]) / 2, (B[1] + B[3]) / 2], cw = toW(c);
+  const muP = { key: 'mu', label: 'แรงเสียดทานของพื้น μ', min: 0, max: 1, step: 0.05 };
+  if (person) {
+    const hw = toW(rig.hip), fy = toW([0, rig.foot])[1];
+    if (!surf.some((s) => Math.min(s.x1, s.x2) <= hw[0] && Math.max(s.x1, s.x2) >= hw[0] && Math.abs((s.y1 + s.y2) / 2 - fy) < 0.15)) spec.surfaces.unshift({ x1: -50, y1: fy, x2: W / K + 50, y2: fy, mu: 0.8 });
+    const v = { walk: 1.3, run: 4, jump: 2.4, longjump: 5.5, fall: 0, squat: 0 }[act];
+    spec.bodies.push({ id: 'P', label: 'คน', shape: 'person', act, m: 60, hgt: 1.7, x: hw[0], y: hw[1], v, ang: 20, push: 0.6, ink: true });
+    spec.params = act === 'walk' || act === 'run' ? [{ key: 'P.v', label: act === 'walk' ? 'ความเร็วเดิน (m/s)' : 'ความเร็ววิ่ง (m/s)', min: act === 'walk' ? 0.5 : 2, max: act === 'walk' ? 2.2 : 8, step: 0.1 }] : act === 'jump' ? [{ key: 'P.v', label: 'ความเร็วตอนพ้นพื้น (m/s)', min: 0.5, max: 4, step: 0.1 }] : act === 'longjump' ? [{ key: 'P.v', label: 'ความเร็ววิ่งเข้าหา (m/s)', min: 2, max: 10, step: 0.5 }, { key: 'P.ang', label: 'มุมกระโดด (องศา)', min: 5, max: 45, step: 1 }] : act === 'fall' ? [{ key: 'P.push', label: 'แรงผลัก', min: 0.1, max: 2, step: 0.1 }] : [];
+    spec.params.push({ key: 'P.m', label: 'มวล (kg)', min: 20, max: 120, step: 1 });
+  } else {
+    const bd = { id: 'A', label: 'วัตถุ', shape: 'box', ink: true, m: 1, x: cw[0], y: cw[1], w: Math.max(0.05, (B[2] - B[0]) / K), h: Math.max(0.05, (B[3] - B[1]) / K), e: 0.3 };
+    spec.bodies.push(bd);
+    if (kind === 'fall') spec.params = [{ key: 'A.e', label: 'การกระดอน e', min: 0, max: 0.95, step: 0.05 }, muP, { key: 'g', label: 'g (m/s²)', min: 1, max: 20, step: 0.1 }];
+    if (kind === 'throw') { bd.vx = 4.5; bd.vy = 4.5; spec.show.v = true; spec.show.trail = true; spec.params = [{ key: 'A.vx', label: 'ความเร็วต้นแนวราบ (m/s)', min: -8, max: 8, step: 0.1 }, { key: 'A.vy', label: 'ความเร็วต้นแนวดิ่ง (m/s)', min: 0, max: 8, step: 0.1 }, { key: 'A.e', label: 'การกระดอน e', min: 0, max: 0.95, step: 0.05 }]; }
+    if (kind === 'push') { bd.m = 2; spec.forces.push({ on: 'A', fx: 8, fy: 0, label: 'F' }); spec.params = [{ key: 'F1.fx', label: 'แรงดึง (N)', min: -20, max: 20, step: 0.5 }, muP, { key: 'A.m', label: 'มวล (kg)', min: 0.5, max: 10, step: 0.5 }]; }
+    if (kind === 'const') { bd.vx = 1.5; spec.show.v = true; spec.params = [{ key: 'A.vx', label: 'ความเร็ว (m/s)', min: -4, max: 4, step: 0.1 }]; }
+    if (kind === 'pend') {
+      const pv = att ? toW(att.end) : [cw[0], cw[1] + 2 * Math.max(bd.h, 0.6)], L = Math.hypot(cw[0] - pv[0], cw[1] - pv[1]);
+      if (Math.abs(cw[0] - pv[0]) < 0.1 * L) { bd.x = pv[0] + L * Math.sin(0.5); bd.y = pv[1] - L * Math.cos(0.5); }
+      spec.ropes.push({ a: '', b: 'A', ax: pv[0], ay: pv[1], L, snap: true }); spec.show.trail = true;
+      spec.params = [{ key: 'A.x', label: 'ตำแหน่งปล่อย (m)', min: +(pv[0] - L * 0.95).toFixed(2), max: +(pv[0] + L * 0.95).toFixed(2), step: 0.01 }, { key: 'A.m', label: 'มวล (kg)', min: 0.1, max: 5, step: 0.1 }, { key: 'g', label: 'g (m/s²)', min: 1, max: 20, step: 0.1 }];
+    }
+    if (kind === 'spring') {
+      const an = att ? toW(att.end) : [cw[0], cw[1] + 2 * Math.max(bd.h, 0.6)], L0 = Math.hypot(cw[0] - an[0], cw[1] - an[1]);
+      const vert = Math.abs(cw[0] - an[0]) < Math.abs(cw[1] - an[1]);
+      if (!vert) { bd.x += (cw[0] > an[0] ? 1 : -1) * 0.3 * L0; spec.surfaces.length || spec.surfaces.push({ x1: -50, y1: cw[1] - bd.h / 2, x2: 50 + W / K, y2: cw[1] - bd.h / 2 }); spec.surfaces.forEach((s) => { s.mu = 0; s.mus = 0; }); }
+      spec.springs.push({ a: '', b: 'A', ax: an[0], ay: an[1], k: 20, L0 });
+      spec.params = [{ key: 'K1.k', label: 'k (N/m)', min: 2, max: 100, step: 1 }, { key: 'A.m', label: 'มวล (kg)', min: 0.2, max: 5, step: 0.1 }];
+      spec.show.energy = false;
+    }
+    const wheels = [];
+    body.forEach((x, i) => { const P = ipPts(x.s); if (P.length < 8 || body.length < 2) return; const b = ipBox([x.s]), bw = b[2] - b[0], bh = b[3] - b[1], sz = Math.max(bw, bh); if (Math.hypot(P[0][0] - P[P.length - 1][0], P[0][1] - P[P.length - 1][1]) > 0.35 * sz) return; if (bw / Math.max(1, bh) < 0.7 || bw / Math.max(1, bh) > 1.4) return; if ((b[1] + b[3]) / 2 < B[1] + 0.45 * (B[3] - B[1])) return; if (sz < 0.1 * (B[2] - B[0]) || sz > 0.7 * (B[2] - B[0])) return; wheels.push({ i: [i], cx: (b[0] + b[2]) / 2, cy: (b[1] + b[3]) / 2, r: sz / 2 }); });
+    for (const w of wheels) body.forEach((x, i) => { if (w.i.includes(i) || wheels.some((o) => o.i.includes(i))) return; const b = ipBox([x.s]); if (b[0] >= w.cx - w.r && b[2] <= w.cx + w.r && b[1] >= w.cy - w.r && b[3] <= w.cy + w.r) w.i.push(i); });
+    rig = { kind: 'rigid', cx: c[0], cy: c[1], K, wheels };
+  }
+  /* move the ink off the page into the moving drawing (and the string or spring the model now draws) */
+  const removed = [], touched = new Set(), take = body.map((x) => x.r).concat(att ? [{ layer: att.r.layer, id: att.r.s.id }] : []);
+  for (const r of take) { const arr = layerArr(r.layer); const i = arr.findIndex((s) => s.id === r.id); if (i >= 0) { removed.push({ layer: r.layer, stroke: arr[i] }); arr.splice(i, 1); touched.add(r.layer); } }
+  if (removed.length) { pushUndo({ t: 'erase', removed }); saveLayers(touched); drawInk(); }
+  const before = clone(S.page.items || []);
+  const item = { id: 'i' + uid(), by: DEV, type: 'scene', spec: scClean(spec), x: 0, y: ry0, w: W, h: ry1 - ry0, ink: body.map((x) => x.s), hide: att ? [clone(att.r.s)] : [], pics: pics.map((q) => ({ asset: q.asset, x: q.x, y: q.y, w: q.w, h: q.h })), back: pics.map((q) => q.item), rig, ctl: [Math.round(clamp(B[0] - 20, 4, W - 380)), 0] };
+  setItems(before.filter((t) => !sp.items.includes(t.id)).concat([item]), before);
+  clearSel();
+  setTimeout(() => { const R = SCN.get(item.id); const live = findItem(item.id); if (R && live) { R.playing = true; if (!scnRaf) scnRaf = requestAnimationFrame(scTick); const pb = itemsEl.querySelector('.item[data-id="' + item.id + '"] [data-s="play"]'); if (pb) pb.textContent = 'หยุด'; } }, 350);
+  toast(person ? 'ภาพคนที่วาดขยับแขนขาตามการเคลื่อนไหวจริงแล้ว' : 'ภาพเคลื่อนที่บนกระดาษแล้ว เส้นที่วาดไว้รอบ ๆ เป็นพื้นผิวที่ชนได้', 2800);
 }
 function renderScenePicker(box, dom) {
   box.innerHTML = '';
@@ -9111,7 +9352,7 @@ function estTextH(md, w, fs) {
 }
 function occupiedBoxes() {
   const out = [];
-  for (const it of (S.page && S.page.items) || []) if (!it.lock) out.push(itemBox(it));
+  for (const it of (S.page && S.page.items) || []) if (!it.lock && !(it.spec && it.spec.bare)) out.push(itemBox(it));
   for (const r of allStrokes()) { const b = sbox(r.s); out.push([b[0], b[1], b[2], b[3]]); }
   return out;
 }
@@ -9256,9 +9497,45 @@ async function openPdfFile(file) {
   } catch (e) { toast(/password/i.test(String(e && e.name)) ? 'PDF นี้มีรหัสผ่าน ปลดรหัสก่อนแล้วนำเข้าใหม่' : 'เปิด PDF ไม่ได้ ไฟล์อาจเสียหาย', 4000); return; }
   const n = PDFI.doc.numPages;
   $('#pdfInfo').textContent = PDFI.name + ' มี ' + n + ' หน้า';
-  $('#pdfFrom').max = $('#pdfTo').max = n; $('#pdfFrom').value = 1; $('#pdfTo').value = Math.min(n, 60);
+  $('#pdfFrom').max = $('#pdfTo').max = n; $('#pdfFrom').value = 1; $('#pdfTo').value = Math.min(n, 20);
+  pdfRangeUI();
   $('#pdfMsg').innerHTML = ''; $('#pdfHere').disabled = $('#pdfNew').disabled = $('#pdfSplit').disabled = false; $('#pdfSheet .panel').classList.remove('wide');
   $('#toast').hidden = true; $('#pdfSheet').hidden = false;
+}
+/* pick the pages to use: tap a first and a last page, or a block of 20; pages with examples or exercises are marked */
+function pdfRangeUI() {
+  const doc = PDFI.doc, box = $('#pdfRange'); if (!doc || !box) return;
+  const n = doc.numPages; box.innerHTML = '';
+  const chips = exEl('div', 'chips pdfchips');
+  for (let a = 1; a <= n; a += 20) { const b = Math.min(n, a + 19), c = exEl('button', 'chip', 'หน้า ' + a + ' ถึง ' + b); c.type = 'button'; c.onclick = () => { $('#pdfFrom').value = a; $('#pdfTo').value = b; paint(); const el = strip.querySelector('[data-n="' + a + '"]'); if (el) strip.scrollLeft = el.offsetLeft - strip.offsetLeft; }; chips.appendChild(c); }
+  if (n > 20) { const c = exEl('button', 'chip', 'ทั้งเล่ม ' + n + ' หน้า'); c.type = 'button'; c.onclick = () => { $('#pdfFrom').value = 1; $('#pdfTo').value = n; paint(); }; chips.appendChild(c); }
+  box.appendChild(chips);
+  const info = exEl('div', 'note small pdfsel'); box.appendChild(info);
+  const strip = exEl('div', 'pdfstrip'); box.appendChild(strip);
+  let first = null;
+  const paint = () => {
+    const a = clamp(parseInt($('#pdfFrom').value, 10) || 1, 1, n), b = clamp(parseInt($('#pdfTo').value, 10) || a, 1, n), lo = Math.min(a, b), hi = Math.max(a, b);
+    strip.querySelectorAll('.pth').forEach((el) => { const i = +el.dataset.n; el.classList.toggle('in', i >= lo && i <= hi); el.classList.toggle('edge', i === lo || i === hi); });
+    info.textContent = 'เลือกหน้า ' + lo + ' ถึง ' + hi + ' รวม ' + (hi - lo + 1) + ' หน้า' + (first ? ' แตะหน้าสุดท้ายของช่วง' : ' แตะภาพหน้าแรกแล้วแตะหน้าสุดท้ายเพื่อเลือกช่วงใหม่');
+  };
+  $('#pdfFrom').oninput = $('#pdfTo').oninput = paint;
+  const io = 'IntersectionObserver' in window ? new IntersectionObserver((es) => { for (const e of es) if (e.isIntersecting) { io.unobserve(e.target); thumb(e.target); } }, { root: strip, rootMargin: '200px' }) : null;
+  const KW = /ตัวอย?่?าง|แบบฝึก|โจทย์|example|exercise/i;
+  const thumb = async (el) => {
+    try {
+      const pg = await doc.getPage(+el.dataset.n), v = pg.getViewport({ scale: 96 / pg.getViewport({ scale: 1 }).width });
+      const cv = el.querySelector('canvas'); cv.width = Math.round(v.width); cv.height = Math.round(v.height);
+      await pg.render({ canvasContext: cv.getContext('2d'), viewport: v }).promise;
+      const tc = await pg.getTextContent(); const tx = tc.items.map((t) => t.str).join('').replace(/\u0E4D\u0E32/g, '\u0E33').replace(/[\uF700-\uF71F]/g, '');
+      if (KW.test(tx)) { const m = tx.match(/ตัวอย?่?าง|example/i) ? 'ตัวอย่าง' : 'แบบฝึก'; el.appendChild(exEl('i', 'pkw', m)); }
+    } catch (e) { /* page could not be drawn */ }
+  };
+  for (let i = 1; i <= n; i++) {
+    const el = exEl('button', 'pth'); el.type = 'button'; el.dataset.n = i; el.innerHTML = '<canvas></canvas><span>' + i + '</span>';
+    el.onclick = () => { if (first == null) { first = i; $('#pdfFrom').value = i; $('#pdfTo').value = i; } else { $('#pdfFrom').value = Math.min(first, i); $('#pdfTo').value = Math.max(first, i); first = null; } paint(); };
+    strip.appendChild(el); if (io) io.observe(el); else if (i <= 30) thumb(el);
+  }
+  paint();
 }
 async function pdfImport(newNb) {
   const doc = PDFI.doc; if (!doc) return;
@@ -9292,7 +9569,7 @@ async function pdfImport(newNb) {
 
 /* ---------- a PDF of worked examples or exercises: split it into questions, keep each one as a picture cut from the original, answer every one in the five-step form ---------- */
 const PQ = { pages: [], qs: [], name: '', setId: null };
-const PQ_W = 1400, PQ_MAX = 20;
+const PQ_W = 1400, PQ_MAX = 80;
 const PQ_NUM = /^\s*(ตัวอย่?าง\s*(ที่?)?\s*\d+|แบบฝึก(หัด)?\s*(ที่)?\s*\d+|โจทย์\s*(ข้อ)?\s*(ที่)?\s*\d+|ข้อ\s*(ที่)?\s*\d+|(example|exercise|problem|question)\s*\d+|\(?\d{1,3}\s*[.)])/i;
 const PQ_SOL = /^\s*(วิธีท(ำ|\u0E4D\u0E32)|แนวคิด|เฉลย|แนวตอบ|solution|answer)/i;
 async function pqPage(doc, i) {
@@ -9408,7 +9685,7 @@ async function pqSplit() {
       for (let tr = 0; tr < 2 && !r && !stop; tr++) { try { r = await AI.run('read', pqPrompt(batch) + hint, { images: batch.map((p) => p.blob), cache: false, maxTokens: 7000 }); } catch (e) { if (tr) throw e; } }
       if (r) PQ.qs.push(...pqParse(r.text, batch));
     }
-    if (stop) { $('#pdfHere').disabled = $('#pdfNew').disabled = $('#pdfSplit').disabled = false; return; }
+    if (stop && !PQ.qs.length) { $('#pdfHere').disabled = $('#pdfNew').disabled = $('#pdfSplit').disabled = false; return; }
     B.step(2);
     const tr = 'olymp';
     for (const q of PQ.qs) {
@@ -10695,7 +10972,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793176725';
+const BUILD = '1793177999';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
