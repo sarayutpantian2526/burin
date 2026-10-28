@@ -577,6 +577,15 @@ body.guest #roleSeg, body.guest #bJoin { display: none !important; }
 .tqh { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; font-size: 13px; }
 .tqh small { color: var(--muted); }
 .tqk { font-size: 11px; padding: 1px 7px; border-radius: 999px; background: var(--bg); color: var(--muted); }
+.tqk.ok { background: var(--ok-soft); color: var(--fg); }
+.tqimg img { display: block; width: 100%; height: auto; border-radius: 8px; border: 1px solid var(--line); background: #FFFFFF; }
+.pqoffer { display: flex; flex-direction: column; gap: 4px; padding: 10px; border: 1px dashed var(--line); border-radius: 12px; margin: 8px 0; }
+.pqlist { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr)); gap: 10px; margin: 10px 0; max-height: 58vh; overflow: auto; padding: 2px; }
+.pqcard { display: flex; flex-direction: column; gap: 6px; padding: 10px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); min-width: 0; }
+.pqimg { display: block; width: 100%; height: auto; border-radius: 8px; border: 1px solid var(--line); background: #FFFFFF; }
+.pqacts { display: flex; flex-wrap: wrap; gap: 4px; }
+.pqacts .btn { font-size: 12px; padding: 4px 8px; min-height: 30px; }
+.pqsave { position: sticky; bottom: 0; background: var(--surface); padding-top: 6px; }
 .tqq { font-size: 14px; line-height: 1.55; }
 .tqa { display: flex; gap: 6px; flex-wrap: wrap; }
 .tqa .btn { min-height: 34px; font-size: 13px; padding: 0 10px; }
@@ -1335,8 +1344,9 @@ body.present .item .tsize, body.role-student .item .tsize { display: none; }
     <div class="note" id="pdfInfo"></div>
     <div class="row2"><label class="field"><span>ตั้งแต่หน้า</span><input id="pdfFrom" type="number" min="1" value="1"></label><label class="field"><span>ถึงหน้า</span><input id="pdfTo" type="number" min="1" value="1"></label></div>
     <div class="row2"><button class="btn solid" id="pdfHere">ใส่ต่อจากหน้านี้</button><button class="btn" id="pdfNew">สร้างสมุดเล่มใหม่จาก PDF</button></div>
+    <div class="pqoffer"><button class="btn solid" id="pdfSplit">แยกตัวอย่างและแบบฝึกเป็นรายข้อ พร้อมเฉลย</button><span class="note small">ใช้ AI อ่านหน้าที่เลือก (ไม่เกิน 20 หน้า) ตัดภาพแต่ละข้อจากต้นฉบับ เก็บเป็นชุดโจทย์ให้วางสอนทีละข้อ และเขียนเฉลยละเอียด 5 ขั้นให้ทุกข้อ</span></div>
     <div id="pdfMsg"></div>
-    <div class="note">แต่ละหน้าของ PDF เป็นพื้นหลังที่ล็อกไว้ เขียน วาด แทรกกล่องข้อความทับได้โดยไม่เลื่อนหลุด นำเข้าได้ครั้งละไม่เกิน 60 หน้า</div>
+    <div class="note">นำเข้าเป็นพื้นหลัง: แต่ละหน้าของ PDF เป็นพื้นหลังที่ล็อกไว้ เขียน วาด แทรกกล่องข้อความทับได้โดยไม่เลื่อนหลุด นำเข้าได้ครั้งละไม่เกิน 60 หน้า</div>
   </div>
 </div>
 <div class="sheet" id="deckSheet" hidden>
@@ -9046,7 +9056,8 @@ async function placeBlocks(blocks, near, opt) {
 }
 function qBlock(q, i, withKey) {
   const L = 'กขคง';
-  return (i + 1) + '. ' + q.q + '\n' + q.c.map((c, o) => L[o] + '. ' + c).join(CHOICE_SEP) + (withKey ? '\n**ตอบ ' + L[q.a || 0] + '** ' + (q.e || '') : '');
+  const ch = q.c || [];
+  return (i + 1) + '. ' + q.q + (ch.length ? '\n' + ch.map((c, o) => L[o] + '. ' + c).join(CHOICE_SEP) : '') + (withKey ? '\n**ตอบ ' + (ch.length ? L[q.a || 0] : (q.ans || '')) + '** ' + (q.e || '') : '');
 }
 function placedMsg(r, n) { return r.pages ? 'วางโจทย์ ' + n + ' ข้อแล้ว' + (r.here ? ' ต่อไปอีก ' : ' ใน ') + r.pages + ' หน้าใหม่ถัดไป' : 'วางโจทย์ ' + n + ' ข้อในที่ว่างแล้ว'; }
 /* put a text box where it fits; if this page is full, start a new page right after it */
@@ -9134,7 +9145,7 @@ async function openPdfFile(file) {
   const n = PDFI.doc.numPages;
   $('#pdfInfo').textContent = PDFI.name + ' มี ' + n + ' หน้า';
   $('#pdfFrom').max = $('#pdfTo').max = n; $('#pdfFrom').value = 1; $('#pdfTo').value = Math.min(n, 60);
-  $('#pdfMsg').innerHTML = ''; $('#pdfHere').disabled = $('#pdfNew').disabled = false;
+  $('#pdfMsg').innerHTML = ''; $('#pdfHere').disabled = $('#pdfNew').disabled = $('#pdfSplit').disabled = false; $('#pdfSheet .panel').classList.remove('wide');
   $('#toast').hidden = true; $('#pdfSheet').hidden = false;
 }
 async function pdfImport(newNb) {
@@ -9165,6 +9176,215 @@ async function pdfImport(newNb) {
     if (newNb) openNotebook(nid, firstPid); else { S.nb = Object.assign({}, S.nb, { pages }); openPage(firstPid); renderPageList(); renderTitle(); }
     toast('นำเข้า ' + (b - a + 1) + ' หน้าแล้ว เขียนทับได้เลย', 3000);
   } catch (e) { $('#pdfMsg').innerHTML = '<div class="note err">นำเข้าไม่สำเร็จ ' + esc(assetErr(e)) + '</div>'; $('#pdfHere').disabled = $('#pdfNew').disabled = false; }
+}
+
+/* ---------- a PDF of worked examples or exercises: split it into questions, keep each one as a picture cut from the original, answer every one in the five-step form ---------- */
+const PQ = { pages: [], qs: [], name: '', setId: null };
+const PQ_W = 1400, PQ_MAX = 20;
+const PQ_NUM = /^\s*(ตัวอย่?าง\s*(ที่?)?\s*\d+|แบบฝึก(หัด)?\s*(ที่)?\s*\d+|โจทย์\s*(ข้อ)?\s*(ที่)?\s*\d+|ข้อ\s*(ที่)?\s*\d+|(example|exercise|problem|question)\s*\d+|\(?\d{1,3}\s*[.)])/i;
+const PQ_SOL = /^\s*(วิธีท(ำ|\u0E4D\u0E32)|แนวคิด|เฉลย|แนวตอบ|solution|answer)/i;
+async function pqPage(doc, i) {
+  const pg = await doc.getPage(i), v1 = pg.getViewport({ scale: 1 }), vw = pg.getViewport({ scale: PQ_W / v1.width });
+  const cv = document.createElement('canvas'); cv.width = Math.round(vw.width); cv.height = Math.round(vw.height);
+  const c = cv.getContext('2d'); c.fillStyle = '#FFFFFF'; c.fillRect(0, 0, cv.width, cv.height);
+  await pg.render({ canvasContext: c, viewport: vw }).promise;
+  const blob = await new Promise((r) => cv.toBlob(r, 'image/jpeg', 0.86));
+  const out = { n: i, blob, w: cv.width, h: cv.height, lines: [], text: '' }; cv.width = cv.height = 1;
+  /* the printed text lines (none on a scanned page) as boxes in 0..1000 of the page */
+  try {
+    const tc = await pg.getTextContent(), its = [];
+    for (const t of tc.items) {
+      const s = String(t.str || '').replace(/\u0E4D\u0E32/g, '\u0E33').replace(/[\uF700-\uF71F]/g, ''); if (!s.trim()) continue;
+      const m = t.transform, fh = Math.hypot(m[2], m[3]) || 10;
+      its.push({ s, x0: m[4] / v1.width * 1000, x1: (m[4] + (t.width || s.length * fh * 0.5)) / v1.width * 1000, yb: (v1.height - m[5]) / v1.height * 1000, fh: fh / v1.height * 1000 });
+    }
+    its.sort((a, b) => (Math.round(a.yb / 3) - Math.round(b.yb / 3)) || (a.x0 - b.x0));
+    for (const t of its) {
+      const r = out.lines.find((l) => Math.abs(l.yb - t.yb) < Math.max(2.5, t.fh * 0.35) && t.x0 - l.x1 < 30 && t.x0 > l.x0 - 4);
+      if (r) { r.s += t.s; r.x1 = Math.max(r.x1, t.x1); r.yt = Math.min(r.yt, t.yb - t.fh); }
+      else out.lines.push({ s: t.s, x0: t.x0, x1: t.x1, yb: t.yb, yt: t.yb - t.fh });
+    }
+    for (const l of out.lines) l.s = l.s.replace(/\u0E4D\u0E32/g, '\u0E33');
+    out.lines.sort((a, b) => a.yt - b.yt); out.text = out.lines.map((l) => l.s).join('\n');
+  } catch (e) { /* no text layer */ }
+  return out;
+}
+function pqPrompt(batch) {
+  return 'These ' + batch.length + ' images are pages of a Thai teaching document, in order: ' + batch.map((p, k) => 'image ' + (k + 1) + ' is page P' + p.n).join(', ') + '.\n'
+    + 'Find every worked example (ตัวอย่าง) and every exercise or test question (แบบฝึก, โจทย์, ข้อสอบ) on these pages. Skip theory text, headings, summaries and pages that only list answers.\n'
+    + 'For each problem, in reading order, write one block exactly like this:\n'
+    + '@@Q <its label as printed, for example ตัวอย่าง 3, ข้อ 12 or 12.>\n'
+    + '@@KIND example or exercise\n'
+    + '@@BOX P<page> <top> <left> <bottom> <right>\n'
+    + '(the box holds the whole problem statement with its figure, table and choices but NOT its printed solution; numbers are 0 to 1000 of that page image, origin at the top left; if the problem runs onto the next page add a second @@BOX line for that page)\n'
+    + '@@TEXT\n(the problem statement in Thai markdown, every formula and quantity in LaTeX between $...$, a figure described briefly as [รูป: ...])\n'
+    + '@@CHOICES\n(one choice per line without its letter, or - when it is not multiple choice)\n'
+    + '@@GIVEN\n(the answer or worked solution printed in the document for this problem, copied briefly, or -)\n'
+    + '@@ANSWER\n(the final answer: the choice letter ก ข ค or ง for multiple choice, otherwise the value with its unit; solve it yourself when the document gives none)\n'
+    + '@@WHY\n(one short Thai sentence with the key idea)\n'
+    + 'If a problem began on a page that is not shown here, skip it. Write nothing before the first @@Q and nothing else.';
+}
+function pqParse(text, batch) {
+  const out = []; let cur = null;
+  const nums = batch.map((p) => p.n);
+  for (const p of sections(text)) {
+    const tx = (p.text || '').trim(), arg = (p.arg || '').trim();
+    if (p.key === 'Q') { cur = { lab: arg.replace(/[*_`]/g, '').slice(0, 40), kind: 'exercise', boxes: [], q: '', c: [], given: '', ans: '', e: '' }; out.push(cur); continue; }
+    if (!cur) continue;
+    if (p.key === 'KIND') cur.kind = /ex(a|am)mple|ตัวอย่าง/i.test(arg + tx) ? 'example' : 'exercise';
+    else if (p.key === 'BOX') {
+      const m = (arg + ' ' + tx).match(/P?\s*(\d+)\D+(\d+(?:\.\d+)?)\D+(\d+(?:\.\d+)?)\D+(\d+(?:\.\d+)?)\D+(\d+(?:\.\d+)?)/i); if (!m) continue;
+      let pn = +m[1]; if (!nums.includes(pn) && pn >= 1 && pn <= batch.length) pn = nums[pn - 1];
+      if (!nums.includes(pn)) continue;
+      let [t, l, b, r] = [+m[2], +m[3], +m[4], +m[5]].map((v) => clamp(v, 0, 1000)); if (b < t) [t, b] = [b, t]; if (r < l) [l, r] = [r, l];
+      if (b - t > 8 && r - l > 20) cur.boxes.push({ p: pn, y0: t, x0: l, y1: b, x1: r });
+    }
+    else if (p.key === 'TEXT') cur.q = tx;
+    else if (p.key === 'CHOICES') cur.c = tx === '-' || !tx ? [] : tx.split('\n').map((s) => s.replace(/^\s*[-*]?\s*(\(?[กขคงabcdABCD1-4][.)]\s*)?/, '').trim()).filter((s) => s && s !== '-').slice(0, 5);
+    else if (p.key === 'GIVEN') cur.given = tx === '-' ? '' : tx.slice(0, 1600);
+    else if (p.key === 'ANSWER') cur.ans = (tx || arg).trim();
+    else if (p.key === 'WHY') cur.e = tx;
+  }
+  return out.filter((q) => q.boxes.length && (q.q || q.boxes.length));
+}
+/* tighten the AI's box with the printed lines: start at the question number, stop before the next question or the printed solution */
+function pqSnap(b, pg) {
+  const r = Object.assign({}, b), L = (pg && pg.lines) || [];
+  const inCol = (l) => l.x0 > r.x0 - 60 && l.x0 < r.x0 + 160;
+  const heads = L.filter((l) => inCol(l) && PQ_NUM.test(l.s));
+  const h = heads.filter((l) => Math.abs(l.yt - r.y0) < 45).sort((a, c) => Math.abs(a.yt - r.y0) - Math.abs(c.yt - r.y0))[0];
+  if (h) r.y0 = h.yt;
+  const stop = L.filter((l) => inCol(l) && l.yt > r.y0 + 12 && (PQ_NUM.test(l.s) || PQ_SOL.test(l.s)) && l !== h).sort((a, c) => a.yt - c.yt)[0];
+  let pad = 12;
+  if (stop && stop.yt < r.y1 + 60) { r.y1 = stop.yt - 5; pad = 0; }
+  else { const tail = L.filter((l) => inCol(l) && l.yt > r.y1 - 6 && l.yt < r.y1 + 24 && !PQ_SOL.test(l.s) && !PQ_NUM.test(l.s)).sort((a, c) => c.yb - a.yb)[0]; if (tail) r.y1 = Math.max(r.y1, tail.yb); }
+  r.y0 = clamp(r.y0 - 10, 0, 1000); r.y1 = clamp(r.y1 + pad, 0, 1000); r.x0 = clamp(r.x0 - 12, 0, 1000); r.x1 = clamp(r.x1 + 12, 0, 1000);
+  if (r.y1 - r.y0 < 20) r.y1 = clamp(r.y0 + 60, 0, 1000);
+  return r;
+}
+const pqBmp = {};
+async function pqBitmap(pn) { if (!pqBmp[pn]) { const pg = PQ.pages.find((p) => p.n === pn); pqBmp[pn] = pg ? await createImageBitmap(pg.blob) : null; } return pqBmp[pn]; }
+async function pqCrop(q) {
+  const parts = [];
+  for (const b of q.boxes) { const bm = await pqBitmap(b.p); if (!bm) continue; parts.push({ bm, sx: b.x0 / 1000 * bm.width, sy: b.y0 / 1000 * bm.height, sw: (b.x1 - b.x0) / 1000 * bm.width, sh: (b.y1 - b.y0) / 1000 * bm.height }); }
+  if (!parts.length) return null;
+  const w = Math.round(Math.max(...parts.map((p) => p.sw))), h = Math.round(parts.reduce((a, p) => a + p.sh, 0) + (parts.length - 1) * 8);
+  const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+  const c = cv.getContext('2d'); c.fillStyle = '#FFFFFF'; c.fillRect(0, 0, w, h);
+  let y = 0; for (const p of parts) { c.drawImage(p.bm, p.sx, p.sy, p.sw, p.sh, 0, y, p.sw, p.sh); y += p.sh + 8; }
+  const blob = await new Promise((r) => cv.toBlob(r, 'image/jpeg', 0.9)); cv.width = cv.height = 1;
+  return { blob, ar: h / w, frac: Math.max(...q.boxes.map((b) => b.x1 - b.x0)) / 1000 };
+}
+async function pqSplit() {
+  const doc = PDFI.doc; if (!doc) return;
+  if (!needAI('read')) return;
+  const a = clamp(parseInt($('#pdfFrom').value, 10) || 1, 1, doc.numPages), b = clamp(parseInt($('#pdfTo').value, 10) || a, a, Math.min(doc.numPages, a + PQ_MAX - 1));
+  const box = $('#pdfMsg'); $('#pdfHere').disabled = $('#pdfNew').disabled = $('#pdfSplit').disabled = true;
+  PQ.pages = []; PQ.qs = []; PQ.name = PDFI.name; for (const k of Object.keys(pqBmp)) delete pqBmp[k];
+  let stop = false;
+  const per = Math.max(1, Math.min(3, ((AI.limits('read') || {}).images || { maxCount: 3 }).maxCount || 3));
+  const nb = Math.ceil((b - a + 1) / per);
+  const B = waitCard(box, 'กำลังแยกข้อจาก PDF', ['เปิดหน้า ' + a + ' ถึง ' + b, 'AI อ่านและแยกข้อ ทีละ ' + per + ' หน้า (' + nb + ' รอบ)', 'ตัดภาพแต่ละข้อจากต้นฉบับ', 'ให้ครูตรวจก่อนบันทึก'], { cancelText: 'หยุด', onCancel: () => { stop = true; } });
+  try {
+    for (let i = a; i <= b && !stop; i++) PQ.pages.push(await pqPage(doc, i));
+    B.step(1);
+    for (let k = 0; k < PQ.pages.length && !stop; k += per) {
+      const batch = PQ.pages.slice(k, k + per);
+      box.querySelector('.busy b') && (box.querySelector('.busy b').textContent = 'AI กำลังอ่านหน้า ' + batch[0].n + (batch.length > 1 ? ' ถึง ' + batch[batch.length - 1].n : '') + ' (รอบ ' + (k / per + 1) + ' จาก ' + nb + ')');
+      const hint = batch.map((p) => p.text ? '\nPrinted text of P' + p.n + ' (may be garbled, use the image first):\n' + p.text.slice(0, 2500) : '').join('');
+      let r = null;
+      for (let tr = 0; tr < 2 && !r && !stop; tr++) { try { r = await AI.run('read', pqPrompt(batch) + hint, { images: batch.map((p) => p.blob), cache: false, maxTokens: 7000 }); } catch (e) { if (tr) throw e; } }
+      if (r) PQ.qs.push(...pqParse(r.text, batch));
+    }
+    if (stop) { $('#pdfHere').disabled = $('#pdfNew').disabled = $('#pdfSplit').disabled = false; return; }
+    B.step(2);
+    const tr = 'olymp';
+    for (const q of PQ.qs) {
+      q.id = 'f' + uid(); q.boxes = q.boxes.map((x) => pqSnap(x, PQ.pages.find((p) => p.n === x.p)));
+      const ch = detectFromText(q.q, tr); q.t = tr; q.ch = ch.length ? ch[0] : 0;
+      const L = 'กขคงabcdABCD';
+      if (q.c.length >= 2) { const m = q.ans.match(/[กขคงabcdABCD]/); const ix = m ? L.indexOf(m[0]) % 4 : -1; q.a = ix >= 0 && ix < q.c.length ? ix : 0; if (ix < 0) q.c = []; }
+      if (!q.c.length) q.a = 0;
+      q.crop = await pqCrop(q);
+    }
+    PQ.qs = PQ.qs.filter((q) => q.crop);
+    B.stop();
+    if (!PQ.qs.length) { box.innerHTML = '<div class="note err">ไม่พบตัวอย่างหรือแบบฝึกในหน้าที่เลือก ลองเลือกหน้าอื่น หรือนำเข้าเป็นพื้นหลังแทน</div>'; $('#pdfHere').disabled = $('#pdfNew').disabled = $('#pdfSplit').disabled = false; return; }
+    pqReview();
+  } catch (e) { B.stop(); box.innerHTML = '<div class="note err">แยกข้อไม่สำเร็จ ' + esc(aiErr(e)) + '</div>'; $('#pdfHere').disabled = $('#pdfNew').disabled = $('#pdfSplit').disabled = false; }
+}
+/* the teacher checks each cut before the set is saved */
+function pqReview() {
+  const panel = $('#pdfSheet .panel'); panel.classList.add('wide');
+  const box = $('#pdfMsg'); box.innerHTML = '';
+  const nEx = PQ.qs.filter((q) => q.kind === 'example').length;
+  box.appendChild(exEl('div', 'note ok', 'พบ ' + PQ.qs.length + ' ข้อ (ตัวอย่าง ' + nEx + ' แบบฝึก ' + (PQ.qs.length - nEx) + ') ตรวจภาพที่ตัดแต่ละข้อ ปรับขอบบนล่างได้ แล้วกดบันทึก ระบบจะเขียนเฉลยละเอียด 5 ขั้นให้ทุกข้อต่อเอง'));
+  const list = exEl('div', 'pqlist');
+  PQ.qs.forEach((q, i) => {
+    const c = exEl('div', 'pqcard');
+    const head = exEl('div', 'tqh', '<b>' + esc(q.lab || ('ข้อ ' + (i + 1))) + '</b><span class="tqk">' + (q.kind === 'example' ? 'ตัวอย่าง' : 'แบบฝึก') + '</span>' + (q.c.length ? '<span class="tqk">ปรนัย ' + q.c.length + ' ตัวเลือก</span>' : '<span class="tqk">เขียนตอบ</span>'));
+    c.appendChild(head);
+    const im = document.createElement('img'); im.className = 'pqimg'; im.alt = 'ภาพโจทย์ที่ตัดจาก PDF'; im.src = URL.createObjectURL(q.crop.blob); c.appendChild(im);
+    c.appendChild(exEl('div', 'tqkey', keyLine(q) + (q.given ? '<div><small>ในเอกสารมีเฉลยให้แล้ว ระบบจะใช้แนวนั้น</small></div>' : '')));
+    const acts = exEl('div', 'tqa pqacts');
+    const nudge = (t, k, d) => { const bt = exEl('button', 'btn sm', t); bt.type = 'button'; bt.onclick = async () => { const bx = k === 'y0' ? q.boxes[0] : q.boxes[q.boxes.length - 1]; bx[k] = clamp(bx[k] + d, 0, 1000); if (bx.y1 - bx.y0 < 15) bx[k] -= d; q.crop = await pqCrop(q); URL.revokeObjectURL(im.src); im.src = URL.createObjectURL(q.crop.blob); }; acts.appendChild(bt); };
+    nudge('ขอบบนขึ้น', 'y0', -15); nudge('ขอบบนลง', 'y0', 15); nudge('ขอบล่างขึ้น', 'y1', -15); nudge('ขอบล่างลง', 'y1', 15);
+    const kind = exEl('button', 'btn sm', q.kind === 'example' ? 'เปลี่ยนเป็นแบบฝึก' : 'เปลี่ยนเป็นตัวอย่าง'); kind.type = 'button'; kind.onclick = () => { q.kind = q.kind === 'example' ? 'exercise' : 'example'; pqReview(); }; acts.appendChild(kind);
+    const del = exEl('button', 'btn sm danger', 'ตัดข้อนี้ออก'); del.type = 'button'; del.onclick = () => { PQ.qs.splice(i, 1); pqReview(); }; acts.appendChild(del);
+    c.appendChild(acts); list.appendChild(c);
+  });
+  box.appendChild(list);
+  const row = exEl('div', 'row2 pqsave');
+  const sv = exEl('button', 'btn solid', 'บันทึกเป็นชุดโจทย์ แล้วเปิดแผงหยิบวางทีละข้อ'); sv.type = 'button'; sv.onclick = () => pqSave(sv); row.appendChild(sv);
+  box.appendChild(row);
+  typeset(box);
+}
+async function pqSave(btn) {
+  if (!PQ.qs.length) return;
+  const A = await getAssets(); if (!A) { toast('มุมมองนี้บันทึกภาพไม่ได้', 3000); return; }
+  btn.disabled = true; btn.textContent = 'กำลังบันทึกภาพแต่ละข้อ';
+  try {
+    const qs = [];
+    for (const q of PQ.qs) {
+      const up = await A.upload(q.crop.blob, { type: 'image/jpeg' });
+      qs.push({ id: q.id, t: q.t, ch: q.ch, d: 2, k: q.kind === 'example' ? 'ex' : '', q: q.q || ('[ภาพโจทย์ ' + q.lab + ']'), c: q.c, a: q.a || 0, ans: q.c.length ? '' : q.ans, e: q.e || '', given: q.given || '', lab: q.lab || '', img: { asset: up.id, ar: Math.round(q.crop.ar * 1000) / 1000, fr: Math.round(q.crop.frac * 100) / 100 }, src: 'pdf' });
+    }
+    const id = 's' + now().toString(36) + uid().slice(0, 3);
+    const set = { id, title: PQ.name || 'PDF', at: now(), src: 'pdf', qs };
+    if (!EX.loaded) await exLoad();
+    EX.sets = (EX.sets || []).concat([set]);
+    await S.store.set('exs/' + id, Object.assign({}, set, { id: undefined })).catch(onStoreError);
+    $('#pdfSheet').hidden = true; $('#pdfSheet .panel').classList.remove('wide'); PDFI.doc = null; PQ.pages = []; PQ.qs = []; for (const k of Object.keys(pqBmp)) delete pqBmp[k];
+    TRAY.placed[set.id] = {}; openTray(set.id);
+    toast('ได้ชุดโจทย์ ' + qs.length + ' ข้อ กดวางข้อถัดไปเพื่อสอนทีละข้อ เฉลยละเอียดกำลังเขียนให้', 3600);
+    solQueue(set);
+  } catch (e) { btn.disabled = false; btn.textContent = 'บันทึกเป็นชุดโจทย์ แล้วเปิดแผงหยิบวางทีละข้อ'; toast('บันทึกไม่สำเร็จ ' + assetErr(e), 4000); }
+}
+/* write the five-step solutions for a whole set in the background, one at a time */
+const SOLQ = { run: false, set: null, done: 0, n: 0, fail: 0 };
+async function solQueue(set) {
+  if (!set || !AI.ready('gen')) return;
+  SOLQ.set = set.id; SOLQ.n = set.qs.length; SOLQ.done = 0; SOLQ.fail = 0;
+  if (SOLQ.run) return; SOLQ.run = true;
+  try {
+    for (const q of set.qs) {
+      if (SOLQ.set !== set.id) break;
+      if (await solGet(q)) { SOLQ.done++; renderTrayLater(); continue; }
+      try { await solMake(q); SOLQ.done++; } catch (e) { SOLQ.fail++; }
+      renderTrayLater();
+    }
+  } finally { SOLQ.run = false; renderTrayLater(); }
+}
+function renderTrayLater() { clearTimeout(SOLQ.t); SOLQ.t = setTimeout(() => { if (!$('#qtray').hidden) renderTray(); }, 300); }
+function solHas(q) { try { return !!JSON.parse(store_ls.get('tp-' + solKey(q)) || 'null'); } catch (e) { return false; } }
+async function qImgBlob(q) {
+  const id = q && q.img && q.img.asset; if (!okAsset(id)) return null;
+  if (id[0] === 'L' || id[0] === 'S') return getAssetBlob(id);
+  try { const r = await fetch('/_blob/' + id); return r.ok ? await r.blob() : null; } catch (e) { return null; }
+}
+function keyLine(q) {
+  if (q.c && q.c.length) return '<b>ตอบ ' + 'กขคง'[q.a || 0] + '.</b> ' + mdToHtml(q.c[q.a || 0] || '');
+  return '<b>ตอบ</b> ' + (q.ans ? mdToHtml(q.ans) : 'ดูเฉลยละเอียด');
 }
 
 function poolFor(picks, useBank, useGen, kind) {
@@ -9413,6 +9633,7 @@ async function placeQuestions(qs, near, opt) {
   if (opt.header) units.push({ parts: [{ type: 'text', md: opt.header, h: await measureMd(opt.header, w, fs), w, fs }], gap: 10 });
   for (let i = 0; i < qs.length; i++) {
     const q = qs[i], parts = [], num = opt.numFrom != null ? opt.numFrom + i : i + 1;
+    if (q.img && okAsset(q.img.asset) && !opt.typed) { const iw = Math.round(clamp((q.img.fr || 0.9) * W * 1.1, 420, W - 100)); parts.push({ type: 'img', asset: q.img.asset, ar: q.img.ar, w: iw, h: iw * q.img.ar, x: Math.round((W - iw) / 2), qref: opt.setId ? { set: opt.setId, q: q.id } : null }); units.push({ parts, gap: space + 16 }); continue; }
     if (q.fig) { const [fw, fh] = figSize(q.fig, 380); parts.push({ type: 'svg', svg: q.fig, w: fw, h: fh }); }
     const md = qBlock(q, num - 1, !!opt.withKey);
     parts.push({ type: 'text', md, w, fs, h: await measureMd(md, w, fs), qref: opt.setId ? { set: opt.setId, q: q.id } : null });
@@ -9430,8 +9651,8 @@ async function placeQuestions(qs, near, opt) {
     else if (cur && y + h > bottom) { pagesOut.push(cur); cur = null; }
     if (!cur) { cur = { here: false, items: [] }; y = top; }
     for (const p of u.parts) {
-      const it = { id: 'i' + uid(), by: DEV, type: p.type, x: p.type === 'svg' ? x0 + 30 : x0, y: Math.round(y), w: p.w };
-      if (p.type === 'svg') it.svg = p.svg; else { it.md = p.md; it.fs = p.fs; if (p.qref) it.qref = p.qref; }
+      const it = { id: 'i' + uid(), by: DEV, type: p.type, x: p.x != null ? p.x : p.type === 'svg' ? x0 + 30 : x0, y: Math.round(y), w: p.w };
+      if (p.type === 'svg') it.svg = p.svg; else if (p.type === 'img') { it.asset = p.asset; it.ar = p.ar; if (p.qref) it.qref = p.qref; } else { it.md = p.md; it.fs = p.fs; if (p.qref) it.qref = p.qref; }
       cur.items.push(it); y += p.h + 6;
     }
     if (cur.here) occ.push([x0, y - h, x0 + w, y + u.gap]);
@@ -9474,18 +9695,21 @@ function renderTray() {
   body.appendChild(row0);
   const set = setById(TRAY.setId);
   if (!set) { body.appendChild(exEl('div', 'note', 'สร้างชุดไว้ล่วงหน้าที่ ฝึกแข่งขัน แท็บชุดโจทย์ หรือด้นสดจากสิ่งที่เขียนบนหน้า แล้วชุดจะมาอยู่ที่นี่ให้หยิบวางทีละข้อ')); return; }
+  if (SOLQ.set === set.id && (SOLQ.run || SOLQ.fail)) body.appendChild(exEl('div', 'note' + (SOLQ.run ? '' : ' err'), SOLQ.run ? 'กำลังเขียนเฉลยละเอียด 5 ขั้น เสร็จแล้ว ' + SOLQ.done + ' จาก ' + SOLQ.n + ' ข้อ ใช้งานแผงนี้ไปพร้อมกันได้' : 'เขียนเฉลยไม่สำเร็จ ' + SOLQ.fail + ' ข้อ กดดูเฉลยของข้อนั้นเพื่อลองใหม่'));
+  else if (set.src === 'pdf' && AI.ready('gen') && set.qs.some((q) => !solHas(q))) { const sb = exEl('button', 'btn', 'เขียนเฉลยละเอียดให้ข้อที่ยังไม่มี'); sb.onclick = () => { solQueue(set); renderTrayLater(); }; body.appendChild(sb); }
   body.appendChild(exEl('span', 'label', 'พื้นที่ใต้แต่ละข้อสำหรับแสดงวิธีทำ'));
   exChips(body, SPACE_OPTS, (v) => v === TRAY.space, (v) => { TRAY.space = v; store_ls.set('tp-tray-space', String(v)); renderTray(); });
   const placed = TRAY.placed[set.id] || (TRAY.placed[set.id] = {});
   const list = exEl('div', 'traylist');
   set.qs.forEach((q, i) => {
     const card = exEl('div', 'tq' + (placed[q.id] ? ' done' : ''));
-    card.innerHTML = '<div class="tqh"><b>ข้อ ' + (i + 1) + '</b><span class="lv l' + (q.d || 1) + '">' + ['', 'ง่าย', 'กลาง', 'ยาก'][q.d || 1] + '</span>' + (q.fig ? '<span class="tqk">มีรูป</span>' : '') + (placed[q.id] ? '<span class="tqk">วางแล้ว</span>' : '') + '</div>' + figHtml(q, 260) + '<div class="tqq">' + mdToHtml(q.q) + '</div>';
+    card.innerHTML = '<div class="tqh"><b>' + (q.lab ? esc(q.lab) : 'ข้อ ' + (i + 1)) + '</b>' + (q.src === 'pdf' ? '<span class="tqk">' + (q.k === 'ex' ? 'ตัวอย่าง' : 'แบบฝึก') + '</span>' : '<span class="lv l' + (q.d || 1) + '">' + ['', 'ง่าย', 'กลาง', 'ยาก'][q.d || 1] + '</span>') + (q.fig ? '<span class="tqk">มีรูป</span>' : '') + (placed[q.id] ? '<span class="tqk">วางแล้ว</span>' : '') + (solHas(q) ? '<span class="tqk ok">เฉลย 5 ขั้นพร้อม</span>' : '') + '</div>' + figHtml(q, 260) + (q.img && okAsset(q.img.asset) ? '<div class="tqimg"><img alt="ภาพโจทย์จากต้นฉบับ"></div>' : '<div class="tqq">' + mdToHtml(q.q) + '</div>');
+    if (q.img && okAsset(q.img.asset)) setAssetSrc(card.querySelector('.tqimg img'), q.img.asset);
     const acts = exEl('div', 'tqa');
     const put = exEl('button', 'btn solid', placed[q.id] ? 'วางอีกครั้ง' : 'วางข้อนี้'); put.onclick = () => trayPlace(set, [q], i + 1); acts.appendChild(put);
     const pk = exEl('button', 'btn', TRAY.peek[q.id] ? 'ซ่อนเฉลย' : 'ดูเฉลย (เห็นคนเดียว)'); pk.onclick = () => { TRAY.peek[q.id] = !TRAY.peek[q.id]; renderTray(); }; acts.appendChild(pk);
     card.appendChild(acts);
-    if (TRAY.peek[q.id]) { const kd = exEl('div', 'tqkey', '<b>ตอบ ' + 'กขคง'[q.a || 0] + '.</b> ' + mdToHtml(q.c[q.a || 0]) + '<div>' + mdToHtml(q.e || '') + '</div>'); const sb = exEl('button', 'btn solbtn', 'เฉลยละเอียด 5 ขั้น'); sb.onclick = () => { const pc = $('#peekCard'); pc.innerHTML = '<div class="pkh"><b>เฉลยละเอียด <small>เห็นเฉพาะเครื่องนี้</small></b><span class="pknav"><button class="btn icon sm" data-a="close" aria-label="ปิด"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6 6l8 8M14 6l-8 8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button></span></div>'; pc.querySelector('[data-a="close"]').onclick = () => { pc.hidden = true; }; pc.hidden = false; showSolution(q, null, pc); }; kd.appendChild(sb); card.appendChild(kd); }
+    if (TRAY.peek[q.id]) { const kd = exEl('div', 'tqkey', keyLine(q) + '<div>' + mdToHtml(q.e || '') + '</div>'); const sb = exEl('button', 'btn solbtn', 'เฉลยละเอียด 5 ขั้น'); sb.onclick = () => { const pc = $('#peekCard'); pc.innerHTML = '<div class="pkh"><b>เฉลยละเอียด <small>เห็นเฉพาะเครื่องนี้</small></b><span class="pknav"><button class="btn icon sm" data-a="close" aria-label="ปิด"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6 6l8 8M14 6l-8 8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button></span></div>'; pc.querySelector('[data-a="close"]').onclick = () => { pc.hidden = true; }; pc.hidden = false; showSolution(q, null, pc); }; kd.appendChild(sb); card.appendChild(kd); }
     list.appendChild(card);
   });
   body.appendChild(list);
@@ -9521,8 +9745,8 @@ function showPeek(itemId) {
   if (k < 0) { toast('กล่องนี้ไม่ได้มาจากชุดโจทย์', 1600); return; }
   const paint = () => {
     const it = list[k], q = qOf(it), num = (it.md || '').match(/^\s*\**\s*(\d+)[.)]/);
-    card.innerHTML = '<div class="pkh"><b>เฉลย' + (num ? ' ข้อ ' + num[1] : '') + ' <small>เห็นเฉพาะเครื่องนี้</small></b><span class="pknav"><button class="btn icon sm" data-a="prev" aria-label="ข้อก่อนหน้า"' + (k ? '' : ' disabled') + '><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M12 5l-5 5 5 5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button><span>' + (k + 1) + '/' + list.length + '</span><button class="btn icon sm" data-a="next" aria-label="ข้อถัดไป"' + (k < list.length - 1 ? '' : ' disabled') + '><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M8 5l5 5-5 5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button><button class="btn icon sm" data-a="close" aria-label="ปิด"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6 6l8 8M14 6l-8 8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button></span></div>'
-      + '<div class="pka"><b>ตอบ ' + 'กขคง'[q.a || 0] + '.</b> ' + mdToHtml(q.c[q.a || 0]) + '</div>' + (q.e ? '<div class="pke">' + mdToHtml(q.e) + '</div>' : '')
+    card.innerHTML = '<div class="pkh"><b>เฉลย' + (num ? ' ข้อ ' + num[1] : q.lab ? ' ' + esc(q.lab) : '') + ' <small>เห็นเฉพาะเครื่องนี้</small></b><span class="pknav"><button class="btn icon sm" data-a="prev" aria-label="ข้อก่อนหน้า"' + (k ? '' : ' disabled') + '><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M12 5l-5 5 5 5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button><span>' + (k + 1) + '/' + list.length + '</span><button class="btn icon sm" data-a="next" aria-label="ข้อถัดไป"' + (k < list.length - 1 ? '' : ' disabled') + '><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M8 5l5 5-5 5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button><button class="btn icon sm" data-a="close" aria-label="ปิด"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6 6l8 8M14 6l-8 8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button></span></div>'
+      + '<div class="pka">' + keyLine(q) + '</div>' + (q.e ? '<div class="pke">' + mdToHtml(q.e) + '</div>' : '')
       + '<button class="btn solid solbtn" type="button" data-a="sol">เฉลยละเอียด 5 ขั้น</button>';
     card.classList.remove('wide');
     card.querySelector('[data-a="sol"]').onclick = (e) => { e.currentTarget.remove(); showSolution(q, it.id, card); };
@@ -9538,7 +9762,7 @@ function showPeek(itemId) {
 }
 /* ---------- detailed worked solution in five steps (teacher only). Made by the connected AI once, then kept and synced. ---------- */
 const SOL_STEPS = ['อ่านและวิเคราะห์โจทย์', 'จำลองเหตุการณ์', 'สมการที่เกี่ยวข้อง', 'คำนวณ', 'สรุปตามหลักฟิสิกส์'];
-const solKey = (q) => 'sols/s' + Array.from(String(q.q || '') + '|' + String((q.c || [])[q.a || 0] || '')).reduce((h, ch) => ((h * 31 + ch.charCodeAt(0)) >>> 0), 7).toString(36);
+const solKey = (q) => 'sols/s' + Array.from(String(q.q || '') + '|' + String((q.c || [])[q.a || 0] || q.ans || '')).reduce((h, ch) => ((h * 31 + ch.charCodeAt(0)) >>> 0), 7).toString(36);
 async function solGet(q) {
   const k = solKey(q);
   try { const l = JSON.parse(store_ls.get('tp-' + k) || 'null'); if (l && l.raw) return l.raw; } catch (e) { /* look in the cloud */ }
@@ -9546,18 +9770,20 @@ async function solGet(q) {
   return null;
 }
 function solPut(q, raw) { const k = solKey(q); store_ls.set('tp-' + k, JSON.stringify({ raw })); Promise.resolve(S.store.set(k, { raw, at: now() })).catch(() => {}); }
-function solPrompt(q) {
-  const L = 'ABCD';
+function solPrompt(q, o) {
+  o = o || {}; const L = 'ABCD', mc = (q.c || []).length >= 2;
   return 'You are an experienced Thai physics teacher writing a model worked solution that a teacher will explain to the class.\n'
-    + 'Problem:\n' + q.q + '\nChoices:\n' + (q.c || []).map((c, i) => L[i] + '. ' + c).join('\n')
-    + '\nThe answer key says: ' + L[q.a || 0] + '. ' + (q.c || [])[q.a || 0] + (q.e ? '\nShort note from the key: ' + q.e : '')
+    + 'Problem:\n' + q.q + (mc ? '\nChoices:\n' + q.c.map((c, i) => L[i] + '. ' + c).join('\n') : '\n(This is a written-answer problem, not multiple choice.)')
+    + (o.img ? '\nThe attached picture is the problem exactly as printed, with its figure. Read every given value and the figure from it; the text above is only a transcription.' : '')
+    + (mc ? '\nThe answer key says: ' + L[q.a || 0] + '. ' + q.c[q.a || 0] : q.ans ? '\nA first answer (check it, it may be wrong): ' + q.ans : '') + (q.e ? '\nShort note from the key: ' + q.e : '')
+    + (q.given ? '\nThe source document prints this answer or solution; follow its approach and notation unless it is wrong:\n' + q.given : '')
     + '\n\nWrite the solution in Thai, in exactly these five steps, each starting with its marker line:\n'
     + '@@STEP 1 อ่านและวิเคราะห์โจทย์\nKey words and the key physical idea; list the given data as symbols with values and units; state what is asked and any assumptions (frictionless, g = ..., etc.).\n'
     + '@@STEP 2 จำลองเหตุการณ์\nDescribe the situation in one or two sentences, then draw it. When forces act, draw a free-body diagram of each body: the body as a simple shape, every force as an arrow from the body with its symbol (for example $m\\vec g$, $\\vec N$, $\\vec T$, $\\vec f$), the chosen axes and the direction of acceleration or motion. When the problem is not about forces, draw the most useful picture instead (circuit, ray diagram, motion diagram, graph, energy bar chart, particle model). Put the drawing as one <svg> element on its own lines.\n'
     + 'SVG rules: viewBox about 520 wide fitted to the content, no background rectangle; objects stroke #14181F width 2 fill none or #FFFFFF; forces and accelerations #C2571A; velocities #2F4BB8; arrowheads as small filled polygons; labels as <text> font-family="Sarabun, sans-serif" size 18 to 20, symbols in italic; no <style>, <script>, <image>, <foreignObject>, <use>, markers or external references. Directions and relative lengths must be physically right.\n'
     + '@@STEP 3 สมการที่เกี่ยวข้อง\nList the relevant laws and equations in LaTeX between $...$, then say which ones you will use and why they fit this situation.\n'
     + '@@STEP 4 คำนวณ\nSolve step by step with LaTeX, substitute numbers with units, keep sensible significant figures, and box nothing. End with the final value.\n'
-    + '@@STEP 5 สรุปตามหลักฟิสิกส์\nState the answer as a choice letter and value, explain what it means physically, check it (units, size, a limiting case), and say briefly why the tempting wrong choices are wrong.\n'
+    + '@@STEP 5 สรุปตามหลักฟิสิกส์\n' + (mc ? 'State the answer as a choice letter and value, explain what it means physically, check it (units, size, a limiting case), and say briefly why the tempting wrong choices are wrong.\n' : 'State the final answer with its unit on the first line as **คำตอบ** ..., explain what it means physically, check it (units, size, a limiting case), and name the most common mistake.\n')
     + 'If the problem has several stages, you may go back: after step 4 start again with "@@STEP 1 (ช่วงที่ 2)" or "@@STEP 2 (ช่วงที่ 2)" for the next stage and continue to step 4, and finish with one step 5 for the whole problem.\n'
     + 'If you are sure the answer key is wrong, still solve it correctly and add a final line block:\n@@NOTE\n(Thai, one or two sentences)\n'
     + 'Write nothing before the first marker.';
@@ -9584,17 +9810,29 @@ async function showSolution(q, itemId, box, opt) {
     if (!needAI('gen')) { host.innerHTML = '<div class="note">เฉลยละเอียดสร้างด้วย AI ต่อ AI ที่เมนู แท็บบัญชี ซิงก์ และ AI ก่อน สร้างครั้งเดียวแล้วเก็บไว้ใช้ซ้ำได้ทุกเครื่อง</div>'; return; }
     const B = waitCard(host, 'กำลังเขียนเฉลยละเอียด 5 ขั้น', SOL_STEPS, { cancel: false });
     let i = 0; const tk = setInterval(() => { if (i < 4) B.step(++i); }, 4000);
-    try { const r = await AI.run('gen', solPrompt(q), { cache: false, maxTokens: 3500 }); raw = String(r.text || ''); }
-    catch (e) { raw = null; }
+    try { raw = await solMake(q, opt.fresh); } catch (e) { raw = null; }
     clearInterval(tk); B.stop();
-    if (!raw || !solParse(raw).length) { host.innerHTML = '<div class="note err">เขียนเฉลยละเอียดไม่สำเร็จ ลองอีกครั้ง</div>'; return; }
-    solPut(q, raw);
+    if (!raw) { host.innerHTML = '<div class="note err">เขียนเฉลยละเอียดไม่สำเร็จ ลองอีกครั้ง</div>'; return; }
+    renderTrayLater();
   }
   const steps = solParse(raw);
   host.innerHTML = '<div class="solsteps">' + solHtml(steps) + '</div><div class="row2 solacts"><button class="btn" type="button" data-a="place">วางลงหน้า (เห็นเฉพาะครู)</button><button class="btn" type="button" data-a="again">เขียนใหม่</button></div><div class="note small">เฉลยจาก AI ตรวจความถูกต้องก่อนใช้สอน</div>';
   typeset(host);
   host.querySelector('[data-a="again"]').onclick = () => showSolution(q, itemId, card, { fresh: true });
   host.querySelector('[data-a="place"]').onclick = () => solPlace(steps, itemId);
+}
+/* one AI call per question, shared when the background writer and the teacher ask at the same time */
+const SOLP = {};
+function solMake(q, fresh) {
+  const k = solKey(q); if (SOLP[k] && !fresh) return SOLP[k];
+  const job = (async () => {
+    const img = q.img ? await qImgBlob(q) : null;
+    const r = await AI.run('gen', solPrompt(q, { img: !!img }), { cache: false, maxTokens: 3500, images: img ? [img] : undefined });
+    const raw = String(r.text || ''); if (!solParse(raw).length) throw { code: 'empty_text' };
+    solPut(q, raw); return raw;
+  })();
+  SOLP[k] = job; job.then(() => { delete SOLP[k]; }, () => { delete SOLP[k]; });
+  return job;
 }
 /* on the page as teacher-only boxes: hidden from students, the projector and shared copies */
 function solPlace(steps, itemId) {
@@ -9622,8 +9860,9 @@ function exRenderSets(body) {
     add('เปิดในแผงข้างหน้า', () => { $('#examSheet').hidden = true; openTray(st.id); }, 'solid');
     add('แก้ไข', () => { EX.editSet = clone(st); exRender(); });
     add('ส่งออกเป็นเอกสาร', () => openHandout(st));
-    if (typeof openAssign === 'function') add('มอบหมายเป็นการบ้าน', () => openAssign(st));
-    if (LIVE.role === 'teacher' && LIVE.ready) add('ส่งห้องสด', () => liveSendSet(st));
+    const mc = st.qs.every((q) => q.c && q.c.length >= 2);
+    if (mc && typeof openAssign === 'function') add('มอบหมายเป็นการบ้าน', () => openAssign(st));
+    if (mc && LIVE.role === 'teacher' && LIVE.ready) add('ส่งห้องสด', () => liveSendSet(st));
     r.appendChild(acts); body.appendChild(r);
   }
 }
@@ -9661,7 +9900,7 @@ function exRenderSetEditor(body) {
   const row = exEl('div', 'row2');
   const sv = exEl('button', 'btn solid', 'บันทึกชุด'); sv.onclick = async () => {
     st.title = (st.title || '').trim() || 'ชุดโจทย์'; st.at = st.at || now();
-    const data = { title: st.title, at: st.at, qs: st.qs.map((q) => ({ id: q.id, t: q.t, ch: q.ch, d: q.d, k: q.k, q: q.q, c: q.c, a: q.a || 0, e: q.e || '', fig: q.fig || undefined, src: q.src, o: q.o, s: q.s, b: q.b, w: q.w })) };
+    const data = { title: st.title, at: st.at, src: st.src, qs: st.qs.map((q) => ({ id: q.id, t: q.t, ch: q.ch, d: q.d, k: q.k, q: q.q, c: q.c, a: q.a || 0, e: q.e || '', fig: q.fig || undefined, src: q.src, o: q.o, s: q.s, b: q.b, w: q.w, ans: q.ans || undefined, given: q.given || undefined, lab: q.lab || undefined, img: q.img || undefined })) };
     await S.store.set('exs/' + st.id, data).catch(onStoreError);
     EX.sets = (EX.sets || []).filter((x) => x.id !== st.id).concat([Object.assign({ id: st.id }, data)]);
     EX.editSet = null; toast('บันทึกชุดแล้ว', 1400); exRender();
@@ -9679,8 +9918,8 @@ function openHandout(set) {
 }
 function handoutHtml(set, o) {
   const L = 'กขคง';
-  const qh = set.qs.map((q, i) => '<section class="q"><div class="qn">' + (i + 1) + '.</div><div class="qb">' + (q.fig ? '<div class="fig">' + (cleanSvg(q.fig) || '') + '</div>' : '') + '<div>' + mdToHtml(q.q) + '</div><ol class="ch">' + q.c.map((c, k) => '<li><b>' + L[k] + '.</b> ' + mdToHtml(c) + '</li>').join('') + '</ol>' + (o.space ? '<div class="work" style="height:' + o.space + 'px"></div>' : '') + '</div></section>').join('');
-  const key = o.key ? '<section class="key"><h2>เฉลย</h2>' + set.qs.map((q, i) => '<p><b>' + (i + 1) + '. ' + L[q.a || 0] + '</b> ' + (o.why ? mdToHtml(q.e || '') : '') + '</p>').join('') + '</section>' : '';
+  const qh = set.qs.map((q, i) => '<section class="q"><div class="qn">' + (i + 1) + '.</div><div class="qb">' + (q.fig ? '<div class="fig">' + (cleanSvg(q.fig) || '') + '</div>' : '') + '<div>' + mdToHtml(q.q) + '</div><ol class="ch">' + (q.c || []).map((c, k) => '<li><b>' + L[k] + '.</b> ' + mdToHtml(c) + '</li>').join('') + '</ol>' + (o.space ? '<div class="work" style="height:' + o.space + 'px"></div>' : '') + '</div></section>').join('');
+  const key = o.key ? '<section class="key"><h2>เฉลย</h2>' + set.qs.map((q, i) => '<p><b>' + (i + 1) + '. ' + ((q.c || []).length ? L[q.a || 0] : esc(q.ans || '')) + '</b> ' + (o.why ? mdToHtml(q.e || '') : '') + '</p>').join('') + '</section>' : '';
   return '<!doctype html><html lang="th"><head><meta charset="utf-8"><title>' + esc(o.title) + '</title>'
     + '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;700&display=swap">'
     + '<script>window.MathJax={tex:{inlineMath:[["$","$"]],displayMath:[["$$","$$"]]},svg:{fontCache:"global"},startup:{pageReady:()=>MathJax.startup.defaultPageReady().then(()=>{document.body.classList.add("ready")})}};<\/script><script src="https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-svg-full.js" async><\/script>'
@@ -10344,7 +10583,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793175852';
+const BUILD = '1793176466';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
@@ -10574,9 +10813,10 @@ $('#bSimClose').onclick = () => { $('#simSheet').hidden = true; };
 $('#iText').onclick = () => { closeSheets(); setTool('text'); toast('แตะบนหน้าตรงที่ต้องการพิมพ์', 2500); };
 $('#iPdf').onclick = () => { $('#insSheet').hidden = true; $('#fPdf').value = ''; $('#fPdf').click(); };
 $('#fPdf').onchange = (e) => { const f = e.target.files && e.target.files[0]; if (f) openPdfFile(f); };
-$('#pdfClose').onclick = () => { $('#pdfSheet').hidden = true; PDFI.doc = null; };
+$('#pdfClose').onclick = () => { $('#pdfSheet').hidden = true; $('#pdfSheet .panel').classList.remove('wide'); PDFI.doc = null; PQ.pages = []; PQ.qs = []; };
 $('#pdfHere').onclick = () => pdfImport(false);
 $('#pdfNew').onclick = () => pdfImport(true);
+$('#pdfSplit').onclick = () => pqSplit();
 $('#fImg').onchange = (e) => { const f = e.target.files && e.target.files[0]; if (f) insertImage(f); };
 $('#fVid').onchange = (e) => { const f = e.target.files && e.target.files[0]; if (f) insertVideo(f); };
 $('#bGClose').onclick = () => { $('#graphSheet').hidden = true; };
