@@ -578,6 +578,14 @@ body.guest #roleSeg, body.guest #bJoin { display: none !important; }
 .tqh small { color: var(--muted); }
 .tqk { font-size: 11px; padding: 1px 7px; border-radius: 999px; background: var(--bg); color: var(--muted); }
 .tqk.ok { background: var(--ok-soft); color: var(--fg); }
+.mvtop { display: flex; gap: 12px; align-items: center; margin: 8px 0 12px; }
+.mvtop img { width: 120px; max-height: 120px; object-fit: contain; border: 1px dashed var(--line); border-radius: 10px; background: #FFFFFF; flex: none; }
+.mvgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 190px), 1fr)); gap: 8px; margin-bottom: 12px; }
+.mvopt { display: flex; flex-direction: column; gap: 3px; text-align: left; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--fg); font: inherit; cursor: pointer; }
+.mvopt:hover { border-color: var(--accent); }
+.mvopt span { font-size: 12.5px; color: var(--muted); }
+.mvai { margin-top: 12px; }
+@media (max-width: 520px) { .mvtop { flex-direction: column; align-items: flex-start; } }
 .tqimg img { display: block; width: 100%; height: auto; border-radius: 8px; border: 1px solid var(--line); background: #FFFFFF; }
 .pqoffer { display: flex; flex-direction: column; gap: 4px; padding: 10px; border: 1px dashed var(--line); border-radius: 12px; margin: 8px 0; }
 .pqlist { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr)); gap: 10px; margin: 10px 0; max-height: 58vh; overflow: auto; padding: 2px; }
@@ -3672,7 +3680,8 @@ function showSelbar() {
   const n = S.sel.strokes.length, m = S.sel.items.length;
   $('#selCount').textContent = 'เลือก ' + (n ? n + ' เส้น' : '') + (n && m ? ' ' : '') + (m ? m + ' กล่อง' : '');
   $('#selbar').hidden = false;
-  $('#sRead').hidden = !n; $('#sTidy').hidden = !n; $('#sAnim').hidden = !n; $('#sEq').hidden = !n;
+  $('#sRead').hidden = !n; $('#sTidy').hidden = !n; $('#sEq').hidden = !n;
+  $('#sAnim').hidden = !(n || S.sel.items.some((id) => { const it = (S.page.items || []).find((t) => t.id === id); return it && it.type === 'img'; }));
   const textSel = S.sel.items.some((id) => { const it = (S.page.items || []).find((t) => t.id === id); return it && (!it.type || it.type === 'text'); });
   $('#sHand').hidden = !(n || textSel);
   $('#sGraph').hidden = !(n || textSel);
@@ -6563,7 +6572,7 @@ function scClean(sp) {
       id: scTxt(b.id || 'B' + (i + 1), 8).replace(/[^A-Za-z0-9_]/g, '') || 'B' + (i + 1), label: scTxt(b.label || b.id || 'วัตถุ', 20), shape: b.shape === 'ball' ? 'ball' : b.shape === 'person' ? 'person' : 'box', act: ['stand', 'walk', 'run', 'jump', 'longjump', 'fall', 'squat'].includes(b.act) ? b.act : 'walk', hgt: scNum(b.hgt, 1.7, 0.5, 2.5), v: scNum(b.v, b.act === 'run' ? 4 : b.act === 'jump' ? 2.6 : b.act === 'longjump' ? 6 : 1.4, 0, 12), ang: scNum(b.ang, 20, 0, 80), push: scNum(b.push, 0.6, 0, 5),
       m: scNum(b.m, 1, 1e-6, 1e30), x: scNum(b.x, 1, -1e12, 1e12), y: scNum(b.y, 1, -1e12, 1e12), vx: scNum(b.vx, 0, -1e9, 1e9), vy: scNum(b.vy, 0, -1e9, 1e9),
       w: scNum(b.w, 0.6, 1e-6, 1e12), h: scNum(b.h, 0.4, 1e-6, 1e12), r: scNum(b.r, 0.25, 1e-6, 1e12), q: scNum(b.q, 0, -1e3, 1e3), e: scNum(b.e, b.shape === 'ball' ? 0.5 : 0, 0, 1),
-      fixed: !!b.fixed, color: scCol(b.color, SC_PAL[i % SC_PAL.length])
+      fixed: !!b.fixed, color: scCol(b.color, SC_PAL[i % SC_PAL.length]), img: okAsset(b.img) ? b.img : ''
     }));
     o.surfaces = (Array.isArray(sp.surfaces) ? sp.surfaces : []).slice(0, 12).map((s) => ({ x1: scNum(s.x1, 0, -1e12, 1e12), y1: scNum(s.y1, 0, -1e12, 1e12), x2: scNum(s.x2, 10, -1e12, 1e12), y2: scNum(s.y2, 0, -1e12, 1e12), mu: scNum(s.mu, 0, 0, 5), mus: scNum(s.mus != null ? s.mus : s.mu, 0, 0, 5) }));
     o.springs = (Array.isArray(sp.springs) ? sp.springs : []).slice(0, 6).map((s) => ({ a: scTxt(s.a, 8), b: scTxt(s.b, 8), ax: scNum(s.ax, 0, -1e12, 1e12), ay: scNum(s.ay, 0, -1e12, 1e12), k: scNum(s.k, 20, 1e-6, 1e9), L0: scNum(s.L0, 1, 0, 1e12) }));
@@ -6804,6 +6813,7 @@ function phStep(sp, st, dt) {
     void ax0; void ay0;
   }
   for (const c of cons) if (c.pen > 0) { c.b.x += c.nx * c.pen * 0.6; c.b.y += c.ny * c.pen * 0.6; }
+  for (const r of sp.ropes) { if (r.via || r.a || !r.b) continue; const b = phBody(st, r.b); if (b && b.img && !b.contact) b.ang = Math.atan2(b.x - r.ax, -(b.y - r.ay)); }
   st.t += dt;
 }
 function phBounds(sp, st) {
@@ -6845,6 +6855,7 @@ function phDraw(c, w, h, sp, st, rt) {
   for (const b of st.bodies) {
     if (b.shape === 'person') { psDraw(c, b, X, Y, sc); continue; }
     const bx = X(b.x), by = Y(b.y);
+    if (b.img) { const im = scSprite(b.img), ww = Math.max(10, b.w * sc), hh = Math.max(8, b.h * sc); c.save(); c.translate(bx, by); c.rotate(-b.ang); if (im) c.drawImage(im, -ww / 2, -hh / 2, ww, hh); else { c.setLineDash([4, 3]); c.strokeStyle = '#9AA3B2'; c.strokeRect(-ww / 2, -hh / 2, ww, hh); c.setLineDash([]); } c.restore(); continue; }
     c.save(); c.translate(bx, by); c.rotate(-b.ang);
     const grad = c.createLinearGradient(0, -20, 0, 20); grad.addColorStop(0, scTint(b.color, 0.35)); grad.addColorStop(1, b.color);
     c.fillStyle = grad; c.strokeStyle = scTint(b.color, -0.35); c.lineWidth = 1.6;
@@ -7093,7 +7104,7 @@ function buildScene(d, it, forExport) {
   it.spec = scClean(it.spec);
   const sp = it.spec, r = scRuntime(it);
   const head = document.createElement('div'); head.className = 'gh';
-  head.innerHTML = '<span></span>' + (forExport ? '' : '<span class="sbtns"><button type="button" data-s="play">เล่น</button><button type="button" data-s="reset">เริ่มใหม่</button><button type="button" data-s="slow" aria-pressed="false">ช้า</button></span>');
+  head.innerHTML = '<span></span>' + (forExport ? '' : '<span class="sbtns"><button type="button" data-s="play">เล่น</button><button type="button" data-s="reset">เริ่มใหม่</button><button type="button" data-s="slow" aria-pressed="false">ช้า</button>' + ((it.ink && it.ink.length) || (it.pics && it.pics.length) ? '<button type="button" data-s="back" title="เอาภาพเดิมกลับมาบนหน้า">คืนเป็นภาพวาด</button>' : '') + '</span>');
   head.firstChild.textContent = sp.title; d.appendChild(head);
   const cv = document.createElement('canvas'); cv.className = 'simcv scncv'; d.appendChild(cv); r.cv = cv;
   if (!forExport && sp.domain !== 'math') {
@@ -7141,6 +7152,7 @@ function buildScene(d, it, forExport) {
   pb.onclick = () => { const live = findItem(it.id) || it, R = scRuntime(live); if (R.ended) { scReset(live, R); } R.playing = !R.playing; pb.textContent = R.playing ? 'หยุด' : 'เล่น'; if (R.playing && !scnRaf) scnRaf = requestAnimationFrame(scTick); };
   rb.onclick = () => { const live = findItem(it.id) || it, R = scRuntime(live); R.playing = false; scReset(live, R); pb.textContent = 'เล่น'; scRender(live, R); };
   sb.onclick = () => { r.slow = !r.slow; sb.setAttribute('aria-pressed', r.slow ? 'true' : 'false'); };
+  const bk = head.querySelector('[data-s="back"]'); if (bk) bk.onclick = () => restoreInk(findItem(it.id));
 }
 function insertScene(spec, at) {
   if (!S.page) return; const w = 520; const [x, y] = at || viewSpot(w, 520);
@@ -7231,6 +7243,106 @@ async function sceneFromSelection() {
     B.step(1); const spec = await sceneFromAI('', img.blob); B.step(2);
     const box = img.box; insertScene(spec, [clamp(box[2] + 20, 0, W - 640) , box[1]]); B.close();
   } catch (e) { B.close(); toast('ทำให้ขยับไม่สำเร็จ ลองวาดให้ชัดขึ้นหรือพิมพ์อธิบายเพิ่ม', 3500); }
+}
+/* ---------- lasso a drawing or a picture, then choose how it moves: the picture itself becomes the body ---------- */
+const SPRITES = new Map();
+function scSprite(id) {
+  let s = SPRITES.get(id);
+  if (!s) {
+    s = { im: new Image(), ok: false }; SPRITES.set(id, s);
+    s.im.onload = () => { s.ok = true; for (const [k, r] of SCN) { const it = findItem(k); if (it && r.cv && r.cv.isConnected && !r.playing) scRender(it, r); } };
+    if (blobUrls.has(id)) s.im.src = blobUrls.get(id); else { const box = document.createElement('span'); box.appendChild(s.im); setAssetSrc(s.im, id); }
+  }
+  return s.ok ? s.im : null;
+}
+/* the selected strokes and pictures on a clear background, cut tight */
+async function spriteFromSel() {
+  const sel = S.sel; if (!sel) return null;
+  const list = sel.strokes.map(findStroke).filter(Boolean).map((s) => ({ s }));
+  const imgs = sel.items.map(findItem).filter((it) => it && it.type === 'img');
+  if (!list.length && !imgs.length) return null;
+  let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+  for (const r of list) { boxCache.delete(r.s); const b = sbox(r.s), pw = (r.s.w || 3) / 2 + 2; x0 = Math.min(x0, b[0] - pw); y0 = Math.min(y0, b[1] - pw); x1 = Math.max(x1, b[2] + pw); y1 = Math.max(y1, b[3] + pw); }
+  for (const it of imgs) { const b = itemBox(it); x0 = Math.min(x0, b[0]); y0 = Math.min(y0, b[1]); x1 = Math.max(x1, b[2]); y1 = Math.max(y1, b[3]); }
+  const w = Math.max(4, x1 - x0), h = Math.max(4, y1 - y0), k = clamp(Math.sqrt(500000 / (w * h)), 0.5, 3);
+  const cv = document.createElement('canvas'); cv.width = Math.round(w * k); cv.height = Math.round(h * k);
+  const c = cv.getContext('2d'); c.setTransform(k, 0, 0, k, -x0 * k, -y0 * k);
+  for (const it of imgs) { const el = itemsEl.querySelector('.item[data-id="' + it.id + '"] img'); if (el && el.complete && el.naturalWidth) { const b = itemBox(it); try { c.drawImage(el, b[0], b[1], b[2] - b[0], b[3] - b[1]); } catch (e) { /* picture from another site */ } } }
+  if (list.length) drawInto(c, list, null);
+  let blob = null; try { blob = await new Promise((res) => cv.toBlob(res, 'image/png')); } catch (e) { blob = null; }
+  if (!blob) return null;
+  return { blob, box: [x0, y0, x1, y1], ar: h / w, refs: sel.strokes.slice(), items: imgs.map((it) => it.id), ink: list.map((r) => clone(r.s)) };
+}
+function spriteBody(img, ar, S0, extra) { const w = ar >= 1 ? S0 / ar : S0, h = ar >= 1 ? S0 : S0 * ar; return Object.assign({ id: 'A', label: 'วัตถุ', shape: 'box', img, w: +w.toFixed(3), h: +h.toFixed(3), m: 1, e: 0 }, extra || {}); }
+const MOTIONS = [
+  ['fall', 'ตกอิสระ', 'ปล่อยจากที่สูง ตกลงพื้นแล้วกระดอน', (im, ar) => ({ domain: 'phys', title: 'ตกอิสระ', world: { w: 6, h: 7 }, bodies: [spriteBody(im, ar, 1.3, { x: 3, y: 6, e: 0.6 })], surfaces: [{ x1: 0, y1: 0.3, x2: 6, y2: 0.3 }], params: [{ key: 'g', label: 'g (m/s²)', min: 1, max: 20, step: 0.1 }, { key: 'A.e', label: 'การกระดอน e', min: 0, max: 0.95, step: 0.05 }, { key: 'A.y', label: 'ความสูงเริ่มต้น (m)', min: 1, max: 6.5, step: 0.1 }], show: { v: true, graph: 'y' } })],
+  ['throw', 'ขว้างเป็นโพรเจกไทล์', 'มีแรงโน้มถ่วงอย่างเดียว เส้นทางเป็นพาราโบลา', (im, ar) => ({ domain: 'phys', title: 'โพรเจกไทล์', world: { w: 40, h: 16 }, bodies: [spriteBody(im, ar, 2.8, { x: 1.8, y: 1.8, vx: 12, vy: 14 })], surfaces: [{ x1: 0, y1: 0.5, x2: 40, y2: 0.5 }], params: [{ key: 'A.vx', label: 'ความเร็วต้นแนวราบ (m/s)', min: 0, max: 25, step: 0.5 }, { key: 'A.vy', label: 'ความเร็วต้นแนวดิ่ง (m/s)', min: 0, max: 25, step: 0.5 }, { key: 'g', label: 'g (m/s²)', min: 1, max: 20, step: 0.1 }], show: { v: true, graph: 'vy' } })],
+  ['incline', 'ไถลลงพื้นเอียง', 'แรงเสียดทานสถิตยึดไว้ได้ถ้าพื้นฝืดพอ', (im, ar) => ({ domain: 'phys', title: 'ไถลลงพื้นเอียง', world: { w: 8, h: 5 }, bodies: [spriteBody(im, ar, 1.1, { x: 1.8, y: 3.6, m: 2 })], surfaces: [{ x1: 0.5, y1: 4, x2: 7, y2: 0.4, mu: 0.2, mus: 0.3 }, { x1: 0, y1: 0.4, x2: 8, y2: 0.4, mu: 0.4 }, { x1: 7.95, y1: 0.4, x2: 7.95, y2: 1.6 }], params: [{ key: 'S1.mu', label: 'μk ของพื้นเอียง', min: 0, max: 1, step: 0.05 }, { key: 'S1.mus', label: 'μs ของพื้นเอียง', min: 0, max: 1.2, step: 0.05 }, { key: 'A.m', label: 'มวล (kg)', min: 0.5, max: 10, step: 0.5 }], show: { graph: 'v' } })],
+  ['pull', 'ถูกดึงบนพื้นราบ', 'แรงดึงคงที่ สู้กับแรงเสียดทาน', (im, ar) => ({ domain: 'phys', title: 'ถูกดึงบนพื้นราบ', world: { w: 12, h: 3.5 }, bodies: [spriteBody(im, ar, 1.3, { x: 1.2, y: 1.2, m: 2 })], surfaces: [{ x1: 0, y1: 0.4, x2: 12, y2: 0.4, mu: 0.2, mus: 0.3 }], forces: [{ on: 'A', fx: 10, fy: 0, label: 'F' }], params: [{ key: 'F1.fx', label: 'แรงดึง (N)', min: 0, max: 40, step: 0.5 }, { key: 'S1.mu', label: 'μk', min: 0, max: 1, step: 0.05 }, { key: 'A.m', label: 'มวล (kg)', min: 0.5, max: 10, step: 0.5 }], show: { graph: 'v' } })],
+  ['const', 'เคลื่อนที่ด้วยความเร็วคงที่', 'ไม่มีแรงลัพธ์ ความเร็วไม่เปลี่ยน', (im, ar) => ({ domain: 'phys', title: 'ความเร็วคงที่', world: { w: 12, h: 3, g: 0 }, bodies: [spriteBody(im, ar, 1.3, { x: 1, y: 1.5, vx: 2 })], params: [{ key: 'A.vx', label: 'ความเร็ว (m/s)', min: -4, max: 6, step: 0.1 }], show: { v: true, graph: 'x', fbd: false } })],
+  ['pend', 'แกว่งเป็นลูกตุ้ม', 'แขวนด้วยเชือก แรงตึงเปลี่ยนตามตำแหน่ง', (im, ar) => ({ domain: 'phys', title: 'ลูกตุ้ม', world: { w: 4, h: 3.6 }, bodies: [spriteBody(im, ar, 0.85, { x: 3.1, y: 1.7, m: 0.5 })], ropes: [{ a: '', b: 'A', ax: 2, ay: 3.4 }], params: [{ key: 'A.x', label: 'ตำแหน่งปล่อย (m)', min: 0.6, max: 3.4, step: 0.05 }, { key: 'g', label: 'g (m/s²)', min: 1, max: 20, step: 0.1 }], show: { graph: 'x', trail: true } })],
+  ['springh', 'ติดสปริงแนวราบ', 'สั่นแบบฮาร์มอนิกอย่างง่ายบนพื้นลื่น', (im, ar) => ({ domain: 'phys', title: 'ติดสปริงแนวราบ', world: { w: 4, h: 1.8 }, bodies: [spriteBody(im, ar, 0.7, { x: 2.6, y: 0.6 })], springs: [{ a: '', b: 'A', ax: 0.2, ay: 0.6, k: 40, L0: 1.8 }], surfaces: [{ x1: 0, y1: 0.25, x2: 4, y2: 0.25 }], params: [{ key: 'K1.k', label: 'k (N/m)', min: 5, max: 200, step: 5 }, { key: 'A.m', label: 'มวล (kg)', min: 0.2, max: 5, step: 0.1 }, { key: 'A.x', label: 'ตำแหน่งเริ่มต้น (m)', min: 1.2, max: 3.4, step: 0.05 }], show: { graph: 'x', energy: true } })],
+  ['springv', 'แขวนกับสปริงแนวดิ่ง', 'สั่นขึ้นลงรอบจุดสมดุล', (im, ar) => ({ domain: 'phys', title: 'แขวนกับสปริง', world: { w: 3, h: 4.2 }, bodies: [spriteBody(im, ar, 0.8, { x: 1.5, y: 1.4 })], springs: [{ a: '', b: 'A', ax: 1.5, ay: 4, k: 30, L0: 1.6 }], params: [{ key: 'K1.k', label: 'k (N/m)', min: 5, max: 120, step: 1 }, { key: 'A.m', label: 'มวล (kg)', min: 0.2, max: 4, step: 0.1 }, { key: 'A.y', label: 'ตำแหน่งปล่อย (m)', min: 0.4, max: 3, step: 0.05 }], show: { graph: 'y', energy: true } })],
+  ['orbit', 'โคจรรอบศูนย์กลาง', 'แรงดึงเข้าศูนย์กลาง ความเร็วตั้งฉากกับแรง', (im, ar) => ({ domain: 'phys', title: 'การโคจร', world: { w: 12, h: 8, x0: -6, y0: -4, g: 0 }, bodies: [spriteBody(im, ar, 1.2, { x: 0, y: 3, vx: 2.3 })], fields: { central: { x: 0, y: 0, GM: 16, r: 0.8, label: '' } }, params: [{ key: 'A.vx', label: 'ความเร็วต้น (m/s)', min: 0.5, max: 4, step: 0.05 }], show: { v: true, graph: 'v' } })]
+];
+const PERSON_MOVES = [['walk', 'เดิน'], ['run', 'วิ่ง'], ['jump', 'กระโดดตัวตรง'], ['longjump', 'กระโดดไกล'], ['fall', 'ถูกผลักล้ม'], ['squat', 'สควอต']];
+async function openMotionPick() {
+  const sp = await spriteFromSel(); if (!sp) { toast('วงรอบภาพที่วาดหรือรูปที่แทรกก่อน'); return; }
+  let sh = $('#motionSheet');
+  if (!sh) { sh = document.createElement('div'); sh.className = 'sheet'; sh.id = 'motionSheet'; sh.innerHTML = '<div class="panel wide" role="dialog" aria-label="เลือกการเคลื่อนที่"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><h2>ให้ภาพนี้เคลื่อนที่แบบไหน</h2><button class="btn" type="button" data-a="x">ยกเลิก</button></div><div class="mvbody"></div></div>'; document.body.appendChild(sh); sh.querySelector('[data-a="x"]').onclick = () => { sh.hidden = true; }; }
+  const body = sh.querySelector('.mvbody'); body.innerHTML = '';
+  const url = URL.createObjectURL(sp.blob);
+  const top = document.createElement('div'); top.className = 'mvtop'; top.innerHTML = '<img alt="ภาพที่เลือก"><div class="note">ภาพที่วงไว้จะกลายเป็นวัตถุในแบบจำลอง เคลื่อนที่ตามกฎของนิวตัน มีแผนภาพแรง กราฟ และแถบปรับค่า ภาพเดิมบนหน้าจะถูกย้ายเข้าไปในกล่อง กดคืนเป็นภาพวาดได้ภายหลัง</div>'; top.querySelector('img').src = url; body.appendChild(top);
+  const grid = document.createElement('div'); grid.className = 'mvgrid';
+  const go = async (make, person) => {
+    sh.hidden = true;
+    try { await placeMotion(sp, make, person); } catch (e) { toast('ทำให้ภาพเคลื่อนที่ไม่สำเร็จ ' + (e && e.code ? assetErr(e) : ''), 3500); }
+    URL.revokeObjectURL(url);
+  };
+  for (const [k, name, hint, make] of MOTIONS) { const b = document.createElement('button'); b.type = 'button'; b.className = 'mvopt'; b.dataset.k = k; b.innerHTML = '<b></b><span></span>'; b.querySelector('b').textContent = name; b.querySelector('span').textContent = hint; b.onclick = () => go(make); grid.appendChild(b); }
+  body.appendChild(grid);
+  body.appendChild(exEl('h3', '', 'ถ้าภาพนี้เป็นคน ให้ขยับแขนขาตามการเคลื่อนไหวจริง'));
+  const pg = document.createElement('div'); pg.className = 'chips';
+  for (const [act, name] of PERSON_MOVES) { const b = document.createElement('button'); b.type = 'button'; b.className = 'chip'; b.textContent = name; b.onclick = () => go(null, act); pg.appendChild(b); }
+  body.appendChild(pg);
+  if (AI.ready('draw')) { const ai = document.createElement('button'); ai.type = 'button'; ai.className = 'btn mvai'; ai.textContent = 'ให้ AI ดูภาพแล้วสร้างสถานการณ์ให้เอง'; ai.onclick = () => go('ai'); body.appendChild(ai); }
+  sh.hidden = false;
+}
+async function placeMotion(sp, make, person) {
+  let spec;
+  if (person) {
+    const t = SCENE_TPL.person.find((x) => x[2].bodies[0].act === person); spec = JSON.parse(JSON.stringify(t[2]));
+  } else {
+    const A = await getAssets(); if (!A) throw { code: 'no_assets' };
+    const up = await A.upload(sp.blob, { type: 'image/png' }); blobUrls.set(up.id, URL.createObjectURL(sp.blob));
+    if (make === 'ai') {
+      const B = floatWait('AI กำลังดูภาพ', ['อ่านภาพ', 'สร้างสถานการณ์ตามหลักวิชา', 'วางลงหน้า']);
+      const ink = await inkBlob(sp.refs).catch(() => null);
+      try { B.step(1); spec = await sceneFromAI('', (ink && ink.blob) || sp.blob); B.close(); } catch (e) { B.close(); throw e; }
+      const b = spec.domain === 'phys' && spec.bodies.find((x) => !x.fixed && x.shape !== 'person');
+      if (b) { const S0 = Math.max(b.w, b.h, b.r * 2); Object.assign(b, spriteBody(up.id, sp.ar, S0, { id: b.id, m: b.m, x: b.x, y: b.y, vx: b.vx, vy: b.vy, e: b.e, q: b.q })); b.shape = 'box'; }
+    } else spec = make(up.id, sp.ar);
+  }
+  const bw = sp.box[2] - sp.box[0], w = Math.round(clamp(Math.max(480, bw * 2.4), 420, W - 40)), x = Math.round(clamp(sp.box[0] - 20, 10, W - w - 10)), y = Math.round(clamp(sp.box[1] - 40, 10, H - 200));
+  /* the drawing moves into the box; it can come back as ink */
+  const removed = [], touched = new Set();
+  for (const r of sp.refs) { const arr = layerArr(r.layer); const i = arr.findIndex((s) => s.id === r.id); if (i >= 0) { removed.push({ layer: r.layer, stroke: arr[i] }); arr.splice(i, 1); touched.add(r.layer); } }
+  if (removed.length) { pushUndo({ t: 'erase', removed }); saveLayers(touched); drawInk(); }
+  const keepImgs = sp.items.map(findItem).filter(Boolean).map(clone);
+  const before = clone(S.page.items || []);
+  const item = { id: 'i' + uid(), by: DEV, type: 'scene', spec: scClean(spec), x, y, w, ink: sp.ink.slice(0, 400), pics: keepImgs.slice(0, 6) };
+  setItems(before.filter((t) => !sp.items.includes(t.id)).concat([item]), before);
+  clearSel();
+  toast('ภาพเคลื่อนที่ได้แล้ว กดเล่น ปรับค่าด้วยแถบเลื่อน', 2600);
+}
+function restoreInk(it) {
+  if (!it || !S.page) return;
+  const mine = layerArr(DEV), have = new Set(mine.map((s) => s.id));
+  for (const s of it.ink || []) if (!have.has(s.id)) mine.push(clone(s));
+  if ((it.ink || []).length) { saveLayers(new Set([DEV])); drawInk(); }
+  const before = clone(S.page.items || []);
+  setItems(before.filter((t) => t.id !== it.id).concat((it.pics || []).map(clone)), before);
+  SCN.delete(it.id);
 }
 function renderScenePicker(box, dom) {
   box.innerHTML = '';
@@ -10583,7 +10695,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793176466';
+const BUILD = '1793176725';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
@@ -11151,7 +11263,7 @@ $('#tgTV').onclick = () => { S.tv = !S.tv; store_ls.set('tp-tv', S.tv ? '1' : '0
 $('#bAI').onclick = () => { const el = $('#ai'); el.hidden = !el.hidden; $('#bAI').setAttribute('aria-pressed', el.hidden ? 'false' : 'true'); setTimeout(fit, 0); };
 $('#bAIClose').onclick = () => { $('#ai').hidden = true; $('#bAI').setAttribute('aria-pressed', 'false'); setTimeout(fit, 0); };
 $('#bGenPage').onclick = () => generate(false);
-$('#sAnim').onclick = sceneFromSelection; $('#sQuiz').onclick = openQuizMaker; $('#sEq').onclick = eqSelection; $('#sRead').onclick = readSelection; $('#sHand').onclick = openHand; $('#sTidy').onclick = tidySelection; $('#sGen').onclick = () => generate(true);
+$('#sAnim').onclick = openMotionPick; $('#sQuiz').onclick = openQuizMaker; $('#sEq').onclick = eqSelection; $('#sRead').onclick = readSelection; $('#sHand').onclick = openHand; $('#sTidy').onclick = tidySelection; $('#sGen').onclick = () => generate(true);
 $('#sFront').onclick = () => restackSel(true); $('#sBack').onclick = () => restackSel(false);
 $('#sDup').onclick = dupSel;
 $('#sKey').onclick = () => showPeek();
