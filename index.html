@@ -6595,7 +6595,7 @@ function scClean(sp) {
       id: scTxt(b.id || 'B' + (i + 1), 8).replace(/[^A-Za-z0-9_]/g, '') || 'B' + (i + 1), label: scTxt(b.label || b.id || 'วัตถุ', 20), shape: b.shape === 'ball' ? 'ball' : b.shape === 'person' ? 'person' : 'box', act: ['stand', 'walk', 'run', 'jump', 'longjump', 'fall', 'squat'].includes(b.act) ? b.act : 'walk', hgt: scNum(b.hgt, 1.7, 0.5, 2.5), v: scNum(b.v, b.act === 'run' ? 4 : b.act === 'jump' ? 2.6 : b.act === 'longjump' ? 6 : 1.4, 0, 12), ang: scNum(b.ang, 20, 0, 80), push: scNum(b.push, 0.6, 0, 5),
       m: scNum(b.m, 1, 1e-6, 1e30), x: scNum(b.x, 1, -1e12, 1e12), y: scNum(b.y, 1, -1e12, 1e12), vx: scNum(b.vx, 0, -1e9, 1e9), vy: scNum(b.vy, 0, -1e9, 1e9),
       w: scNum(b.w, 0.6, 1e-6, 1e12), h: scNum(b.h, 0.4, 1e-6, 1e12), r: scNum(b.r, 0.25, 1e-6, 1e12), q: scNum(b.q, 0, -1e3, 1e3), e: scNum(b.e, b.shape === 'ball' ? 0.5 : 0, 0, 1),
-      fixed: !!b.fixed, color: scCol(b.color, SC_PAL[i % SC_PAL.length]), img: okAsset(b.img) ? b.img : '', ink: !!b.ink
+      fixed: !!b.fixed, color: scCol(b.color, SC_PAL[i % SC_PAL.length]), img: okAsset(b.img) ? b.img : '', ink: !!b.ink, hull: Array.isArray(b.hull) && b.hull.length >= 3 ? b.hull.slice(0, 48).map((q) => [scNum(q && q[0], 0, -1e6, 1e6), scNum(q && q[1], 0, -1e6, 1e6)]) : null, skin: scNum(b.skin, 0.012, 0, 1), wheel: !!b.wheel
     }));
     o.surfaces = (Array.isArray(sp.surfaces) ? sp.surfaces : []).slice(0, sp.bare ? 40 : 12).map((s) => ({ x1: scNum(s.x1, 0, -1e12, 1e12), y1: scNum(s.y1, 0, -1e12, 1e12), x2: scNum(s.x2, 10, -1e12, 1e12), y2: scNum(s.y2, 0, -1e12, 1e12), mu: scNum(s.mu, 0, 0, 5), mus: scNum(s.mus != null ? s.mus : s.mu, 0, 0, 5) }));
     o.springs = (Array.isArray(sp.springs) ? sp.springs : []).slice(0, 6).map((s) => ({ a: scTxt(s.a, 8), b: scTxt(s.b, 8), ax: scNum(s.ax, 0, -1e12, 1e12), ay: scNum(s.ay, 0, -1e12, 1e12), k: scNum(s.k, 20, 1e-6, 1e9), L0: scNum(s.L0, 1, 0, 1e12) }));
@@ -6663,10 +6663,11 @@ function scTarget(sp, h) {
 
 /* ---------- physics: impulses per step so contact and rope forces come out as real numbers for the diagram ---------- */
 function phInit(sp) {
-  const st = { t: 0, bodies: sp.bodies.map((b) => Object.assign({}, b, { ang: 0, F: {}, trail: [], contact: null, x0: b.x })), hist: [], acc: {} };
+  const st = { t: 0, bodies: sp.bodies.map((b) => Object.assign({}, b, { ang: 0, om: 0, F: {}, trail: [], contact: null, x0: b.x })), hist: [], acc: {} };
+  for (const b of st.bodies) if (b.hull) { const r2 = b.hull.reduce((a, q) => a + q[0] * q[0] + q[1] * q[1], 0) / b.hull.length; b.I = Math.max(1e-9, 0.4 * b.m * r2); b.hsz = Math.max(...b.hull.map((q) => Math.hypot(q[0], q[1]))); }
   for (const b of st.bodies) if (b.shape === 'person') { psStep(sp, { t: -0.004 }, b, 0.004); }
   /* a body drawn slightly into a surface starts resting on it */
-  for (const b of st.bodies) if (b.shape !== 'person') for (const s of sp.surfaces) {
+  for (const b of st.bodies) if (b.shape !== 'person' && !b.hull) for (const s of sp.surfaces) {
     const ex = s.x2 - s.x1, ey = s.y2 - s.y1, L2 = ex * ex + ey * ey || 1e-12, u = clamp(((b.x - s.x1) * ex + (b.y - s.y1) * ey) / L2, 0, 1);
     const px = s.x1 + ex * u, py = s.y1 + ey * u, d = Math.hypot(b.x - px, b.y - py), pen = phR(b) - d;
     if (pen > 0 && d > 1e-9 && u > 0 && u < 1) { const L = Math.sqrt(L2); let nx = -ey / L, ny = ex / L; if (nx * (b.x - px) + ny * (b.y - py) < 0) { nx = -nx; ny = -ny; } b.x = px + nx * phR(b); b.y = py + ny * phR(b); }
@@ -6784,7 +6785,7 @@ function phStep(sp, st, dt) {
   /* contacts with surfaces */
   const cons = [];
   for (const b of B) {
-    if (b.fixed) continue; b.contact = null;
+    if (b.fixed) continue; b.contact = null; if (b.hull) continue;
     for (const s of sp.surfaces) {
       const ex = s.x2 - s.x1, ey = s.y2 - s.y1, L2 = ex * ex + ey * ey || 1e-12; let u = ((b.x - s.x1) * ex + (b.y - s.y1) * ey) / L2; u = clamp(u, 0, 1);
       const px = s.x1 + ex * u, py = s.y1 + ey * u; let nx = b.x - px, ny = b.y - py; const d = Math.hypot(nx, ny);
@@ -6798,6 +6799,18 @@ function phStep(sp, st, dt) {
     const a = B[i], b = B[j]; if (a.fixed && b.fixed) continue; const ra = a.shape === 'ball' ? a.r : Math.max(a.w, a.h) / 2, rb = b.shape === 'ball' ? b.r : Math.max(b.w, b.h) / 2;
     const dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy); if (d < ra + rb && d > 1e-9) pairs.push({ a, b, nx: dx / d, ny: dy / d, pen: ra + rb - d, j: 0, vn0: (b.vx - a.vx) * dx / d + (b.vy - a.vy) * dy / d });
   }
+  /* bodies with their real outline: every corner of the outline can touch a surface, so they tip, tumble, rest flat and roll */
+  const hcs = [];
+  for (const b of B) {
+    if (b.fixed || !b.hull) continue; const cs = Math.cos(b.ang), sn = Math.sin(b.ang), skin = b.skin;
+    for (const s of sp.surfaces) {
+      const ex = s.x2 - s.x1, ey = s.y2 - s.y1, L = Math.hypot(ex, ey); if (L < 1e-9) continue; let nx = -ey / L, ny = ex / L; if ((b.x - s.x1) * nx + (b.y - s.y1) * ny < 0) { nx = -nx; ny = -ny; }
+      for (const v of b.hull) {
+        const rx = cs * v[0] - sn * v[1], ry = sn * v[0] + cs * v[1], px = b.x + rx, py = b.y + ry, u = ((px - s.x1) * ex + (py - s.y1) * ey) / (L * L); if (u < 0 || u > 1) continue;
+        const pen = skin - ((px - s.x1) * nx + (py - s.y1) * ny); if (pen > -0.004 && pen < b.hsz) hcs.push({ b, s, nx, ny, rx, ry, pen, jn: 0, jt: 0, vn0: (b.vx - b.om * ry) * nx + (b.vy + b.om * rx) * ny });
+      }
+    }
+  }
   const ropes = sp.ropes.map((r) => ({ r, a: phEnd(st, r.a, r.ax, r.ay), b: phEnd(st, r.b, r.ax, r.ay), j: 0 }));
   const beta = 0.2 / dt;
   for (let it = 0; it < 12; it++) {
@@ -6807,6 +6820,14 @@ function phStep(sp, st, dt) {
       b.vx += dj * c.nx / b.m; b.vy += dj * c.ny / b.m;
       const tx = -c.ny, ty = c.nx, vt = b.vx * tx + b.vy * ty; let djt = -vt * b.m; const lim = (Math.abs(c.jt + djt) <= c.s.mus * c.jn) ? Infinity : c.s.mu * c.jn;
       const nt = clamp(c.jt + djt, -lim, lim); djt = nt - c.jt; c.jt = nt; b.vx += djt * tx / b.m; b.vy += djt * ty / b.m;
+    }
+    for (const c of hcs) {
+      const b = c.b, I = b.I, rn = c.rx * c.ny - c.ry * c.nx, vn = (b.vx - b.om * c.ry) * c.nx + (b.vy + b.om * c.rx) * c.ny, bounce = c.vn0 < -1 ? -b.e * c.vn0 : 0;
+      let dj = (bounce - vn + (c.pen > 0.003 ? Math.min(beta * c.pen * 0.2, 0.5) : 0)) / (1 / b.m + rn * rn / I); const nj = Math.max(0, c.jn + dj); dj = nj - c.jn; c.jn = nj;
+      b.vx += dj * c.nx / b.m; b.vy += dj * c.ny / b.m; b.om += dj * rn / I;
+      const tx = -c.ny, ty = c.nx, rt = c.rx * ty - c.ry * tx, vt = (b.vx - b.om * c.ry) * tx + (b.vy + b.om * c.rx) * ty; let djt = -vt / (1 / b.m + rt * rt / I);
+      const rf = b.wheel ? 0.03 : 1, lim = Math.abs(c.jt + djt) <= c.s.mus * rf * c.jn ? Infinity : c.s.mu * rf * c.jn; const nt = clamp(c.jt + djt, -lim, lim); djt = nt - c.jt; c.jt = nt;
+      b.vx += djt * tx / b.m; b.vy += djt * ty / b.m; b.om += djt * rt / I;
     }
     for (const p of pairs) {
       const ia = p.a.fixed ? 0 : 1 / p.a.m, ib = p.b.fixed ? 0 : 1 / p.b.m; if (!ia && !ib) continue;
@@ -6828,16 +6849,19 @@ function phStep(sp, st, dt) {
     }
   }
   for (const c of cons) { if (c.jn <= 1e-9 && c.pen < 0) continue; phAdd(c.b, 'N', c.jn * c.nx / dt, c.jn * c.ny / dt); if (Math.abs(c.jt) > 1e-9) phAdd(c.b, 'f', c.jt * -c.ny / dt, c.jt * c.nx / dt); if (c.jn > 1e-9) c.b.contact = c.s; }
+  for (const c of hcs) { if (c.jn <= 1e-9) continue; phAdd(c.b, 'N', c.jn * c.nx / dt, c.jn * c.ny / dt); if (Math.abs(c.jt) > 1e-9) phAdd(c.b, 'f', c.jt * -c.ny / dt, c.jt * c.nx / dt); c.b.contact = c.s; }
   for (const R of ropes) if (R.j && R.ua) { if (!R.a.fixed) phAdd(R.a, 'T', R.j * R.ua[0] / dt, R.j * R.ua[1] / dt); if (!R.b.fixed) phAdd(R.b, 'T', R.j * R.ub[0] / dt, R.j * R.ub[1] / dt); }
   for (const b of B) {
     if (b.fixed) continue;
     const ax0 = b.vx, ay0 = b.vy; b.x += b.vx * dt; b.y += b.vy * dt;
     let fx = 0, fy = 0; for (const v of Object.values(b.F)) { fx += v[0]; fy += v[1]; } b.F.net = [fx, fy]; b.ax = fx / b.m; b.ay = fy / b.m;
-    if (b.contact) { const s = b.contact; b.ang = Math.atan2(s.y2 - s.y1, s.x2 - s.x1); if (Math.abs(b.ang) > Math.PI / 2) b.ang += Math.PI; }
+    if (b.hull) { b.ang += b.om * dt; b.om *= 0.9997; }
+    else if (b.contact) { const s = b.contact; b.ang = Math.atan2(s.y2 - s.y1, s.x2 - s.x1); if (Math.abs(b.ang) > Math.PI / 2) b.ang += Math.PI; }
     void ax0; void ay0;
   }
   for (const c of cons) if (c.pen > 0) { c.b.x += c.nx * c.pen * 0.6; c.b.y += c.ny * c.pen * 0.6; }
-  for (const r of sp.ropes) { if (r.via || r.a || !r.b) continue; const b = phBody(st, r.b); if (b && b.img && !b.contact) b.ang = Math.atan2(b.x - r.ax, -(b.y - r.ay)); }
+  { const deep = new Map(); for (const c of hcs) if (c.pen > 0.002 && (!deep.has(c.b) || deep.get(c.b).pen < c.pen)) deep.set(c.b, c); for (const c of deep.values()) { const k = Math.min(c.pen - 0.002, 0.02) * 0.6; c.b.x += c.nx * k; c.b.y += c.ny * k; } }
+  for (const r of sp.ropes) { if (r.via || r.a || !r.b) continue; const b = phBody(st, r.b); if (b && (b.img || b.ink) && !b.contact) { b.ang = Math.atan2(b.x - r.ax, -(b.y - r.ay)); b.om = 0; } }
   st.t += dt;
 }
 function phBounds(sp, st) {
@@ -7075,7 +7099,7 @@ function scRuntime(it) {
   return r;
 }
 function scReset(it, r) {
-  const sp = it.spec; r.traces = {}; r.ended = false; r.E0 = null; r.roll = 0; r.lastPos = null;
+  const sp = it.spec; r.traces = {}; r.ended = false; r.E0 = null; r.bind = null; r.back = null; r.roll = 0; r.lastPos = null;
   if (sp.domain === 'phys') {
     r.st = phInit(sp);
     let maxF = 0; for (const b of r.st.bodies) if (!b.fixed) maxF = Math.max(maxF, b.m * sp.world.g, Math.hypot(...(sp.forces.find((f) => f.on === b.id) ? [sp.forces.find((f) => f.on === b.id).fx, sp.forces.find((f) => f.on === b.id).fy] : [0, 0])));
@@ -7098,6 +7122,7 @@ function scTick(ts) {
       const [x0, y0, x1, y1] = phBounds(sp, r.st), far = sp.bare ? 0.3 : Math.max(x1 - x0, y1 - y0) * 3; if (sp.bare && r.st.bodies.some((b) => b.shape === 'person' && (b.x < x0 - 0.5 || b.x > x1 + 0.5))) { r.playing = false; r.ended = true; } if (!r.st.bodies.some((b) => b.shape === 'person') && r.st.bodies.every((b) => b.fixed || b.x < x0 - far || b.x > x1 + far || b.y < y0 - far || b.y > y1 + far)) { r.playing = false; r.ended = true; } }
     else if (sp.domain === 'math') { r.st.t += dtw * sp.t.speed * (r.slow ? 0.25 : 1); if (r.st.t > sp.t.max) { if (sp.t.loop) { r.st.t = sp.t.min; r.traces = {}; } else { r.st.t = sp.t.max; r.playing = false; r.ended = true; } } }
     else { const sim = dtw * (r.slow ? 0.25 : 1), n = Math.max(1, Math.ceil(sim / 0.01)); for (let i = 0; i < n; i++) ptStep(sp, r.st, sim / n); if (!r.st.lastH || r.st.t - r.st.lastH > 0.2) { r.st.lastH = r.st.t; r.st.hist.push([r.st.t].concat(sp.species.map((_, i) => r.st.P.filter((p) => p.s === i).length))); if (r.st.hist.length > 500) r.st.hist.shift(); } }
+    if (sp.bare && r.ended) { /* left the paper: come back to where it was drawn, ready to play again */ scReset(it, r); r.playing = false; const pb = itemsEl.querySelector('.item[data-id="' + id + '"] [data-s="play"]'); if (pb) pb.textContent = 'เล่น'; }
     scRender(it, r);
   }
   if (any) scnRaf = requestAnimationFrame(scTick); else scnLast = 0;
@@ -7312,7 +7337,14 @@ async function spriteFromSel() {
   if (!blob) return null;
   return { blob, box: [x0, y0, x1, y1], ar: h / w, refs: sel.strokes.slice(), items: imgs.map((it) => it.id), ink: list.map((r) => clone(r.s)) };
 }
-function spriteBody(img, ar, S0, extra) { const w = ar >= 1 ? S0 / ar : S0, h = ar >= 1 ? S0 : S0 * ar; return Object.assign({ id: 'A', label: 'วัตถุ', shape: 'box', img, w: +w.toFixed(3), h: +h.toFixed(3), m: 1, e: 0 }, extra || {}); }
+function spriteBody(img, ar, S0, extra) { const w = ar >= 1 ? S0 / ar : S0, h = ar >= 1 ? S0 : S0 * ar; return Object.assign({ id: 'A', label: 'วัตถุ', shape: 'box', img, w: +w.toFixed(3), h: +h.toFixed(3), m: 1, e: 0, hull: [[-w / 2, -h / 2], [w / 2, -h / 2], [w / 2, h / 2], [-w / 2, h / 2]], skin: 0.004 }, extra || {}); }
+function ipHull(pts) {
+  const P = pts.slice().sort((a, b) => a[0] - b[0] || a[1] - b[1]); if (P.length < 3) return P;
+  const cr = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]); const lo = [], up = [];
+  for (const p of P) { while (lo.length >= 2 && cr(lo[lo.length - 2], lo[lo.length - 1], p) <= 0) lo.pop(); lo.push(p); }
+  for (let i = P.length - 1; i >= 0; i--) { const p = P[i]; while (up.length >= 2 && cr(up[up.length - 2], up[up.length - 1], p) <= 0) up.pop(); up.push(p); }
+  let h = lo.slice(0, -1).concat(up.slice(0, -1)); if (h.length > 40) { const k = h.length / 40; h = Array.from({ length: 40 }, (_, i) => h[Math.floor(i * k)]); } return h;
+}
 const MOTIONS = [
   ['fall', 'ตกอิสระ', 'ปล่อยจากที่สูง ตกลงพื้นแล้วกระดอน', (im, ar) => ({ domain: 'phys', title: 'ตกอิสระ', world: { w: 6, h: 7 }, bodies: [spriteBody(im, ar, 1.3, { x: 3, y: 6, e: 0.6 })], surfaces: [{ x1: 0, y1: 0.3, x2: 6, y2: 0.3 }], params: [{ key: 'g', label: 'g (m/s²)', min: 1, max: 20, step: 0.1 }, { key: 'A.e', label: 'การกระดอน e', min: 0, max: 0.95, step: 0.05 }, { key: 'A.y', label: 'ความสูงเริ่มต้น (m)', min: 1, max: 6.5, step: 0.1 }], show: { v: true, graph: 'y' } })],
   ['throw', 'ขว้างเป็นโพรเจกไทล์', 'มีแรงโน้มถ่วงอย่างเดียว เส้นทางเป็นพาราโบลา', (im, ar) => ({ domain: 'phys', title: 'โพรเจกไทล์', world: { w: 40, h: 16 }, bodies: [spriteBody(im, ar, 2.8, { x: 1.8, y: 1.8, vx: 12, vy: 14 })], surfaces: [{ x1: 0, y1: 0.5, x2: 40, y2: 0.5 }], params: [{ key: 'A.vx', label: 'ความเร็วต้นแนวราบ (m/s)', min: 0, max: 25, step: 0.5 }, { key: 'A.vy', label: 'ความเร็วต้นแนวดิ่ง (m/s)', min: 0, max: 25, step: 0.5 }, { key: 'g', label: 'g (m/s²)', min: 1, max: 20, step: 0.1 }], show: { v: true, graph: 'vy' } })],
@@ -7445,11 +7477,17 @@ function ipBones(R) {
   R.arms.forEach((a, i) => { if (a) { b.push(['ua' + i, R.sh, a.el]); b.push(['fa' + i, a.el, a.hd]); } });
   return b;
 }
+/* each point follows its nearest bone; near a joint it blends the two bones that meet there, so lines bend smoothly instead of breaking */
 function ipBind(strokes, R) {
-  const bones = ipBones(R);
+  const bones = ipBones(R), Hd = Math.max(20, R.foot - (R.headC[1] - R.headR)), bw = 0.07 * Hd;
+  const same = (a, b) => Math.abs(a[0] - b[0]) < 1e-6 && Math.abs(a[1] - b[1]) < 1e-6;
+  const adj = (i, j) => { const a = bones[i], b = bones[j]; return same(a[1], b[1]) || same(a[1], b[2]) || same(a[2], b[1]) || same(a[2], b[2]); };
   return strokes.map((s) => ipPts(s).map((p) => {
-    if (Math.hypot(p[0] - R.headC[0], p[1] - R.headC[1]) < R.headR * 1.25) return 1;
-    let bi = 0, bd = 1e9; bones.forEach((bn, i) => { if (i === 1) return; const d = ipSegD(p, bn[1], bn[2]); if (d < bd - 0.01) { bd = d; bi = i; } }); return bi;
+    if (Math.hypot(p[0] - R.headC[0], p[1] - R.headC[1]) < R.headR * 1.25) return [1, 1, 0];
+    const ds = bones.map((bn, i) => [i === 1 ? 1e9 : ipSegD(p, bn[1], bn[2]), i]).sort((a, b) => a[0] - b[0]);
+    const [d1, i1] = ds[0]; const nx = ds.slice(1).find(([, j]) => adj(i1, j));
+    if (nx && nx[0] - d1 < bw) { const w2 = 0.5 * (1 - (nx[0] - d1) / bw); return [i1, nx[1], w2]; }
+    return [i1, i1, 0];
   }));
 }
 /* joints of the model person in world units */
@@ -7487,11 +7525,19 @@ function ipDrawInk(c, it, r, b, X, Y) {
     });
     /* bone order matches ipBones: torso, head, then legs, then arms */
     const binds = r.bind || (r.bind = ipBind(it.ink, rig));
-    it.ink.forEach((s, si) => {
+    /* the far arm and leg (drawn first, lighter) so crossing limbs read as one in front of the other */
+    if (!r.back) { const names = ipBones(rig).map((x) => x[0]); r.back = binds.map((bi) => { const n = bi.filter((q) => /^(th0|sh0|ua0|fa0)$/.test(names[q[0]])).length; return n > 0.6 * bi.length; }); }
+    const order = it.ink.map((s, si) => si).sort((a, z) => (r.back[z] ? 1 : 0) - (r.back[a] ? 1 : 0));
+    order.forEach((si) => { const s = it.ink[si]; c.globalAlpha = r.back[si] ? 0.45 : 1;
       const bi = binds[si], q = s.p.slice();
-      for (let k = 0, j = 0; k + 1 < q.length; k += 3, j++) { const t = T[bi[j]] || T[0], np = ipRot([s.p[k] / 10, s.p[k + 1] / 10], t[0], t[2], t[1]); q[k] = np[0] * 10; q[k + 1] = np[1] * 10; }
+      for (let k = 0, j = 0; k + 1 < q.length; k += 3, j++) {
+        const bb = bi[j] || [0, 0, 0], p0 = [s.p[k] / 10, s.p[k + 1] / 10], t1 = T[bb[0]] || T[0], a = ipRot(p0, t1[0], t1[2], t1[1]);
+        let np = a; if (bb[2] > 0) { const t2 = T[bb[1]] || T[0], z = ipRot(p0, t2[0], t2[2], t2[1]); np = [a[0] * (1 - bb[2]) + z[0] * bb[2], a[1] * (1 - bb[2]) + z[1] * bb[2]]; }
+        q[k] = np[0] * 10; q[k + 1] = np[1] * 10;
+      }
       drawStroke(c, Object.assign({}, s, { p: q }));
     });
+    c.globalAlpha = 1;
   } else {
     const at = P([b.x, b.y]);
     c.translate(at[0], at[1]); c.rotate(-b.ang); c.translate(-rig.cx, -rig.cy);
@@ -7549,7 +7595,9 @@ async function placeInPlace(sp, kind, act) {
     spec.params = act === 'walk' || act === 'run' ? [{ key: 'P.v', label: act === 'walk' ? 'ความเร็วเดิน (m/s)' : 'ความเร็ววิ่ง (m/s)', min: act === 'walk' ? 0.5 : 2, max: act === 'walk' ? 2.2 : 8, step: 0.1 }] : act === 'jump' ? [{ key: 'P.v', label: 'ความเร็วตอนพ้นพื้น (m/s)', min: 0.5, max: 4, step: 0.1 }] : act === 'longjump' ? [{ key: 'P.v', label: 'ความเร็ววิ่งเข้าหา (m/s)', min: 2, max: 10, step: 0.5 }, { key: 'P.ang', label: 'มุมกระโดด (องศา)', min: 5, max: 45, step: 1 }] : act === 'fall' ? [{ key: 'P.push', label: 'แรงผลัก', min: 0.1, max: 2, step: 0.1 }] : [];
     spec.params.push({ key: 'P.m', label: 'มวล (kg)', min: 20, max: 120, step: 1 });
   } else {
-    const bd = { id: 'A', label: 'วัตถุ', shape: 'box', ink: true, m: 1, x: cw[0], y: cw[1], w: Math.max(0.05, (B[2] - B[0]) / K), h: Math.max(0.05, (B[3] - B[1]) / K), e: 0.3 };
+    const hp = []; for (const x of body) for (const p of ipPts(x.s)) hp.push([(p[0] - c[0]) / K, -(p[1] - c[1]) / K]); for (const q of pics) for (const p of [[q.x, q.y], [q.x + q.w, q.y], [q.x + q.w, q.y + q.h], [q.x, q.y + q.h]]) hp.push([(p[0] - c[0]) / K, -(p[1] - c[1]) / K]);
+    const sw = body.length ? body.reduce((a, x) => a + (x.s.w || 3), 0) / body.length : 2;
+    const bd = { id: 'A', label: 'วัตถุ', shape: 'box', ink: true, m: 1, x: cw[0], y: cw[1], w: Math.max(0.05, (B[2] - B[0]) / K), h: Math.max(0.05, (B[3] - B[1]) / K), e: 0.3, hull: ipHull(hp).map((q) => [+q[0].toFixed(4), +q[1].toFixed(4)]), skin: (sw / 2 + 1.5) / K };
     spec.bodies.push(bd);
     if (kind === 'fall') spec.params = [{ key: 'A.e', label: 'การกระดอน e', min: 0, max: 0.95, step: 0.05 }, muP, { key: 'g', label: 'g (m/s²)', min: 1, max: 20, step: 0.1 }];
     if (kind === 'throw') { bd.vx = 4.5; bd.vy = 4.5; spec.show.v = true; spec.show.trail = true; spec.params = [{ key: 'A.vx', label: 'ความเร็วต้นแนวราบ (m/s)', min: -8, max: 8, step: 0.1 }, { key: 'A.vy', label: 'ความเร็วต้นแนวดิ่ง (m/s)', min: 0, max: 8, step: 0.1 }, { key: 'A.e', label: 'การกระดอน e', min: 0, max: 0.95, step: 0.05 }]; }
@@ -7573,6 +7621,7 @@ async function placeInPlace(sp, kind, act) {
     body.forEach((x, i) => { const P = ipPts(x.s); if (P.length < 8 || body.length < 2) return; const b = ipBox([x.s]), bw = b[2] - b[0], bh = b[3] - b[1], sz = Math.max(bw, bh); if (Math.hypot(P[0][0] - P[P.length - 1][0], P[0][1] - P[P.length - 1][1]) > 0.35 * sz) return; if (bw / Math.max(1, bh) < 0.7 || bw / Math.max(1, bh) > 1.4) return; if ((b[1] + b[3]) / 2 < B[1] + 0.45 * (B[3] - B[1])) return; if (sz < 0.1 * (B[2] - B[0]) || sz > 0.7 * (B[2] - B[0])) return; wheels.push({ i: [i], cx: (b[0] + b[2]) / 2, cy: (b[1] + b[3]) / 2, r: sz / 2 }); });
     for (const w of wheels) body.forEach((x, i) => { if (w.i.includes(i) || wheels.some((o) => o.i.includes(i))) return; const b = ipBox([x.s]); if (b[0] >= w.cx - w.r && b[2] <= w.cx + w.r && b[1] >= w.cy - w.r && b[3] <= w.cy + w.r) w.i.push(i); });
     rig = { kind: 'rigid', cx: c[0], cy: c[1], K, wheels };
+    if (wheels.length) spec.bodies[0].wheel = true;
   }
   /* move the ink off the page into the moving drawing (and the string or spring the model now draws) */
   const removed = [], touched = new Set(), take = body.map((x) => x.r).concat(att ? [{ layer: att.r.layer, id: att.r.s.id }] : []);
@@ -10972,7 +11021,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793177999';
+const BUILD = '1793178618';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
