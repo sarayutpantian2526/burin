@@ -578,6 +578,10 @@ body.guest #roleSeg, body.guest #bJoin { display: none !important; }
 .tqh small { color: var(--muted); }
 .tqk { font-size: 11px; padding: 1px 7px; border-radius: 999px; background: var(--bg); color: var(--muted); }
 .tqk.ok { background: var(--ok-soft); color: var(--fg); }
+.exsumm { border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: 12px; padding: 12px 14px; margin: 12px 0; background: var(--surface); }
+.exsumm h3 { margin: 0 0 6px; }
+.exsumm ul { margin: 0 0 8px; padding-left: 20px; display: grid; gap: 5px; }
+.exsumm .exnext { margin: 0 0 8px; font-weight: 600; }
 .qkeybox { margin-top: 4px; display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
 .qkeybox .tqkey { width: 100%; box-sizing: border-box; }
 .qkeybtn { font-size: 12.5px; padding: 3px 12px; min-height: 28px; }
@@ -8715,12 +8719,15 @@ function exRenderSetup(body) {
   const all = exAllQs();
   const st = subjTracks();
   if (st.some((t) => BANK_META[t] && BANK_META[t].file && !BANKS[t])) { body.appendChild(exEl('div', 'note', 'กำลังเปิดคลังโจทย์')); bankEnsure(st).then(() => { if (!$('#examSheet').hidden) exRender(); }); return; }
-  const tracks = st.filter((t) => all.some((q) => q.t === t));
+  const allT = Object.keys(CURRIC).filter((t) => all.some((q) => q.t === t));
+  if (EX.otherSubj) { const extra = Object.keys(BANK_META).filter((t) => BANK_META[t].file && !BANKS[t]); if (extra.length) { body.appendChild(exEl('div', 'note', 'กำลังเปิดคลังวิชาอื่น')); bankEnsure(extra).then(() => { if (!$('#examSheet').hidden) exRender(); }); return; } }
+  const tracks = EX.otherSubj ? st.filter((t) => allT.includes(t)).concat(allT.filter((t) => !st.includes(t))) : st.filter((t) => all.some((q) => q.t === t));
   { const k = S.nid + ':' + ((S.nb && S.nb.level) || ''); if (EX.trackKey !== k) { EX.trackKey = k; const d = defaultTrack(S.nb); if (tracks.includes(d)) { EX.track = d; EX.chs.clear(); } } }
   if (!tracks.length) { body.appendChild(exEl('div', 'note', 'ยังไม่มีโจทย์ในคลังของวิชา' + esc(subjName(curSubj()[0], S.nb)) + ' ไปที่หมวดชุดโจทย์ แท็บคลังโจทย์ เพื่อเพิ่มโจทย์เองหรือให้ AI ร่าง')); return; }
   if (!tracks.includes(EX.track)) EX.track = tracks[0];
   body.appendChild(exEl('span', 'label', 'สนามสอบ'));
   exChips(body, tracks.map((t) => [t, exTrackName(t)]), (v) => v === EX.track, (v) => { EX.track = v; EX.chs.clear(); store_ls.set('tp-extrack', v); exRender(); });
+  { const ob = exEl('button', 'chip', EX.otherSubj ? 'แสดงเฉพาะวิชาของสมุดนี้' : 'วิชาอื่น ๆ'); ob.type = 'button'; ob.onclick = () => { EX.otherSubj = !EX.otherSubj; exRender(); }; const row = exEl('div', 'chips'); row.appendChild(ob); body.appendChild(row); }
   const { by } = exStats(EX.who);
   body.appendChild(exEl('span', 'label', 'บทที่จะฝึก แตะเลือกได้หลายบท ไม่เลือกคือทุกบท'));
   const chs = [...new Set(all.filter((q) => q.t === EX.track).map((q) => q.ch))].sort((a, b) => a - b);
@@ -8798,6 +8805,42 @@ function exAdvice(R, x) {
   } else if (x.sec > 150) tips.push('ถูกแล้ว แต่ใช้เวลานาน ฝึกโจทย์แนวนี้เพิ่มเพื่อให้คล่องขึ้น');
   return tips.length ? '<b>คำแนะนำ</b> ' + tips.map(esc).join(' ') : '';
 }
+/* a short, plain summary of what this attempt shows: overall, strengths, what to work on, the thinking level that slips, a misconception, and one next step */
+const BLOOM_TH = { R: ['จำ', 'ทบทวนนิยามและข้อเท็จจริงสำคัญ ทำบัตรคำหรือสรุปสั้น ๆ'], U: ['เข้าใจ', 'ลองอธิบายหลักการด้วยคำพูดของตัวเอง แล้วยกตัวอย่างประกอบ'], Ap: ['นำไปใช้', 'เขียนสิ่งที่โจทย์ให้พร้อมหน่วย เลือกสูตรหรือหลักการก่อนแทนค่า แล้วตรวจหน่วยคำตอบ'], An: ['วิเคราะห์', 'อ่านข้อมูล ตาราง หรือกราฟให้ครบ หาความสัมพันธ์ก่อนสรุป'], E: ['ประเมิน', 'ตรวจว่าข้อสรุปมีหลักฐานรองรับพอหรือไม่ และมีตัวแปรอื่นที่ยังไม่ได้ควบคุมหรือเปล่า'] };
+function exSummary(R) {
+  const n = R.items.length, ok = R.items.filter((x) => x.pick === x.key).length, pct = n ? ok / n : 0, pts = [];
+  pts.push(pct >= 0.8 ? 'ภาพรวม <b>ดีมาก</b> ตอบถูก ' + Math.round(pct * 100) + '% เข้าใจเรื่องที่ฝึกเป็นส่วนใหญ่' : pct >= 0.5 ? 'ภาพรวม <b>พอใช้</b> ตอบถูก ' + Math.round(pct * 100) + '% ยังมีบางเรื่องที่ต้องทบทวน' : 'ภาพรวม <b>ควรทบทวนพื้นฐาน</b> ตอบถูก ' + Math.round(pct * 100) + '% เริ่มจากทบทวนหลักการแล้วฝึกข้อง่ายก่อน');
+  const grp = (keyOf) => { const m = {}; for (const x of R.items) { const k = keyOf(x); if (!k) continue; const g = m[k] || (m[k] = { n: 0, ok: 0, x }); g.n++; if (x.pick === x.key) g.ok++; } return m; };
+  const objName = (x) => (x.q.o ? objOf(x.q.t, x.q.ch, x.q.o) : '') || exChName(x.q.t, x.q.ch);
+  const byO = Object.values(grp((x) => x.q.t + ':' + x.q.ch + ':' + (x.q.o || '')));
+  const good = byO.filter((g) => g.ok === g.n && g.n >= 1).sort((a, b) => b.n - a.n).slice(0, 2);
+  const weak = byO.filter((g) => g.ok < g.n).sort((a, b) => (a.ok / a.n) - (b.ok / b.n) || b.n - a.n).slice(0, 2);
+  if (good.length) pts.push('<b>ทำได้ดี</b> ' + good.map((g) => esc(objName(g.x))).join(' และ '));
+  if (weak.length) pts.push('<b>ต้องพัฒนา</b> ' + weak.map((g) => esc(objName(g.x)) + ' (ผิด ' + (g.n - g.ok) + ' จาก ' + g.n + ')').join(', '));
+  const ex = [];
+  const byB = grp((x) => x.q.b); const slip = Object.entries(byB).filter(([, g]) => g.n >= 2 && g.ok / g.n < 0.5).sort((a, b) => a[1].ok / a[1].n - b[1].ok / b[1].n)[0];
+  if (slip && BLOOM_TH[slip[0]]) ex.push('ข้อระดับ<b>' + BLOOM_TH[slip[0]][0] + '</b> ยังพลาดบ่อย (ถูก ' + slip[1].ok + ' จาก ' + slip[1].n + ') วิธีฝึก: ' + BLOOM_TH[slip[0]][1]);
+  else { const kinds = {}; for (const x of R.items) if (x.pick !== x.key) kinds[qKind(x.q)] = (kinds[qKind(x.q)] || 0) + 1; const k = Object.entries(kinds).sort((a, b) => b[1] - a[1])[0]; if (k && k[1] >= 2) ex.push(k[0] === 'analyze' ? 'ข้อที่ต้องอ่านกราฟหรือรูปยังพลาด ให้อ่านแกนและหน่วยก่อนเสมอ' : k[0] === 'apply' ? 'ข้อคำนวณยังพลาด ให้เขียนสูตรก่อนแทนตัวเลข และตรวจหน่วยของคำตอบ' : 'ข้อหลักการยังพลาด ทบทวนนิยามและหลักการของบทนี้'); }
+  const easyWrong = R.items.filter((x) => (x.q.d || 1) === 1 && x.pick !== x.key).length, hard = R.items.filter((x) => (x.q.d || 1) === 3), hardOk = hard.filter((x) => x.pick === x.key).length;
+  if (easyWrong >= 2) ex.push('พลาดข้อง่าย ' + easyWrong + ' ข้อ มักมาจากอ่านโจทย์ไม่ครบหรือหลักการพื้นฐานยังไม่แน่น');
+  else if (hard.length >= 2 && hardOk === 0 && pct >= 0.5) ex.push('พื้นฐานดีแล้ว แต่ข้อยากยังทำไม่ได้ ลองฝึกข้อยากทีละข้อพร้อมดูเฉลยละเอียด');
+  const mis = {}; for (const x of R.items) { if (x.pick < 0 || x.pick === x.key) continue; const oi = x.order[x.pick]; const w = oi > 0 && x.q.w && x.q.w[oi - 1]; if (w) mis[w] = (mis[w] || 0) + 1; }
+  const topMis = Object.entries(mis).sort((a, b) => b[1] - a[1])[0]; if (topMis) ex.unshift('<b>ความเข้าใจคลาดเคลื่อนที่พบ</b> ' + mdToHtml(topMis[0]));
+  const rush = R.items.filter((x) => x.pick >= 0 && x.pick !== x.key && x.sec < 8).length; if (rush >= 2) ex.unshift('ตอบเร็วเกินไป ' + rush + ' ข้อแล้วผิด ลองอ่านโจทย์ให้จบและจดข้อมูลก่อนเลือก');
+  pts.push(...ex.slice(0, 2));
+  const next = weak.length ? 'ขั้นต่อไป ฝึกเรื่อง ' + esc(objName(weak[0].x)) + ' เพิ่มอีก 5 ข้อ เริ่มจากข้อง่าย' : pct >= 0.8 ? 'ขั้นต่อไป ลองข้อระดับยากขึ้น หรือทำแบบสอบจับเวลา' : '';
+  return { pts, next, weak };
+}
+function exRenderSummary(body, R) {
+  const S2 = exSummary(R), box = exEl('div', 'exsumm');
+  box.innerHTML = '<h3>สรุปผลและสิ่งที่ต้องพัฒนา</h3><ul>' + S2.pts.map((p) => '<li>' + p + '</li>').join('') + '</ul>' + (S2.next ? '<p class="exnext">' + S2.next + '</p>' : '');
+  if (S2.weak.length) {
+    const w = S2.weak[0].x.q, b = exEl('button', 'btn solid', 'ฝึกเรื่องที่ต้องพัฒนา 5 ข้อ'); b.type = 'button';
+    b.onclick = () => { const pool = exAllQs().filter((q) => q.t === w.t && q.ch === w.ch && (!w.o || q.o === w.o)); const more = exAllQs().filter((q) => q.t === w.t && q.ch === w.ch); EX.mode = 'practice'; exStart(pickByLevel(pool.length >= 5 ? pool : more, 5, 'mix', 'easy'), 'ฝึกเรื่องที่ต้องพัฒนา'); };
+    box.appendChild(b);
+  }
+  body.appendChild(box);
+}
 function exRenderGrowth(body, R) {
   const per = {};
   for (const x of R.items) { const k = x.q.t + ':' + x.q.ch; const p = per[k] || (per[k] = { t: x.q.t, ch: x.q.ch, n: 0, ok: 0, slow: 0, kinds: {} }); p.n++; if (x.pick === x.key) p.ok++; else p.kinds[qKind(x.q)] = (p.kinds[qKind(x.q)] || 0) + 1; if (x.sec > 150) p.slow++; }
@@ -8832,6 +8875,7 @@ function exRenderResult(body) {
   for (const [k, p] of Object.entries(per).sort((a, b) => a[1][0] / a[1][1] - b[1][0] / b[1][1])) tb.appendChild(exEl('div', '', '<span>' + esc(k) + '</span><i><s style="width:' + Math.round(p[0] / p[1] * 100) + '%"></s></i><b>' + p[0] + '/' + p[1] + '</b>'));
   body.appendChild(tb);
   const wrong = R.items.filter((x) => x.pick !== x.key);
+  exRenderSummary(body, R);
   exRenderGrowth(body, R);
   if (wrong.length) {
     body.appendChild(exEl('h3', '', 'ทบทวนข้อที่ยังไม่ถูก'));
@@ -9273,7 +9317,8 @@ function applyRole() {
   document.body.classList.toggle('guest', !!S.student);
   const seg = $('#roleSeg'); if (seg) seg.querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', b.dataset.r === (isStudentSide() ? 'student' : 'teacher') ? 'true' : 'false'));
   if (EX && isStudentSide() && !['practice', 'stats'].includes(EX.tab)) EX.tab = 'practice';
-  const st = isStudentSide(); $('#examSheet h2').textContent = st ? 'ฝึกโจทย์แข่งขัน' : 'โจทย์ ห้องเรียน และคะแนน'; $('#bExam .lbl').textContent = st ? 'ฝึกแข่งขัน' : 'โจทย์และคะแนน'; $('#bExam').title = st ? 'ฝึกโจทย์แข่งขัน' : 'โจทย์ ห้องเรียน และคะแนน';
+  const st = isStudentSide(); $('#examSheet h2').textContent = st ? 'ทำแบบฝึก ตรวจให้ทันที' : 'โจทย์ ห้องเรียน และคะแนน'; $('#bExam .lbl').textContent = st ? 'ทำแบบฝึก' : 'โจทย์และคะแนน'; $('#bExam').title = st ? 'ทำแบบฝึก ตรวจให้ทันที' : 'โจทย์ ห้องเรียน และคะแนน';
+  { const tp = document.querySelector('#exTabs [data-t="practice"]'), ts = document.querySelector('#exTabs [data-t="stats"]'); if (tp) { tp.dataset.l0 = tp.dataset.l0 || tp.textContent; tp.textContent = st ? 'ทำแบบฝึก' : tp.dataset.l0; } if (ts) { ts.dataset.l0 = ts.dataset.l0 || ts.textContent; ts.textContent = st ? 'ผลและสิ่งที่ต้องพัฒนา' : ts.dataset.l0; } }
 }
 function setRole(r) {
   if (S.student) return; /* guests from a QR code stay students */
@@ -11325,7 +11370,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793183585';
+const BUILD = '1793186778';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
