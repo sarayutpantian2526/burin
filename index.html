@@ -578,6 +578,10 @@ body.guest #roleSeg, body.guest #bJoin { display: none !important; }
 .tqh small { color: var(--muted); }
 .tqk { font-size: 11px; padding: 1px 7px; border-radius: 999px; background: var(--bg); color: var(--muted); }
 .tqk.ok { background: var(--ok-soft); color: var(--fg); }
+.qkeybox { margin-top: 4px; display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+.qkeybox .tqkey { width: 100%; box-sizing: border-box; }
+.qkeybtn { font-size: 12.5px; padding: 3px 12px; min-height: 28px; }
+body.role-student .qkeybox { display: none; }
 .mvtop { display: flex; gap: 12px; align-items: center; margin: 8px 0 12px; }
 .mvtop img { width: 120px; max-height: 120px; object-fit: contain; border: 1px dashed var(--line); border-radius: 10px; background: #FFFFFF; flex: none; }
 .mvgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 190px), 1fr)); gap: 8px; margin-bottom: 12px; }
@@ -8756,6 +8760,8 @@ function exRenderRun(body) {
     b.onclick = () => exAnswer(k); opts.appendChild(b);
   });
   body.appendChild(opts);
+  if (!reveal && !isStudentSide()) body.appendChild(keyToggle(Object.assign({}, x.q, { c: x.order.map((o) => x.q.c[o]), a: x.key })));
+  if (reveal && !isStudentSide()) { const kb = keyToggle(x.q); kb.querySelector('.qkeybtn').textContent = 'เฉลยละเอียด'; body.appendChild(kb); }
   if (reveal) { body.appendChild(exEl('div', 'note ' + (x.pick === x.key ? 'ok' : 'err'), '<b>' + (x.pick === x.key ? 'ถูกต้อง' : 'ยังไม่ถูก คำตอบคือ ' + L[x.key]) + '</b> ' + mdToHtml(x.q.e || ''))); const adv = exAdvice(R, x); if (adv) body.appendChild(exEl('div', 'note advice', adv)); }
   const nav = exEl('div', 'row2');
   const mk = (t, cls, f) => { const b = exEl('button', 'btn ' + cls, t); b.type = 'button'; b.onclick = f; nav.appendChild(b); return b; };
@@ -8953,7 +8959,7 @@ function exRenderOwnList() {
   for (const q of EX.own.slice().sort((a, b) => (b.at || 0) - (a.at || 0))) {
     const d = exEl('div', 'exrev', '<small>' + esc(exTrackName(q.t) + ' : ' + exChName(q.t, q.ch)) + (q.src === 'ai' ? ' ร่างโดย AI' : '') + '</small><div class="exq">' + mdToHtml(q.q) + '</div><div class="note">ตอบ ' + mdToHtml(q.c[q.a || 0]) + '</div>');
     const b = exEl('button', 'btn', 'ลบ'); b.onclick = async () => { EX.own = EX.own.filter((x) => x.id !== q.id); await S.store.del('exq/' + q.id).catch(() => {}); exRenderOwnList(); };
-    d.appendChild(b); ol.appendChild(d);
+    d.appendChild(b); d.appendChild(keyToggle(q)); ol.appendChild(d);
   }
   typeset(ol);
 }
@@ -9113,7 +9119,7 @@ function exRenderBuilt(body) {
   body.appendChild(exEl('h3', '', 'ชุดแบบฝึก ' + qs.length + ' ข้อ'));
   if (!qs.length) { body.appendChild(exEl('div', 'note err', 'ไม่พบโจทย์ตามเงื่อนไข ลองเลือกระดับคละหรือเพิ่มบท')); return; }
   const ol = exEl('ol', 'exlist');
-  qs.forEach((q) => { const li = exEl('li', '', '<span class="lv l' + effLevel(q) + '">' + L[effLevel(q)] + '</span> ' + mdToHtml(q.q) + ' <small>' + esc(exChName(q.t, q.ch)) + (q.src === 'gen' ? ' สุ่มตัวเลข' : q.src === 'ai' ? ' AI' : '') + '</small>'); ol.appendChild(li); });
+  qs.forEach((q) => { const li = exEl('li', '', '<span class="lv l' + effLevel(q) + '">' + L[effLevel(q)] + '</span> ' + mdToHtml(q.q) + ' <small>' + esc(exChName(q.t, q.ch)) + (q.src === 'gen' ? ' สุ่มตัวเลข' : q.src === 'ai' ? ' AI' : '') + '</small>'); li.appendChild(keyToggle(q)); ol.appendChild(li); });
   body.appendChild(ol);
   const aiBox = exEl('div', ''); aiBox.id = 'gbAI'; body.appendChild(aiBox);
   const row = exEl('div', 'row2');
@@ -10103,6 +10109,21 @@ async function qImgBlob(q) {
   if (id[0] === 'L' || id[0] === 'S') return getAssetBlob(id);
   try { const r = await fetch('/_blob/' + id); return r.ok ? await r.blob() : null; } catch (e) { return null; }
 }
+/* a small answer key for the teacher under any question: tap to show the answer, the reason and the five-step solution */
+function keyToggle(q) {
+  const box = exEl('div', 'qkeybox'); if (isStudentSide() || !q) return box;
+  const b = exEl('button', 'btn sm qkeybtn', 'เฉลย'); b.type = 'button'; b.title = 'ดูเฉลย เห็นเฉพาะฝั่งครู';
+  const pane = exEl('div', 'tqkey'); pane.hidden = true;
+  b.onclick = (e) => {
+    e.stopPropagation(); e.preventDefault(); pane.hidden = !pane.hidden; b.textContent = pane.hidden ? 'เฉลย' : 'ซ่อนเฉลย';
+    if (!pane.hidden && !pane.childNodes.length) {
+      pane.innerHTML = keyLine(q) + (q.e ? '<div>' + mdToHtml(q.e) + '</div>' : '');
+      const sb = exEl('button', 'btn solbtn', 'เฉลยละเอียด 5 ขั้น'); sb.type = 'button'; sb.onclick = (ev) => { ev.stopPropagation(); ev.preventDefault(); sb.remove(); showSolution(q, null, pane); }; pane.appendChild(sb);
+      typeset(pane);
+    }
+  };
+  box.append(b, pane); return box;
+}
 function keyLine(q) {
   if (q.c && q.c.length) return '<b>ตอบ ' + 'กขคง'[q.a || 0] + '.</b> ' + mdToHtml(q.c[q.a || 0] || '');
   return '<b>ตอบ</b> ' + (q.ans ? mdToHtml(q.ans) : 'ดูเฉลยละเอียด');
@@ -10598,7 +10619,7 @@ function exRenderSetEditor(body) {
     const b1 = exEl('button', 'btn', 'ขึ้น'); b1.disabled = !i; b1.onclick = () => { st.qs.splice(i - 1, 0, st.qs.splice(i, 1)[0]); exRender(); };
     const b2 = exEl('button', 'btn', 'ลง'); b2.disabled = i === st.qs.length - 1; b2.onclick = () => { st.qs.splice(i + 1, 0, st.qs.splice(i, 1)[0]); exRender(); };
     const b3 = exEl('button', 'btn', 'เอาออก'); b3.onclick = () => { st.qs.splice(i, 1); exRender(); };
-    a.append(b1, b2, b3); c.appendChild(a); ol.appendChild(c);
+    a.append(b1, b2, b3); c.appendChild(a); c.appendChild(keyToggle(q)); ol.appendChild(c);
   });
   body.appendChild(ol);
   body.appendChild(exEl('h3', '', 'เพิ่มโจทย์'));
@@ -10615,7 +10636,7 @@ function exRenderSetEditor(body) {
   const pl = exEl('div', 'traylist');
   for (const q of pool.slice(0, 30)) {
     const c = exEl('div', 'tq', '<div class="tqh"><span class="lv l' + (q.d || 1) + '">' + L[q.d || 1] + '</span><small>' + (q.src === 'own' ? 'โจทย์ของฉัน' : q.src === 'ai' ? 'ร่างโดย AI' : 'คลัง') + '</small></div><div class="tqq">' + mdToHtml(q.q) + '</div>');
-    const b = exEl('button', 'btn', 'เพิ่มเข้าชุด'); b.onclick = () => { st.qs.push(shuffleChoices(clone(q))); exRender(); }; c.appendChild(b); pl.appendChild(c);
+    const b = exEl('button', 'btn', 'เพิ่มเข้าชุด'); b.onclick = () => { st.qs.push(shuffleChoices(clone(q))); exRender(); }; c.appendChild(b); c.appendChild(keyToggle(q)); pl.appendChild(c);
   }
   body.appendChild(pl);
   const row = exEl('div', 'row2');
@@ -10940,7 +10961,7 @@ async function exRenderHW(body) {
   const per = a.data.qs.map((q) => { let n = 0, ok = 0; for (const s of subs) { const r = hwScore(a, s).res.find((x) => x.q.id === q.id); if (r && r.ok != null) { n++; ok += r.ok; } } return { q, n, p: n ? ok / n : null }; });
   body.appendChild(exEl('h3', '', 'ภาพรวมรายข้อ'));
   const pt = exEl('div', 'exper');
-  per.forEach((x, i) => pt.appendChild(exEl('div', '', '<span>ข้อ ' + (i + 1) + ' <small>' + esc(String(x.q.q).replace(/\$[^$]*\$/g, '…').slice(0, 50)) + '</small></span><i><s style="width:' + Math.round((x.p || 0) * 100) + '%"></s></i><b>' + (x.p == null ? '-' : Math.round(x.p * 100) + '%') + '</b>')));
+  per.forEach((x, i) => pt.appendChild(exEl('div', '', '<span>ข้อ ' + (i + 1) + (hwKeyFor(a, x.q) != null ? ' <em class="lkey">ตอบ ' + 'กขคง'[hwKeyFor(a, x.q)] + '</em>' : '') + ' <small>' + esc(String(x.q.q).replace(/\$[^$]*\$/g, '…').slice(0, 50)) + '</small></span><i><s style="width:' + Math.round((x.p || 0) * 100) + '%"></s></i><b>' + (x.p == null ? '-' : Math.round(x.p * 100) + '%') + '</b>')));
   body.appendChild(pt);
   const hard = per.filter((x) => x.p != null && x.p < 0.5);
   if (hard.length) body.appendChild(exEl('div', 'note advice', '<b>ควรสอนซ้ำ</b> ข้อ ' + hard.map((x) => per.indexOf(x) + 1).join(', ') + ' ผู้เรียนตอบถูกไม่ถึงครึ่ง' + (hard[0].q.e ? ' เช่นข้อ ' + (per.indexOf(hard[0]) + 1) + ' ประเด็นสำคัญคือ ' + mdToHtml(hard[0].q.e) : '')));
@@ -11304,7 +11325,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793182623';
+const BUILD = '1793183279';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
