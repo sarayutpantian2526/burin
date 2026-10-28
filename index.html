@@ -578,6 +578,18 @@ body.guest #roleSeg, body.guest #bJoin { display: none !important; }
 .tqh small { color: var(--muted); }
 .tqk { font-size: 11px; padding: 1px 7px; border-radius: 999px; background: var(--bg); color: var(--muted); }
 .tqk.ok { background: var(--ok-soft); color: var(--fg); }
+.scoreb th.c0 { background: #EEF2FC; } .scoreb th.c1 { background: #FDF1E8; } .scoreb th.c2 { background: #EAF6EF; } .scoreb th.c3 { background: #F4EEFB; }
+.scoreb td.sub { font-weight: 600; background: rgba(47,75,184,0.04); }
+.scoreb input.sc.late { background: #FDEBD3; }
+.scoreb input.sc.miss { background: #FBE3E1; }
+.scoreb input.sc.miss::placeholder { color: #B42318; font-size: 11px; }
+.plancat { align-items: center; margin-bottom: 6px; }
+.plancat input { padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; font: inherit; background: var(--surface); color: var(--fg); }
+.plancat input:first-child { flex: 1 1 180px; }
+.planitem .bacts { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.planitem input { padding: 6px 8px; border: 1px solid var(--line); border-radius: 8px; font: inherit; background: var(--surface); color: var(--fg); }
+.termrow em { font-style: normal; font-size: 12px; padding: 1px 8px; border-radius: 999px; background: var(--bg); margin-left: 4px; }
+.termrow em.good { background: var(--ok-soft); } .termrow em.bad { background: #FBE3E1; color: #B42318; }
 .exsumm { border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: 12px; padding: 12px 14px; margin: 12px 0; background: var(--surface); }
 .exsumm h3 { margin: 0 0 6px; }
 .exsumm ul { margin: 0 0 8px; padding-left: 20px; display: grid; gap: 5px; }
@@ -10784,15 +10796,15 @@ function askIdentity(R) {
 const GRADE_STEPS = [[80, '4'], [75, '3.5'], [70, '3'], [65, '2.5'], [60, '2'], [55, '1.5'], [50, '1'], [0, '0']];
 const gradeOf = (pct) => GRADE_STEPS.find((g) => pct >= g[0])[1];
 function cellVal(c, itemId, sid) { const x = c.scores && c.scores[itemId] && c.scores[itemId][sid]; return x == null ? null : typeof x === 'object' ? x.v : x; }
-function setCell(c, itemId, sid, v, auto) { c.scores = c.scores || {}; const col = c.scores[itemId] || (c.scores[itemId] = {}); if (v == null || v === '') delete col[sid]; else col[sid] = { v: +v, auto: !!auto }; }
+function setCell(c, itemId, sid, v, auto, late) { c.scores = c.scores || {}; const col = c.scores[itemId] || (c.scores[itemId] = {}); if (v == null || v === '') delete col[sid]; else col[sid] = late ? { v: +v, auto: !!auto, late: true } : { v: +v, auto: !!auto }; }
 async function clsSync(c) {
   let n = 0;
   for (const it of c.items || []) {
     if (it.kind === 'hw' && CLOUD.state === 'on') {
       let a = (HW.list || []).find((x) => x.id === it.ref); if (!a) { try { await hwLoad(); a = HW.list.find((x) => x.id === it.ref); } catch (e) { a = null; } }
-      if (!a) continue;
+      if (!a) continue; if (a.due && !it.due) it.due = a.due;
       let subs = []; try { subs = await hwLoadSubs(a.id); } catch (e) { continue; }
-      for (const s of subs) { const sid = s.data.stu && s.data.stu.sid; if (!sid) continue; const sc = hwScore(a, s); if (!sc.checked) continue; const old = c.scores && c.scores[it.id] && c.scores[it.id][sid]; if (old && !old.auto) continue; setCell(c, it.id, sid, Math.round(sc.got / sc.n * it.max * 10) / 10, true); n++; }
+      for (const s of subs) { const sid = s.data.stu && s.data.stu.sid; if (!sid) continue; const sc = hwScore(a, s); if (!sc.checked) continue; const old = c.scores && c.scores[it.id] && c.scores[it.id][sid]; if (old && !old.auto) continue; setCell(c, it.id, sid, Math.round(sc.got / sc.n * it.max * 10) / 10, true, !!(a.due && Date.parse(s.created_at) > Date.parse(a.due))); n++; }
     } else if (it.kind === 'set') {
       for (const r of c.roster || []) {
         const att = EX.att.filter((a) => a.setId === it.ref && (a.stu === r.sid || (!a.stu && a.who === r.name))).sort((x, y) => y.at - x.at)[0];
@@ -10828,48 +10840,165 @@ async function exRenderClasses(body) {
     await clsSave(c); CLS.cur = c.id; exRender();
   }; body.appendChild(go);
 }
+/* ----- a whole term: score structure with weights, due dates, late and missing work, running totals, one link for all the term's work ----- */
+const PLAN_PRESETS = [
+  ['ก่อนกลางภาค 30 กลางภาค 20 หลังกลางภาค 30 ปลายภาค 20', [['ก่อนกลางภาค', 30], ['สอบกลางภาค', 20], ['หลังกลางภาค', 30], ['สอบปลายภาค', 20]]],
+  ['เก็บ 70 สอบปลายภาค 30', [['คะแนนเก็บ', 70], ['สอบปลายภาค', 30]]],
+  ['เก็บ 80 สอบปลายภาค 20', [['คะแนนเก็บ', 80], ['สอบปลายภาค', 20]]],
+  ['งาน 40 สอบย่อย 20 กลางภาค 20 ปลายภาค 20', [['งานและการบ้าน', 40], ['สอบย่อย', 20], ['สอบกลางภาค', 20], ['สอบปลายภาค', 20]]]
+];
+function clsPlan(c) { c.plan = c.plan || { cats: [], late: 0, newCat: null, zero: true }; if (c.plan.zero == null) c.plan.zero = true; return c.plan; }
+const termLink = (id) => location.origin + location.pathname + '#term=' + id;
+function itemDue(it) { return it.due ? Date.parse(it.due) : null; }
+/* one student's standing: each category scaled to its weight; work not yet due is left out, missing work after the due date counts as zero */
+function clsCalc(c, r, t) {
+  const P = clsPlan(c), items = c.items || [], tnow = t || now(), cats = P.cats.length ? P.cats : [{ id: '_all', name: 'รวม', w: 100 }];
+  const out = { cats: [], missing: [], late: [], got: 0, wsum: 0 };
+  for (const cat of cats) {
+    let got = 0, max = 0;
+    for (const it of items) {
+      if (P.cats.length && (it.cat || P.cats[0].id) !== cat.id) continue;
+      const x = c.scores && c.scores[it.id] && c.scores[it.id][r.sid]; const due = itemDue(it), past = due && due < tnow;
+      if (x == null) { if (past) { out.missing.push(it); if (P.zero) max += +it.max || 0; } continue; }
+      let v = typeof x === 'object' ? x.v : x; if (x.late) { out.late.push(it); v = v * (1 - (P.late || 0) / 100); }
+      got += v; max += +it.max || 0;
+    }
+    const sc = max ? got / max * cat.w : null; out.cats.push({ cat, got, max, sc });
+    if (sc != null) { out.got += sc; out.wsum += cat.w; }
+  }
+  out.pct = out.wsum ? out.got / out.wsum * 100 : null; out.any = out.wsum > 0;
+  return out;
+}
 function renderClass(body, c) {
   const back = exEl('button', 'btn', 'ห้องทั้งหมด'); back.onclick = () => { CLS.cur = null; exRender(); }; body.appendChild(back);
   body.appendChild(exEl('h3', '', esc(classLabel(c)) + (c.subject ? ' : ' + esc(c.subject) : '')));
-  const tabs = exChips(body, [['scores', 'คะแนน'], ['roster', 'รายชื่อ']], (v) => v === (CLS.view || 'scores'), (v) => { CLS.view = v; exRender(); });
-  if ((CLS.view || 'scores') === 'roster') return renderRoster(body, c);
-  if (!(c.roster || []).length) { body.appendChild(exEl('div', 'note', 'ยังไม่มีรายชื่อ ไปที่แท็บรายชื่อแล้ววางรายชื่อจาก Excel')); }
-  const items = c.items || [];
+  const view = CLS.view || 'scores';
+  exChips(body, [['scores', 'คะแนน'], ['plan', 'โครงสร้างคะแนนและงานทั้งเทอม'], ['due', 'งานค้าง'], ['roster', 'รายชื่อ']], (v) => v === view, (v) => { CLS.view = v; exRender(); });
+  if (view === 'roster') return renderRoster(body, c);
+  if (view === 'plan') return renderPlan(body, c);
+  if (view === 'due') return renderMissing(body, c);
+  if (!(c.roster || []).length) body.appendChild(exEl('div', 'note', 'ยังไม่มีรายชื่อ ไปที่แท็บรายชื่อแล้ววางรายชื่อจาก Excel'));
+  const P = clsPlan(c), items = (c.items || []).slice().sort((a, b) => (itemDue(a) || a.at || 0) - (itemDue(b) || b.at || 0));
   const row = exEl('div', 'row2');
   const add = exEl('button', 'btn solid', 'เพิ่มช่องคะแนน'); add.onclick = () => clsAddItem(c); row.appendChild(add);
-  const sy = exEl('button', 'btn', 'ดึงคะแนนจากการบ้านและแบบฝึก'); sy.onclick = async () => { sy.disabled = true; sy.textContent = 'กำลังดึงคะแนน'; const n = await clsSync(c); toast('อัปเดต ' + n + ' ช่อง', 2000); exRender(); }; row.appendChild(sy);
+  const sy = exEl('button', 'btn', 'ดึงคะแนนจากการบ้านและแบบฝึก'); sy.onclick = async () => { sy.disabled = true; sy.textContent = 'กำลังดึงคะแนน'; const n = await clsSync(c); toast('อัปเดต ' + n + ' ช่อง', 1800); exRender(); }; row.appendChild(sy);
+  const tl = exEl('button', 'btn', 'ลิงก์งานทั้งเทอมสำหรับนักเรียน'); tl.onclick = () => showTermLink(c); row.appendChild(tl);
   const csv = exEl('button', 'btn', 'ส่งออก CSV'); csv.onclick = () => clsCsv(c); row.appendChild(csv);
   body.appendChild(row);
-  const tot = items.reduce((a, it) => a + (+it.max || 0), 0);
-  const tb = exEl('table', 'extab grades scoreb');
-  let h = '<thead><tr><th>เลขที่</th><th>ชื่อ</th>' + items.map((it) => '<th title="' + esc(it.name) + '">' + esc(it.name.slice(0, 16)) + '<small>เต็ม ' + it.max + (it.kind === 'hw' ? ' การบ้าน' : it.kind === 'set' ? ' แบบฝึก' : '') + '</small></th>').join('') + '<th>รวม<small>เต็ม ' + tot + '</small></th><th>ร้อยละ</th><th>เกรด</th></tr></thead><tbody>';
+  if (!P.cats.length) body.appendChild(exEl('div', 'note', 'ยังไม่ได้ตั้งโครงสร้างคะแนน ตอนนี้รวมคะแนนดิบทุกช่อง ตั้งสัดส่วน เช่น ก่อนกลางภาค 30 กลางภาค 20 หลังกลางภาค 30 ปลายภาค 20 ได้ที่แท็บโครงสร้างคะแนน'));
+  const cats = P.cats.length ? P.cats : [{ id: '_all', name: 'รวม', w: 100 }];
+  const ordered = P.cats.length ? cats.flatMap((cat) => items.filter((it) => (it.cat || P.cats[0].id) === cat.id).map((it) => [it, cat])) : items.map((it) => [it, cats[0]]);
+  const tnow = now(), tb = exEl('table', 'extab grades scoreb');
+  let h = '<thead><tr><th>เลขที่</th><th>ชื่อ</th>' + ordered.map(([it, cat]) => '<th title="' + esc(it.name) + '"' + (P.cats.length ? ' class="c' + (cats.indexOf(cat) % 4) + '"' : '') + '>' + esc(it.name.slice(0, 16)) + '<small>เต็ม ' + it.max + (it.due ? ' ส่ง ' + new Date(it.due).toLocaleDateString(LOC, { day: 'numeric', month: 'short' }) : '') + '</small></th>').join('')
+    + (P.cats.length ? cats.map((cat, i) => '<th class="sub c' + (i % 4) + '">' + esc(cat.name) + '<small>เต็ม ' + cat.w + '</small></th>').join('') : '<th>รวม<small>เต็ม ' + items.reduce((a, it) => a + (+it.max || 0), 0) + '</small></th>')
+    + '<th>ร้อยละ<small>ณ ตอนนี้</small></th><th>เกรด</th><th>ค้าง</th></tr></thead><tbody>';
   for (const r of (c.roster || []).slice().sort((a, b) => a.no - b.no)) {
-    let sum = 0, any = false;
-    const cells = items.map((it) => { const v = cellVal(c, it.id, r.sid); if (v != null) { sum += v; any = true; } const auto = c.scores && c.scores[it.id] && c.scores[it.id][r.sid] && c.scores[it.id][r.sid].auto; return '<td><input class="sc' + (auto ? ' auto' : '') + '" inputmode="decimal" data-i="' + it.id + '" data-s="' + esc(r.sid) + '" value="' + (v == null ? '' : v) + '"></td>'; }).join('');
-    const pct = tot ? sum / tot * 100 : 0;
-    h += '<tr><td>' + r.no + '</td><td>' + esc(r.name) + '</td>' + cells + '<td><b>' + (any ? +sum.toFixed(1) : '-') + '</b></td><td>' + (any ? Math.round(pct) : '-') + '</td><td class="' + (any && pct < 50 ? 'lo' : any && pct >= 80 ? 'hi' : '') + '">' + (any ? gradeOf(pct) : '-') + '</td></tr>';
+    const R = clsCalc(c, r, tnow);
+    const cells = ordered.map(([it]) => { const x = c.scores && c.scores[it.id] && c.scores[it.id][r.sid], v = x == null ? null : typeof x === 'object' ? x.v : x, due = itemDue(it), miss = v == null && due && due < tnow; return '<td><input class="sc' + (x && x.auto ? ' auto' : '') + (x && x.late ? ' late' : '') + (miss ? ' miss' : '') + '" inputmode="decimal" data-i="' + it.id + '" data-s="' + esc(r.sid) + '" value="' + (v == null ? '' : v) + '"' + (miss ? ' placeholder="ขาด"' : '') + (x && x.late ? ' title="ส่งช้า หัก ' + (P.late || 0) + '%"' : '') + '></td>'; }).join('');
+    const subs = P.cats.length ? R.cats.map((k) => '<td class="sub">' + (k.sc == null ? '-' : +k.sc.toFixed(1)) + '</td>').join('') : '<td><b>' + (R.any ? +R.cats[0].got.toFixed(1) : '-') + '</b></td>';
+    h += '<tr><td>' + r.no + '</td><td>' + esc(r.name) + '</td>' + cells + subs + '<td>' + (R.any ? Math.round(R.pct) : '-') + '</td><td class="' + (R.any && R.pct < 50 ? 'lo' : R.any && R.pct >= 80 ? 'hi' : '') + '">' + (R.any ? gradeOf(R.pct) : '-') + '</td><td class="' + (R.missing.length ? 'lo' : '') + '">' + (R.missing.length || '') + '</td></tr>';
   }
   tb.innerHTML = h + '</tbody>';
   tb.querySelectorAll('input.sc').forEach((inp) => {
     inp.onchange = async () => { const it = items.find((x) => x.id === inp.dataset.i), v = inp.value.trim(); if (v !== '' && (!isFinite(+v) || +v < 0 || +v > it.max)) { toast('คะแนนต้องอยู่ระหว่าง 0 ถึง ' + it.max, 2000); inp.value = ''; return; } setCell(c, it.id, inp.dataset.s, v === '' ? null : +v, false); await clsSave(c); exRender(); };
   });
   const wrap = exEl('div', 'gwrap'); wrap.appendChild(tb); body.appendChild(wrap);
-  body.appendChild(exEl('div', 'note', 'แตะช่องเพื่อพิมพ์คะแนนเอง ช่องสีฟ้ามาจากระบบ (การบ้านหรือแบบฝึกที่ผูกกับห้องนี้) ถ้าพิมพ์ทับ ระบบจะไม่เขียนทับอีก เกรดคิดจากร้อยละ 80 ขึ้นไปได้ 4 ลดลงขั้นละ 5'));
-  if (items.length) {
-    body.appendChild(exEl('h3', '', 'ช่องคะแนน'));
-    for (const it of items) { const r = exEl('div', 'setrow', '<div><b>' + esc(it.name) + '</b><small>เต็ม ' + it.max + ' : ' + (it.kind === 'hw' ? 'ผูกกับการบ้าน' : it.kind === 'set' ? 'ผูกกับชุดแบบฝึก' : 'กรอกเอง') + '</small></div>'); const del = exEl('button', 'btn', 'ลบช่องนี้'); let armed = false; del.onclick = async () => { if (!armed) { armed = true; del.textContent = 'แตะอีกครั้งเพื่อลบ'; return; } c.items = c.items.filter((x) => x.id !== it.id); if (c.scores) delete c.scores[it.id]; await clsSave(c); exRender(); }; r.appendChild(del); body.appendChild(r); }
+  body.appendChild(exEl('div', 'note', 'แต่ละหมวดย่อลงตามสัดส่วนที่ตั้งไว้ ร้อยละ ณ ตอนนี้ คิดจากงานที่ถึงกำหนดแล้วเท่านั้น งานที่เลยกำหนดแต่ยังไม่ส่งขึ้นว่า "ขาด" และนับเป็นศูนย์' + (P.late ? ' งานที่ส่งช้า (สีส้ม) หัก ' + P.late + '%' : '') + ' ช่องสีฟ้ามาจากระบบ ถ้าพิมพ์ทับ ระบบจะไม่เขียนทับอีก เกรดคิดจากร้อยละ 80 ขึ้นไปได้ 4 ลดลงขั้นละ 5'));
+}
+function renderPlan(body, c) {
+  const P = clsPlan(c), save = async () => { await clsSave(c); exRender(); };
+  body.appendChild(exEl('h3', '', 'สัดส่วนคะแนน'));
+  exChips(body, PLAN_PRESETS.map((p, i) => [i, p[0]]), () => false, (i) => { const old = P.cats; P.cats = PLAN_PRESETS[i][1].map(([name, w], k) => ({ id: (old[k] && old[k].id) || 'g' + uid(), name, w })); P.newCat = P.cats[0].id; for (const it of c.items || []) if (!P.cats.some((x) => x.id === it.cat)) it.cat = P.cats[0].id; save(); });
+  const list = exEl('div', 'plancats');
+  P.cats.forEach((cat, i) => {
+    const r = exEl('div', 'row2 plancat');
+    const nm = document.createElement('input'); nm.value = cat.name; nm.maxLength = 30; nm.onchange = () => { cat.name = nm.value.trim() || cat.name; save(); };
+    const w = document.createElement('input'); w.inputMode = 'decimal'; w.value = cat.w; w.style.width = '80px'; w.onchange = () => { const v = +w.value; if (isFinite(v) && v >= 0) { cat.w = v; save(); } };
+    const del = exEl('button', 'btn', 'ลบ'); del.onclick = () => { P.cats.splice(i, 1); for (const it of c.items || []) if (it.cat === cat.id) it.cat = P.cats[0] ? P.cats[0].id : null; save(); };
+    r.append(nm, w, exEl('span', '', 'คะแนน'), del); list.appendChild(r);
+  });
+  body.appendChild(list);
+  const sum = P.cats.reduce((a, x) => a + (+x.w || 0), 0);
+  const ad = exEl('button', 'btn', 'เพิ่มหมวด'); ad.onclick = () => { P.cats.push({ id: 'g' + uid(), name: 'หมวดใหม่', w: 10 }); save(); };
+  body.appendChild(ad);
+  if (P.cats.length) body.appendChild(exEl('div', 'note' + (sum === 100 ? ' ok' : ' err'), 'รวม ' + sum + ' คะแนน' + (sum === 100 ? '' : ' ควรรวมได้ 100')));
+  body.appendChild(exEl('h3', '', 'กติกา'));
+  body.appendChild(exEl('span', 'label', 'ส่งช้ากว่ากำหนด หักคะแนน'));
+  exChips(body, [[0, 'ไม่หัก'], [10, 'หัก 10%'], [20, 'หัก 20%'], [30, 'หัก 30%'], [50, 'หัก 50%']], (v) => (P.late || 0) === v, (v) => { P.late = v; save(); });
+  body.appendChild(exEl('span', 'label', 'งานที่เลยกำหนดแล้วยังไม่ส่ง'));
+  exChips(body, [[true, 'นับเป็นศูนย์'], [false, 'ยังไม่นับจนกว่าจะส่ง']], (v) => P.zero === v, (v) => { P.zero = v; save(); });
+  if (P.cats.length) { body.appendChild(exEl('span', 'label', 'งานใหม่ที่มอบหมายให้ห้องนี้ ใส่ไว้ในหมวด')); exChips(body, P.cats.map((x) => [x.id, x.name]), (v) => (P.newCat || P.cats[0].id) === v, (v) => { P.newCat = v; save(); }); }
+  body.appendChild(exEl('h3', '', 'งานทั้งเทอม เรียงตามกำหนดส่ง'));
+  const items = (c.items || []).slice().sort((a, b) => (itemDue(a) || 9e15) - (itemDue(b) || 9e15));
+  if (!items.length) body.appendChild(exEl('div', 'note', 'ยังไม่มีงาน มอบหมายการบ้านจากชุดโจทย์แล้วเลือกห้องนี้ งานจะมาอยู่ที่นี่เอง หรือกดเพิ่มช่องคะแนนสำหรับสอบหรืองานที่ให้คะแนนเอง'));
+  for (const it of items) {
+    const r = exEl('div', 'setrow planitem', '<div><b>' + esc(it.name) + '</b><small>' + (it.kind === 'hw' ? 'การบ้านในแอป' : it.kind === 'set' ? 'แบบฝึก' : 'กรอกคะแนนเอง') + '</small></div>');
+    const ctl = exEl('div', 'bacts');
+    if (P.cats.length) { const s = document.createElement('select'); s.className = 'traysel'; s.style.width = 'auto'; for (const x of P.cats) { const o = document.createElement('option'); o.value = x.id; o.textContent = x.name; s.appendChild(o); } s.value = it.cat || P.cats[0].id; s.onchange = () => { it.cat = s.value; save(); }; ctl.appendChild(s); }
+    const mx = document.createElement('input'); mx.inputMode = 'decimal'; mx.value = it.max; mx.title = 'คะแนนเต็ม'; mx.style.width = '64px'; mx.onchange = () => { const v = +mx.value; if (v > 0) { it.max = v; save(); } }; ctl.append(exEl('span', '', 'เต็ม'), mx);
+    const du = document.createElement('input'); du.type = 'date'; du.value = it.due ? new Date(it.due).toISOString().slice(0, 10) : ''; du.title = 'กำหนดส่ง'; du.onchange = () => { it.due = du.value ? new Date(du.value + 'T23:59:00').toISOString() : null; save(); }; ctl.append(exEl('span', '', 'ส่ง'), du);
+    const del = exEl('button', 'btn', 'ลบ'); let armed = false; del.onclick = async () => { if (!armed) { armed = true; del.textContent = 'แตะอีกครั้งเพื่อลบ'; return; } c.items = c.items.filter((x) => x.id !== it.id); if (c.scores) delete c.scores[it.id]; save(); }; ctl.appendChild(del);
+    r.appendChild(ctl); body.appendChild(r);
   }
 }
+function renderMissing(body, c) {
+  const tnow = now(), rows = (c.roster || []).slice().sort((a, b) => a.no - b.no).map((r) => ({ r, R: clsCalc(c, r, tnow) })).filter((x) => x.R.missing.length || x.R.late.length);
+  const open = (c.items || []).filter((it) => itemDue(it) && itemDue(it) >= tnow).sort((a, b) => itemDue(a) - itemDue(b));
+  if (open.length) body.appendChild(exEl('div', 'note', '<b>งานที่ยังไม่ถึงกำหนด</b> ' + open.map((it) => esc(it.name) + ' (ส่ง ' + new Date(it.due).toLocaleDateString(LOC, { day: 'numeric', month: 'short' }) + ')').join(', ')));
+  if (!rows.length) { body.appendChild(exEl('div', 'note ok', 'ไม่มีใครค้างงานที่เลยกำหนด')); return; }
+  body.appendChild(exEl('h3', '', 'ค้างงาน ' + rows.filter((x) => x.R.missing.length).length + ' คน'));
+  const tb = exEl('table', 'extab grades'); let h = '<thead><tr><th>เลขที่</th><th>ชื่อ</th><th>งานที่ยังไม่ส่ง</th><th>ส่งช้า</th></tr></thead><tbody>';
+  for (const { r, R } of rows) h += '<tr><td>' + r.no + '</td><td>' + esc(r.name) + '</td><td class="' + (R.missing.length ? 'lo' : '') + '">' + R.missing.map((it) => esc(it.name)).join(', ') + '</td><td>' + R.late.map((it) => esc(it.name)).join(', ') + '</td></tr>';
+  tb.innerHTML = h + '</tbody>'; const wrap = exEl('div', 'gwrap'); wrap.appendChild(tb); body.appendChild(wrap);
+  const cp = exEl('button', 'btn solid', 'คัดลอกข้อความแจ้งคนค้างงาน'); cp.onclick = () => {
+    const txt = 'งานค้าง ' + classLabel(c) + ' ณ ' + new Date().toLocaleDateString(LOC, { dateStyle: 'medium' }) + '\n' + rows.filter((x) => x.R.missing.length).map(({ r, R }) => r.no + '. ' + r.name + ' : ' + R.missing.map((it) => it.name).join(', ')).join('\n') + '\nส่งงานได้ที่ ' + termLink(c.id);
+    (navigator.clipboard ? navigator.clipboard.writeText(txt) : Promise.reject()).then(() => toast('คัดลอกแล้ว วางในกลุ่มแชตของห้องได้เลย', 2200)).catch(() => toast('คัดลอกไม่ได้ในเบราว์เซอร์นี้', 2000));
+  };
+  body.appendChild(cp);
+}
+function showTermLink(c) {
+  if (CLOUD.state !== 'on') { toast('ลิงก์งานทั้งเทอมใช้คลาวด์ของครู เข้าระบบก่อน', 3000); return; }
+  const box = $('#exBody'); const f = exEl('div', 'exrev');
+  f.innerHTML = '<b>ลิงก์งานทั้งเทอมของ ' + esc(classLabel(c)) + '</b><div class="livetop"><div class="qr" id="termQR"></div><div class="lcode"><span>ให้นักเรียนบันทึกลิงก์นี้ไว้ครั้งเดียว งานทุกชิ้นที่มอบหมายให้ห้องนี้จะขึ้นที่นี่ พร้อมกำหนดส่งและสถานะว่าส่งแล้วหรือยัง</span><small>' + esc(termLink(c.id)) + '</small></div></div>';
+  const cp = exEl('button', 'btn', 'คัดลอกลิงก์'); cp.onclick = () => navigator.clipboard && navigator.clipboard.writeText(termLink(c.id)).then(() => toast('คัดลอกแล้ว', 1200)).catch(() => {});
+  const x = exEl('button', 'btn', 'ปิด'); x.onclick = () => f.remove();
+  const r = exEl('div', 'row2'); r.append(cp, x); f.appendChild(r); box.prepend(f); drawQR(f.querySelector('#termQR'), termLink(c.id), 150);
+}
+/* student: every piece of work for the class in one place */
+async function openTermPage(clsId) {
+  let sb; try { sb = await cloudClient(); } catch (e) { toast('เชื่อมต่อไม่ได้', 3000); return; }
+  $('#loading').hidden = true;
+  const box = $('#hwStudent'); box.hidden = false; const b = $('#hwsBody'); b.innerHTML = '<div class="note">กำลังโหลดงาน</div>';
+  const { data, error } = await sb.from('assignments').select('id,title,data,due,open,created_at').eq('data->>clsId', clsId).order('created_at', { ascending: true });
+  b.innerHTML = '';
+  if (error) { b.appendChild(exEl('div', 'note err', 'โหลดงานไม่ได้ ลองอีกครั้ง')); return; }
+  const list = (data || []).slice().sort((x, y) => (x.due ? Date.parse(x.due) : 9e15) - (y.due ? Date.parse(y.due) : 9e15));
+  const lbl = list[0] && list[0].data.cls && list[0].data.cls.label;
+  $('#hwsTitle').textContent = 'งานทั้งเทอม' + (lbl ? ' ' + lbl : '');
+  let sent = []; try { sent = JSON.parse(store_ls.get('tp-sent') || '[]'); } catch (e) { sent = []; }
+  if (!list.length) { b.appendChild(exEl('div', 'note', 'ยังไม่มีงานที่มอบหมายให้ห้องนี้')); return; }
+  const tnow = now(), todo = list.filter((a) => a.open && !sent.includes(a.id));
+  b.appendChild(exEl('div', 'note' + (todo.length ? '' : ' ok'), todo.length ? 'ยังไม่ได้ส่งจากเครื่องนี้ ' + todo.length + ' งาน' : 'ส่งครบทุกงานที่เปิดรับแล้ว'));
+  for (const a of list) {
+    const due = a.due ? Date.parse(a.due) : null, done = sent.includes(a.id), late = due && due < tnow;
+    const st = done ? '<em class="good">ส่งแล้ว</em>' : !a.open ? '<em>ปิดรับแล้ว</em>' : late ? '<em class="bad">เลยกำหนด ส่งได้แต่อาจถูกหักคะแนน</em>' : '<em>ยังไม่ส่ง</em>';
+    const r = exEl('div', 'setrow termrow', '<div><b>' + esc(a.title) + '</b><small>' + (due ? 'ส่งภายใน ' + new Date(due).toLocaleString(LOC, { dateStyle: 'medium', timeStyle: 'short' }) : 'ไม่กำหนดวันส่ง') + ' ' + st + '</small></div>');
+    if (a.open) { const go = exEl('button', 'btn' + (done ? '' : ' solid'), done ? 'เปิดดู' : 'ทำงานนี้'); go.onclick = () => { location.hash = 'hw=' + a.id; openHomework(a.id, clsId); }; r.appendChild(go); }
+    b.appendChild(r);
+  }
+}
+
 function clsAddItem(c) {
   const box = $('#exBody'); const f = exEl('div', 'exrev');
   f.innerHTML = '<b>เพิ่มช่องคะแนน</b><div class="row2"><label class="field" style="flex:2 1 200px"><span>ชื่อ เช่น สอบย่อยบทที่ 2</span><input id="iName" maxlength="40"></label><label class="field" style="flex:0 1 110px"><span>คะแนนเต็ม</span><input id="iMax" inputmode="decimal" value="10"></label></div><label class="field"><span>ที่มาของคะแนน</span><select id="iSrc" class="traysel"><option value="manual">กรอกเอง</option></select></label>';
   box.prepend(f);
+  { const P = clsPlan(c), r2 = exEl('div', 'row2'); r2.innerHTML = '<label class="field"><span>กำหนดส่ง (เว้นว่างได้)</span><input id="iDue" type="date"></label>' + (P.cats.length ? '<label class="field"><span>หมวดคะแนน</span><select id="iCat" class="traysel">' + P.cats.map((x) => '<option value="' + x.id + '"' + ((P.newCat || P.cats[0].id) === x.id ? ' selected' : '') + '>' + esc(x.name) + '</option>').join('') + '</select></label>' : ''); f.insertBefore(r2, f.querySelector('#iSrc').closest('label')); }
   const sel = f.querySelector('#iSrc');
   for (const st of (EX.sets || []).slice().sort((a, b) => b.at - a.at).slice(0, 20)) { const o = document.createElement('option'); o.value = 'set:' + st.id; o.textContent = 'แบบฝึกในห้องสด หรือฝึกในแอป: ' + st.title; sel.appendChild(o); }
   (CLOUD.state === 'on' ? hwLoad().catch(() => []) : Promise.resolve([])).then((list) => { for (const a of list || []) { const o = document.createElement('option'); o.value = 'hw:' + a.id; o.textContent = 'การบ้าน: ' + a.title; sel.insertBefore(o, sel.children[1] || null); } });
   const ok = exEl('button', 'btn solid', 'เพิ่ม'); ok.onclick = async () => {
     const name = f.querySelector('#iName').value.trim(), max = +f.querySelector('#iMax').value; if (!name || !(max > 0)) { toast('ใส่ชื่อและคะแนนเต็ม', 1800); return; }
-    const [kind, ref] = sel.value.split(':'); c.items = (c.items || []).concat([{ id: 'k' + uid(), name, max, kind, ref: ref || null, at: now() }]);
+    const [kind, ref] = sel.value.split(':'), P = clsPlan(c), dv = f.querySelector('#iDue').value, cs = f.querySelector('#iCat'); c.items = (c.items || []).concat([{ id: 'k' + uid(), name, max, kind, ref: ref || null, at: now(), due: dv ? new Date(dv + 'T23:59:00').toISOString() : null, cat: cs ? cs.value : (P.newCat || (P.cats[0] && P.cats[0].id) || null) }]);
     await clsSave(c); if (kind !== 'manual') await clsSync(c); exRender();
   };
   const cancel = exEl('button', 'btn', 'ยกเลิก'); cancel.onclick = () => f.remove();
@@ -10889,10 +11018,11 @@ function renderRoster(body, c) {
   const del = exEl('button', 'btn danger', 'ลบห้องนี้'); let armed = false; del.onclick = async () => { if (!armed) { armed = true; del.textContent = 'แตะอีกครั้งเพื่อลบห้องและคะแนนทั้งหมด'; return; } await S.store.del('classes/' + c.id).catch(() => {}); CLS.list = CLS.list.filter((x) => x.id !== c.id); CLS.cur = null; exRender(); }; body.appendChild(del);
 }
 function clsCsv(c) {
-  const q = (x) => '"' + String(x).replace(/"/g, '""') + '"', items = c.items || [], tot = items.reduce((a, it) => a + (+it.max || 0), 0);
-  const lines = [[q('ห้อง'), q(classLabel(c))].join(','), ['เลขที่', 'รหัส', 'ชื่อ'].concat(items.map((it) => it.name + ' (' + it.max + ')')).concat(['รวม (' + tot + ')', 'ร้อยละ', 'เกรด']).map(q).join(',')];
-  for (const r of (c.roster || []).slice().sort((a, b) => a.no - b.no)) { let sum = 0; const vals = items.map((it) => { const v = cellVal(c, it.id, r.sid); if (v != null) sum += v; return v == null ? '' : v; }); const pct = tot ? sum / tot * 100 : 0; lines.push([r.no, q(r.sid), q(r.name)].concat(vals).concat([+sum.toFixed(1), Math.round(pct), gradeOf(pct)]).join(',')); }
-  saveFile('คะแนน ' + classLabel(c) + '.csv', new Blob(['﻿' + lines.join('\n')], { type: 'text/csv' }));
+  const q = (x) => '"' + String(x).replace(/"/g, '""') + '"', P = clsPlan(c), items = c.items || [], cats = P.cats;
+  const head = ['เลขที่', 'รหัส', 'ชื่อ'].concat(items.map((it) => it.name + ' (' + it.max + ')')).concat(cats.map((x) => x.name + ' (' + x.w + ')')).concat(['ร้อยละ', 'เกรด', 'งานค้าง']);
+  const lines = [[q('ห้อง'), q(classLabel(c))].join(','), head.map(q).join(',')];
+  for (const r of (c.roster || []).slice().sort((a, b) => a.no - b.no)) { const R = clsCalc(c, r); const vals = items.map((it) => { const v = cellVal(c, it.id, r.sid); return v == null ? '' : v; }); lines.push([r.no, q(r.sid), q(r.name)].concat(vals).concat(cats.length ? R.cats.map((k) => (k.sc == null ? '' : +k.sc.toFixed(2))) : []).concat([R.any ? Math.round(R.pct * 10) / 10 : '', R.any ? gradeOf(R.pct) : '', q(R.missing.map((it) => it.name).join(' / '))]).join(',')); }
+  saveFile('คะแนน ' + classLabel(c) + '.csv', new Blob(['\ufeff' + lines.join('\n')], { type: 'text/csv' }));
 }
 function classSelect(id, withNone) {
   const sel = document.createElement('select'); sel.className = 'traysel'; sel.id = id;
@@ -10938,7 +11068,7 @@ async function createAssignment() {
   try {
     const { error } = await CLOUD.client.from('assignments').insert({ id, owner: CLOUD.user.id, title: data.title, data, due, open: true });
     if (error) throw error;
-    if (cls && !(cls.items || []).some((it) => it.ref === id)) { cls.items = (cls.items || []).concat([{ id: 'k' + uid(), name: data.title.slice(0, 40), max: qs.length, kind: 'hw', ref: id, at: now() }]); await clsSave(cls); }
+    if (cls && !(cls.items || []).some((it) => it.ref === id)) { const P = clsPlan(cls); cls.items = (cls.items || []).concat([{ id: 'k' + uid(), name: data.title.slice(0, 40), max: qs.length, kind: 'hw', ref: id, at: now(), due: due || null, cat: P.newCat || (P.cats[0] && P.cats[0].id) || null }]); await clsSave(cls); }
     out.innerHTML = '<div class="livetop"><div class="qr" id="hwQR"></div><div class="lcode"><span>ลิงก์การบ้าน ส่งในกลุ่มแชตของห้องได้เลย</span><small>' + esc(hwLink(id)) + '</small></div></div>';
     const cp = exEl('button', 'btn', 'คัดลอกลิงก์'); cp.onclick = () => navigator.clipboard && navigator.clipboard.writeText(hwLink(id)).then(() => toast('คัดลอกแล้ว', 1200)).catch(() => {}); out.appendChild(cp);
     const see = exEl('button', 'btn', 'ดูงานที่ส่งเข้ามา'); see.onclick = () => { $('#hwSheet').hidden = true; EX.tab = 'hw'; HW.cur = id; openExam(); }; out.appendChild(see);
@@ -11089,7 +11219,7 @@ async function hwDetail(a, s) {
   typeset(box);
 }
 /* ----- student: open the homework link, answer, hand in ----- */
-async function openHomework(id) {
+async function openHomework(id, termCls) {
   let sb; try { sb = await cloudClient(); } catch (e) { toast('เชื่อมต่อไม่ได้', 3000); return; }
   const { data, error } = await sb.from('assignments').select('id,title,data,due,open').eq('id', id).maybeSingle();
   $('#loading').hidden = true;
@@ -11097,6 +11227,7 @@ async function openHomework(id) {
   if (error || !data) { b.appendChild(exEl('div', 'note err', 'ไม่พบงานนี้ ตรวจลิงก์อีกครั้ง')); return; }
   const a = data, A = a.data, L = 'กขคง', st = { answers: {}, t0: now(), files: [] };
   $('#hwsTitle').textContent = a.title;
+  if (termCls || A.clsId) { const bk = exEl('button', 'btn', 'งานทั้งเทอม'); bk.type = 'button'; bk.onclick = () => { location.hash = 'term=' + (termCls || A.clsId); openTermPage(termCls || A.clsId); }; b.appendChild(bk); }
   if (a.due) b.appendChild(exEl('div', 'exch', 'กำหนดส่ง ' + new Date(a.due).toLocaleString(LOC, { dateStyle: 'medium', timeStyle: 'short' })));
   if (!a.open) { b.appendChild(exEl('div', 'note err', 'ผู้สอนปิดรับงานนี้แล้ว')); return; }
   const nm = exEl('label', 'field', '<span>ชื่อ นามสกุล หรือ ชื่อเล่นกับเลขที่</span>'); const ni = document.createElement('input'); ni.maxLength = 60; ni.value = store_ls.get('tp-sname') || ''; nm.appendChild(ni); b.appendChild(nm);
@@ -11142,6 +11273,7 @@ async function openHomework(id) {
       const { error: ie } = await sb.from('submissions').insert({ id: sid, assignment: a.id, name, data: { answers: st.answers, files: paths, at: now(), stu: stu ? { sid: stu.sid, no: stu.no } : undefined } });
       if (ie) throw ie;
       W8.stop(); res.innerHTML = '';
+      try { const sent = JSON.parse(store_ls.get('tp-sent') || '[]'); if (!sent.includes(a.id)) sent.push(a.id); store_ls.set('tp-sent', JSON.stringify(sent.slice(-300))); } catch (e) { /* this device only */ }
       res.appendChild(exEl('div', 'note ok', 'ส่งงานเรียบร้อยแล้ว ' + esc(name) + (paths.length ? ' แนบ ' + paths.length + ' ไฟล์' : '')));
       if (A.instant && A.online) {
         let ok = 0; A.qs.forEach((q) => { const x = st.answers[q.id]; if (x && x[0] === q.a) ok++; });
@@ -11370,7 +11502,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793186778';
+const BUILD = '1793190236';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
@@ -12018,8 +12150,8 @@ async function boot() {
   renderTools(); renderLevels(); syncToggles(); fit(); updUndo();
   const C = window.claude && typeof window.claude.use === 'function' ? window.claude : null;
   renderAIAvail(C ? 'checking' : 'none');
-  const hs = (location.hash || '').replace('#', ''), mC = hs.match(/^class=([A-Z2-9]{6})$/i), mL = hs.match(/^lecture=([a-z0-9]{6,20})$/i), mH = hs.match(/^hw=([a-z0-9]{6,20})$/i);
-  S.student = !!(mC || mL || mH);
+  const hs = (location.hash || '').replace('#', ''), mC = hs.match(/^class=([A-Z2-9]{6})$/i), mL = hs.match(/^lecture=([a-z0-9]{6,20})$/i), mH = hs.match(/^hw=([a-z0-9]{6,20})$/i), mT = hs.match(/^term=([a-z0-9]{4,30})$/i);
+  S.student = !!(mC || mL || mH || mT);
   const db = C && !S.student ? await C.use('db').catch(() => null) : null;
  if (db) S.store = makeDbStore(db);
   else if (CLOUD.ready() && !S.student) {
@@ -12050,6 +12182,7 @@ async function boot() {
   if (mC && CLOUD.ready()) studentJoin(mC[1].toUpperCase());
   else if (mL && CLOUD.ready()) openLecture(mL[1].toLowerCase());
   else if (mH && CLOUD.ready()) openHomework(mH[1].toLowerCase());
+  else if (mT && CLOUD.ready()) openTermPage(mT[1]);
   let wantPresent = store_ls.get('tp-present') === '1';
   try { if ((location.hash || '').replace('#', '') === 'present') wantPresent = true; } catch (e) {}
   if (wantPresent) enterPresent();
