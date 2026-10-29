@@ -354,6 +354,23 @@ body.fs-ios .dock { left: 96px; }
 #fingerTg .fx { display: none; }
 #fingerTg[aria-pressed="false"] .fx { display: inline; }
 #fingerTg[aria-pressed="true"] { background: var(--chrome); color: var(--chrome-fg); }
+.dockctl svg { transition: transform 0.2s; }
+/* small: only the grip, the tool in use, the current colour and the button to open it again */
+.dock.mini > *:not(.grip):not(#toolRow):not(#curColor):not(#dockMin):not(.pop) { display: none !important; }
+.dock.mini #toolRow > *:not([aria-pressed="true"]), .dock.mini #fingerTg { display: none !important; }
+.dock.mini #toolRow { flex: none !important; overflow: visible !important; }
+.dock.mini #dockMin svg { transform: rotate(180deg); }
+/* standing: tools in a column along the side of the page */
+.dock.vert { flex-direction: column; flex-wrap: wrap; align-content: flex-start; max-width: none; max-height: calc(100% - 24px); }
+.dock.vert #toolRow, .dock.vert #recent, .dock.vert #dockWidths, .dock.vert .fonly { flex-direction: column !important; flex-wrap: nowrap !important; overflow: visible !important; max-width: none; }
+.dock.vert .sep { width: 26px; height: 1px; margin: 4px 0; }
+.dock.vert .grip { width: 46px; height: 22px; }
+.dock.vert .grip svg { transform: rotate(90deg); }
+.dock.vert #dockVert svg { transform: rotate(90deg); }
+.dock.vert.mini #dockMin svg { transform: rotate(90deg); }
+.dock.vert .pop { top: 0; left: calc(100% + 8px); }
+.dock.vert.flip-x .pop { left: auto; right: calc(100% + 8px); }
+.dock.vert.flip-y .pop { top: auto; bottom: 0; }
 .grip { width: 24px; height: 46px; display: flex; align-items: center; justify-content: center; cursor: grab; touch-action: none; color: var(--muted); border-radius: 10px; }
 .grip svg { width: 12px; height: 20px; fill: currentColor; }
 .grip:active { cursor: grabbing; background: var(--surface-2); }
@@ -1189,6 +1206,8 @@ body.role-student .scnpill .sbtns button[data-s="back"], body.role-student .scnp
         <button class="tool diarytool" id="tDiary" type="button" aria-pressed="false" aria-label="โหมดสมุดตอบได้" title="โหมดสมุดตอบได้ เขียนถึงสมุด แล้วสมุดเขียนตอบ แตะเพื่อเปิดหรือปิด"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M17 3c-5 .7-9 5-10.4 11.3l-1 4.2 M17 3c.4 4.1-2.6 8.2-7.9 9.3 M5.8 14.8c2 .2 3.7-.4 5-1.7 M3.5 19h8" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
         </span>
         <button class="tool" id="dockFold" type="button" aria-pressed="false" aria-label="พับแถบเครื่องมือให้เหลือแถวเดียว" title="พับหรือกางแถบเครื่องมือ"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 12.5l5-5 5 5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        <button class="tool dockctl" id="dockVert" type="button" aria-pressed="false" aria-label="วางแถบเครื่องมือแนวตั้ง" title="สลับแถบเครื่องมือเป็นแนวตั้งหรือแนวนอน"><svg viewBox="0 0 22 22" aria-hidden="true"><rect x="8" y="3" width="6" height="16" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M3 8l-1.5 3L3 14 M19 8l1.5 3L19 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        <button class="tool dockctl" id="dockMin" type="button" aria-pressed="false" aria-label="ย่อแถบเครื่องมือ" title="ย่อแถบเครื่องมือ เหลือเครื่องมือที่ใช้อยู่ แตะอีกครั้งเพื่อกาง"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M6 9l5 5 5-5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
         <span class="sep fonly"></span>
         <span class="fonly" style="align-items:center;gap:2px">
           <button class="tool" id="fqUndo" aria-label="ย้อนกลับ" title="ย้อนกลับ"><svg viewBox="0 0 22 22"><path d="M8.5 5.5L4.5 9.5l4 4 M4.5 9.5H13a4.5 4.5 0 0 1 0 9h-2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
@@ -12421,7 +12440,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793245618';
+const BUILD = '1793245736';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
@@ -13059,6 +13078,18 @@ const PHONE = window.matchMedia('(max-width: 520px)');
 /* phones: the dock can fold to one row (tools and the current colour) to leave more paper */
 function dockFold(on) { $('#dock').classList.toggle('folded', on); $('#dockFold').setAttribute('aria-pressed', on ? 'true' : 'false'); $('#dockFold').setAttribute('aria-label', on ? 'กางแถบเครื่องมือ' : 'พับแถบเครื่องมือให้เหลือแถวเดียว'); store_ls.set('tp-dockfold', on ? '1' : '0'); }
 $('#dockFold').onclick = () => dockFold(!$('#dock').classList.contains('folded'));
+/* the tool bar can shrink to the tool in use, and can stand upright along the side of the page */
+function dockRefit() { try { const p = JSON.parse(store_ls.get('tp-dock') || 'null'); if (Array.isArray(p)) setDockPos(p[0], p[1]); else placeDock(); } catch (e) { placeDock(); } }
+function dockMin(on) { closePops(); $('#dock').classList.toggle('mini', on); store_ls.set('tp-dockmin', on ? '1' : '0'); $('#dockMin').setAttribute('aria-pressed', on ? 'true' : 'false'); $('#dockMin').setAttribute('aria-label', on ? 'กางแถบเครื่องมือ' : 'ย่อแถบเครื่องมือ'); requestAnimationFrame(dockRefit); }
+function dockVert(on) {
+  closePops(); const d = $('#dock'); d.classList.toggle('vert', on); store_ls.set('tp-dockvert', on ? '1' : '0'); $('#dockVert').setAttribute('aria-pressed', on ? 'true' : 'false');
+  $('#dockVert').setAttribute('aria-label', on ? 'วางแถบเครื่องมือแนวนอน' : 'วางแถบเครื่องมือแนวตั้ง');
+  if (on && !store_ls.get('tp-dock')) { const v = vp.getBoundingClientRect(); store_ls.set('tp-dock', JSON.stringify([6 / v.width, 70 / v.height])); }
+  requestAnimationFrame(dockRefit);
+}
+$('#dockMin').onclick = () => dockMin(!$('#dock').classList.contains('mini'));
+$('#dockVert').onclick = () => dockVert(!$('#dock').classList.contains('vert'));
+dockMin(store_ls.get('tp-dockmin') === '1'); dockVert(store_ls.get('tp-dockvert') === '1');
 dockFold(store_ls.get('tp-dockfold') === '1');
 function placePhonePop(p) {
   if (p.hidden || !PHONE.matches) { if (p.classList.contains('phone')) { p.classList.remove('phone'); p.style.top = p.style.bottom = p.style.maxHeight = ''; } return; }
