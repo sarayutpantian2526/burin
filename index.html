@@ -8523,7 +8523,7 @@ async function lifeAuto(sp) {
   const B = sp.box, bw = B[2] - B[0], bh = B[3] - B[1];
   let round = 0; for (const s of strokes) { const P = ipPts(s); if (P.length < 8) continue; const b = ipBox([s]), z = Math.max(b[2] - b[0], b[3] - b[1]); if (Math.hypot(P[0][0] - P[P.length - 1][0], P[0][1] - P[P.length - 1][1]) < 0.35 * z && (b[1] + b[3]) / 2 > B[1] + 0.55 * bh && z < 0.6 * bw) round++; }
   if (round >= 2 && bw > bh) return 'drive';
-  if (bw > bh * 0.9 && strokes.length) { const g = lifeLegs({ B, ink: strokes }); if (g.legs.length >= 3) return 'walk4'; }
+  if (bw > bh * 0.9 && strokes.length) { const g = lifeLegs({ B, ink: strokes }); if (g.strokes && g.legs.length >= 3) return 'walk4'; }
   if (strokes.length === 1 && Math.abs(bw - bh) < 0.35 * Math.max(bw, bh)) { const P = ipPts(strokes[0]); if (P.length > 8 && Math.hypot(P[0][0] - P[P.length - 1][0], P[0][1] - P[P.length - 1][1]) < 0.3 * Math.max(bw, bh)) return 'roll'; }
   if (bw > 1.6 * bh) return 'swim';
   if (bh > 1.6 * bw) return 'sway';
@@ -12153,7 +12153,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793236363';
+const BUILD = '1793236456';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
