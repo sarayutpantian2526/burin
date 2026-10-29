@@ -1347,6 +1347,7 @@ body.role-student .scnpill .sbtns button[data-s="back"], body.role-student .scnp
     <span class="label">แนวกระดาษ</span><div class="pkinds chips" id="nbOrient"></div>
     <span class="label">ลายกระดาษ</span><div class="pkinds chips" id="nbPaper"></div>
     <span class="label">สีกระดาษ</span><div class="pbg" id="nbBg"></div>
+    <span class="label">สีปก</span><div class="covers" id="nbCover"></div>
     <button class="btn solid" id="bNewNb">สร้างสมุด</button>
     </div>
     <div id="nbList" class="shelf"></div>
@@ -4082,10 +4083,10 @@ function deleteSel() {
 
 /* ---------- notebooks & pages ---------- */
 function levelName(k) { const f = LEVELS.find((l) => l[0] === k); return f ? f[1] : ''; }
-async function createNotebook(title, level, subject, subjectName, paperKind, paperBg, orient) {
+async function createNotebook(title, level, subject, subjectName, paperKind, paperBg, orient, color) {
   const nid = 'n' + uid(), pid = 'p' + uid();
   await S.store.set('pages/' + pid, Object.assign({ nb: nid, paper: paperKind || 'grid', items: [], rev: now() }, orient === 'land' ? { orient: 'land' } : {}));
-  await S.store.set('notebooks/' + nid, Object.assign(LIBV.folder && LIBV.view === 'all' ? { folder: LIBV.folder } : {}, { title: title || 'สมุดเล่มใหม่', level: level || 'mp', subject: subject || store_ls.get('tp-subject') || 'phys', subjectName: subjectName || undefined, paperBg: paperBg && paperBg !== 'white' ? paperBg : undefined, pages: [pid], color: COVERS[Math.floor(Math.random() * COVERS.length)], createdAt: now(), updatedAt: now() }, isStudentSide() ? { side: 'student' } : {}));
+  await S.store.set('notebooks/' + nid, Object.assign(LIBV.folder && LIBV.view === 'all' ? { folder: LIBV.folder } : {}, { title: title || 'สมุดเล่มใหม่', level: level || 'mp', subject: subject || store_ls.get('tp-subject') || 'phys', subjectName: subjectName || undefined, paperBg: paperBg && paperBg !== 'white' ? paperBg : undefined, pages: [pid], color: COVERS.includes(color) ? color : COVERS[Math.floor(Math.random() * COVERS.length)], createdAt: now(), updatedAt: now() }, isStudentSide() ? { side: 'student' } : {}));
   return nid;
 }
 function watchNotebooks() {
@@ -5739,6 +5740,13 @@ function nbSelBar(shown) {
   const all = (shown || []).every((x) => LIBV.sel.has(x.id)) && (shown || []).length;
   act(all ? 'ไม่เลือกทั้งหมด' : 'เลือกทั้งหมด', () => { if (all) LIBV.sel.clear(); else (shown || []).forEach((x) => LIBV.sel.add(x.id)); renderLibrary(); });
   act(picked.length && picked.every((x) => x.fav) ? 'เอาออกจากรายการโปรด' : 'รายการโปรด', () => { const on = !picked.every((x) => x.fav); for (const nb of picked) { nb.fav = on; Promise.resolve(S.store.update('notebooks/' + nb.id, { fav: on })).catch(onStoreError); } toast((on ? 'เพิ่มในรายการโปรด ' : 'เอาออกจากรายการโปรด ') + n + ' เล่ม', 1600); renderLibrary(); });
+  act('สีปก', (b) => {
+    const m = $('#tabMenu'); m.innerHTML = ''; const t = document.createElement('b'); t.textContent = 'สีปกของ ' + n + ' เล่ม'; m.appendChild(t);
+    const g = document.createElement('div'); g.className = 'covers'; g.style.padding = '6px 8px';
+    for (const c of COVERS) { const s2 = document.createElement('button'); s2.type = 'button'; s2.className = 'csw'; s2.style.background = c; s2.setAttribute('aria-label', 'สีปก'); s2.onclick = () => { m.hidden = true; for (const nb of picked) { nb.color = c; Promise.resolve(S.store.update('notebooks/' + nb.id, { color: c })).catch(onStoreError); } toast('เปลี่ยนสีปก ' + n + ' เล่มแล้ว', 1600); renderLibrary(); }; g.appendChild(s2); }
+    m.appendChild(g); const r = b.getBoundingClientRect(); m.hidden = false; menuFit(m, r);
+  });
+  if (n === 1) act('แก้ไขปกและชื่อ', () => { S.editNb = picked[0].id; LIBV.sel = null; renderLibrary(); });
   act('ย้ายไปโฟลเดอร์', (b) => {
     const go = (fid, name) => { for (const nb of picked) { nb.folder = fid; Promise.resolve(S.store.update('notebooks/' + nb.id, { folder: fid })).catch(onStoreError); } toast(fid ? 'ย้าย ' + n + ' เล่มไปโฟลเดอร์ ' + name + ' แล้ว' : 'เอา ' + n + ' เล่มออกจากโฟลเดอร์แล้ว', 1800); LIBV.sel = null; renderLibrary(); };
     const acts = FOLDERS.list.map((f) => ['ย้ายไป ' + f.name, () => go(f.id, f.name)]);
@@ -12382,7 +12390,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793243196';
+const BUILD = '1793243305';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
@@ -12958,10 +12966,16 @@ $('#nbFind').oninput = () => renderLibrary();
 document.querySelectorAll('#libView button').forEach((b) => { b.onclick = () => { LIBV.view = b.dataset.v; LIBV.folder = null; $('#nbFind').value = ''; renderLibrary(); }; });
 $('#bNewFolder').onclick = () => newFolder($('#bNewFolder'));
 $('#shareClose').onclick = () => { $('#shareSheet').hidden = true; };
+/* choose the cover colour when making a notebook (none picked: a colour is chosen for you) */
+function paintNewCover() {
+  const el = $('#nbCover'); if (!el) return; el.innerHTML = '';
+  for (const c of COVERS) { const b = document.createElement('button'); b.type = 'button'; b.className = 'csw'; b.style.background = c; b.setAttribute('aria-label', 'สีปก'); b.setAttribute('aria-pressed', NBF.cover === c ? 'true' : 'false'); b.onclick = () => { NBF.cover = NBF.cover === c ? null : c; paintNewCover(); }; el.appendChild(b); }
+}
+paintNewCover();
 $('#bNewNb').onclick = async () => {
   const t = $('#nbTitle').value.trim() || 'สมุดเล่มใหม่';
   $('#bNewNb').disabled = true;
-  try { store_ls.set('tp-subject', $('#nbSubject').value); store_ls.set('tp-subjname', $('#nbSubjName').value.trim()); const nid = await createNotebook(t, $('#nbLevel').value, $('#nbSubject').value, $('#nbSubjName').value.trim(), NBF.paper, NBF.bg, NBF.orient); store_ls.set('tp-nborient', NBF.orient); store_ls.set('tp-nbpaper', NBF.paper); store_ls.set('tp-nbbg', NBF.bg); $('#nbTitle').value = ''; openNotebook(nid); closeSheets(); toast('สร้างสมุดแล้ว'); }
+  try { store_ls.set('tp-subject', $('#nbSubject').value); store_ls.set('tp-subjname', $('#nbSubjName').value.trim()); const nid = await createNotebook(t, $('#nbLevel').value, $('#nbSubject').value, $('#nbSubjName').value.trim(), NBF.paper, NBF.bg, NBF.orient, NBF.cover); NBF.cover = null; paintNewCover(); store_ls.set('tp-nborient', NBF.orient); store_ls.set('tp-nbpaper', NBF.paper); store_ls.set('tp-nbbg', NBF.bg); $('#nbTitle').value = ''; openNotebook(nid); closeSheets(); toast('สร้างสมุดแล้ว'); }
   catch (e) { onStoreError(e); }
   $('#bNewNb').disabled = false;
 };
