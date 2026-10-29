@@ -840,14 +840,31 @@ body.focus .diarybar, body.present .diarybar { display: none; }
 .qkeybox .tqkey { width: 100%; box-sizing: border-box; }
 .qkeybtn { font-size: 12.5px; padding: 3px 12px; min-height: 28px; }
 body.role-student .qkeybox { display: none; }
-.mvtop { display: flex; gap: 12px; align-items: center; margin: 8px 0 12px; }
-.mvtop img { width: 120px; max-height: 120px; object-fit: contain; border: 1px dashed var(--line); border-radius: 10px; background: #FFFFFF; flex: none; }
-.mvgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 190px), 1fr)); gap: 8px; margin-bottom: 12px; }
-.mvopt { display: flex; flex-direction: column; gap: 3px; text-align: left; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--fg); font: inherit; cursor: pointer; }
+.mvpanel { width: min(880px, 96vw); }
+.mvhead { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.mvhead h2 { margin: 0; }
+.mvtop { display: grid; grid-template-columns: 200px 1fr; gap: 14px; align-items: stretch; margin: 12px 0 14px; }
+.mvfig { position: relative; align-self: start; border: 1px dashed var(--line); border-radius: 12px; background: #FFFFFF; padding: 8px; }
+.mvfig img { display: block; width: 100%; max-height: 180px; object-fit: contain; }
+.mvnum { position: absolute; transform: translate(-50%, -30%); min-width: 22px; height: 22px; border-radius: 999px; background: #B5432F; color: #fff; font: 700 12px/22px var(--ui); text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,.25); }
+.mvsay { display: flex; flex-direction: column; gap: 6px; }
+.mvsay label { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.mvsay label small { color: var(--muted); font-size: 12.5px; }
+.mvsay textarea { font: inherit; font-size: 15px; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); color: var(--fg); resize: vertical; min-height: 76px; }
+.mvrow { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.mvrow small { color: var(--muted); font-size: 12.5px; flex: 1; min-width: 160px; }
+.mvtabs { display: flex; width: 100%; margin-bottom: 10px; }
+.mvtabs button { flex: 1; }
+.mvtabs button[aria-selected="true"] { background: var(--chrome, #14181F); color: var(--chrome-fg, #fff); }
+.mvpane[hidden] { display: none; }
+.mvnote { margin: 0 0 8px; font-size: 13px; color: var(--muted); }
+.mvgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(46%, 180px), 1fr)); gap: 8px; margin-bottom: 10px; }
+.mvopt { display: flex; flex-direction: column; gap: 3px; text-align: left; padding: 10px 12px; min-height: 64px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--fg); font: inherit; cursor: pointer; }
 .mvopt:hover { border-color: var(--accent); }
-.mvopt span { font-size: 12.5px; color: var(--muted); }
-.mvai { margin-top: 12px; }
-@media (max-width: 520px) { .mvtop { flex-direction: column; align-items: flex-start; } }
+.mvopt b { font-size: 15px; }
+.mvopt span { font-size: 12.5px; color: var(--muted); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.mvai { margin-top: 6px; }
+@media (max-width: 600px) { .mvtop { grid-template-columns: 1fr; } .mvfig img { max-height: 120px; } .mvopt { padding: 8px 10px; } .mvtabs button { font-size: 13px; padding: 0 6px; } }
 .tqimg img { display: block; width: 100%; height: auto; border-radius: 8px; border: 1px solid var(--line); background: #FFFFFF; }
 .pdfchips { margin: 6px 0; }
 .pdfstrip { display: flex; gap: 8px; overflow-x: auto; padding: 6px 2px 10px; margin-bottom: 6px; }
@@ -8770,45 +8787,124 @@ const MOTIONS = [
   ['orbit', 'โคจรรอบศูนย์กลาง', 'แรงดึงเข้าศูนย์กลาง ความเร็วตั้งฉากกับแรง', (im, ar) => ({ domain: 'phys', title: 'การโคจร', world: { w: 12, h: 8, x0: -6, y0: -4, g: 0 }, bodies: [spriteBody(im, ar, 1.2, { x: 0, y: 3, vx: 2.3 })], fields: { central: { x: 0, y: 0, GM: 16, r: 0.8, label: '' } }, params: [{ key: 'A.vx', label: 'ความเร็วต้น (m/s)', min: 0.5, max: 4, step: 0.05 }], show: { v: true, graph: 'v' } })]
 ];
 const PERSON_MOVES = [['walk', 'เดิน'], ['run', 'วิ่ง'], ['idle', 'ยืนหายใจ'], ['wave', 'โบกมือ'], ['dance', 'เต้น'], ['jump', 'กระโดดตัวตรง'], ['longjump', 'กระโดดไกล'], ['fall', 'ถูกผลักล้ม'], ['squat', 'สควอต']];
+/* the pieces inside what was circled: strokes that touch or nearly touch belong to one piece, each picture is its own piece */
+function motionPieces(sp) {
+  const parts = [];
+  for (const r of sp.refs) { const st = findStroke(r); if (!st) continue; const b = sbox(st); parts.push({ refs: [r], items: [], b: b.slice() }); }
+  for (const id of sp.items) { const it = findItem(id); if (it) parts.push({ refs: [], items: [id], b: itemBox(it).slice() }); }
+  const m = 14, near = (a, c) => a[0] - m < c[2] && c[0] - m < a[2] && a[1] - m < c[3] && c[1] - m < a[3];
+  let merged = true;
+  while (merged) { merged = false;
+    for (let i = 0; i < parts.length && !merged; i++) for (let k = i + 1; k < parts.length; k++) if (near(parts[i].b, parts[k].b)) {
+      const A = parts[i], B = parts[k]; A.refs = A.refs.concat(B.refs); A.items = A.items.concat(B.items); A.b = [Math.min(A.b[0], B.b[0]), Math.min(A.b[1], B.b[1]), Math.max(A.b[2], B.b[2]), Math.max(A.b[3], B.b[3])]; parts.splice(k, 1); merged = true; break; }
+  }
+  parts.sort((a, c) => (a.b[1] + a.b[3]) / 2 - (c.b[1] + c.b[3]) / 2 > 40 ? 1 : (c.b[1] + c.b[3]) / 2 - (a.b[1] + a.b[3]) / 2 > 40 ? -1 : a.b[0] - c.b[0]);
+  return parts.map((q, k) => ({ n: k + 1, refs: q.refs, items: q.items, box: q.b }));
+}
+/* plain words to a behaviour, for when no AI is connected: เดิน วิ่ง บิน ว่าย กระโดด หมุน ไหว ... with left, right, fast, slow */
+const MV_WORDS = [[/กลิ้ง/, 'roll'], [/สี่ขา|หมา|แมว|ม้า|ช้าง|วัว/, 'walk4'], [/กระโดด|ดึ๋ง/, 'hop'], [/บิน|กระพือ|นก|ผีเสื้อ/, 'flap'], [/ว่าย|ปลา/, 'swim'], [/ขับ|วิ่ง|รถ|รถไฟ/, 'drive'], [/หมุน|กังหัน|ล้อ/, 'spin'], [/พลิ้ว|ธง|ผ้า/, 'flutter'],
+  [/ไหว|ลม|ต้นไม้|หญ้า|ดอกไม้/, 'sway'], [/หายใจ/, 'breathe'], [/เต้นตุบ|หัวใจ|กะพริบ|เต้น/, 'beat'], [/ลอย|ลูกโป่ง|เมฆ/, 'bob'], [/ดุ๊กดิ๊ก|โยก/, 'wiggle'], [/ไฟ|เปลว|เทียน|ควัน/, 'flicker'], [/สั่น|กระดิ่ง/, 'shake'], [/เดิน/, 'walk4']];
+function motionWords(t) {
+  const o = {}; for (const [re, k] of MV_WORDS) if (re.test(t)) { o.k = k; break; }
+  if (/นิ่ง|อยู่กับที่|ไม่ขยับ/.test(t)) o.k = 'none';
+  if (/ซ้าย/.test(t)) o.face = -1; else if (/ขวา/.test(t)) o.face = 1;
+  if (/เร็วมาก/.test(t)) o.sp = 2.4; else if (/เร็ว/.test(t)) o.sp = 1.7; else if (/ช้ามาก/.test(t)) o.sp = 0.35; else if (/ช้า/.test(t)) o.sp = 0.6;
+  if (/วน|ทะลุ|อีกฝั่ง/.test(t)) o.edge = 'wrap'; else if (/แอบ|โผล่/.test(t)) o.edge = 'peek'; else if (/ไม่ไปไหน|ที่เดิม/.test(t)) o.edge = 'stay'; else if (/หันกลับ|เดินกลับ|กลับไปกลับมา/.test(t)) o.edge = 'bounce';
+  if (/ชน|โต้ตอบ|หลบ|บนเส้น|บนพื้น|ข้าม/.test(t)) o.touch = 1;
+  return o;
+}
+async function motionPlan(text, sp, pieces) {
+  /* with AI: it sees the numbered pieces and the request and says what each piece does; pieces in the same group move as one */
+  if (AI.ready('read')) {
+    try {
+      const cv = document.createElement('canvas'), im = await createImageBitmap(sp.blob), k = im.width / (sp.box[2] - sp.box[0]);
+      cv.width = im.width; cv.height = im.height; const c = cv.getContext('2d'); c.drawImage(im, 0, 0);
+      c.font = 'bold ' + Math.round(18 * Math.max(1, k)) + 'px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
+      for (const p of pieces) { const x = ((p.box[0] + p.box[2]) / 2 - sp.box[0]) * k, y = (p.box[1] - sp.box[1]) * k + 14 * k; c.fillStyle = '#B5432F'; c.beginPath(); c.arc(x, y, 13 * k, 0, 7); c.fill(); c.fillStyle = '#fff'; c.fillText(String(p.n), x, y + 1); }
+      const blob = await new Promise((r) => cv.toBlob(r, 'image/png'));
+      const kinds = LIFE_KINDS.map((x) => x[0] + ' (' + x[2] + ')').join('; ');
+      const r = await AI.run('read', 'A teacher circled a drawing on a notebook page; the pieces are numbered 1 to ' + pieces.length + ' in red. The teacher wrote how it should move: "' + text.slice(0, 400) + '".\nDecide for every piece how it moves. Pieces that belong to one thing (for example the wheels and body of one car, or the head and body of one animal) get the same group number and move together.\nBehaviours: ' + kinds + '; none (does not move).\nReply with JSON only: {"pieces":[{"n":1,"group":1,"k":"drive","face":"right","speed":1,"edge":"bounce","touch":false}]}\nface is left or right (the way it travels), speed 0.3 to 3 (1 is normal), edge is wrap, bounce, peek or stay, touch is true when it should bump into or walk on other things on the page.', { images: [blob], maxTokens: 700 });
+      const j = JSON.parse(String(r.text || '').replace(/^[^{]*/, '').replace(/[^}]*$/, ''));
+      if (j && Array.isArray(j.pieces) && j.pieces.length) return j.pieces.map((q) => ({ n: +q.n, group: +q.group || +q.n, k: q.k, face: q.face === 'left' ? -1 : q.face === 'right' ? 1 : 0, sp: +q.speed || 1, edge: q.edge, touch: q.touch ? 1 : 0 }));
+    } catch (e) { /* fall back to the words */ }
+  }
+  /* without AI: "ชิ้นที่ 1 ..." lines go to that piece, anything else applies to the whole drawing */
+  const per = {}; const re = /ชิ้น(?:ที่)?\s*(\d+)([^]*?)(?=ชิ้น(?:ที่)?\s*\d+|$)/g; let m;
+  while ((m = re.exec(text))) per[+m[1]] = motionWords(m[2]);
+  if (Object.keys(per).length) return pieces.map((p) => Object.assign({ n: p.n, group: p.n }, per[p.n] || { k: 'auto' }));
+  const all = motionWords(text); return pieces.map((p) => Object.assign({ n: p.n, group: 1 }, all.k ? all : Object.assign({ k: 'auto' }, all)));
+}
+async function motionDo(text, sp, pieces) {
+  const plan = await motionPlan(text, sp, pieces);
+  const groups = new Map(); for (const q of plan) { const p = pieces.find((x) => x.n === q.n); if (!p) continue; const g = groups.get(q.group) || { plan: q, refs: [], items: [], box: [1e9, 1e9, -1e9, -1e9] }; g.refs.push(...p.refs); g.items.push(...p.items); g.box = [Math.min(g.box[0], p.box[0]), Math.min(g.box[1], p.box[1]), Math.max(g.box[2], p.box[2]), Math.max(g.box[3], p.box[3])]; groups.set(q.group, g); }
+  let made = 0;
+  for (const g of groups.values()) {
+    const q = g.plan; if (q.k === 'none') continue;
+    const sub = { refs: g.refs, items: g.items, box: g.box };
+    let k = q.k, f = q.face || 0;
+    if (!k || k === 'auto' || !LIFE_KINDS.some((x) => x[0] === k)) { const a = await lifeAuto(Object.assign({}, sp, sub)); if (Array.isArray(a)) { k = a[0]; f = f || a[1]; } else k = a; if (k === 'person') k = 'wiggle'; }
+    const before = new Set((S.page.items || []).map((x) => x.id));
+    await placeLife(sub, k, q.edge || 'bounce', f);
+    const it = (S.page.items || []).find((x) => x.type === 'life' && !before.has(x.id));
+    if (it && (q.sp && q.sp !== 1 || q.touch)) lifeSet(it, Object.assign({}, q.sp && q.sp !== 1 ? { sp: clamp(q.sp, 0.2, 3) } : {}, q.touch ? { touch: 1 } : {}));
+    made++;
+  }
+  toast(made ? 'ให้ภาพเคลื่อนไหวแล้ว ' + made + ' ชิ้น แตะปุ่มเล็กข้างภาพเพื่อปรับทีละชิ้น' : 'ไม่มีชิ้นไหนต้องขยับตามที่บอก', 3000);
+}
 async function openMotionPick() {
   const sp = await spriteFromSel(); if (!sp) { toast('วงรอบภาพที่วาดหรือรูปที่แทรกก่อน'); return; }
   let sh = $('#motionSheet');
-  if (!sh) { sh = document.createElement('div'); sh.className = 'sheet'; sh.id = 'motionSheet'; sh.innerHTML = '<div class="panel wide" role="dialog" aria-label="เลือกการเคลื่อนที่"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><h2>ให้ภาพนี้เคลื่อนที่แบบไหน</h2><button class="btn" type="button" data-a="x">ยกเลิก</button></div><div class="mvbody"></div></div>'; document.body.appendChild(sh); sh.querySelector('[data-a="x"]').onclick = () => { sh.hidden = true; }; }
+  if (!sh) { sh = document.createElement('div'); sh.className = 'sheet'; sh.id = 'motionSheet'; sh.innerHTML = '<div class="panel wide mvpanel" role="dialog" aria-label="เลือกการเคลื่อนที่"><div class="mvhead"><h2>ให้ภาพนี้เคลื่อนที่แบบไหน</h2><button class="btn" type="button" data-a="x">ยกเลิก</button></div><div class="mvbody"></div></div>'; document.body.appendChild(sh); sh.querySelector('[data-a="x"]').onclick = () => { sh.hidden = true; }; }
   const body = sh.querySelector('.mvbody'); body.innerHTML = '';
-  const url = URL.createObjectURL(sp.blob);
-  const top = document.createElement('div'); top.className = 'mvtop'; top.innerHTML = '<img alt="ภาพที่เลือก"><div class="note">ภาพที่วงไว้จะเคลื่อนที่ตามกฎของนิวตันบนกระดาษตรงที่วาด เส้นอื่นที่วาดไว้รอบ ๆ เช่น พื้น พื้นเอียง ผนัง จะเป็นพื้นผิวที่ภาพชนและไถลไปตาม กดคืนเป็นภาพวาดได้ทุกเมื่อ</div>'; top.querySelector('img').src = url; body.appendChild(top);
-  const go = async (make, person) => {
-    sh.hidden = true;
-    try { await placeMotion(sp, make, person); } catch (e) { toast('ทำให้ภาพเคลื่อนที่ไม่สำเร็จ ' + (e && e.code ? assetErr(e) : ''), 3500); }
-    URL.revokeObjectURL(url);
-  };
+  const url = URL.createObjectURL(sp.blob), pieces = motionPieces(sp);
+  const done = () => { sh.hidden = true; URL.revokeObjectURL(url); };
+  const go = async (make, person) => { done(); try { await placeMotion(sp, make, person); } catch (e) { toast('ทำให้ภาพเคลื่อนที่ไม่สำเร็จ ' + (e && e.code ? assetErr(e) : ''), 3500); } };
   let edge = 'bounce'; try { edge = store_ls.get('tp-edge') || 'bounce'; } catch (e) { /* default */ }
-  const goHere = async (kind, act) => { sh.hidden = true; try { await placeInPlace(sp, kind, act, edge); } catch (e) { toast('ทำให้ภาพเคลื่อนที่ไม่สำเร็จ', 3000); } URL.revokeObjectURL(url); };
-  const goLife = async (k) => { sh.hidden = true; try { let f = 0; if (k === 'auto') { k = await lifeAuto(sp); if (Array.isArray(k)) { f = k[1]; k = k[0]; } } if (k === 'person') await placeInPlace(sp, null, edge === 'stay' ? 'idle' : 'walk', edge); else await placeLife(sp, k, edge, f); } catch (e) { toast('ทำให้ภาพมีชีวิตไม่สำเร็จ', 3000); } URL.revokeObjectURL(url); };
-  /* what happens when it reaches the edge of the paper */
-  const er = document.createElement('div'); er.className = 'mvedge'; er.innerHTML = '<span>เมื่อเดินไปถึงขอบกระดาษ</span>';
-  for (const [k, n] of [['wrap', 'ออกขอบแล้ววนกลับมาอีกฝั่ง'], ['bounce', 'หันหลังเดินกลับ'], ['peek', 'แอบโผล่ที่ขอบ แล้วกลับมา'], ['stay', 'ไม่ไปไหน']]) { const c = document.createElement('button'); c.type = 'button'; c.className = 'chip'; c.dataset.edge = k; c.textContent = n; c.setAttribute('aria-pressed', k === edge ? 'true' : 'false'); c.onclick = () => { edge = k; try { store_ls.set('tp-edge', k); } catch (e) { /* fine */ } er.querySelectorAll('.chip').forEach((x) => x.setAttribute('aria-pressed', x === c ? 'true' : 'false')); }; er.appendChild(c); }
-  body.appendChild(exEl('h3', '', 'ให้ภาพมีชีวิต เล่นวนเองบนกระดาษ'));
-  body.appendChild(er);
+  const goHere = async (kind, act) => { done(); try { await placeInPlace(sp, kind, act, edge); } catch (e) { toast('ทำให้ภาพเคลื่อนที่ไม่สำเร็จ', 3000); } };
+  const goLife = async (k) => { done(); try { let f = 0; if (k === 'auto') { k = await lifeAuto(sp); if (Array.isArray(k)) { f = k[1]; k = k[0]; } } if (k === 'person') await placeInPlace(sp, null, edge === 'stay' ? 'idle' : 'walk', edge); else await placeLife(sp, k, edge, f); } catch (e) { toast('ทำให้ภาพมีชีวิตไม่สำเร็จ', 3000); } };
+  /* the picture with its pieces numbered, beside a box to say in words how it should move */
+  const top = document.createElement('div'); top.className = 'mvtop';
+  const fig = document.createElement('div'); fig.className = 'mvfig'; const img = document.createElement('img'); img.alt = 'ภาพที่เลือก'; img.src = url; fig.appendChild(img);
+  if (pieces.length > 1) for (const p of pieces) { const bdg = document.createElement('span'); bdg.className = 'mvnum'; bdg.textContent = p.n; bdg.style.left = (((p.box[0] + p.box[2]) / 2 - sp.box[0]) / Math.max(1, sp.box[2] - sp.box[0]) * 100).toFixed(1) + '%'; bdg.style.top = ((p.box[1] - sp.box[1]) / Math.max(1, sp.box[3] - sp.box[1]) * 100).toFixed(1) + '%'; fig.appendChild(bdg); }
+  const say = document.createElement('div'); say.className = 'mvsay';
+  say.innerHTML = '<label for="mvText"><b>บอกเองว่าอยากให้ขยับแบบไหน</b>' + (pieces.length > 1 ? '<small>ในภาพมี ' + pieces.length + ' ชิ้น ดูหมายเลขในภาพ</small>' : '') + '</label><textarea id="mvText" rows="3"></textarea><div class="mvrow"><button type="button" class="btn solid">ทำตามนี้</button><small></small></div>';
+  const ta = say.querySelector('textarea'); ta.placeholder = pieces.length > 1 ? 'เช่น ชิ้นที่ 1 รถวิ่งไปทางขวาเร็ว ๆ ชิ้นที่ 2 ต้นไม้ไหวตามลม' : 'เช่น วิ่งไปทางซ้ายช้า ๆ แล้วหันกลับที่ขอบ หรือ กระโดดข้ามสิ่งที่ขวาง';
+  say.querySelector('.mvrow small').textContent = AI.ready('read') ? 'AI จะอ่านคำบอกและดูภาพให้' : 'ใช้คำง่าย ๆ เช่น เดิน วิ่ง บิน ว่าย กระโดด หมุน ไหว ลอย ซ้าย ขวา เร็ว ช้า ชน';
+  try { ta.value = store_ls.get('tp-mv-say') || ''; } catch (e) { /* none */ }
+  say.querySelector('.btn').onclick = async () => { const t = ta.value.trim(); if (!t) { ta.focus(); return; } try { store_ls.set('tp-mv-say', t); } catch (e) { /* fine */ } done(); try { await motionDo(t, sp, pieces); } catch (e) { toast('ทำให้ภาพเคลื่อนไหวไม่สำเร็จ', 3000); } };
+  top.append(fig, say); body.appendChild(top);
+  /* or pick from ready-made choices, one group at a time */
+  const tabs = document.createElement('div'); tabs.className = 'seg mvtabs'; tabs.setAttribute('role', 'tablist');
+  const panes = {};
+  const T = [['life', 'ภาพมีชีวิต'], ['phys', 'ตามหลักฟิสิกส์'], ['sim', 'กล่องแบบจำลอง']];
+  for (const [k, n] of T) { const b = document.createElement('button'); b.type = 'button'; b.dataset.t = k; b.textContent = n; b.setAttribute('role', 'tab'); tabs.appendChild(b); panes[k] = document.createElement('div'); panes[k].className = 'mvpane'; }
+  body.append(tabs, ...Object.values(panes));
+  const show = (k) => { for (const b of tabs.children) b.setAttribute('aria-selected', b.dataset.t === k ? 'true' : 'false'); for (const [kk, el] of Object.entries(panes)) el.hidden = kk !== k; try { store_ls.set('tp-mv-tab', k); } catch (e) { /* fine */ } };
+  for (const b of tabs.children) b.onclick = () => show(b.dataset.t);
+  const card = (name, hint, fn) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'mvopt'; b.innerHTML = '<b></b><span></span>'; b.querySelector('b').textContent = name; b.querySelector('span').textContent = hint; b.onclick = fn; return b; };
+  /* living pictures: what happens at the edge, then the behaviours */
+  const er = document.createElement('div'); er.className = 'mvedge'; er.innerHTML = '<span>ถึงขอบกระดาษแล้ว</span>';
+  for (const [k, n] of [['bounce', 'หันกลับ'], ['wrap', 'วนกลับมาอีกฝั่ง'], ['peek', 'แอบโผล่ที่ขอบ'], ['stay', 'ไม่ไปไหน']]) { const c = document.createElement('button'); c.type = 'button'; c.className = 'chip'; c.textContent = n; c.setAttribute('aria-pressed', k === edge ? 'true' : 'false'); c.onclick = () => { edge = k; try { store_ls.set('tp-edge', k); } catch (e) { /* fine */ } er.querySelectorAll('.chip').forEach((x) => x.setAttribute('aria-pressed', x === c ? 'true' : 'false')); }; er.appendChild(c); }
   const gl = document.createElement('div'); gl.className = 'mvgrid';
-  const au = document.createElement('button'); au.type = 'button'; au.className = 'mvopt'; au.dataset.life = 'auto'; au.innerHTML = '<b>เลือกให้อัตโนมัติ</b><span>ดูจากรูปทรงของภาพ' + (AI.ready('read') ? ' และให้ AI ช่วยดู' : '') + ' แล้วเลือกท่าทางที่เหมาะที่สุด</span>'; au.onclick = () => goLife('auto'); gl.appendChild(au);
-  for (const [k, name, hint] of LIFE_KINDS) { const bt = document.createElement('button'); bt.type = 'button'; bt.className = 'mvopt'; bt.dataset.life = k; bt.innerHTML = '<b></b><span></span>'; bt.querySelector('b').textContent = name; bt.querySelector('span').textContent = hint; bt.onclick = () => goLife(k); gl.appendChild(bt); }
-  body.appendChild(gl);
-  body.appendChild(exEl('h3', '', 'ขยับตามหลักฟิสิกส์บนกระดาษตรงที่วาด'));
+  gl.appendChild(card('เลือกให้อัตโนมัติ', 'ดูจากรูปทรง' + (AI.ready('read') ? ' และให้ AI ช่วยดู' : ''), () => goLife('auto')));
+  for (const [k, name, hint] of LIFE_KINDS) gl.appendChild(card(name, hint, () => goLife(k)));
+  panes.life.append(er, gl);
   const g1 = document.createElement('div'); g1.className = 'mvgrid';
-  for (const [k, name, hint] of IP_KINDS) { const b = document.createElement('button'); b.type = 'button'; b.className = 'mvopt'; b.dataset.ip = k; b.innerHTML = '<b></b><span></span>'; b.querySelector('b').textContent = name; b.querySelector('span').textContent = hint; b.onclick = () => goHere(k); g1.appendChild(b); }
-  body.appendChild(g1);
+  for (const [k, name, hint] of IP_KINDS) g1.appendChild(card(name, hint, () => goHere(k)));
+  panes.phys.appendChild(exEl('p', 'mvnote', 'ภาพเคลื่อนที่ตามกฎของนิวตันตรงที่วาด เส้นอื่นรอบ ๆ เช่น พื้น พื้นเอียง ผนัง เป็นพื้นผิวให้ชนและไถล'));
+  panes.phys.appendChild(g1);
   if (sp.refs.length) {
-    body.appendChild(exEl('h3', '', 'ภาพนี้เป็นคน ให้แขนขาของภาพที่วาดขยับตามการเคลื่อนไหวจริง'));
+    panes.phys.appendChild(exEl('p', 'mvnote', 'ถ้าภาพเป็นคน ให้แขนขาขยับตามจริง'));
     const pc = document.createElement('div'); pc.className = 'chips';
-    for (const [act, name] of PERSON_MOVES) { const b = document.createElement('button'); b.type = 'button'; b.className = 'chip'; b.dataset.act = act; b.textContent = name; b.onclick = () => goHere(null, act); pc.appendChild(b); }
-    body.appendChild(pc);
+    for (const [act, name] of PERSON_MOVES) { const b = document.createElement('button'); b.type = 'button'; b.className = 'chip'; b.textContent = name; b.onclick = () => goHere(null, act); pc.appendChild(b); }
+    panes.phys.appendChild(pc);
   }
-  body.appendChild(exEl('h3', '', 'หรือแยกเป็นกล่องแบบจำลอง มีกราฟและแผนภาพแรงครบ'));
   const grid = document.createElement('div'); grid.className = 'mvgrid';
-  for (const [k, name, hint, make] of MOTIONS) { const b = document.createElement('button'); b.type = 'button'; b.className = 'mvopt'; b.dataset.k = k; b.innerHTML = '<b></b><span></span>'; b.querySelector('b').textContent = name; b.querySelector('span').textContent = hint; b.onclick = () => go(make); grid.appendChild(b); }
-  body.appendChild(grid);
-  if (AI.ready('draw')) { const ai = document.createElement('button'); ai.type = 'button'; ai.className = 'btn mvai'; ai.textContent = 'ให้ AI ดูภาพแล้วสร้างสถานการณ์ให้เอง'; ai.onclick = () => go('ai'); body.appendChild(ai); }
+  for (const [k, name, hint, make] of MOTIONS) grid.appendChild(card(name, hint, () => go(make)));
+  panes.sim.appendChild(exEl('p', 'mvnote', 'แยกออกเป็นกล่องแบบจำลอง มีกราฟและแผนภาพแรงครบ'));
+  panes.sim.appendChild(grid);
+  if (AI.ready('draw')) { const ai = document.createElement('button'); ai.type = 'button'; ai.className = 'btn mvai'; ai.textContent = 'ให้ AI ดูภาพแล้วสร้างสถานการณ์ให้เอง'; ai.onclick = () => go('ai'); panes.sim.appendChild(ai); }
+  let t0 = 'life'; try { t0 = store_ls.get('tp-mv-tab') || 'life'; } catch (e) { /* default */ } show(panes[t0] ? t0 : 'life');
   sh.hidden = false;
 }
 async function placeMotion(sp, make, person) {
@@ -18140,7 +18236,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793287458';
+const BUILD = '1793288646';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
