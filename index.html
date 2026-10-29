@@ -459,6 +459,9 @@ body.tv .grip { height: 68px; width: 32px; }
 .mpick button small { display: block; font-size: 12.5px; color: var(--muted, #667); line-height: 1.4; }
 .mpick button .mpc { font-size: 12px; white-space: nowrap; color: var(--muted, #667); }
 .mpick button.on { border-color: var(--accent, #2f4bbf); box-shadow: 0 0 0 2px var(--accent, #2f4bbf) inset; }
+.mpick button.rec { background: var(--surface-2, #f3f5fb); }
+.mpick .mpok { margin: -2px 0 4px; padding: 10px 12px; border-radius: 12px; background: var(--surface-2, #f3f5fb); font-size: 13px; line-height: 1.55; display: grid; gap: 6px; }
+.mpick .mpb { display: flex; gap: 8px; flex-wrap: wrap; }
 .mpick button:disabled { opacity: .5; cursor: default; }
 #tabMenu button.mopt:hover { background: var(--surface-2); border-color: var(--accent, #2f4bbf); }
 #tabMenu .mci { flex: none; width: 40px; height: 40px; border-radius: 10px; display: grid; place-items: center; background: var(--surface-2); color: var(--accent, #2f4bbf); }
@@ -1603,6 +1606,7 @@ body.role-student .scnpill .sbtns button[data-s="back"], body.role-student .scnp
     </div>
     <h3>ผู้ช่วย AI</h3>
     <button class="btn solid" id="bAIConnect" type="button">เชื่อมต่อ AI ของคุณ (เข้าระบบแล้วกดอนุญาต หรือวางคีย์)</button>
+    <div id="aiModelBox" class="mpick"></div>
     <div class="note" id="aiSrcNote"></div>
     <div id="aiTasks" style="display:flex;flex-direction:column;gap:10px"></div>
     <details class="aicfg" id="cfgLocal">
@@ -1623,7 +1627,6 @@ body.role-student .scnpill .sbtns button[data-s="back"], body.role-student .scnp
       <div class="aibody">
         <label class="field"><span>คีย์ API</span><input id="kKey" type="password" autocomplete="off" spellcheck="false" placeholder="วางคีย์ที่นี่ ระบบเลือกผู้ให้บริการให้เอง"></label>
         <label class="field"><span>ผู้ให้บริการ</span><select id="kVendor"></select></label>
-        <div id="kPick" class="mpick"></div>
         <details class="kadv" id="kAdv"><summary>ตั้งค่าเพิ่มเติม <small id="kAdvNote">ไม่ต้องแก้ก็ได้</small></summary>
         <label class="field" id="kUrlF"><span>ที่อยู่ API</span><input id="kUrl" autocomplete="off" spellcheck="false"></label>
         <label class="field"><span>ชื่อโมเดล</span><span class="mrow"><input id="kModel" list="kModelList" autocomplete="off" spellcheck="false"><button class="btn" type="button" id="kModels">ดึงรายชื่อ</button></span><datalist id="kModelList"></datalist></label>
@@ -2466,11 +2469,11 @@ const AI = {
       if (!K.model && !V.model) { K.model = await pickModel(K.vendor, K.url, K.key); this.save(); }
       if (K.vendor === 'gemini' && task === 'read' && !o.effort) o = Object.assign({}, o, { effort: 'low' });
       const call = (model) => (K.vendor === 'anthropic' ? runAnthropic(K.key, model, prompt, o) : runOpenAI(K.url || V.url, K.key, model, prompt, o, true));
-      try { return await withRetry(call, K.model || V.model, K, o); }
+      try { return await withRetry(call, (K.byTask && K.byTask[task]) || K.model || V.model, K, o); }
       catch (e) {
         /* OpenRouter without credit: move to a free model that reads pictures; with credit again, move back to a stronger one */
         if (K.vendor === 'openrouter' && /http_402|credit|insufficient/i.test(String((e && (e.code + ' ' + (e.message || ''))) || ''))) {
-          const fm = await orFreeModel(K.key).catch(() => ''); if (fm && fm !== K.model) { K.model = fm; this.save(); toast('บัญชี AI เครดิตไม่พอ จึงเปลี่ยนไปใช้โมเดลฟรีให้แล้ว', 3500); return withRetry(call, fm, K, o); }
+          const fm = await orFreeModel(K.key).catch(() => ''); if (fm && fm !== K.model) { K.model = fm; K.byTask = null; this.save(); toast('บัญชี AI เครดิตไม่พอ จึงเปลี่ยนไปใช้โมเดลฟรีให้แล้ว', 3500); return withRetry(call, fm, K, o); }
         }
         throw e;
       }
@@ -4658,8 +4661,10 @@ const MODEL_FAMS = [
   { label: 'GPT', desc: 'รุ่นหลักของ OpenAI ใช้งานทั่วไปได้ดี', or: /^openai\/gpt-[\d.]+$/, openai: /^gpt-[\d.]+$/ },
   { label: 'GPT mini', desc: 'รุ่นเล็กของ OpenAI เร็วและประหยัด', or: /^openai\/gpt-[\d.]+-mini$/, openai: /^gpt-[\d.]+-mini$/ }
 ];
-const MP = { sig: '', list: null };
-const verCmp = (a, b) => b.localeCompare(a, 'en', { numeric: true });
+const MP = { sig: '', list: null, open: '' };
+/* newest version first: compare the numbers inside the id (claude-haiku-4.5 is newer than claude-3-haiku) */
+const verNums = (id) => (String(id).split('/').pop().match(/\d+/g) || []).map(Number);
+const verCmp = (a, b) => { const x = verNums(a), y = verNums(b); for (let i = 0; i < Math.max(x.length, y.length); i++) { const d = (y[i] || 0) - (x[i] || 0); if (d) return d; } return 0; };
 async function modelCatalog(K) {
   const sig = K.vendor + '|' + (K.key || '').slice(-6);
   if (MP.sig === sig && MP.list) return MP.list;
@@ -4672,29 +4677,64 @@ async function modelCatalog(K) {
   const out = [];
   for (const f of MODEL_FAMS) {
     const re = f[key]; if (!re) continue;
-    const m = rows.filter((x) => re.test(x.id) && !/preview|exp|latest/i.test(x.id)).sort((a, b) => verCmp(a.id, b.id))[0]
-      || rows.filter((x) => re.test(x.id)).sort((a, b) => verCmp(a.id, b.id))[0];
+    const pool = rows.filter((x) => re.test(x.id));
+    const m = pool.filter((x) => !/preview|exp|latest/i.test(x.id)).sort((a, b) => verCmp(a.id, b.id))[0] || pool.sort((a, b) => verCmp(a.id, b.id))[0];
     if (m) out.push(Object.assign({}, f, { id: m.id, p: m.p, c: m.c }));
   }
   MP.sig = sig; MP.list = out; return out;
 }
 /* a typical job: one page picture plus instructions in, a worked answer out */
-function callBaht(m) { if (!m.p && !m.c) return ''; const b = (3000 * m.p + 1500 * m.c) * 34; return b < 0.01 ? 'ไม่ถึง 1 สตางค์ต่อครั้ง' : 'ประมาณ ' + (b < 1 ? b.toFixed(2) : b.toFixed(1)) + ' บาทต่อครั้ง'; }
+const hasPrice = (m) => !!(m && (m.p || m.c));
+function callBahtNum(m) { return (3000 * m.p + 1500 * m.c) * 34; }
+const fmtB = (b) => (b < 1 ? b.toFixed(2) : b.toFixed(1));
+function callBaht(m) { if (!hasPrice(m)) return ''; const b = callBahtNum(m); return b < 0.01 ? 'ไม่ถึง 1 สตางค์ต่อครั้ง' : 'ประมาณ ' + fmtB(b) + ' บาทต่อครั้ง'; }
+/* the recommended mix: a fast cheap model reads handwriting, a careful writer makes questions, answers and figures */
+const TASK_PICK = {
+  openrouter: { read: ['Gemini Flash', 'GPT mini', 'Claude Haiku'], gen: ['Claude Sonnet', 'Gemini Pro', 'GPT'], draw: ['Claude Sonnet', 'Gemini Pro', 'GPT'] },
+  anthropic: { read: ['Claude Haiku', 'Claude Sonnet'], gen: ['Claude Sonnet'], draw: ['Claude Sonnet'] },
+  openai: { read: ['GPT mini', 'GPT'], gen: ['GPT'], draw: ['GPT'] },
+  gemini: { read: ['Gemini Flash'], gen: ['Gemini Pro', 'Gemini Flash'], draw: ['Gemini Pro', 'Gemini Flash'] }
+};
+function taskMix(K, list) {
+  const P = TASK_PICK[K.vendor]; if (!P) return null;
+  const mix = {};
+  for (const t of ['read', 'gen', 'draw']) { const m = P[t].map((l) => list.find((x) => x.label === l)).find(Boolean); if (!m) return null; mix[t] = m; }
+  return mix;
+}
+const TASK_SHORT = { read: 'อ่านลายมือ', gen: 'สร้างโจทย์และเฉลย', draw: 'วาดรูป' };
+function payerText(K) { return K.vendor === 'openrouter' ? 'หักจากเครดิตในบัญชี OpenRouter ของคุณเอง' : 'คิดเงินกับบัญชี ' + (KEY_VENDORS[K.vendor] || KEY_VENDORS.other).name.replace(/\s*\(.*\)/, '') + ' ของคุณเอง'; }
+function modelShort(K, t) { const id = (K.byTask && K.byTask[t]) || K.model || ''; const m = (MP.list || []).find((x) => x.id === id); return m ? m.label : id; }
 async function renderModelPick(host) {
-  host = host || $('#kPick'); if (!host) return;
+  host = host || $('#aiModelBox'); if (!host) return;
   const K = AI.cfg.key;
-  if (!K || !K.key || !['openrouter', 'anthropic', 'openai', 'gemini'].includes(K.vendor)) { host.innerHTML = ''; return; }
+  if (!K || !K.key || !TASK_PICK[K.vendor]) { host.innerHTML = ''; return; }
   let list = [];
   try { list = await modelCatalog(K); } catch (e) { host.innerHTML = ''; return; }
   if (!list.length) { host.innerHTML = ''; return; }
-  const free = /:free$/.test(K.model || '');
-  host.innerHTML = '<div class="mph">เลือกโมเดล AI ที่ใช้' + (free ? ' (บัญชี OpenRouter ยังไม่เติมเงิน ต้องเติมเงินก่อนจึงเลือกโมเดลเหล่านี้ได้)' : ' แตะเพื่อเปลี่ยน มีผลทันทีและใช้กับทุกเครื่องในบัญชี') + '</div><div class="mpl"></div>';
+  const free = /:free$/.test(K.model || ''), mix = taskMix(K, list), mixOn = !!(K.byTask && K.byTask.read);
+  const opts = [];
+  if (mix) opts.push({ key: 'mix', label: 'แนะนำ: เลือกโมเดลให้เหมาะกับงาน', desc: ['read', 'gen', 'draw'].map((t) => TASK_SHORT[t] + ' ใช้ ' + mix[t].label).join(', '), on: mixOn,
+    cost: hasPrice(mix.read) ? 'ประมาณ ' + fmtB(callBahtNum(mix.read)) + ' ถึง ' + fmtB(Math.max(callBahtNum(mix.gen), callBahtNum(mix.draw))) + ' บาทต่อครั้ง' : '',
+    detail: ['read', 'gen', 'draw'].map((t) => TASK_SHORT[t] + ': ' + mix[t].label + (hasPrice(mix[t]) ? ' ' + callBaht(mix[t]) : '')).join('<br>'),
+    apply: () => { K.byTask = { read: mix.read.id, gen: mix.gen.id, draw: mix.draw.id }; K.model = mix.gen.id; } });
+  for (const m of list) opts.push({ key: m.id, label: m.label, desc: m.desc, on: !mixOn && m.id === K.model, cost: callBaht(m), detail: 'ทุกงานใช้ ' + esc(m.label) + ' (' + esc(m.id) + ')' + (hasPrice(m) ? ' ' + callBaht(m) : ''), apply: () => { K.byTask = null; K.model = m.id; } });
+  host.innerHTML = '<div class="mph">เลือกโมเดล AI' + (free ? ' (บัญชี OpenRouter ยังไม่เติมเงิน ต้องเติมเงินก่อนจึงเลือกได้)' : ' ค่าใช้จ่ายเป็นค่าประมาณต่อ 1 งานที่มีรูป 1 หน้า') + '</div><div class="mpl"></div>';
   const box = host.querySelector('.mpl');
-  for (const m of list) {
-    const b = document.createElement('button'); b.type = 'button'; b.className = m.id === K.model ? 'on' : ''; b.disabled = free;
-    b.innerHTML = '<span><b>' + esc(m.label) + (m.id === K.model ? ' (ใช้อยู่)' : '') + '</b><small>' + esc(m.desc) + '</small></span><span class="mpc">' + esc(callBaht(m)) + '</span>';
-    b.onclick = () => { K.model = m.id; AI.save(); toast('เปลี่ยนไปใช้ ' + m.label + ' (' + m.id + ') แล้ว', 2500); renderAISettings(); renderAIAvail(); if (host.id !== 'kPick') renderModelPick(host); };
+  for (const o of opts) {
+    const b = document.createElement('button'); b.type = 'button'; b.className = (o.on ? 'on' : '') + (o.key === 'mix' ? ' rec' : ''); b.disabled = free;
+    b.innerHTML = '<span><b>' + esc(o.label) + (o.on ? ' (ใช้อยู่)' : '') + '</b><small>' + esc(o.desc) + '</small></span><span class="mpc">' + esc(o.cost) + '</span>';
     box.appendChild(b);
+    if (MP.open === o.key && !o.on) {
+      /* the person sees what it costs and who pays before anything changes */
+      const c = document.createElement('div'); c.className = 'mpok';
+      c.innerHTML = '<div>' + o.detail + '</div><div>' + esc(payerText(K)) + ' ไม่ได้จ่ายผ่าน Burin งานยาว เฉลยหลายขั้น หรือหลายรูป จะแพงกว่าตัวเลขนี้'
+        + (K.vendor === 'openrouter' ? ' ดูยอดใช้จริงได้ที่ openrouter.ai/activity' : '') + '</div><div class="mpb"><button type="button" class="btn solid">ยืนยัน ใช้แบบนี้</button><button type="button" class="btn">ยกเลิก</button></div>';
+      const [ok, no] = c.querySelectorAll('.mpb button');
+      ok.onclick = () => { o.apply(); K.costOk = Date.now(); MP.open = ''; AI.save(); toast('เปลี่ยนแล้ว ' + (o.key === 'mix' ? 'เลือกโมเดลตามงาน' : o.label), 2500); renderAISettings(); renderAIAvail(); renderModelPick(host); };
+      no.onclick = () => { MP.open = ''; renderModelPick(host); };
+      box.appendChild(c);
+    }
+    b.onclick = () => { if (o.on) return; MP.open = MP.open === o.key ? '' : o.key; renderModelPick(host); };
   }
 }
 async function quickSetup() {
@@ -6815,7 +6855,7 @@ function renderAISettings() {
   for (const [t, name, desc] of AI_TASKS) {
     const row = document.createElement('div'); row.className = 'airow';
     const cur = C.use[t] || 'auto', eff = AI.src(t);
-    row.innerHTML = '<span><b>' + esc(name) + '</b><small>' + esc(desc) + '. ใช้: ' + esc(AI.srcName(eff)) + (AI.ready(t) ? '' : (eff === 'off' ? '' : ' (ยังตั้งค่าไม่ครบ)')) + '</small></span>';
+    row.innerHTML = '<span><b>' + esc(name) + '</b><small>' + esc(desc) + '. ใช้: ' + esc(AI.srcName(eff)) + (eff === 'key' && C.key.key ? ' ' + esc(modelShort(C.key, t)) : '') + (AI.ready(t) ? '' : (eff === 'off' ? '' : ' (ยังตั้งค่าไม่ครบ)')) + '</small></span>';
     const sel = document.createElement('select'); sel.setAttribute('aria-label', name);
     for (const [v, l] of opts) { const o = document.createElement('option'); o.value = v; o.textContent = l; if (v === cur) o.selected = true; sel.appendChild(o); }
     sel.onchange = () => { C.use[t] = sel.value; AI.save(); renderAISettings(); renderAIAvail(); };
@@ -17100,7 +17140,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793257242';
+const BUILD = '1793257825';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
