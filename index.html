@@ -588,6 +588,7 @@ body.guest #roleSeg, body.guest #bJoin { display: none !important; }
 .plancat input:first-child { flex: 1 1 180px; }
 .planitem .bacts { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .planitem input { padding: 6px 8px; border: 1px solid var(--line); border-radius: 8px; font: inherit; background: var(--surface); color: var(--fg); }
+.mygr { margin-top: 18px; border-top: 1px solid var(--line); padding-top: 12px; }
 .termrow em { font-style: normal; font-size: 12px; padding: 1px 8px; border-radius: 999px; background: var(--bg); margin-left: 4px; }
 .termrow em.good { background: var(--ok-soft); } .termrow em.bad { background: #FBE3E1; color: #B42318; }
 .exsumm { border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: 12px; padding: 12px 14px; margin: 12px 0; background: var(--surface); }
@@ -10883,8 +10884,10 @@ function renderClass(body, c) {
   const add = exEl('button', 'btn solid', 'เพิ่มช่องคะแนน'); add.onclick = () => clsAddItem(c); row.appendChild(add);
   const sy = exEl('button', 'btn', 'ดึงคะแนนจากการบ้านและแบบฝึก'); sy.onclick = async () => { sy.disabled = true; sy.textContent = 'กำลังดึงคะแนน'; const n = await clsSync(c); toast('อัปเดต ' + n + ' ช่อง', 1800); exRender(); }; row.appendChild(sy);
   const tl = exEl('button', 'btn', 'ลิงก์งานทั้งเทอมสำหรับนักเรียน'); tl.onclick = () => showTermLink(c); row.appendChild(tl);
+  const pb = exEl('button', 'btn', c.published ? 'อัปเดตคะแนนที่นักเรียนเห็น' : 'เผยแพร่คะแนนให้นักเรียนดู'); pb.title = 'นักเรียนแต่ละคนเห็นเฉพาะคะแนนตัวเอง ด้วยรหัสนักเรียนและรหัสดูคะแนน'; pb.onclick = async () => { pb.disabled = true; pb.textContent = 'กำลังเผยแพร่'; const ok = await publishGrades(c); if (ok) toast('เผยแพร่แล้ว นักเรียนดูได้ที่ลิงก์งานทั้งเทอม ด้วยรหัสดูคะแนนของตัวเอง แจกรหัสได้ที่แท็บรายชื่อ', 4000); exRender(); }; row.appendChild(pb);
   const csv = exEl('button', 'btn', 'ส่งออก CSV'); csv.onclick = () => clsCsv(c); row.appendChild(csv);
   body.appendChild(row);
+  if (c.published) body.appendChild(exEl('div', 'note small', 'นักเรียนเห็นคะแนน ณ ' + new Date(c.published).toLocaleString(LOC, { dateStyle: 'medium', timeStyle: 'short' }) + ' แก้คะแนนแล้วกดอัปเดตอีกครั้ง'));
   if (!P.cats.length) body.appendChild(exEl('div', 'note', 'ยังไม่ได้ตั้งโครงสร้างคะแนน ตอนนี้รวมคะแนนดิบทุกช่อง ตั้งสัดส่วน เช่น ก่อนกลางภาค 30 กลางภาค 20 หลังกลางภาค 30 ปลายภาค 20 ได้ที่แท็บโครงสร้างคะแนน'));
   const cats = P.cats.length ? P.cats : [{ id: '_all', name: 'รวม', w: 100 }];
   const ordered = P.cats.length ? cats.flatMap((cat) => items.filter((it) => (it.cat || P.cats[0].id) === cat.id).map((it) => [it, cat])) : items.map((it) => [it, cats[0]]);
@@ -10972,11 +10975,11 @@ async function openTermPage(clsId) {
   const { data, error } = await sb.from('assignments').select('id,title,data,due,open,created_at').eq('data->>clsId', clsId).order('created_at', { ascending: true });
   b.innerHTML = '';
   if (error) { b.appendChild(exEl('div', 'note err', 'โหลดงานไม่ได้ ลองอีกครั้ง')); return; }
-  const list = (data || []).slice().sort((x, y) => (x.due ? Date.parse(x.due) : 9e15) - (y.due ? Date.parse(y.due) : 9e15));
+  const list = (data || []).filter((x) => !(x.data && x.data.kind === 'grades')).sort((x, y) => (x.due ? Date.parse(x.due) : 9e15) - (y.due ? Date.parse(y.due) : 9e15));
   const lbl = list[0] && list[0].data.cls && list[0].data.cls.label;
   $('#hwsTitle').textContent = 'งานทั้งเทอม' + (lbl ? ' ' + lbl : '');
   let sent = []; try { sent = JSON.parse(store_ls.get('tp-sent') || '[]'); } catch (e) { sent = []; }
-  if (!list.length) { b.appendChild(exEl('div', 'note', 'ยังไม่มีงานที่มอบหมายให้ห้องนี้')); return; }
+  if (!list.length) { b.appendChild(exEl('div', 'note', 'ยังไม่มีงานที่มอบหมายให้ห้องนี้')); myGradesForm(b, clsId); return; }
   const tnow = now(), todo = list.filter((a) => a.open && !sent.includes(a.id));
   b.appendChild(exEl('div', 'note' + (todo.length ? '' : ' ok'), todo.length ? 'ยังไม่ได้ส่งจากเครื่องนี้ ' + todo.length + ' งาน' : 'ส่งครบทุกงานที่เปิดรับแล้ว'));
   for (const a of list) {
@@ -10986,8 +10989,89 @@ async function openTermPage(clsId) {
     if (a.open) { const go = exEl('button', 'btn' + (done ? '' : ' solid'), done ? 'เปิดดู' : 'ทำงานนี้'); go.onclick = () => { location.hash = 'hw=' + a.id; openHomework(a.id, clsId); }; r.appendChild(go); }
     b.appendChild(r);
   }
+  myGradesForm(b, clsId);
 }
 
+/* ----- students see only their own scores: the teacher publishes one record per class where each student's part is
+   locked with their own score code (key derived from student ID and code); nobody else can read it ----- */
+const PIN_ABC = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+const gradesId = (clsId) => 'g' + String(clsId).toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 19);
+function makePin() { const a = new Uint32Array(6); crypto.getRandomValues(a); return Array.from(a, (x) => PIN_ABC[x % PIN_ABC.length]).join(''); }
+function clsPins(c) { c.pins = c.pins || {}; for (const r of c.roster || []) if (!c.pins[r.sid]) c.pins[r.sid] = makePin(); return c.pins; }
+const b64e = (buf) => btoa(String.fromCharCode(...new Uint8Array(buf))), b64d = (s) => Uint8Array.from(atob(s), (ch) => ch.charCodeAt(0));
+async function pinSecrets(clsId, sid, pin) {
+  const enc = new TextEncoder(), base = 'burin:' + clsId + ':' + String(sid).trim() + ':' + String(pin).trim().toUpperCase();
+  const tag = b64e(await crypto.subtle.digest('SHA-256', enc.encode('id|' + base))).replace(/[^A-Za-z0-9]/g, '').slice(0, 22);
+  const km = await crypto.subtle.importKey('raw', enc.encode(base), 'PBKDF2', false, ['deriveKey']);
+  const key = await crypto.subtle.deriveKey({ name: 'PBKDF2', salt: enc.encode('burin-grades|' + clsId), iterations: 120000, hash: 'SHA-256' }, km, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
+  return { tag, key };
+}
+function studentReport(c, r) {
+  const P = clsPlan(c), R = clsCalc(c, r), tnow = now();
+  const items = (c.items || []).slice().sort((a, b) => (itemDue(a) || a.at || 0) - (itemDue(b) || b.at || 0)).map((it) => {
+    const x = c.scores && c.scores[it.id] && c.scores[it.id][r.sid], v = x == null ? null : typeof x === 'object' ? x.v : x, due = itemDue(it);
+    const cat = P.cats.find((k) => k.id === (it.cat || (P.cats[0] && P.cats[0].id)));
+    return [it.name, it.max, v, !!(x && x.late), v == null && !!due && due < tnow, cat ? cat.name : '', it.due || null];
+  });
+  return { name: r.name, no: r.no, items, cats: P.cats.length ? R.cats.map((k) => [k.cat.name, k.cat.w, k.sc == null ? null : Math.round(k.sc * 10) / 10]) : [], pct: R.any ? Math.round(R.pct * 10) / 10 : null, grade: R.any ? gradeOf(R.pct) : null, late: P.late || 0, at: tnow };
+}
+async function publishGrades(c) {
+  if (CLOUD.state !== 'on') { toast('ต้องเข้าระบบคลาวด์ก่อน', 2500); return false; }
+  clsPins(c); await clsSave(c);
+  const enc = new TextEncoder(), entries = [];
+  for (const r of c.roster || []) {
+    const { tag, key } = await pinSecrets(c.id, r.sid, c.pins[r.sid]); const iv = crypto.getRandomValues(new Uint8Array(12));
+    const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, enc.encode(JSON.stringify(studentReport(c, r))));
+    entries.push({ k: tag, iv: b64e(iv), d: b64e(ct) });
+  }
+  entries.sort(() => Math.random() - 0.5);
+  const data = { kind: 'grades', clsId: c.id, label: classLabel(c) + (c.subject ? ' ' + c.subject : ''), entries, at: now() };
+  const { error } = await CLOUD.client.from('assignments').upsert({ id: gradesId(c.id), owner: CLOUD.user.id, title: 'คะแนน ' + classLabel(c), data, open: false });
+  if (error) { toast(hwSqlHint(error), 4000); return false; }
+  c.published = now(); await clsSave(c); return true;
+}
+async function fetchMyGrades(clsId, sid, pin) {
+  const sb = await cloudClient();
+  const { data, error } = await sb.from('assignments').select('data').eq('id', gradesId(clsId)).maybeSingle();
+  if (error) throw error; if (!data) return { none: true };
+  const { tag, key } = await pinSecrets(clsId, sid, pin), e = (data.data.entries || []).find((x) => x.k === tag); if (!e) return { wrong: true, label: data.data.label };
+  const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: b64d(e.iv) }, key, b64d(e.d));
+  return { rep: JSON.parse(new TextDecoder().decode(pt)), label: data.data.label };
+}
+function renderMyGrades(box, rep, label) {
+  box.innerHTML = '';
+  box.appendChild(exEl('div', 'exscore', '<b>' + (rep.pct == null ? '-' : rep.pct + '<small>%</small>') + '</b><span>' + esc(rep.no + '. ' + rep.name) + ' ' + esc(label || '') + (rep.grade != null ? ' เกรด ณ ตอนนี้ ' + rep.grade : '') + '</span>'));
+  if (rep.cats.length) { const t = exEl('div', 'exper'); for (const [n, w, sc] of rep.cats) t.appendChild(exEl('div', '', '<span>' + esc(n) + '</span><i><s style="width:' + (sc == null ? 0 : Math.round(sc / w * 100)) + '%"></s></i><b>' + (sc == null ? '-' : sc) + '/' + w + '</b>')); box.appendChild(t); }
+  const miss = rep.items.filter((x) => x[4]);
+  if (miss.length) box.appendChild(exEl('div', 'note err', '<b>ยังไม่ได้ส่ง</b> ' + miss.map((x) => esc(x[0])).join(', ') + ' รีบส่งก่อนครูปิดรับ'));
+  const tb = exEl('table', 'extab grades'); let h = '<thead><tr><th>งาน</th><th>หมวด</th><th>คะแนน</th></tr></thead><tbody>';
+  for (const [n, max, v, late, missing, cat] of rep.items) h += '<tr><td>' + esc(n) + '</td><td>' + esc(cat) + '</td><td class="' + (missing ? 'lo' : '') + '">' + (v == null ? (missing ? 'ขาด' : '-') : v + '/' + max + (late ? ' (ส่งช้า หัก ' + rep.late + '%)' : '')) + '</td></tr>';
+  tb.innerHTML = h + '</tbody>'; const wrap = exEl('div', 'gwrap'); wrap.appendChild(tb); box.appendChild(wrap);
+  box.appendChild(exEl('div', 'note small', 'คะแนน ณ วันที่ครูอัปเดต ' + new Date(rep.at).toLocaleString(LOC, { dateStyle: 'medium', timeStyle: 'short' }) + ' ร้อยละคิดจากงานที่ถึงกำหนดแล้ว'));
+}
+function myGradesForm(host, clsId) {
+  const f = exEl('div', 'exform mygr');
+  f.innerHTML = '<h3>ดูคะแนนของฉัน</h3><div class="row2"><label class="field"><span>รหัสนักเรียน</span><input id="mgSid" inputmode="numeric" maxlength="20"></label><label class="field"><span>รหัสดูคะแนน 6 ตัว (ได้จากครู)</span><input id="mgPin" maxlength="8" autocapitalize="characters"></label></div><button class="btn solid" type="button" id="mgGo">ดูคะแนน</button><div id="mgOut"></div>';
+  host.appendChild(f);
+  try { const s = JSON.parse(store_ls.get('tp-mygr-' + clsId) || 'null'); if (s) { f.querySelector('#mgSid').value = s[0]; f.querySelector('#mgPin').value = s[1]; } } catch (e) { /* first time */ }
+  f.querySelector('#mgGo').onclick = async () => {
+    const sid = f.querySelector('#mgSid').value.trim(), pin = f.querySelector('#mgPin').value.trim().toUpperCase(), out = f.querySelector('#mgOut');
+    if (!sid || pin.length < 6) { out.innerHTML = '<div class="note err">ใส่รหัสนักเรียนและรหัสดูคะแนนให้ครบ</div>'; return; }
+    out.innerHTML = '<div class="note">กำลังเปิดคะแนน</div>';
+    try {
+      const r = await fetchMyGrades(clsId, sid, pin);
+      if (r.none) { out.innerHTML = '<div class="note">ครูยังไม่ได้เผยแพร่คะแนนของห้องนี้</div>'; return; }
+      if (r.wrong) { out.innerHTML = '<div class="note err">รหัสนักเรียนหรือรหัสดูคะแนนไม่ถูกต้อง</div>'; return; }
+      store_ls.set('tp-mygr-' + clsId, JSON.stringify([sid, pin])); renderMyGrades(out, r.rep, r.label);
+    } catch (e) { out.innerHTML = '<div class="note err">เปิดคะแนนไม่ได้ ลองอีกครั้ง</div>'; }
+  };
+}
+function printPins(c) {
+  clsPins(c); clsSave(c);
+  const cards = (c.roster || []).slice().sort((a, b) => a.no - b.no).map((r) => '<div class="card"><b>' + esc(r.no + '. ' + r.name) + '</b><span>รหัสนักเรียน ' + esc(r.sid) + '</span><span>รหัสดูคะแนน <code>' + esc(c.pins[r.sid]) + '</code></span><small>' + esc(termLink(c.id)) + '</small></div>').join('');
+  const html = '<!doctype html><html lang="th"><head><meta charset="utf-8"><title>รหัสดูคะแนน ' + esc(classLabel(c)) + '</title><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;700&display=swap"><style>body{font-family:Sarabun,sans-serif;margin:12mm}h1{font-size:16pt}.g{display:grid;grid-template-columns:1fr 1fr;gap:6mm}.card{border:1px dashed #888;border-radius:6px;padding:4mm;display:flex;flex-direction:column;gap:1mm;break-inside:avoid}code{font-size:15pt;letter-spacing:2px}small{color:#555;word-break:break-all}</style></head><body><h1>รหัสดูคะแนน ' + esc(classLabel(c)) + ' ตัดแจกนักเรียนคนละใบ</h1><div class="g">' + cards + '</div><script>setTimeout(()=>print(),600)<\/script></body></html>';
+  const w = window.open('', '_blank'); if (w) { w.document.write(html); w.document.close(); } else saveFile('รหัสดูคะแนน ' + classLabel(c) + '.html', new Blob([html], { type: 'text/html' }));
+}
 function clsAddItem(c) {
   const box = $('#exBody'); const f = exEl('div', 'exrev');
   f.innerHTML = '<b>เพิ่มช่องคะแนน</b><div class="row2"><label class="field" style="flex:2 1 200px"><span>ชื่อ เช่น สอบย่อยบทที่ 2</span><input id="iName" maxlength="40"></label><label class="field" style="flex:0 1 110px"><span>คะแนนเต็ม</span><input id="iMax" inputmode="decimal" value="10"></label></div><label class="field"><span>ที่มาของคะแนน</span><select id="iSrc" class="traysel"><option value="manual">กรอกเอง</option></select></label>';
@@ -11012,6 +11096,7 @@ function renderRoster(body, c) {
   const show = () => { const r = parseRoster(ta.value); prev.textContent = 'อ่านได้ ' + r.length + ' คน' + (r[0] ? ' เช่น เลขที่ ' + r[0].no + ' รหัส ' + r[0].sid + ' ' + r[0].name : ''); };
   ta.oninput = show; show();
   const sv = exEl('button', 'btn solid', 'บันทึกรายชื่อ'); sv.onclick = async () => { c.roster = parseRoster(ta.value); await clsSave(c); toast('บันทึกรายชื่อ ' + c.roster.length + ' คนแล้ว', 1600); CLS.view = 'scores'; exRender(); }; body.appendChild(sv);
+  { const pc = exEl('button', 'btn', 'พิมพ์บัตรรหัสดูคะแนน'); pc.title = 'รหัส 6 ตัวของแต่ละคน ใช้ดูคะแนนตัวเองที่ลิงก์งานทั้งเทอม'; pc.onclick = () => printPins(c); body.appendChild(pc); }
   const meta = exEl('div', 'exform', '<div class="row2"><label class="field"><span>ชื่อห้อง</span><input id="rName" maxlength="60"></label><label class="field"><span>รายวิชา</span><input id="rSubj" maxlength="60"></label></div>');
   body.appendChild(exEl('h3', '', 'ข้อมูลห้อง')); body.appendChild(meta); $('#rName').value = c.name; $('#rSubj').value = c.subject || '';
   const sm = exEl('button', 'btn', 'บันทึกข้อมูลห้อง'); sm.onclick = async () => { c.name = $('#rName').value.trim() || c.name; c.subject = $('#rSubj').value.trim(); await clsSave(c); exRender(); }; body.appendChild(sm);
@@ -11078,7 +11163,7 @@ async function createAssignment() {
 /* ----- teacher: list, check, analyse ----- */
 async function hwLoad() {
   const { data, error } = await CLOUD.client.from('assignments').select('id,title,data,due,open,created_at').eq('owner', CLOUD.user.id).order('created_at', { ascending: false });
-  if (error) throw error; HW.list = data || []; return HW.list;
+  if (error) throw error; HW.list = (data || []).filter((x) => !(x.data && x.data.kind === 'grades')); return HW.list;
 }
 async function hwLoadSubs(aid) {
   const { data, error } = await CLOUD.client.from('submissions').select('id,name,data,created_at').eq('assignment', aid).order('created_at', { ascending: true });
@@ -11502,7 +11587,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793190236';
+const BUILD = '1793232634';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
