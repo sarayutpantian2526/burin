@@ -574,14 +574,18 @@ body.writing .pagenav, body.writing .diarybar { pointer-events: none; opacity: 0
 .nbedit { grid-column: 1 / -1; flex-direction: row !important; flex-wrap: wrap; align-items: flex-start; }
 .nbprev { flex: none; padding: 6px; }
 .nbform { flex: 1 1 260px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
-.nbedit .pats { display: flex; flex-wrap: wrap; gap: 6px; }
-.nbedit .psw { width: 54px; height: 64px; border-radius: 3px 8px 8px 3px; border: 2px solid transparent; cursor: pointer; display: flex; align-items: flex-end; justify-content: center; padding: 0 0 3px; }
-.nbedit .psw span { font-size: 9px; background: rgba(255,253,247,.9); color: #1D232C; padding: 1px 4px; border-radius: 4px; }
-.nbedit .psw[aria-pressed="true"] { border-color: var(--fg); box-shadow: 0 0 0 2px var(--surface) inset; }
+.nbnewcover { display: flex; gap: 14px; align-items: flex-start; margin: 4px 0 8px; }
+.nbnewcover > div:last-child { flex: 1; min-width: 0; }
+#nbNewPrev { flex: none; }
+@media (max-width: 600px) { #nbNewPrev { display: none; } }
+.pats { display: flex; flex-wrap: wrap; gap: 6px; }
+.psw { width: 54px; height: 64px; border-radius: 3px 8px 8px 3px; border: 2px solid transparent; cursor: pointer; display: flex; align-items: flex-end; justify-content: center; padding: 0 0 3px; }
+.psw span { white-space: nowrap; font-size: 9px; background: rgba(255,253,247,.9); color: #1D232C; padding: 1px 4px; border-radius: 4px; }
+.psw[aria-pressed="true"] { border-color: var(--fg); box-shadow: 0 0 0 2px var(--surface) inset; }
 .nbedit { display: flex; flex-direction: column; gap: 10px; padding: 12px; border: 1.5px solid var(--accent); border-radius: 14px; background: var(--surface); }
-.nbedit .covers { display: flex; flex-wrap: wrap; gap: 6px; align-items: flex-end; padding-bottom: 4px; }
-.nbedit .csw { width: 34px; height: 34px; border-radius: 10px; border: 2px solid transparent; cursor: pointer; }
-.nbedit .csw[aria-pressed="true"] { border-color: var(--fg); box-shadow: 0 0 0 2px var(--surface) inset; }
+.covers { display: flex; flex-wrap: wrap; gap: 6px; align-items: flex-end; padding-bottom: 4px; }
+.csw { width: 34px; height: 34px; border-radius: 10px; border: 2px solid transparent; cursor: pointer; }
+.csw[aria-pressed="true"] { border-color: var(--fg); box-shadow: 0 0 0 2px var(--surface) inset; }
 .btn.danger { color: var(--danger); }
 #tTitle { cursor: pointer; }
 #aiFloat { position: fixed; left: 50%; bottom: max(76px, env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); z-index: 55; display: flex; flex-direction: column; gap: 8px; width: min(420px, calc(100% - 24px)); }
@@ -1347,7 +1351,8 @@ body.role-student .scnpill .sbtns button[data-s="back"], body.role-student .scnp
     <span class="label">แนวกระดาษ</span><div class="pkinds chips" id="nbOrient"></div>
     <span class="label">ลายกระดาษ</span><div class="pkinds chips" id="nbPaper"></div>
     <span class="label">สีกระดาษ</span><div class="pbg" id="nbBg"></div>
-    <span class="label">สีปก</span><div class="covers" id="nbCover"></div>
+    <div class="nbnewcover"><div class="nbprev" id="nbNewPrev"></div><div><span class="label">สีปก</span><div class="covers" id="nbCover"></div>
+    <span class="label">ลายปก</span><div class="pats" id="nbPat"></div></div></div>
     <button class="btn solid" id="bNewNb">สร้างสมุด</button>
     </div>
     <div id="nbList" class="shelf"></div>
@@ -4083,10 +4088,10 @@ function deleteSel() {
 
 /* ---------- notebooks & pages ---------- */
 function levelName(k) { const f = LEVELS.find((l) => l[0] === k); return f ? f[1] : ''; }
-async function createNotebook(title, level, subject, subjectName, paperKind, paperBg, orient, color) {
+async function createNotebook(title, level, subject, subjectName, paperKind, paperBg, orient, color, pattern) {
   const nid = 'n' + uid(), pid = 'p' + uid();
   await S.store.set('pages/' + pid, Object.assign({ nb: nid, paper: paperKind || 'grid', items: [], rev: now() }, orient === 'land' ? { orient: 'land' } : {}));
-  await S.store.set('notebooks/' + nid, Object.assign(LIBV.folder && LIBV.view === 'all' ? { folder: LIBV.folder } : {}, { title: title || 'สมุดเล่มใหม่', level: level || 'mp', subject: subject || store_ls.get('tp-subject') || 'phys', subjectName: subjectName || undefined, paperBg: paperBg && paperBg !== 'white' ? paperBg : undefined, pages: [pid], color: COVERS.includes(color) ? color : COVERS[Math.floor(Math.random() * COVERS.length)], createdAt: now(), updatedAt: now() }, isStudentSide() ? { side: 'student' } : {}));
+  await S.store.set('notebooks/' + nid, Object.assign(LIBV.folder && LIBV.view === 'all' ? { folder: LIBV.folder } : {}, { title: title || 'สมุดเล่มใหม่', level: level || 'mp', subject: subject || store_ls.get('tp-subject') || 'phys', subjectName: subjectName || undefined, paperBg: paperBg && paperBg !== 'white' ? paperBg : undefined, pages: [pid], color: COVERS.includes(color) ? color : COVERS[Math.floor(Math.random() * COVERS.length)], pattern: COVER_PATTERNS.some((x) => x[0] === pattern) ? pattern : 'plain', createdAt: now(), updatedAt: now() }, isStudentSide() ? { side: 'student' } : {}));
   return nid;
 }
 function watchNotebooks() {
@@ -5740,11 +5745,16 @@ function nbSelBar(shown) {
   const all = (shown || []).every((x) => LIBV.sel.has(x.id)) && (shown || []).length;
   act(all ? 'ไม่เลือกทั้งหมด' : 'เลือกทั้งหมด', () => { if (all) LIBV.sel.clear(); else (shown || []).forEach((x) => LIBV.sel.add(x.id)); renderLibrary(); });
   act(picked.length && picked.every((x) => x.fav) ? 'เอาออกจากรายการโปรด' : 'รายการโปรด', () => { const on = !picked.every((x) => x.fav); for (const nb of picked) { nb.fav = on; Promise.resolve(S.store.update('notebooks/' + nb.id, { fav: on })).catch(onStoreError); } toast((on ? 'เพิ่มในรายการโปรด ' : 'เอาออกจากรายการโปรด ') + n + ' เล่ม', 1600); renderLibrary(); });
-  act('สีปก', (b) => {
+  act('สีและลายปก', (b) => {
     const m = $('#tabMenu'); m.innerHTML = ''; const t = document.createElement('b'); t.textContent = 'สีปกของ ' + n + ' เล่ม'; m.appendChild(t);
     const g = document.createElement('div'); g.className = 'covers'; g.style.padding = '6px 8px';
-    for (const c of COVERS) { const s2 = document.createElement('button'); s2.type = 'button'; s2.className = 'csw'; s2.style.background = c; s2.setAttribute('aria-label', 'สีปก'); s2.onclick = () => { m.hidden = true; for (const nb of picked) { nb.color = c; Promise.resolve(S.store.update('notebooks/' + nb.id, { color: c })).catch(onStoreError); } toast('เปลี่ยนสีปก ' + n + ' เล่มแล้ว', 1600); renderLibrary(); }; g.appendChild(s2); }
-    m.appendChild(g); const r = b.getBoundingClientRect(); m.hidden = false; menuFit(m, r);
+    for (const c of COVERS) { const s2 = document.createElement('button'); s2.type = 'button'; s2.className = 'csw'; s2.style.background = c; s2.setAttribute('aria-label', 'สีปก'); s2.onclick = () => { for (const nb of picked) { nb.color = c; Promise.resolve(S.store.update('notebooks/' + nb.id, { color: c })).catch(onStoreError); } g.querySelectorAll('.csw').forEach((x) => x.setAttribute('aria-pressed', x === s2 ? 'true' : 'false')); m.querySelectorAll('.psw').forEach((x) => { x.style.backgroundColor = c; x.setAttribute('style', coverCss({ color: c, pattern: x.dataset.k })); }); toast('เปลี่ยนสีปก ' + n + ' เล่มแล้ว เลือกลายต่อได้', 1600); renderLibrary(); }; g.appendChild(s2); }
+    m.appendChild(g);
+    const t2 = document.createElement('b'); t2.textContent = 'ลายปก'; m.appendChild(t2);
+    const pg = document.createElement('div'); pg.className = 'pats'; pg.style.padding = '6px 8px';
+    for (const [k, nm] of COVER_PATTERNS) { const p2 = document.createElement('button'); p2.type = 'button'; p2.className = 'psw'; p2.title = nm; p2.setAttribute('aria-label', 'ลาย' + nm); p2.setAttribute('style', coverCss({ color: (picked[0] && coverColor(picked[0])) || COVERS[0], pattern: k })); p2.dataset.k = k; p2.innerHTML = '<span>' + nm + '</span>'; p2.onclick = () => { m.hidden = true; for (const nb of picked) { nb.pattern = k; Promise.resolve(S.store.update('notebooks/' + nb.id, { pattern: k })).catch(onStoreError); } toast('เปลี่ยนลายปก ' + n + ' เล่มแล้ว', 1600); renderLibrary(); }; pg.appendChild(p2); }
+    m.appendChild(pg); m.style.maxWidth = 'min(380px, calc(100vw - 16px))';
+    const r = b.getBoundingClientRect(); m.hidden = false; menuFit(m, r);
   });
   if (n === 1) act('แก้ไขปกและชื่อ', () => { S.editNb = picked[0].id; LIBV.sel = null; renderLibrary(); });
   act('ย้ายไปโฟลเดอร์', (b) => {
@@ -12402,7 +12412,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793243644';
+const BUILD = '1793245391';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
@@ -12981,13 +12991,18 @@ $('#shareClose').onclick = () => { $('#shareSheet').hidden = true; };
 /* choose the cover colour when making a notebook (none picked: a colour is chosen for you) */
 function paintNewCover() {
   const el = $('#nbCover'); if (!el) return; el.innerHTML = '';
-  for (const c of COVERS) { const b = document.createElement('button'); b.type = 'button'; b.className = 'csw'; b.style.background = c; b.setAttribute('aria-label', 'สีปก'); b.setAttribute('aria-pressed', NBF.cover === c ? 'true' : 'false'); b.onclick = () => { NBF.cover = NBF.cover === c ? null : c; paintNewCover(); }; el.appendChild(b); }
+  if (!NBF.cover) NBF.cover = COVERS[Math.floor(Math.random() * COVERS.length)];
+  for (const c of COVERS) { const b = document.createElement('button'); b.type = 'button'; b.className = 'csw'; b.style.background = c; b.setAttribute('aria-label', 'สีปก'); b.setAttribute('aria-pressed', NBF.cover === c ? 'true' : 'false'); b.onclick = () => { NBF.cover = c; paintNewCover(); }; el.appendChild(b); }
+  const pats = $('#nbPat'); pats.innerHTML = ''; const pat = NBF.pattern || 'plain';
+  for (const [k, n] of COVER_PATTERNS) { const b = document.createElement('button'); b.type = 'button'; b.className = 'psw'; b.title = n; b.setAttribute('aria-label', 'ลาย' + n); b.setAttribute('style', coverCss({ color: NBF.cover, pattern: k })); b.setAttribute('aria-pressed', k === pat ? 'true' : 'false'); b.innerHTML = '<span>' + n + '</span>'; b.onclick = () => { NBF.pattern = k; paintNewCover(); }; pats.appendChild(b); }
+  const pv = $('#nbNewPrev'); if (pv) { pv.innerHTML = ''; try { pv.appendChild(coverEl({ title: $('#nbTitle').value || 'สมุดเล่มใหม่', level: $('#nbLevel').value || 'mp', color: NBF.cover, pattern: pat, label: 'plate' }, true)); } catch (e) { /* no preview */ } }
 }
+$('#nbTitle').addEventListener('input', () => paintNewCover());
 paintNewCover();
 $('#bNewNb').onclick = async () => {
   const t = $('#nbTitle').value.trim() || 'สมุดเล่มใหม่';
   $('#bNewNb').disabled = true;
-  try { store_ls.set('tp-subject', $('#nbSubject').value); store_ls.set('tp-subjname', $('#nbSubjName').value.trim()); const nid = await createNotebook(t, $('#nbLevel').value, $('#nbSubject').value, $('#nbSubjName').value.trim(), NBF.paper, NBF.bg, NBF.orient, NBF.cover); NBF.cover = null; paintNewCover(); store_ls.set('tp-nborient', NBF.orient); store_ls.set('tp-nbpaper', NBF.paper); store_ls.set('tp-nbbg', NBF.bg); $('#nbTitle').value = ''; openNotebook(nid); closeSheets(); toast('สร้างสมุดแล้ว'); }
+  try { store_ls.set('tp-subject', $('#nbSubject').value); store_ls.set('tp-subjname', $('#nbSubjName').value.trim()); const nid = await createNotebook(t, $('#nbLevel').value, $('#nbSubject').value, $('#nbSubjName').value.trim(), NBF.paper, NBF.bg, NBF.orient, NBF.cover, NBF.pattern); NBF.cover = null; NBF.pattern = 'plain'; paintNewCover(); store_ls.set('tp-nborient', NBF.orient); store_ls.set('tp-nbpaper', NBF.paper); store_ls.set('tp-nbbg', NBF.bg); $('#nbTitle').value = ''; openNotebook(nid); closeSheets(); toast('สร้างสมุดแล้ว'); }
   catch (e) { onStoreError(e); }
   $('#bNewNb').disabled = false;
 };
