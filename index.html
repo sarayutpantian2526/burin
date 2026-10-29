@@ -10152,9 +10152,20 @@ function chunkStrokes(strokes, lim) {
   parts.push(cur); return parts;
 }
 /* ----- teacher side ----- */
+function liveKey() { return LIVE.clsId ? 'c:' + LIVE.clsId : 'n:' + (S.nid || ''); }
+function liveCodes() { try { const m = JSON.parse(store_ls.get('tp-class-codes') || '{}'); return m && typeof m === 'object' ? m : {}; } catch (e) { return {}; } }
+function liveCodeFor(key, fresh) {
+  const m = liveCodes(); let c = !fresh && m[key];
+  /* the room code used before codes were kept per class stays with the first class opened, so printed QR codes keep working */
+  if (!c && !fresh && !Object.keys(m).length && /^[A-Z2-9]{6}$/.test(store_ls.get('tp-class') || '')) { c = store_ls.get('tp-class'); m[key] = c; store_ls.set('tp-class-codes', JSON.stringify(m)); }
+  if (!c || !/^[A-Z2-9]{6}$/.test(c)) { const used = new Set(Object.values(m)); do { c = newCode(); } while (used.has(c)); m[key] = c; store_ls.set('tp-class-codes', JSON.stringify(m)); }
+  return c;
+}
+function liveWhose() { const c = LIVE.clsId && CLS.list.find((x) => x.id === LIVE.clsId); return c ? 'ห้อง ' + classLabel(c) : 'สมุด ' + ((S.nb && S.nb.title) || ''); }
 async function liveOpen() {
   if (CLOUD.state !== 'on') { toast('ห้องเรียนสดต้องเข้าระบบคลาวด์ก่อน', 3000); return; }
-  const sb = CLOUD.client; LIVE.code = LIVE.code || store_ls.get('tp-class') || newCode(); store_ls.set('tp-class', LIVE.code);
+  /* each class (or, with no class chosen, each notebook) has its own room code, kept for next time */
+  const sb = CLOUD.client; if (!LIVE.code) LIVE.code = liveCodeFor(liveKey()); store_ls.set('tp-class', LIVE.code);
   LIVE.role = 'teacher';
   const ch = sb.channel('class-' + LIVE.code, { config: { broadcast: { self: false }, presence: { key: 'teacher-' + TAB } } });
   ch.on('broadcast', { event: 'pullall' }, () => { clearTimeout(LIVE.pullT); LIVE.pullT = setTimeout(liveSendAll, 400); });
@@ -10227,15 +10238,16 @@ function liveRender() {
     box.appendChild(exEl('div', 'note', 'เปิดห้องแล้วให้ผู้เรียนสแกน QR หรือเปิดลิงก์บนโทรศัพท์ แท็บเล็ต หรือคอมพิวเตอร์ ไม่ต้องสมัครบัญชี ผู้เรียนเห็นหน้าที่อาจารย์กำลังสอนพร้อมลายมือทันที และจดทับลงบนสำเนาของตัวเองได้ สมุดของผู้เรียนเก็บในเครื่องผู้เรียน หลังจบคาบยังเปิดอ่านและส่งออก PDF ได้'));
     const cf = exEl('label', 'field', '<span>ห้องเรียน (ให้ผู้เรียนยืนยันตัวด้วยรหัสหรือเลขที่ และเก็บคะแนนแบบฝึกเข้าห้องนี้)</span>'); box.appendChild(cf);
     const fillCls = () => cf.appendChild(classSelect('liveCls', true)); if (CLS.loaded) fillCls(); else clsLoad().then(fillCls);
-    const b = exEl('button', 'btn solid', 'เปิดห้องเรียนสด'); b.onclick = () => { LIVE.clsId = ($('#liveCls') && $('#liveCls').value) || null; liveOpen(); }; box.appendChild(b);
+    const b = exEl('button', 'btn solid', 'เปิดห้องเรียนสด'); b.onclick = () => { LIVE.clsId = ($('#liveCls') && $('#liveCls').value) || null; LIVE.code = null; liveOpen(); }; box.appendChild(b);
   } else {
     const link = classLink(LIVE.code);
-    const top = exEl('div', 'livetop', '<div class="qr" id="liveQR"></div><div class="lcode"><span>รหัสห้อง</span><b>' + LIVE.code + '</b><small>' + esc(link) + '</small></div>');
+    const top = exEl('div', 'livetop', '<div class="qr" id="liveQR"></div><div class="lcode"><span>รหัสห้องของ' + esc(liveWhose()) + '</span><b>' + LIVE.code + '</b><small>' + esc(link) + '</small></div>');
     box.appendChild(top);
     const row = exEl('div', 'row2');
     const cp = exEl('button', 'btn', 'คัดลอกลิงก์'); cp.onclick = () => { navigator.clipboard && navigator.clipboard.writeText(link).then(() => toast('คัดลอกแล้ว', 1200)).catch(() => {}); }; row.appendChild(cp);
     const big = exEl('button', 'btn', 'วาง QR ลงหน้ากระดาษให้ทั้งห้องเห็น'); big.onclick = liveQRToPage; row.appendChild(big);
     const rs = exEl('button', 'btn', 'ส่งหน้านี้อีกครั้ง'); rs.onclick = liveSendPageNow; row.appendChild(rs);
+    const nc = exEl('button', 'btn', 'เปลี่ยนรหัสห้อง'); nc.title = 'ใช้รหัสใหม่สำหรับ' + liveWhose() + ' ผู้เรียนที่ใช้รหัสเดิมจะเข้าไม่ได้'; nc.onclick = () => { const cls = LIVE.clsId, key = liveKey(); liveClose(); LIVE.clsId = cls; LIVE.code = liveCodeFor(key, true); liveOpen(); toast('เปลี่ยนรหัสห้องแล้ว', 1800); }; row.appendChild(nc);
     const cl = exEl('button', 'btn', 'ปิดห้อง'); cl.onclick = () => { liveClose(); store_ls.set('tp-class', ''); LIVE.code = null; }; row.appendChild(cl);
     box.appendChild(row);
     const lc = LIVE.clsId && CLS.list.find((x) => x.id === LIVE.clsId);
@@ -12390,7 +12402,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793243305';
+const BUILD = '1793243644';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
@@ -13195,7 +13207,7 @@ async function boot() {
   if (S.student) { S.creatingFirst = true; document.body.classList.add('student'); }
   watchNotebooks();
   if (!S.student) { watchLiveDoc(); aiCloudWatch(); devSeen(); }
-  if (!S.student && CLOUD.state === 'on' && store_ls.get('tp-live-on') === '1' && store_ls.get('tp-class') && S.role !== 'student') { LIVE.clsId = store_ls.get('tp-live-cls') || null; setTimeout(() => { liveOpen().then(() => toast('ห้องเรียนสด ' + LIVE.code + ' ยังเปิดอยู่ ผู้เรียนเชื่อมต่อได้ตามเดิม', 3000)).catch(() => {}); }, 800); }
+  if (!S.student && CLOUD.state === 'on' && store_ls.get('tp-live-on') === '1' && store_ls.get('tp-class') && S.role !== 'student') { LIVE.clsId = store_ls.get('tp-live-cls') || null; LIVE.code = store_ls.get('tp-class'); setTimeout(() => { liveOpen().then(() => toast('ห้องเรียนสด ' + LIVE.code + ' ยังเปิดอยู่ ผู้เรียนเชื่อมต่อได้ตามเดิม', 3000)).catch(() => {}); }, 800); }
   renderAcct();
   if (store_ls.get('tp-auth-next') != null && CLOUD.state === 'signedout') { const em = store_ls.get('tp-auth-next'); store_ls.del('tp-auth-next'); setTimeout(() => { openAuth(); if (em) { $('#aEmail').value = em; setTimeout(() => $('#aPass').focus({ preventScroll: true }), 80); } }, 300); }
   if (mC && CLOUD.ready()) studentJoin(mC[1].toUpperCase());
