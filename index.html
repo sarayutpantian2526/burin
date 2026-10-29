@@ -9409,7 +9409,7 @@ const LIFE = new Map(); let lifeRaf = 0, lifeLast = 0;
 function lifeRegion(B, beh) {
   const bw = B[2] - B[0], bh = B[3] - B[1], mv = beh.move && beh.edge !== 'stay';
   const up = beh.k === 'hop' ? bh * 1.3 : beh.k === 'flap' ? bh * 0.8 : beh.k === 'bob' ? bh * 0.35 : beh.k === 'roll' ? bw * 0.3 : bh * 0.3;
-  const y0 = Math.max(0, Math.round(B[1] - up - 20)), y1 = Math.min(H, Math.round(B[3] + bh * 0.25 + 20));
+  const y0 = Math.max(0, Math.round(B[1] - up - 20 - (beh.touch ? Math.max(bh * 2, 120) : 0))), y1 = Math.min(H, Math.round(B[3] + bh * 0.25 + 20));
   return mv ? [0, y0, W, y1] : [Math.max(0, Math.round(B[0] - bw * 0.4 - 20)), y0, Math.min(W, Math.round(B[2] + bw * 0.4 + 20)), y1];
 }
 async function placeLife(sp, kind, edge, face) {
@@ -9464,6 +9464,9 @@ function lifePanel(d, it, dot) {
   const fc = document.createElement('div'); fc.className = 'chips';
   for (const [f, n] of [[-1, 'หันหน้าไปทางซ้าย'], [1, 'หันหน้าไปทางขวา']]) { const b = document.createElement('button'); b.type = 'button'; b.className = 'chip'; b.textContent = n; b.setAttribute('aria-pressed', (live.beh.face || 1) === f ? 'true' : 'false'); b.title = 'บอกว่าภาพที่วาดหันหน้าไปทางไหน หัวจะนำเวลาเคลื่อนที่ หางหรือขาหลังตามหลัง'; b.onclick = () => lifeSet(it, { face: f }); fc.appendChild(b); }
   p.appendChild(fc);
+  { const tc = document.createElement('div'); tc.className = 'chips'; const b = document.createElement('button'); b.type = 'button'; b.className = 'chip'; b.textContent = 'โต้ตอบกับสิ่งอื่นบนหน้า';
+    b.title = 'เดินบนเส้นที่วาด หันกลับเมื่อชนลายมือ รูป หรือภาพเคลื่อนไหวอื่น กระโดดข้ามสิ่งที่เตี้ย'; b.setAttribute('aria-pressed', live.beh.touch ? 'true' : 'false');
+    b.onclick = () => lifeSet(it, { touch: live.beh.touch ? 0 : 1 }); tc.appendChild(b); p.appendChild(tc); }
   const sl = (label, key, min, max) => { const l = document.createElement('label'); l.className = 'lifesl'; l.innerHTML = '<span>' + label + '</span>'; const r = document.createElement('input'); r.type = 'range'; r.min = min; r.max = max; r.step = 0.05; r.value = live.beh[key]; r.oninput = () => { const L = findItem(it.id); if (L) L.beh[key] = +r.value; }; r.onchange = () => savePage(); l.appendChild(r); p.appendChild(l); };
   sl('ความเร็ว', 'sp', 0.2, 3); sl('ความแรงของท่าทาง', 'amp', 0.2, 2.5);
   const row = document.createElement('div'); row.className = 'row2';
@@ -9524,15 +9527,74 @@ function lifeTarget(it, rt) {
   if (b.k === 'flap') return base * (0.9 + 0.15 * Math.sin(t * 0.8));
   return base;
 }
+/* ----- living pictures that notice the page: they walk on lines drawn under them, turn back when they bump into
+   writing, pictures or another living picture, and a hopping one jumps over anything low. Each picture chooses this for itself ----- */
+const LIFE_GROUND = ['walk4', 'drive', 'roll', 'hop', 'wiggle'];
+let lifeWorld = { t: 0, strokes: [], boxes: [] };
+function lifeWorldNow() {
+  const now = performance.now(); if (now - lifeWorld.t < 400) return lifeWorld;
+  const strokes = []; for (const r of allStrokes()) { const b = sbox(r.s); strokes.push({ b, s: r.s }); }
+  const boxes = []; for (const it of (S.page && S.page.items) || []) { if (it.type === 'life' || it.lock || (it.spec && it.spec.bare)) continue; const b = itemBox(it); if (b[2] - b[0] > 4 && b[3] - b[1] > 4) boxes.push(b); }
+  lifeWorld = { t: now, strokes, boxes }; return lifeWorld;
+}
+/* where this picture is on the page right now, roughly */
+function lifeBox(it, rt) { const B = it.B; return [B[0] + (rt.dx || 0), B[1] + (rt.gy || 0) + (rt.alt || 0), B[2] + (rt.dx || 0), B[3] + (rt.gy || 0) + (rt.alt || 0)]; }
+/* the highest point of a pen line inside a rectangle, or null: the line is followed segment by segment, so a long straight
+   line drawn with only two points still counts */
+function lifeTopIn(s, xa, xb, ya, yb) {
+  const P = ipPts(s); let top = null;
+  const clip = (x1, y1, x2, y2) => { let t0 = 0, t1 = 1; const dx = x2 - x1, dy = y2 - y1;
+    for (const [pp, q] of [[-dx, x1 - xa], [dx, xb - x1], [-dy, y1 - ya], [dy, yb - y1]]) { if (pp === 0) { if (q < 0) return null; } else { const r = q / pp; if (pp < 0) { if (r > t1) return null; if (r > t0) t0 = r; } else { if (r < t0) return null; if (r < t1) t1 = r; } } }
+    return Math.min(y1 + t0 * dy, y1 + t1 * dy); };
+  if (P.length === 1) { const q = P[0]; return q[0] >= xa && q[0] <= xb && q[1] >= ya && q[1] <= yb ? q[1] : null; }
+  for (let i = 1; i < P.length; i++) { const y = clip(P[i - 1][0], P[i - 1][1], P[i][0], P[i][1]); if (y != null && (top == null || y < top)) top = y; }
+  return top;
+}
+function lifeSense(it, rt, dt) {
+  const b = it.beh, k = b.k, B = it.B, bw = B[2] - B[0], bh = B[3] - B[1], Wd = lifeWorldNow();
+  const box = lifeBox(it, rt), feet = box[3];
+  /* ground: the top of any ink just under the feet, so it climbs a drawn hill or walks along a drawn floor */
+  if (LIFE_GROUND.includes(k)) {
+    const g0 = rt.gy || 0, up = Math.max(bh * 2, 120), xa = box[0] + bw * 0.25, xb = box[2] - bw * 0.25, ya = Math.max(B[3] - up, B[3] + g0 - bh * 0.6), yb = Math.min(B[3] + bh * 0.25, B[3] + g0 + bh * 0.25); let top = null;
+    for (const o of Wd.strokes) { const q = o.b; if (q[2] < xa || q[0] > xb || q[3] < ya || q[1] > yb) continue; const y = lifeTopIn(o.s, xa, xb, ya, yb); if (y != null && (top == null || y < top)) top = y; }
+    /* with no line under it, it settles back down to where it was drawn */
+    const tgt = top == null ? (g0 < 0 ? Math.min(0, g0 + bh * 0.25) : 0) : top - B[3];
+    rt.gy = (rt.gy || 0) + (tgt - (rt.gy || 0)) * Math.min(1, dt * 8);
+  }
+  if (rt.state !== 'go' || !b.move || b.edge === 'stay') return;
+  /* something ahead? */
+  const reach = Math.max(10, (rt.v || 0) * 0.35), dir = rt.dir, f0 = dir > 0 ? box[2] : box[0], za = Math.min(f0, f0 + dir * reach), zb = Math.max(f0, f0 + dir * reach);
+  const yTop = box[1] + bh * 0.1, yBot = feet - bh * 0.4;
+  const jumpH = k === 'hop' ? bh * 1.1 * (b.amp || 1) : 0;
+  const tall = (top) => (k === 'hop' ? top < feet - jumpH * 0.8 : true);
+  let hit = false;
+  /* for pen lines look only a short way ahead, so a gentle slope is climbed while a steep line or a wall turns it back */
+  const sr = Math.max(6, Math.min(reach, bh * 0.5)), sa = dir > 0 ? f0 : f0 - sr, sb = dir > 0 ? f0 + sr : f0;
+  for (const o of Wd.strokes) { const q = o.b; if (q[2] < sa || q[0] > sb || q[3] < yTop || q[1] > yBot) continue;
+    const topY = lifeTopIn(o.s, sa, sb, yTop, yBot);
+    if (topY != null && tall(topY)) { hit = true; break; } }
+  if (!hit) for (const q of Wd.boxes) { if (q[2] < za || q[0] > zb || q[3] < yTop || q[1] > yBot) continue; if (dir > 0 ? q[0] < box[2] - 4 : q[2] > box[0] + 4) continue; if (tall(q[1])) { hit = true; break; } }
+  if (!hit) for (const [id2, r2] of LIFE) { if (id2 === it.id) continue; const o = findItem(id2); if (!o || !o.beh || !o.B) continue; const q = lifeBox(o, r2); if (q[2] < za || q[0] > zb || q[3] < yTop || q[1] > yBot) continue; if (dir > 0 ? q[0] < box[2] - 4 : q[2] > box[0] + 4) continue; hit = true; rt.met = id2; break; }
+  if (!hit) return;
+  if (k === 'hop' && rt.hp % 1 > 0.05) return;
+  /* boxed in on both sides: let it go on through rather than turning on the spot forever */
+  if (rt.t - (rt.lastBump || -9) < 1.2) { rt.ghost = rt.t + 1.5; return; }
+  if (rt.ghost && rt.t < rt.ghost) return;
+  rt.lastBump = rt.t;
+  /* a small bump on contact, then turn back; an animal stops for a moment first */
+  rt.bump = 1; rt.v *= 0.3;
+  if (k === 'walk4' || k === 'wiggle') { rt.state = 'rest'; rt.st0 = rt.t; rt.restFor = 0.5 + Math.random() * 0.6; rt.turnAfter = true; }
+  else { rt.state = 'turn'; rt.tp = 0; rt.flipped = false; }
+}
 function lifeMove(it, rt, dt) {
   const b = it.beh, k = b.k, B = it.B, bw = B[2] - B[0], base = (LIFE_SPEED[k] || 60) * (b.sp || 1);
   if (rt.seed == null) rt.seed = Math.random() * 50;
   if (rt.hp == null) { rt.hp = 0; rt.gp = 0; rt.v = 0; rt.alt = 0; rt.rest = 6 + Math.random() * 8; }
-  if (!b.move || b.edge === 'stay') { rt.dx = 0; rt.v = 0; rt.hp += dt * (b.sp || 1) / 0.95; rt.gp += dt * (b.sp || 1) * 2.2; return; }
+  if (!b.move || b.edge === 'stay') { if (b.touch) { try { lifeSense(it, rt, dt); } catch (e) { /* ignore */ } } rt.dx = 0; rt.v = 0; rt.hp += dt * (b.sp || 1) / 0.95; rt.gp += dt * (b.sp || 1) * 2.2; return; }
   /* states: go, slow (coming to the edge or a rest), turn, peek, rest */
   if (rt.state === 'turn') { rt.tp += dt / 0.38; if (rt.tp >= 0.5 && !rt.flipped) { rt.dir = -rt.dir; rt.flipped = true; } if (rt.tp >= 1) { rt.state = 'go'; rt.tp = 0; } }
   else if (rt.state === 'peek') { if (rt.t - rt.st0 > 2.6) { rt.state = 'turn'; rt.tp = 0; rt.flipped = false; } }
-  else if (rt.state === 'rest') { if (rt.t - rt.st0 > rt.restFor) { rt.state = 'go'; rt.rest = rt.t + 7 + Math.random() * 9; } }
+  else if (rt.state === 'rest') { if (rt.t - rt.st0 > rt.restFor) { if (rt.turnAfter) { rt.turnAfter = false; rt.state = 'turn'; rt.tp = 0; rt.flipped = false; } else rt.state = 'go'; rt.rest = rt.t + 7 + Math.random() * 9; } }
   else if ((k === 'walk4' || k === 'hop' || k === 'wiggle') && rt.t > rt.rest && (k !== 'hop' || rt.hp % 1 < 0.05)) { rt.state = 'rest'; rt.st0 = rt.t; rt.restFor = 1 + Math.random() * 1.6; }
   const tgt = lifeTarget(it, rt), acc = k === 'hop' ? 30 : k === 'drive' ? 1.6 : 3.2;
   rt.v += (tgt - rt.v) * Math.min(1, dt * acc);
@@ -9541,6 +9603,8 @@ function lifeMove(it, rt, dt) {
   if (k === 'hop') { if (rt.state === 'go' || rt.hp % 1 > 0.02) rt.hp += dt * (b.sp || 1) / 0.95; }
   if (k === 'walk4') { const L = (rt.legs && rt.legs.L) || bw * 0.3; rt.gp += dt * rt.v / (0.242 * L); }
   if (k === 'flap') { const fl = ((rt.t + rt.seed) % 3.4) < 2.3; rt.alt = clamp(rt.alt + (fl ? -1 : 0.7) * dt * (B[3] - B[1]) * 0.22, -(B[3] - B[1]) * 0.7, (B[3] - B[1]) * 0.5); }
+  if (b.touch) { try { lifeSense(it, rt, dt); } catch (e) { /* keep moving without sensing */ } } else rt.gy = 0;
+  if (rt.bump) rt.bump = Math.max(0, rt.bump - dt * 4);
   const left = B[0] + rt.dx, right = left + bw;
   if (rt.state !== 'go') return;
   if (b.edge === 'wrap') { if (left > W + 10) rt.dx -= W + bw + 20; else if (right < -10) rt.dx += W + bw + 20; }
@@ -9580,6 +9644,8 @@ function lifeDraw(it, rt) {
     let lo = -1e9; const cr = Math.cos(rot), sr = Math.sin(rot); for (const p of pts) { const y = cy + (p[0] - cx) * sr + (p[1] - cy) * cr; if (y > lo) lo = y; }
     oy = B[3] - lo;
   }
+  if (b.touch && LIFE_GROUND.includes(k)) oy += rt.gy || 0;
+  if (rt.bump) { const q = rt.bump; sx *= 1 - 0.12 * q; sy *= 1 + 0.08 * q; }
   /* turning back: the drawing turns on the spot like a page flipping, instead of jumping to face the other way */
   let tsx = 1; if (rt.state === 'turn') tsx = Math.max(0.1, Math.abs(Math.cos(Math.PI * (rt.tp || 0))));
   const flip = moving && k !== 'spin' && k !== 'roll' && rt.dir !== face;
@@ -17294,7 +17360,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793263017';
+const BUILD = '1793272575';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
