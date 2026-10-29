@@ -10046,9 +10046,11 @@ async function liveOpen() {
   ch.on('broadcast', { event: 'pullall' }, () => { clearTimeout(LIVE.pullT); LIVE.pullT = setTimeout(liveSendAll, 400); });
   ch.on('broadcast', { event: 'join' }, (m) => { liveSendRoster(m.payload);  liveSendPage(); if (LIVE.set) liveSend('quiz', liveQuizPayload()); if (LIVE.revealed) liveSend('reveal', liveRevealPayload()); });
   ch.on('broadcast', { event: 'ans' }, (m) => liveGotAnswer(m.payload));
-  ch.on('presence', { event: 'sync' }, () => { const st = ch.presenceState(); LIVE.peers = []; for (const k in st) { const m = (st[k] || []).slice(-1)[0] || {}; if (m.role === 'student') LIVE.peers.push({ sid: k, name: m.name || 'ไม่ระบุชื่อ', no: m.no || null, stu: m.stu || null }); } LIVE.peers.sort((x, y) => (x.no || 999) - (y.no || 999)); liveRender(); });
+  ch.on('presence', { event: 'sync' }, () => { const st = ch.presenceState(); const seen = LIVE.seen || (LIVE.seen = new Set()); let fresh = false; for (const k in st) if (!k.startsWith('teacher-') && !seen.has(k)) { seen.add(k); fresh = true; } if (fresh) liveSendPage(); LIVE.peers = []; for (const k in st) { const m = (st[k] || []).slice(-1)[0] || {}; if (m.role === 'student') LIVE.peers.push({ sid: k, name: m.name || 'ไม่ระบุชื่อ', no: m.no || null, stu: m.stu || null }); } LIVE.peers.sort((x, y) => (x.no || 999) - (y.no || 999)); liveRender(); });
   ch.subscribe((s) => { if (s === 'SUBSCRIBED') { LIVE.ready = true; ch.track({ role: 'teacher' }); liveSendPage(); liveSendRoster(); liveRender(); } });
   LIVE.ch = ch; liveRender(); $('#bLive').classList.add('on');
+  /* the room stays open after the app reloads or updates, until the teacher closes it */
+  store_ls.set('tp-live-on', '1'); store_ls.set('tp-live-cls', LIVE.clsId || '');
 }
 async function liveSendRoster(p) {
   const c = LIVE.clsId && CLS.list.find((x) => x.id === LIVE.clsId); if (!c) return;
@@ -10058,6 +10060,7 @@ async function liveSendRoster(p) {
 }
 function liveClose() {
   if (LIVE.ch) { liveSend('end', {}); try { CLOUD.client.removeChannel(LIVE.ch); } catch (e) { /* closed */ } }
+  store_ls.del('tp-live-on'); store_ls.del('tp-live-cls'); LIVE.seen = null;
   LIVE.ch = null; LIVE.ready = false; LIVE.role = null; LIVE.peers = []; LIVE.clsId = null; LIVE.set = null; LIVE.ans = {}; LIVE.revealed = false;
   $('#bLive').classList.remove('on'); $('#bLiveN').textContent = ''; liveRender();
 }
@@ -10237,6 +10240,14 @@ async function studentJoin(code) {
   ch.on('broadcast', { event: 'quizend' }, () => { $('#sqSheet').hidden = true; });
   ch.on('broadcast', { event: 'roster' }, (m) => studentRoster(m.payload));
   ch.on('broadcast', { event: 'end' }, () => { liveStudentPill('ผู้สอนปิดห้องแล้ว สมุดยังอยู่ในเครื่องนี้'); });
+  /* is the teacher in the room? if not yet, wait and join by itself the moment the teacher opens it */
+  LIVE.gotPage = false;
+  const teacherHere = () => { try { const st = ch.presenceState(); return Object.keys(st).some((k) => k.startsWith('teacher-') || (st[k] || []).some((m) => m.role === 'teacher')); } catch (e) { return false; } };
+  ch.on('presence', { event: 'sync' }, () => { if (!LIVE.ready) return; if (teacherHere()) { if (!LIVE.gotPage) { liveSend('join', { sid: LIVE.sid, name: LIVE.name }); liveStudentPill('เชื่อมต่อแล้ว กำลังรับหน้าจากผู้สอน'); } } else if (!LIVE.gotPage) noTeacher(); });
+  const noTeacher = () => { liveStudentPill('รอผู้สอนเปิดห้อง'); if (!LIVE.warned) { LIVE.warned = true; lpFold(false); toast('ยังไม่พบผู้สอนในห้อง ' + code + ' ตรวจว่ารหัสถูก และผู้สอนกดเปิดห้องเรียนสดอยู่ ระบบจะเชื่อมให้เองเมื่อผู้สอนเปิด', 6000); } };
+  LIVE.warned = false;
+  clearInterval(LIVE.askT); let tries = 0;
+  LIVE.askT = setInterval(() => { if (LIVE.gotPage || LIVE.ch !== ch || ++tries > 40) { clearInterval(LIVE.askT); return; } if (LIVE.ready) liveSend('join', { sid: LIVE.sid, name: LIVE.name }); if (tries === 3 && !teacherHere()) noTeacher(); }, 4000);
   ch.subscribe((s) => {
     if (s === 'SUBSCRIBED') { LIVE.ready = true; ch.track({ role: 'student', name: LIVE.name }); liveSend('join', { sid: LIVE.sid, name: LIVE.name }); liveStudentPill('เชื่อมต่อแล้ว'); }
     else if (s === 'CHANNEL_ERROR' || s === 'TIMED_OUT' || s === 'CLOSED') { LIVE.ready = false; liveStudentPill('หลุดการเชื่อมต่อ กำลังต่อใหม่'); }
@@ -10258,6 +10269,7 @@ $('#lpDot').onclick = () => lpFold(!$('#livePill').classList.contains('mini'));
 function liveStudentPill(msg) { $('#lpMsg').textContent = 'ห้อง ' + LIVE.code + (/^(เชื่อมต่อแล้ว|กำลังเชื่อมต่อ)$/.test(msg) ? '' : ' ' + msg); $('#lpDot').title = 'ห้อง ' + LIVE.code + ' ' + msg; $('#livePill').dataset.s = /เชื่อมต่อแล้ว/.test(msg) ? 'on' : 'wait'; $('#lpFollow').setAttribute('aria-pressed', LIVE.follow ? 'true' : 'false'); }
 async function studentGotPage(d) {
   if (!d || typeof d.tpid !== 'string') return;
+  if (!LIVE.gotPage) { LIVE.gotPage = true; liveStudentPill('เชื่อมต่อแล้ว'); }
   const P = LIVE.parts[d.tpid] = { d, rev: d.rev, need: d.parts || 1, got: [] };
   if (P.need === 0) studentApply(d.tpid);
   if (LIVE.nid) { const nb = await S.store.get('notebooks/' + LIVE.nid); if (nb && d.nb && !nb.titleSet) S.store.update('notebooks/' + LIVE.nid, { title: d.nb + ' (ห้อง ' + LIVE.code + ')', titleSet: true, level: d.level || nb.level, subject: d.subject || nb.subject || 'phys', subjectName: d.subjectName || nb.subjectName || null }).catch(() => {}); }
@@ -12222,7 +12234,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793237062';
+const BUILD = '1793238580';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
@@ -13006,6 +13018,7 @@ async function boot() {
   if (S.student) { S.creatingFirst = true; document.body.classList.add('student'); }
   watchNotebooks();
   if (!S.student) { watchLiveDoc(); aiCloudWatch(); devSeen(); }
+  if (!S.student && CLOUD.state === 'on' && store_ls.get('tp-live-on') === '1' && store_ls.get('tp-class') && S.role !== 'student') { LIVE.clsId = store_ls.get('tp-live-cls') || null; setTimeout(() => { liveOpen().then(() => toast('ห้องเรียนสด ' + LIVE.code + ' ยังเปิดอยู่ ผู้เรียนเชื่อมต่อได้ตามเดิม', 3000)).catch(() => {}); }, 800); }
   renderAcct();
   if (store_ls.get('tp-auth-next') != null && CLOUD.state === 'signedout') { const em = store_ls.get('tp-auth-next'); store_ls.del('tp-auth-next'); setTimeout(() => { openAuth(); if (em) { $('#aEmail').value = em; setTimeout(() => $('#aPass').focus({ preventScroll: true }), 80); } }, 300); }
   if (mC && CLOUD.ready()) studentJoin(mC[1].toUpperCase());
