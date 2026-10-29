@@ -2960,7 +2960,7 @@ function flowSet(on) {
   document.querySelectorAll('#flowSeg button').forEach((b) => b.setAttribute('aria-pressed', (b.dataset.f === '1') === !!on ? 'true' : 'false'));
   renderPeeks().catch(() => {}); if (!on) { clampT(); applyT(); }
 }
-function applyT() { if (FLOW.on) flowCheckLater(); const zn = document.getElementById('zNum'); if (zn) { const pc = Math.round(S.zoom * 100); zn.classList.toggle('off', Math.abs(pc - 100) > 1); zn.title = pc === 100 ? 'พอดีหน้า' : 'ตอนนี้ ' + pc + '% แตะเพื่อกลับมาพอดีหน้า'; zn.setAttribute('aria-label', zn.title); } itemsEl.style.setProperty('--hk', (1 / ((S.base || 1) * (S.zoom || 1))).toFixed(3)); wrapEl.style.willChange = 'transform'; wrapEl.style.transform = 'translate(' + S.tx + 'px,' + (S.ty + rubber(S.pull || 0)) + 'px) scale(' + S.zoom + ')'; if (S.watchers && !S.present) viewLater(); sharpLater(); }
+function applyT() { if (FLOW.on) flowCheckLater(); const zn = document.getElementById('zNum'); if (zn) { const pc = Math.round(S.zoom * 100); zn.classList.toggle('off', Math.abs(pc - 100) > 1); zn.title = pc === 100 ? 'พอดีหน้า' : 'ตอนนี้ ' + pc + '% แตะเพื่อกลับมาพอดีหน้า'; zn.setAttribute('aria-label', zn.title); } itemsEl.style.setProperty('--hk', (1 / ((S.base || 1) * (S.zoom || 1))).toFixed(3)); wrapEl.style.willChange = 'transform'; { const dpr = window.devicePixelRatio || 1, rx = Math.round(S.tx * dpr) / dpr, ry = Math.round((S.ty + rubber(S.pull || 0)) * dpr) / dpr; wrapEl.style.transform = 'translate(' + rx + 'px,' + ry + 'px) scale(' + S.zoom + ')'; } if (S.watchers && !S.present) viewLater(); sharpLater(); }
 function topY() { return S.tv ? 12 : 72; }
 function bounds() {
   const vw = vp.clientWidth, vh = vp.clientHeight;
@@ -3035,8 +3035,9 @@ function resizeCanvases(force) {
      The paper pattern is drawn at lower resolution: thin grid lines still look the same. */
   const res = Math.min(W * S.base * dpr * clamp(S.zoom, 1, 2), 2800) / W;
   if (!force && Math.abs(res - S.res) / (S.res || 1) < 0.08) return;
-  S.res = res; S.bgRes = res * 0.6;
-  for (const c of [cInk, cLive, cRemote]) { c.width = Math.round(W * res); c.height = Math.round(H * res); }
+  /* the paper is drawn as sharp as the ink: soft grid lines made the whole page look blurred next to apps like GoodNotes */
+  S.res = res; S.bgRes = res;
+  for (const c of [cInk, cRemote].concat(LV.part ? [] : [cLive])) { c.width = Math.round(W * res); c.height = Math.round(H * res); }
   cBg.width = Math.round(W * S.bgRes); cBg.height = Math.round(H * S.bgRes);
   drawBg(); drawInk();
 }
@@ -3088,7 +3089,7 @@ function drawSharp() {
   if (!cSharp) return;
   const dpr = Math.min(window.devicePixelRatio || 1, 3);
   const need = W * S.base * S.zoom * dpr > W * (S.res || 1) * 1.15;
-  if (!need || !S.page) { if (!cSharp.hidden) { cSharp.hidden = true; cSharp.width = cSharp.height = 1; } return; }
+  if (!need || !S.page) { if (!cSharp.hidden) { cSharp.hidden = true; cSharp.width = cSharp.height = 1; } if (!penBusy()) liveFit(false); return; }
   const pr = pageEl.getBoundingClientRect(), vr = vp.getBoundingClientRect();
   const x0 = Math.max(pr.left, vr.left), y0 = Math.max(pr.top, vr.top), x1 = Math.min(pr.right, vr.right), y1 = Math.min(pr.bottom, vr.bottom);
   if (x1 - x0 < 4 || y1 - y0 < 4) { cSharp.hidden = true; return; }
@@ -3103,6 +3104,8 @@ function drawSharp() {
   c.fillStyle = '#FFFFFF'; c.fillRect(0, 0, W, H); paper(c, (S.page && S.page.paper) || 'grid');
   drawInto(c, allStrokes(), S.sel ? new Set(S.sel.strokes.map((r) => r.id)) : null);
   cSharp.hidden = false;
+  /* the live canvas follows the same visible region (not while a pen is down: resizing would wipe the stroke) */
+  if (!penBusy()) liveFit(true, (x0 - pr.left) / (pr.width / W), (y0 - pr.top) / (pr.height / H), (x1 - x0) / (pr.width / W), (y1 - y0) / (pr.height / H), k, (x0 - pr.left) / sc, (y0 - pr.top) / sc, (x1 - x0) / sc, (y1 - y0) / sc);
 }
 function redrawLiveBoxes() { try { if (typeof SCN !== 'undefined') for (const [id, r] of SCN) { const it = findItem(id); if (it && r.cv && r.cv.isConnected) scRender(it, r); } for (const el of itemsEl.querySelectorAll('.item.sim')) { const it = findItem(el.dataset.id), cv = el.querySelector('canvas.simcv:not(.scncv)'); if (it && it.type === 'sim' && cv) simRender(it, cv, el.querySelector('.sro')); } } catch (e) { /* not ready yet */ } }
 function sharpLater() { clearTimeout(sharpT); sharpT = setTimeout(() => { if (!P.size) wrapEl.style.willChange = 'auto'; drawSharp(); redrawLiveBoxes(); }, 160); }
@@ -3277,6 +3280,21 @@ function drawInk() {
   if (cSharp && (!cSharp.hidden || S.zoom > 1.2)) drawSharp();
 }
 const drawInkLater = debounce(() => drawInk(), 1500);
+/* the live canvas (the stroke being written, the laser, shape previews) covers the whole page at normal size; zoomed in, it covers
+   only what is on screen at full screen sharpness, so a stroke is crisp while it is being written, the way it is once finished */
+const LV = { k: 1, ox: 0, oy: 0, part: false };
+const penBusy = () => { try { return P.size > 0; } catch (e) { return false; } };
+function liveXf(c) { if (LV.part) c.setTransform(LV.k, 0, 0, LV.k, -LV.ox * LV.k, -LV.oy * LV.k); else c.setTransform(S.res, 0, 0, S.res, 0, 0); }
+function liveFit(on, x0, y0, w, h, k, cssL, cssT, cssW, cssH) {
+  if (on) {
+    const bw = Math.round(w * k), bh = Math.round(h * k);
+    if (cLive.width !== bw || cLive.height !== bh) { cLive.width = bw; cLive.height = bh; }
+    Object.assign(cLive.style, { inset: 'auto', left: cssL + 'px', top: cssT + 'px', width: cssW + 'px', height: cssH + 'px' });
+    Object.assign(LV, { part: true, k, ox: x0, oy: y0 });
+  } else if (LV.part) {
+    LV.part = false; cLive.style.cssText = ''; cLive.width = Math.round(W * S.res); cLive.height = Math.round(H * S.res);
+  }
+}
 function clearLive() { const c = cLive.getContext('2d'); c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, cLive.width, cLive.height); }
 
 /* ---------- laser ---------- */
@@ -3288,7 +3306,7 @@ function laserFrame() {
   if (activeLive()) return;
   const c = cLive.getContext('2d');
   c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, cLive.width, cLive.height);
-  c.setTransform(S.res, 0, 0, S.res, 0, 0);
+  liveXf(c);
   const t = now();
   while (lasers.length && t - lasers[0].t > 650) lasers.shift();
   for (let i = 1; i < lasers.length; i++) {
@@ -3787,9 +3805,9 @@ function addPoint(pt, x, y, p) {
   if (S.watchers || (LIVE.role === 'teacher' && LIVE.ready)) emitInkDelta(pt);
 }
 function drawLiveSegment(pt) {
-  const c = cLive.getContext('2d'); c.setTransform(S.res, 0, 0, S.res, 0, 0);
+  const c = cLive.getContext('2d'); liveXf(c);
   const s = pt.stroke;
-  if (s.k === 'h' || (s.t && s.t !== 'ball')) { c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, cLive.width, cLive.height); c.setTransform(S.res, 0, 0, S.res, 0, 0); drawStroke(c, s); return; }
+  if (s.k === 'h' || (s.t && s.t !== 'ball')) { c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, cLive.width, cLive.height); liveXf(c); drawStroke(c, s); return; }
   const p = s.p, n = p.length / 3;
   c.strokeStyle = s.c; c.fillStyle = s.c; c.lineCap = 'round'; c.lineJoin = 'round';
   if (n === 1) { pt.live = { x0: p[0] / 10, y0: p[1] / 10, mx0: p[0] / 10, my0: p[1] / 10 }; c.beginPath(); c.arc(pt.live.x0, pt.live.y0, penW(s, p[2]) / 2, 0, 6.2832); c.fill(); return; }
@@ -4023,7 +4041,7 @@ function erasePart(x, y, r, pt, touched) {
 function drawCursor(x, y, r) {
   const c = cLive.getContext('2d');
   c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, cLive.width, cLive.height);
-  c.setTransform(S.res, 0, 0, S.res, 0, 0);
+  liveXf(c);
   c.beginPath(); c.arc(x, y, r, 0, 6.2832);
   c.fillStyle = 'rgba(83,94,108,0.10)'; c.fill();
   c.lineWidth = 1.6; c.strokeStyle = '#535E6C'; c.setLineDash([4, 3]); c.stroke(); c.setLineDash([]);
@@ -4048,7 +4066,7 @@ function lzLoop() { if (LZK.raf) return; LZK.raf = requestAnimationFrame(() => {
 function drawLasers() {
   const c = cLive.getContext('2d');
   c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, cLive.width, cLive.height);
-  c.setTransform(S.res, 0, 0, S.res, 0, 0);
+  liveXf(c);
   const drawing = [...P.values()].some((p) => p.mode === 'laser');
   if (LZK.list.length) { const a = drawing ? 1 : lzAlpha(LZK.at); for (const q of LZK.list) drawLzLine(c, q, a); }
   for (const p of P.values()) {
@@ -4165,7 +4183,7 @@ function moveSnapped(pt, x, y) {
 function redrawLiveStroke(pt) {
   const c = cLive.getContext('2d');
   c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, cLive.width, cLive.height);
-  c.setTransform(S.res, 0, 0, S.res, 0, 0);
+  liveXf(c);
   drawStroke(c, pt.stroke);
 }
 
@@ -4268,7 +4286,7 @@ function shapeStrokeLists(kind, a, b) {
 function previewShape(pt) {
   const c = cLive.getContext('2d');
   c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, cLive.width, cLive.height);
-  c.setTransform(S.res, 0, 0, S.res, 0, 0);
+  liveXf(c);
   for (const s of shapeStrokeLists(S.shapeKind, pt.a, pt.b)) drawStroke(c, s);
   emitInk(shapeStrokeLists(S.shapeKind, pt.a, pt.b));
 }
@@ -18690,7 +18708,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793289084';
+const BUILD = '1793315906';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
