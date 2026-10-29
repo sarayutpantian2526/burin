@@ -3315,7 +3315,7 @@ function diarySync() {
 function diaryOn() { return !!(S.nb && S.nb.diary); }
 /* how the reply appears: written in slowly like an enchanted diary, or all at once */
 const diaryInstant = () => store_ls.get('tp-diary-style') === 'now';
-function diaryFoldSync() { const bar = $('#diaryBar'), mini = store_ls.get('tp-diary-mini') === '1'; if (!bar) return; bar.classList.toggle('mini', mini); const f = $('#bDiaryFold'); if (f) { f.setAttribute('aria-expanded', mini ? 'false' : 'true'); f.title = mini ? 'โหมดสมุดตอบได้เปิดอยู่ แตะเพื่อขยายแถบ' : 'แตะเพื่อย่อแถบ'; } }
+function diaryFoldSync() { const bar = $('#diaryBar'), mini = store_ls.get('tp-diary-mini') !== '0'; if (!bar) return; bar.classList.toggle('mini', mini); const f = $('#bDiaryFold'); if (f) { f.setAttribute('aria-expanded', mini ? 'false' : 'true'); f.title = mini ? 'โหมดสมุดตอบได้เปิดอยู่ แตะเพื่อขยายแถบ' : 'แตะเพื่อย่อแถบ'; } }
 function diaryStyleSync() { const b = $('#bDiaryStyle'); if (b) b.textContent = diaryInstant() ? 'ขึ้นทันที' : 'ค่อย ๆ เขียน'; }
 function diarySet(on) {
   if (!S.nb) return; if (on && !needAI('read')) return;
@@ -17156,7 +17156,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793259171';
+const BUILD = '1793259270';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
@@ -17488,7 +17488,7 @@ $('#bAIConnect').onclick = () => { openAISetup(); };
 $('#qsAgree').onchange = syncAgree;
 $('#qsOR').onclick = orStart;
 $('#bDiary').onclick = () => diarySet(!diaryOn()); $('#tDiary').onclick = () => diarySet(!diaryOn()); $('#bDiaryOff').onclick = () => diarySet(false);
-$('#bDiaryFold').onclick = () => { store_ls.set('tp-diary-mini', store_ls.get('tp-diary-mini') === '1' ? '0' : '1'); diaryFoldSync(); };
+$('#bDiaryFold').onclick = () => { store_ls.set('tp-diary-mini', store_ls.get('tp-diary-mini') !== '0' ? '0' : '1'); diaryFoldSync(); };
 $('#bDiaryStyle').onclick = () => { store_ls.set('tp-diary-style', diaryInstant() ? 'ink' : 'now'); diaryStyleSync(); toast(diaryInstant() ? 'คำตอบจะขึ้นทันทีทั้งข้อความ' : 'คำตอบจะค่อย ๆ เขียนทีละตัวเหมือนสมุดมีชีวิต', 2200); };
 $('#bSelNb').onclick = () => { LIBV.sel = LIBV.sel ? null : new Set(); renderLibrary(); };
 setTimeout(() => { orUpgradeCheck().catch(() => {}); }, 8000);
