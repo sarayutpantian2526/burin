@@ -18,7 +18,8 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=Sarabun:ital,wght@0,400;0,600;0,700;1,400&family=Mali:wght@400;500&family=Sriracha&family=Charm:wght@400;700&display=swap">
 <script>
 window.MathJax = {
-  tex: { inlineMath: [['$', '$'], ['\\(', '\\)']], displayMath: [['$$', '$$']] },
+  /* a vector is written with a half arrow (harpoon) over the letter, as Thai teachers write it by hand */
+  tex: { inlineMath: [['$', '$'], ['\\(', '\\)']], displayMath: [['$$', '$$']], macros: { vec: ['\\overset{\\rightharpoonup}{#1}', 1] } },
   svg: { fontCache: 'local' },
   startup: { typeset: false }
 };
@@ -2615,7 +2616,7 @@ const isPhys = () => curSubj()[0] === 'phys';
 const L10 = (t) => (UI_LANG !== 'th' && I18N.dict && I18N.dict[t]) || t;
 const subjName = (k, nb) => (k === 'other' ? subjOf(nb)[1] : L10((SUBJECTS.find((x) => x[0] === k) || SUBJECTS[0])[1]));
 /* the notation teachers write by hand and students see in Thai textbooks: arrow over a vector, upright units, real minus and times signs */
-const MATH_NOTATION = '\n\nNOTATION (follow exactly in every formula): a vector is a letter with an arrow over it as written by hand, $\\vec{F}$, $\\vec{v}$, $\\vec{a}$, never bold; a vector from point A to point B is $\\overrightarrow{AB}$; unit vectors $\\hat{i}, \\hat{j}, \\hat{k}$ (or $\\hat{x}$, $\\hat{n}$); the size of a vector is $|\\vec{F}|$ or plain italic $F$; net force $\\sum \\vec{F}$ or $\\vec{F}_{\\text{net}}$; change $\\Delta v$; dot product $\\vec{A}\\cdot\\vec{B}$, cross product $\\vec{A}\\times\\vec{B}$; multiplication of numbers $\\times$ (scientific notation $3.0\\times10^{8}$), never * or x; units upright after a thin space, $20\\,\\mathrm{m/s}$, $9.8\\,\\mathrm{m/s^2}$, $5\\,\\mathrm{N}$, $2\\,\\mathrm{k\\Omega}$; angles $30^\\circ$; descriptive subscripts upright, $v_{\\text{max}}$, $E_{\\text{k}}$, numeric or single-letter subscripts plain, $v_0$, $F_x$; fractions with \\frac; no Unicode math characters (√ × → ² ° ±) outside or inside $...$, use the LaTeX commands.';
+const MATH_NOTATION = '\n\nNOTATION (follow exactly in every formula): a vector is a letter with a half arrow (harpoon) over it as written by hand, always typed as \\vec{}, $\\vec{F}$, $\\vec{v}$, $\\vec{a}$, never bold; a vector from point A to point B is $\\vec{AB}$; unit vectors $\\hat{i}, \\hat{j}, \\hat{k}$ (or $\\hat{x}$, $\\hat{n}$); the size of a vector is $|\\vec{F}|$ or plain italic $F$; net force $\\sum \\vec{F}$ or $\\vec{F}_{\\text{net}}$; change $\\Delta v$; dot product $\\vec{A}\\cdot\\vec{B}$, cross product $\\vec{A}\\times\\vec{B}$; multiplication of numbers $\\times$ (scientific notation $3.0\\times10^{8}$), never * or x; units upright after a thin space, $20\\,\\mathrm{m/s}$, $9.8\\,\\mathrm{m/s^2}$, $5\\,\\mathrm{N}$, $2\\,\\mathrm{k\\Omega}$; angles $30^\\circ$; descriptive subscripts upright, $v_{\\text{max}}$, $E_{\\text{k}}$, numeric or single-letter subscripts plain, $v_0$, $F_x$; fractions with \\frac; no Unicode math characters (√ × → ² ° ±) outside or inside $...$, use the LaTeX commands.';
 function subjectize(prompt) {
   const sj = curSubj(); if (sj[0] === 'phys') return prompt;
   return prompt.replace(/\bphysics\b/g, sj[2]).replace(/\bPhysics\b/g, sj[2][0].toUpperCase() + sj[2].slice(1)) + '\n\nSUBJECT: this notebook is about ' + sj[2] + ', not physics; adapt every instruction above to ' + sj[2] + '. ' + sj[3];
@@ -3130,7 +3131,7 @@ function buildItemEl(it, forExport) {
   else if (it.type === 'life') { buildLife(d, it, forExport); }
   else if (it.type === 'lab') { buildLab(d, it, forExport); }
   else { d.innerHTML = mdToHtml(it.md || ''); if (it.hand && HAND_IDS.includes(it.hand)) { d.classList.add('hand', 'hand-' + it.hand); if (okHex(it.ink)) d.style.color = it.ink; } }
-  if (!forExport && !it.lock && it.by !== 'teacher' && ['graph', 'sim', 'scene', 'lab', 'video'].includes(it.type)) { const z = document.createElement('button'); z.type = 'button'; z.className = 'tsize'; z.setAttribute('aria-label', 'ลากเพื่อย่อหรือขยายกล่อง'); z.title = 'ลากเพื่อย่อหรือขยาย'; z.innerHTML = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M8 4h8v8 M16 4L4 16 M4 8v8h8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>'; d.appendChild(z); }
+  if (!forExport && !it.lock && it.by !== 'teacher' && ['graph', 'sim', 'scene', 'lab', 'video', 'svg'].includes(it.type)) { const z = document.createElement('button'); z.type = 'button'; z.className = 'tsize'; z.setAttribute('aria-label', 'ลากเพื่อย่อหรือขยายกล่อง'); z.title = 'ลากเพื่อย่อหรือขยาย'; z.innerHTML = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M8 4h8v8 M16 4L4 16 M4 8v8h8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>'; d.appendChild(z); }
   if (!forExport && !it.lock && it.by !== 'teacher' && (!it.type || it.type === 'text' || it.type === 'img' || it.type === 'svg' || ['graph', 'sim', 'scene', 'lab', 'video'].includes(it.type))) { const g = document.createElement('button'); g.type = 'button'; g.className = 'tgrab'; g.setAttribute('aria-label', 'จับเพื่อเลือก ย้าย หรือลบ'); g.innerHTML = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 2.5v15 M2.5 10h15 M10 2.5l-2.2 2.2 M10 2.5l2.2 2.2 M10 17.5l-2.2-2.2 M10 17.5l2.2-2.2 M2.5 10l2.2-2.2 M2.5 10l2.2 2.2 M17.5 10l-2.2-2.2 M17.5 10l-2.2 2.2" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>'; d.appendChild(g); }
   if (!forExport && it.qref && !isStudentSide()) {
     const kb = document.createElement('button'); kb.type = 'button'; kb.className = 'qkey no-ink'; kb.textContent = 'เฉลย'; kb.title = 'ดูเฉลยข้อนี้ เห็นเฉพาะเครื่องนี้ ผู้เรียนและจอฉายไม่เห็น';
@@ -4916,7 +4917,14 @@ async function gaSource(fromSel) {
   }
   return { images, text: texts.join('\n\n').slice(0, 6000), label: pids.length > 1 ? pids.length + ' notebook pages (pages ' + pids.map((p) => pages.indexOf(p) + 1).join(', ') + '), one image per page in that order' : 'the current notebook page' };
 }
+/* one run at a time: a second tap waits for the first instead of starting another */
 async function generate(fromSel, more) {
+  if (GA.busy) { toast('กำลังสร้างโจทย์ชุดก่อนอยู่ รอสักครู่', 1600); return; }
+  const bs = ['#bGenPage', '#bGenMore'].map((q) => $(q)).filter(Boolean), was = bs.map((b) => b.disabled);
+  GA.busy = true; bs.forEach((b) => { b.disabled = true; });
+  try { await generateRun(fromSel, more); } finally { GA.busy = false; bs.forEach((b, i) => { b.disabled = was[i]; }); }
+}
+async function generateRun(fromSel, more) {
   if (!needAI('gen')) return;
   openAI(); renderAIPages();
   const src = more && GA.src ? GA.src : await gaSource(fromSel);
@@ -5325,7 +5333,7 @@ function figVecLabel(x, y, name, col, size) {
   size = size || 20; const [b, sub] = name.split('_'), w = b.length * size * 0.56;
   let s = '<text x="' + x + '" y="' + y + '" font-family="\'Times New Roman\', Sarabun, serif" font-style="italic" font-size="' + size + '" fill="' + col + '">' + esc(b) + (sub ? '<tspan font-size="' + Math.round(size * 0.66) + '" dy="' + Math.round(size * 0.28) + '">' + esc(sub) + '</tspan>' : '') + '</text>';
   const ay = y - size * 0.86, x0 = x + 1, x1 = x + Math.max(w, size * 0.5) + 2;
-  s += '<path d="M' + x0 + ' ' + ay + 'H' + x1 + ' M' + (x1 - 4) + ' ' + (ay - 3) + 'L' + x1 + ' ' + ay + 'L' + (x1 - 4) + ' ' + (ay + 3) + '" fill="none" stroke="' + col + '" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>';
+  s += '<path d="M' + x0 + ' ' + ay + 'H' + x1 + ' L' + (x1 - 5) + ' ' + (ay - 4) + '" fill="none" stroke="' + col + '" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>'; /* half arrow, as written by hand */
   return s;
 }
 function figArrow(p, q, col, wd) {
@@ -15823,7 +15831,7 @@ function handoutHtml(set, o) {
   const key = o.key ? '<section class="key"><h2>เฉลย</h2>' + set.qs.map((q, i) => '<p><b>' + (i + 1) + '. ' + ((q.c || []).length ? L[q.a || 0] : esc(q.ans || '')) + '</b> ' + (o.why ? mdToHtml(q.e || '') : '') + '</p>').join('') + '</section>' : '';
   return '<!doctype html><html lang="th"><head><meta charset="utf-8"><title>' + esc(o.title) + '</title>'
     + '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;700&display=swap">'
-    + '<script>window.MathJax={tex:{inlineMath:[["$","$"]],displayMath:[["$$","$$"]]},svg:{fontCache:"global"},startup:{pageReady:()=>MathJax.startup.defaultPageReady().then(()=>{document.body.classList.add("ready")})}};<\/script><script src="https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-svg-full.js" async><\/script>'
+    + '<script>window.MathJax={tex:{inlineMath:[["$","$"]],displayMath:[["$$","$$"]],macros:{vec:["\\\\overset{\\\\rightharpoonup}{#1}",1]}},svg:{fontCache:"global"},startup:{pageReady:()=>MathJax.startup.defaultPageReady().then(()=>{document.body.classList.add("ready")})}};<\/script><script src="https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-svg-full.js" async><\/script>'
     + '<style>@page{size:A4;margin:16mm 16mm 18mm}body{font-family:Sarabun,Thonburi,sans-serif;font-size:15pt;line-height:1.6;color:#14181F;margin:0}header{border-bottom:2px solid #14181F;margin-bottom:12px;padding-bottom:6px}h1{font-size:20pt;margin:0}header p{margin:2px 0;font-size:12pt;color:#444}.name{display:flex;gap:24px;font-size:13pt;margin-top:6px}.q{display:flex;gap:8px;break-inside:avoid;margin:0 0 12px}.qn{font-weight:700;min-width:1.6em}.qb{flex:1}.ch{list-style:none;padding:0;margin:4px 0 0;display:flex;flex-wrap:wrap;gap:2px 28px}.ch li{min-width:40%}.fig svg{max-width:320px;height:auto}.work{border:1px dashed #BBB;border-radius:6px;margin-top:6px}.key{break-before:page}.key h2{font-size:16pt}.bar{position:sticky;top:0;background:#2F4BB8;color:#fff;padding:10px 14px;font-size:14px;display:flex;gap:12px;align-items:center}.bar button{font:inherit;padding:6px 14px;border-radius:8px;border:0;cursor:pointer}@media print{.bar{display:none}}main{padding:0 6mm}</style></head><body>'
     + '<div class="bar"><span>เอกสารพร้อมพิมพ์ กดพิมพ์แล้วเลือก บันทึกเป็น PDF เพื่อได้ไฟล์</span><button onclick="print()">พิมพ์ หรือ บันทึกเป็น PDF</button></div>'
     + '<main><header><h1>' + esc(o.title) + '</h1>' + (o.sub ? '<p>' + esc(o.sub) + '</p>' : '') + (o.name ? '<div class="name"><span>ชื่อ ..................................................</span><span>ชั้น ..........</span><span>เลขที่ ..........</span></div>' : '') + '</header>' + qh + key + '</main></body></html>';
@@ -16521,7 +16529,7 @@ async function renderDeckMaker() {
   b.appendChild(tg);
   exChips(b, [[6, '6 สไลด์'], [8, '8 สไลด์'], [10, '10 สไลด์'], [14, '14 สไลด์']], (v) => v === DK.n, (v) => { DK.n = v; renderDeckMaker(); });
   const msg = exEl('div', ''); msg.id = 'dkMsg'; b.appendChild(msg);
-  const go = exEl('button', 'btn solid', 'สร้างสไลด์'); go.onclick = makeDeck; b.appendChild(go);
+  const go = exEl('button', 'btn solid', DK.busy ? 'กำลังสร้างสไลด์' : 'สร้างสไลด์'); go.id = 'dkGo'; go.disabled = !!DK.busy; go.onclick = makeDeck; b.appendChild(go);
   /* saved decks */
   let decks = []; try { decks = (await S.store.list('decks')).sort((a, c) => (c.at || 0) - (a.at || 0)); } catch (e) { decks = []; }
   if (decks.length) {
@@ -16568,8 +16576,13 @@ function parseDeck(txt, nImgs) {
 }
 async function makeDeck() {
   const msg = $('#dkMsg'); if (!DK.pids.length) { msg.innerHTML = '<div class="note err">เลือกอย่างน้อยหนึ่งหน้า</div>'; return; }
+  if (DK.busy) return;
   const aud = AUDIENCES.find((a) => a[0] === DK.audience) || AUDIENCES[2];
-  const B = waitCard(msg, 'กำลังสร้างสไลด์', ['อ่านเนื้อหา ' + DK.pids.length + ' หน้า', 'จัดโครงเรื่องและเขียนสไลด์', 'จัดรูปแบบ']);
+  /* one run at a time: the button waits, and cancel really stops the AI call */
+  const ctl = new AbortController(), goBtn = () => $('#dkGo');
+  const done = () => { DK.busy = false; const g = goBtn(); if (g) { g.disabled = false; g.textContent = 'สร้างสไลด์'; } };
+  DK.busy = true; { const g = goBtn(); if (g) { g.disabled = true; g.textContent = 'กำลังสร้างสไลด์'; } }
+  const B = waitCard(msg, 'กำลังสร้างสไลด์', ['อ่านเนื้อหา ' + DK.pids.length + ' หน้า', 'จัดโครงเรื่องและเขียนสไลด์', 'จัดรูปแบบ'], { cancelText: 'หยุดสร้าง', onCancel: () => { ctl.abort(); done(); } });
   try {
     const src = await deckSource(DK.pids);
     if (B.cancelled) return; B.step(1);
@@ -16580,15 +16593,18 @@ async function makeDeck() {
         + (src.imgs.length ? 'Available pictures (use IMAGE: number on a slide where it helps):\n' + src.imgs.map((im, i) => (i + 1) + ') ' + im.what).join('\n') + '\n' : '')
         + 'Layouts: title (first slide), section, bullets, split (points with a picture), stat (one big number), quote (one key message), summary (last slide).\n'
         + 'Reply in exactly this format and nothing else:\n@@DECK title | subtitle\n@@SLIDE layout\nTITLE: ...\nPOINT: ...\nPOINT: ...\nSTAT: value | label   (only for stat)\nIMAGE: number   (optional)\nNOTES: what to say, 1 to 3 sentences\n(repeat @@SLIDE blocks)\n\nNOTES TO USE:\n' + src.text.slice(0, 14000);
-      const r = await AI.run('gen', prompt, { cache: false, lang: DK.lang });
+      const r = await AI.run('gen', prompt, { cache: false, lang: DK.lang, signal: ctl.signal });
+      if (B.cancelled) return;
       deck = parseDeck(r.text, src.imgs.length);
     }
     if (!deck || deck.slides.length < 2) deck = fallbackDeck(src);
     B.step(2);
     deck.audience = DK.audience; deck.theme = DK.theme; deck.imgs = src.imgs; deck.at = now(); deck.title = deck.title || (S.nb && S.nb.title) || 'การนำเสนอ';
     deck.id = 'd' + uid(); await S.store.set('decks/' + deck.id, Object.assign({}, deck, { id: undefined })).catch(() => {});
+    if (B.cancelled) return;
     B.stop(); DK.deck = deck; showDeck(0);
-  } catch (e) { B.stop(); msg.innerHTML = '<div class="note err">สร้างสไลด์ไม่สำเร็จ ' + esc(aiErr(e)) + '</div>'; }
+  } catch (e) { if (B.cancelled) return; B.stop(); msg.innerHTML = '<div class="note err">สร้างสไลด์ไม่สำเร็จ ' + esc(aiErr(e)) + '</div>'; }
+  finally { if (!B.cancelled) done(); }
 }
 function fallbackDeck(src) {
   const deck = { title: (S.nb && S.nb.title) || 'การนำเสนอ', sub: new Date().toLocaleDateString(LOC, { dateStyle: 'long' }), slides: [] };
@@ -16659,7 +16675,7 @@ async function deckExportHtml() {
   const imgs = []; for (const im of d.imgs || []) imgs.push(Object.assign({}, im, { data: await assetDataUrl(im.asset) }));
   const dd = Object.assign({}, d, { imgs }), t = themeOf(d.theme), n = d.slides.length;
   const html = '<!doctype html><html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>' + esc(d.title) + '</title>'
-    + '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;700&display=swap"><script>window.MathJax={tex:{inlineMath:[["$","$"]]}};<\/script><script src="https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-svg-full.js" async><\/script>'
+    + '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;700&display=swap"><script>window.MathJax={tex:{inlineMath:[["$","$"]],macros:{vec:["\\\\overset{\\\\rightharpoonup}{#1}",1]}}};<\/script><script src="https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-svg-full.js" async><\/script>'
     + '<style>html,body{margin:0;background:#111;height:100%}#w{position:fixed;inset:0}.s{position:absolute;left:0;top:0;transform-origin:0 0;display:none}.s.on{display:block}' + deckCss(t) + '@media print{@page{size:1280px 720px;margin:0}#w{position:static}.s{display:block!important;position:static;transform:none!important;page-break-after:always}body{background:none}}</style></head><body><div id="w">'
     + d.slides.map((s, i) => '<div class="s' + (i ? '' : ' on') + '">' + slideHtml(s, dd, i, n, true) + '</div>').join('')
     + '</div><script>let i=0;const S=[...document.querySelectorAll(".s")];function f(){const k=Math.min(innerWidth/1280,innerHeight/720);S.forEach(s=>{s.style.transform="scale("+k+")";s.style.left=(innerWidth-1280*k)/2+"px";s.style.top=(innerHeight-720*k)/2+"px"})}function g(n){S[i].classList.remove("on");i=Math.max(0,Math.min(S.length-1,n));S[i].classList.add("on")}addEventListener("resize",f);f();addEventListener("keydown",e=>{if(["ArrowRight","PageDown"," "].includes(e.key))g(i+1);if(["ArrowLeft","PageUp"].includes(e.key))g(i-1)});addEventListener("click",e=>g(e.clientX>innerWidth/3?i+1:i-1));<\/script></body></html>';
@@ -16693,7 +16709,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793249415';
+const BUILD = '1793249863';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
