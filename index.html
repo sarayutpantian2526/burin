@@ -763,7 +763,11 @@ body.nodesk #tTitle::after { content: ''; }
 .bcard.picked .bopen { outline: 3px solid var(--accent); outline-offset: 2px; border-radius: 10px; }
 .nbselbar { position: sticky; bottom: 0; z-index: 3; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 10px 12px; margin-top: 10px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 -4px 16px rgba(20,26,34,0.12); }
 .nbselbar b { margin-right: auto; }
-.item .dink { opacity: 0; filter: blur(1.5px); animation: dink 0.5s ease-out forwards; display: inline; }
+.item .dink { opacity: 0; display: inline; position: relative; }
+.item .dink.on { animation: dwipe 0.22s ease-out forwards; }
+@keyframes dwipe { 0% { opacity: 0.5; clip-path: inset(-0.8em 100% -0.8em 0); } 100% { opacity: 1; clip-path: inset(-0.8em -0.2em -0.8em 0); } }
+.item .dnib { display: inline-block; position: relative; width: 0; height: 1em; vertical-align: baseline; pointer-events: none; }
+.item .dnib svg { position: absolute; left: -0.1em; bottom: -0.05em; width: 0.95em; height: 0.95em; display: block; filter: drop-shadow(0 1px 1px rgba(0,0,0,0.25)); }
 @keyframes dink { 0% { opacity: 0; filter: blur(2px); } 60% { opacity: 0.9; filter: blur(0.4px); } 100% { opacity: 1; filter: none; } }
 .diarydots { position: absolute; display: flex; gap: 7px; pointer-events: none; }
 .diarydots i { width: 8px; height: 8px; border-radius: 50%; background: #2B3A67; opacity: 0.2; animation: ddot 1.2s infinite ease-in-out; }
@@ -776,11 +780,19 @@ body.nodesk #tTitle::after { content: ''; }
 .diarybar button.dfold { display: flex; align-items: center; gap: 8px; background: transparent; color: inherit; padding: 4px 2px; min-height: 34px; }
 .diarybar.mini { padding: 5px; gap: 0; }
 .diarybar.mini button.dfold { padding: 4px 7px; }
-.diarybar.mini b, .diarybar.mini span, .diarybar.mini #bDiaryStyle, .diarybar.mini #bDiaryOff { display: none; }
+.diarybar.mini b, .diarybar.mini span, .diarybar.mini #bDiaryVoice, .diarybar.mini #bDiaryStyle, .diarybar.mini #bDiaryOff { display: none; }
+.dvoice { position: absolute; z-index: 8; left: 12px; bottom: 66px; width: min(420px, calc(100% - 24px)); box-sizing: border-box; padding: 14px; border-radius: 16px; background: var(--surface, #fff); box-shadow: var(--shadow); display: grid; gap: 10px; }
+body.navleft .dvoice { bottom: 124px; }
+.dvoice .dvl { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.dvoice .dvl button { text-align: left; padding: 9px 10px; border-radius: 12px; border: 1px solid var(--line, rgba(0,0,0,.12)); background: var(--surface, #fff); color: inherit; font: inherit; cursor: pointer; }
+.dvoice .dvl button b { display: block; font-size: 14px; } .dvoice .dvl button small { display: block; font-size: 12px; color: var(--muted, #667); }
+.dvoice .dvl button.on { border-color: #2B3A67; box-shadow: 0 0 0 2px #2B3A67 inset; }
+.dvoice label { display: grid; gap: 4px; font-size: 13px; } .dvoice textarea { font: inherit; font-size: 14px; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--line, rgba(0,0,0,.15)); resize: vertical; }
+.dvoice > small { font-size: 12px; color: var(--muted, #667); } .dvoice .dvb { display: flex; gap: 8px; }
 .diarybar button.dstyle { background: transparent; color: #F6E7C1; border: 1px solid rgba(246,231,193,0.55); font-weight: 600; }
 .item .tsize.br { top: auto; bottom: -16px; }
 .diarybar button { flex: 0 0 auto; border: 0; border-radius: 999px; padding: 6px 12px; min-height: 30px; background: #F6E7C1; color: #2B3A67; font: inherit; font-weight: 700; cursor: pointer; }
-body.diary #viewport { box-shadow: inset 0 0 0 3px rgba(201,168,106,0.55); }
+body.diary #viewport { box-shadow: inset 0 0 0 2px rgba(201,168,106,0.22); }
 body.focus .diarybar, body.present .diarybar { display: none; }
 @media (max-width: 700px) { .diarybar span { display: none; } .diarybar { bottom: 70px; left: 8px; } }
 @media (min-width: 701px) and (max-width: 1100px) { .diarybar span { display: none; } }
@@ -1364,7 +1376,7 @@ body.role-student .scnpill .sbtns button[data-s="back"], body.role-student .scnp
       </div>
     </aside>
 
-    <div class="diarybar no-ink" id="diaryBar" hidden role="status"><button type="button" id="bDiaryFold" class="dfold" aria-expanded="true" title="แตะเพื่อย่อหรือขยายแถบ"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M15.5 2.8c-4.6.6-8.3 4.6-9.6 10.4l-.9 3.9 M15.5 2.8c.4 3.8-2.4 7.6-7.3 8.6 M5.3 13.6c1.8.2 3.4-.4 4.6-1.6 M3.5 17.2h7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><b>โหมดสมุดตอบได้</b></button><span>เขียนถึงสมุด แล้ววางปากกาสักครู่ สมุดจะเขียนตอบ</span><button type="button" id="bDiaryStyle" class="dstyle" title="แตะเพื่อสลับวิธีที่คำตอบปรากฏ">ค่อย ๆ เขียน</button><button type="button" id="bDiaryOff">ปิดโหมด</button></div>
+    <div class="diarybar no-ink" id="diaryBar" hidden role="status"><button type="button" id="bDiaryFold" class="dfold" aria-expanded="true" title="แตะเพื่อย่อหรือขยายแถบ"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M15.5 2.8c-4.6.6-8.3 4.6-9.6 10.4l-.9 3.9 M15.5 2.8c.4 3.8-2.4 7.6-7.3 8.6 M5.3 13.6c1.8.2 3.4-.4 4.6-1.6 M3.5 17.2h7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><b>โหมดสมุดตอบได้</b></button><span>เขียนถึงสมุด แล้ววางปากกาสักครู่ สมุดจะเขียนตอบ</span><button type="button" id="bDiaryVoice" class="dstyle" title="เลือกว่าอยากให้สมุดตอบแบบไหน">ครูใจดี</button><button type="button" id="bDiaryStyle" class="dstyle" title="แตะเพื่อสลับวิธีที่คำตอบปรากฏ">เขียนลายมือ</button><button type="button" id="bDiaryOff">ปิดโหมด</button></div>
     <div id="viewport">
       <div id="wrap">
         <div class="fpeek" id="peekPrev" hidden aria-hidden="true"></div>
@@ -3310,13 +3322,37 @@ const DIARY = { on: false, pending: [], t: null, busy: false, log: {} };
 function diarySync() {
   const on = diaryOn();
   for (const id of ['#bDiary', '#tDiary']) { const b = $(id); if (b) b.setAttribute('aria-pressed', on ? 'true' : 'false'); }
-  const bar = $('#diaryBar'); if (bar) bar.hidden = !on; diaryStyleSync(); diaryFoldSync(); document.body.classList.toggle('diary', on);
+  const bar = $('#diaryBar'); if (bar) bar.hidden = !on; diaryStyleSync(); diaryFoldSync(); diaryVoiceSync(); if (!on && $('#diaryVoicePanel')) $('#diaryVoicePanel').hidden = true; document.body.classList.toggle('diary', on);
 }
 function diaryOn() { return !!(S.nb && S.nb.diary); }
+/* how the notebook talks back: a few ready styles, plus the writer's own words */
+const DIARY_VOICES = [
+  ['friend', 'เพื่อนคุยเป็นกันเอง', 'ภาษาพูด สบาย ๆ ตอบสั้น', 'Talk like a close friend of about the same age: casual spoken Thai, short and lively, polite enough for school. Use ผม/เรา and ครับ naturally, never archaic words like ข้า or เจ้า.'],
+  ['teacher', 'ครูใจดี', 'อธิบายชัดทีละขั้น ชวนคิดต่อ', 'Talk like a warm, patient teacher chatting in the notebook: clear and encouraging, brief. Use ครู or ผม and ครับ, never archaic words like ข้า or เจ้า.'],
+  ['coach', 'ชวนคิด ไม่เฉลยทันที', 'ถามกลับและใบ้ทีละนิด', 'Talk like a Socratic tutor: do not give the final answer straight away; give one small hint or one guiding question at a time, and confirm when they get it right. Use ผม and ครับ.'],
+  ['mystic', 'สมุดลึกลับ', 'น้ำเสียงสมุดเวทมนตร์ มีลับลมคมใน', 'Talk like a mysterious enchanted diary: slightly old-fashioned and intriguing (ข้า and เจ้า are fine here), but always kind, honest and safe, and still correct about the subject.']
+];
+function diaryVoice() { const v = (S.nb && S.nb.diaryVoice) || {}; return { p: DIARY_VOICES.some((x) => x[0] === v.p) ? v.p : 'teacher', c: String(v.c || '') }; }
+function diaryVoiceSet(v) { if (!S.nb) return; S.nb = Object.assign({}, S.nb, { diaryVoice: v }); S.store.update('notebooks/' + S.nid, { diaryVoice: v }).catch(() => {}); diaryVoiceSync(); }
+function diaryVoiceSync() { const b = $('#bDiaryVoice'); if (!b) return; const v = diaryVoice(); b.textContent = v.c ? 'ตอบแบบที่กำหนด' : (DIARY_VOICES.find((x) => x[0] === v.p) || DIARY_VOICES[1])[1]; }
+function diaryVoicePanel() {
+  let p = $('#diaryVoicePanel');
+  if (p && !p.hidden) { p.hidden = true; return; }
+  if (!p) { p = document.createElement('div'); p.id = 'diaryVoicePanel'; p.className = 'dvoice no-ink'; $('#diaryBar').after(p); }
+  const v = diaryVoice();
+  p.innerHTML = '<b>อยากให้สมุดตอบแบบไหน</b><div class="dvl"></div><label><span>หรือบอกเองว่าอยากให้ตอบแบบไหน</span><textarea rows="2" placeholder="เช่น ตอบสั้น ๆ เรียกผมว่าพี่ ใช้ภาษาอังกฤษ หรืออธิบายพร้อมตัวอย่างในชีวิตจริง"></textarea></label><small>เขียนบอกสมุดตรง ๆ บนหน้าก็ได้ เช่น "ตอบสั้นกว่านี้หน่อย" สมุดจะปรับตามต่อจากนั้น</small><div class="dvb"><button type="button" class="btn solid">บันทึก</button><button type="button" class="btn">ปิด</button></div>';
+  const list = p.querySelector('.dvl'); let pick = v.p;
+  for (const [k, name, desc] of DIARY_VOICES) { const b = document.createElement('button'); b.type = 'button'; b.className = k === pick ? 'on' : ''; b.innerHTML = '<b></b><small></small>'; b.querySelector('b').textContent = name; b.querySelector('small').textContent = desc; b.onclick = () => { pick = k; list.querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b)); }; list.appendChild(b); }
+  const ta = p.querySelector('textarea'); ta.value = v.c;
+  const [ok, no] = p.querySelectorAll('.dvb button');
+  ok.onclick = () => { diaryVoiceSet({ p: pick, c: ta.value.trim().slice(0, 300) }); p.hidden = true; toast('สมุดจะตอบแบบนี้ตั้งแต่ข้อความถัดไป', 2200); };
+  no.onclick = () => { p.hidden = true; };
+  p.hidden = false;
+}
 /* how the reply appears: written in slowly like an enchanted diary, or all at once */
 const diaryInstant = () => store_ls.get('tp-diary-style') === 'now';
 function diaryFoldSync() { const bar = $('#diaryBar'), mini = store_ls.get('tp-diary-mini') !== '0'; if (!bar) return; bar.classList.toggle('mini', mini); const f = $('#bDiaryFold'); if (f) { f.setAttribute('aria-expanded', mini ? 'false' : 'true'); f.title = mini ? 'โหมดสมุดตอบได้เปิดอยู่ แตะเพื่อขยายแถบ' : 'แตะเพื่อย่อแถบ'; } }
-function diaryStyleSync() { const b = $('#bDiaryStyle'); if (b) b.textContent = diaryInstant() ? 'ขึ้นทันที' : 'ค่อย ๆ เขียน'; }
+function diaryStyleSync() { const b = $('#bDiaryStyle'); if (b) b.textContent = diaryInstant() ? 'ขึ้นทันที' : 'เขียนลายมือ'; }
 function diarySet(on) {
   if (!S.nb) return; if (on && !needAI('read')) return;
   S.nb = Object.assign({}, S.nb, { diary: !!on }); S.store.update('notebooks/' + S.nid, { diary: !!on }).catch(() => {});
@@ -3341,9 +3377,11 @@ async function diaryAsk() {
   try {
     const log = DIARY.log[pid] || (DIARY.log[pid] = (S.page && S.page.diaryLog) || []);
     const subj = subjName(curSubj()[0], S.nb) || 'ทั่วไป';
-    const prompt = 'You are the enchanted notebook in Burin, a Thai teaching notebook, a little like the diary that writes back in the Harry Potter story but kind, wise and safe. The person writes to you by hand; the image shows what they just wrote. The notebook subject is ' + subj + '.\n'
-      + (log.length ? 'Conversation so far on this page (oldest first):\n' + log.slice(-8).map((m) => (m[0] === 'u' ? 'Writer: ' : 'Notebook: ') + m[1]).join('\n') + '\n' : '')
-      + 'First read the handwriting exactly (Thai or English, with any formulas). Then write back as the notebook: warm, natural and personal, like a thoughtful friend who is also a great teacher. If it is a question about the subject, answer it correctly and simply, step by step if needed, and you may ask one small question back to make them think. If it is a greeting or a feeling, reply kindly and briefly. Match the writer\'s language. Keep it short enough to fit a handwritten note: 1 to 4 short sentences, at most about 70 Thai words. Write formulas in plain text (for example v = u + at, F = ma), never LaTeX or markdown, no emoji, no lists.\n'
+    const V = diaryVoice(), VP = DIARY_VOICES.find((x) => x[0] === V.p) || DIARY_VOICES[0];
+    const prompt = 'You are the notebook in Burin, a Thai teaching notebook that writes back by hand, a little like the diary in the Harry Potter story but kind, wise and safe. The person writes to you by hand; the image shows what they just wrote. The notebook subject is ' + subj + '.\n'
+      + 'How to reply (chosen by the writer): ' + VP[3] + (V.c ? ' The writer also asked: "' + V.c.slice(0, 300) + '". Follow that above everything else, as long as it is safe and kind.' : '') + '\n'
+      + (log.length ? 'Conversation so far on this page (oldest first):\n' + log.slice(-10).map((m) => (m[0] === 'u' ? 'Writer: ' : 'Notebook: ') + m[1]).join('\n') + '\n' : '')
+      + 'First read the handwriting exactly (Thai or English, with any formulas). Then reply the way a real person writes back in a shared notebook: react to what they actually wrote first, carry on from earlier lines when it fits, do not greet again after the first reply, vary how you start, and skip filler such as "เป็นคำถามที่ดีมาก". Keep it short, the way people really write back to each other day to day: usually one or two short sentences (about 10 to 30 Thai words), never a lecture. A real question gets a correct answer in its simplest form; only when they clearly ask you to explain in detail may you go up to about 60 words. Ask at most one question back, and only when it keeps the conversation going naturally. If the writer tells you how to reply (shorter, more formal, what to call them, another language), do that from now on. Match the writer\'s language. Write formulas in plain text (for example v = u + at, F = ma), never LaTeX or markdown, no emoji, no lists.\n'
       + 'If you cannot read it, say so gently and ask them to write a little larger.\n'
       + 'Reply in exactly this format:\n@@READ\n(what they wrote)\n@@REPLY\n(your handwritten answer)';
     const r = await AI.run('read', prompt, { images: [img.blob], maxTokens: 900, cache: false });
@@ -3371,10 +3409,32 @@ function diaryWriteIn(id) {
   const el = itemsEl.querySelector('.item[data-id="' + id + '"]'); if (!el) return;
   const seg = (t) => (typeof Intl !== 'undefined' && Intl.Segmenter ? [...new Intl.Segmenter('th', { granularity: 'grapheme' }).segment(t)].map((x) => x.segment) : Array.from(t));
   /* only the words are rewritten letter by letter: the move and resize buttons on the note stay as they are */
-  let k = 0; const nodes = [], tw = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, { acceptNode: (n) => (n.parentElement.closest('button') ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT) });
+  const nodes = [], tw = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, { acceptNode: (n) => (n.parentElement.closest('button') ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT) });
   while (tw.nextNode()) nodes.push(tw.currentNode);
-  for (const n of nodes) { const sp = document.createElement('span'); sp.innerHTML = seg(n.textContent).map((c) => '<span class="dink" style="animation-delay:' + ((k++) * 55 + Math.random() * 20).toFixed(0) + 'ms">' + esc(c) + '</span>').join(''); n.replaceWith(sp); }
-  el.classList.add('writing'); setTimeout(() => { el.classList.remove('writing'); }, k * 55 + 900);
+  const marks = [];
+  for (const n of nodes) {
+    const sp = document.createElement('span');
+    for (const c of seg(n.textContent)) { const g = document.createElement('span'); g.className = 'dink'; g.textContent = c; sp.appendChild(g); marks.push(g); }
+    n.replaceWith(sp);
+  }
+  /* written like a person: a pen tip moves along, quick inside a word, a breath between words, a longer pause at the end of a sentence */
+  const nib = document.createElement('span'); nib.className = 'dnib'; nib.setAttribute('aria-hidden', 'true');
+  nib.innerHTML = '<svg viewBox="0 0 20 20"><path d="M3 17l2.2-6.4L14.6 1.2a1.6 1.6 0 0 1 2.3 0l1.9 1.9a1.6 1.6 0 0 1 0 2.3L9.4 14.8z M5.2 10.6l4.2 4.2" fill="#F6E7C1" stroke="#2B3A67" stroke-width="1.3" stroke-linejoin="round"/></svg>';
+  el.classList.add('writing');
+  let i = 0;
+  const step = () => {
+    if (!el.isConnected) return;
+    if (i >= marks.length) { nib.remove(); el.classList.remove('writing'); return; }
+    const g = marks[i++], c = g.textContent; g.classList.add('on'); g.after(nib);
+    let ms = 60 + Math.random() * 45 + (c.length > 1 ? 20 : 0);
+    if (c === ' ') ms = 150 + Math.random() * 120;
+    else if (/[,;:]/.test(c)) ms = 260 + Math.random() * 120;
+    else if (/[.!?ฯ]/.test(c) || (c === ' ' && marks[i] && /\s/.test(marks[i].textContent))) ms = 520 + Math.random() * 260;
+    else if (c === '\n') ms = 600;
+    if (Math.random() < 0.04) ms += 220;
+    setTimeout(step, ms);
+  };
+  setTimeout(step, 250);
 }
 function addItem(it) {
   const before = clone((S.page && S.page.items) || []);
@@ -17156,7 +17216,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793259270';
+const BUILD = '1793259658';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
@@ -17489,7 +17549,8 @@ $('#qsAgree').onchange = syncAgree;
 $('#qsOR').onclick = orStart;
 $('#bDiary').onclick = () => diarySet(!diaryOn()); $('#tDiary').onclick = () => diarySet(!diaryOn()); $('#bDiaryOff').onclick = () => diarySet(false);
 $('#bDiaryFold').onclick = () => { store_ls.set('tp-diary-mini', store_ls.get('tp-diary-mini') !== '0' ? '0' : '1'); diaryFoldSync(); };
-$('#bDiaryStyle').onclick = () => { store_ls.set('tp-diary-style', diaryInstant() ? 'ink' : 'now'); diaryStyleSync(); toast(diaryInstant() ? 'คำตอบจะขึ้นทันทีทั้งข้อความ' : 'คำตอบจะค่อย ๆ เขียนทีละตัวเหมือนสมุดมีชีวิต', 2200); };
+$('#bDiaryVoice').onclick = diaryVoicePanel;
+$('#bDiaryStyle').onclick = () => { store_ls.set('tp-diary-style', diaryInstant() ? 'ink' : 'now'); diaryStyleSync(); toast(diaryInstant() ? 'คำตอบจะขึ้นทันทีทั้งข้อความ' : 'คำตอบจะเขียนด้วยลายมือทีละตัว เหมือนมีคนเขียนอยู่', 2200); };
 $('#bSelNb').onclick = () => { LIBV.sel = LIBV.sel ? null : new Set(); renderLibrary(); };
 setTimeout(() => { orUpgradeCheck().catch(() => {}); }, 8000);
 $('#qsORGo').onclick = () => { const c = $('#qsORCode').value.trim(); if (c) orFinish(c, null); };
