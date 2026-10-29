@@ -156,7 +156,8 @@ body.flow:not(.flowlast) #bAddBelow { display: none; }
 #sel { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
 
 .item { position: absolute; box-sizing: border-box; font-family: var(--doc); font-size: 24px; line-height: 1.6; color: #14181F; padding: 6px 10px; border-radius: 6px; -webkit-user-select: text; user-select: text; }
-.item.teacher { background: #FFF3C4; color: #3E2F1C; box-shadow: 0 2px 6px rgba(20, 26, 34, 0.12); }
+.item.teacher { background: rgba(255, 243, 196, 0.8); color: #3E2F1C; box-shadow: 0 1px 4px rgba(20, 26, 34, 0.1); border-radius: 8px; padding: 6px 10px; }
+.item.teacher.svg { background: rgba(255, 250, 230, 0.6); }
 .item.teacher::before { content: "เฉลย"; display: block; font-family: var(--ui); font-size: 13px; font-weight: 700; color: #8A4A0C; }
 .item.svg { padding: 0; }
 .item.svg svg { width: 100%; height: auto; display: block; }
@@ -15902,14 +15903,29 @@ function solMake(q, fresh) {
   return job;
 }
 /* on the page as teacher-only boxes: hidden from students, the projector and shared copies */
-function solPlace(steps, itemId) {
+/* on the page as teacher-only boxes in a small font, in free space below the question, split over new pages when long:
+   hidden from students, the projector and shared copies */
+async function solPlace(steps, itemId) {
   if (!S.page) return;
-  const it = itemId && findItem(itemId); const x = it ? it.x : 80; let y = it ? it.y + 260 : viewSpot(600, 200)[1];
-  const md = steps.map((p) => '**' + (p.n ? p.n + '. ' : '') + p.title + '**\n' + p.md).join('\n\n');
-  const add = [{ id: 'i' + uid(), by: DEV, type: 'text', teacher: true, x, y, w: 820, md }];
-  const fig = steps.find((p) => p.svg); if (fig) add.push({ id: 'i' + uid(), by: DEV, type: 'svg', teacher: true, x: x + 840 > W ? x : x + 840, y: x + 840 > W ? y + 40 + md.length * 0.9 : y, w: 380, svg: fig.svg });
-  const before = clone(S.page.items || []); S.page.items = before.concat(add); pushUndo({ t: 'items', before, after: clone(S.page.items) }); renderItems(); savePage();
-  toast('วางเฉลยละเอียดแล้ว ผู้เรียนและจอฉายไม่เห็น', 2200);
+  const fs = 15, w = 660, maxH = H - 90;
+  const it = itemId && findItem(itemId), ib = it ? itemBox(it) : null;
+  const blocks = steps.map((p) => '**' + (p.n ? p.n + '. ' : '') + p.title + '**\n' + p.md);
+  const chunks = []; let cur = '';
+  for (const b of blocks) { const md = cur ? cur + '\n\n' + b : b; if (cur && (await measureMd(md, w, fs)) + 34 > maxH) { chunks.push(cur); cur = b; } else cur = md; }
+  if (cur) chunks.push(cur);
+  const waitPage = async (pid) => { for (let k = 0; k < 40 && !(S.pid === pid && S.page && Array.isArray(S.page.items)); k++) await new Promise((r) => setTimeout(r, 50)); };
+  let near = ib ? [ib[0], ib[3] + 12] : null, newPages = 0;
+  const put = async (item, h) => {
+    let at = freeSpot(item.w, h, near);
+    if (!at) { const pid = await addPage(); if (!pid) return false; await waitPage(pid); newPages++; at = [40, 40]; }
+    const before = clone(S.page.items || []);
+    setItems(before.concat([Object.assign({ id: 'i' + uid(), by: DEV, teacher: true, x: at[0], y: at[1] }, item)]), before);
+    near = [at[0], at[1] + h + 10]; return true;
+  };
+  for (const md of chunks) { const h = Math.min(maxH, (await measureMd(md, w, fs)) + 34); if (!(await put({ type: 'text', w, fs, md }, h))) return; }
+  const fig = steps.find((p) => p.svg);
+  if (fig) { const [fw, fh] = figSize(fig.svg, 300); await put({ type: 'svg', w: fw, svg: fig.svg }, fh + 24); }
+  toast(newPages ? 'วางเฉลยละเอียดแล้ว ต่อไปอีก ' + newPages + ' หน้าใหม่ ผู้เรียนและจอผู้ชมไม่เห็น' : 'วางเฉลยละเอียดใต้โจทย์แล้ว ผู้เรียนและจอผู้ชมไม่เห็น', 2600);
 }
 /* ----- set library and editor (teacher) ----- */
 /* ----- many sets: search by name, chapter or any question text; pin favourites; filter to this notebook; sorted by last use.
@@ -17004,7 +17020,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793254739';
+const BUILD = '1793254804';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
