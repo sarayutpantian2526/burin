@@ -910,6 +910,7 @@ body.present .peekcard { display: none !important; }
 
 body.lang-en .item.teacher::before { content: "Answer"; }
 .langtop { position: absolute; right: 14px; top: 14px; }
+.langtop .langpick { max-width: 190px; min-height: 36px; font-size: 13.5px; }
 .startsheet .panel { position: relative; }
 
 .subjpick { display: flex; flex-direction: column; gap: 6px; }
@@ -1490,7 +1491,7 @@ body.role-student .scnpill .sbtns button[data-s="back"], body.role-student .scnp
 
 <div class="sheet startsheet" id="startSheet" hidden>
   <div class="panel" role="dialog" aria-label="เริ่มใช้ Burin">
-    <span class="seg langtop" id="stLang" role="group" aria-label="ภาษา Language"><button data-l="th">ไทย</button><button data-l="en">English</button></span>
+    <span class="langtop" id="stLang" role="group" aria-label="ภาษา Language"></span>
     <div class="starthead"><span class="logo" id="startLogo" aria-hidden="true"></span><div><h2>Burin</h2><span>สมุดเรียนและสอนทุกสาขา สำหรับครูและผู้เรียน</span></div></div>
     <button class="startbtn main" id="stScan"><b>สแกน QR</b><span>เข้าห้องเรียนสด เปิดการบ้าน หรือรับเลคเชอร์จากผู้สอน</span></button>
     <button class="startbtn" id="stCode"><b>ใส่รหัสห้องเรียน</b><span>รหัส 6 ตัวที่ผู้สอนบอก</span></button>
@@ -2411,8 +2412,9 @@ function onStoreError(e) {
 
 /* ---------- languages: the app's buttons and labels in Thai or English; what AI writes can be in many languages ---------- */
 const LANGS = [['th', 'ไทย', 'Thai'], ['en', 'English', 'English'], ['zh', '中文', 'Simplified Chinese'], ['ja', '日本語', 'Japanese'], ['ko', '한국어', 'Korean'], ['vi', 'Tiếng Việt', 'Vietnamese'], ['id', 'Bahasa Indonesia', 'Indonesian'], ['ms', 'Bahasa Melayu', 'Malay'], ['lo', 'ລາວ', 'Lao'], ['my', 'မြန်မာ', 'Burmese'], ['km', 'ខ្មែរ', 'Khmer'], ['fr', 'Français', 'French'], ['de', 'Deutsch', 'German'], ['es', 'Español', 'Spanish'], ['ru', 'Русский', 'Russian'], ['ar', 'العربية', 'Arabic'], ['hi', 'हिन्दी', 'Hindi']];
-const UI_LANG = store_ls.get('tp-lang') === 'en' ? 'en' : 'th';
-const LOC = UI_LANG === 'en' ? 'en-GB' : 'th-TH';
+/* the app's own language: Thai, English, or any language in the list (other languages are translated once by AI and kept) */
+const UI_LANG = (() => { const v = store_ls.get('tp-lang') || 'th'; return LANGS.some((l) => l[0] === v) ? v : 'th'; })();
+const LOC = UI_LANG === 'th' ? 'th-TH' : UI_LANG === 'en' ? 'en-GB' : UI_LANG;
 const langName = (k) => (LANGS.find((l) => l[0] === k) || LANGS[0])[2];
 /* the language AI writes in (slides, questions, explanations, advice): follows the app language unless set */
 function contentLang(over) { const v = over || store_ls.get('tp-clang') || 'auto'; return v === 'auto' ? UI_LANG : v; }
@@ -2429,6 +2431,9 @@ function langDirective(prompt, o) {
 const I18N = { dict: null, re: null, keys: null, skip: '.item, .exq, .exopt > span, mjx-container, #deckView, .s, textarea, input, [data-c], .shelf .nbname, .handopt span, .pdfchip', busy: false };
 function i18nLoad() {
   try { I18N.dict = JSON.parse(document.getElementById('i18nEn').textContent); } catch (e) { I18N.dict = {}; }
+  I18N.en = Object.assign({}, I18N.dict);
+  /* another language: its translations over the English ones (anything not translated yet shows in English) */
+  if (UI_LANG !== 'en') { try { const x = JSON.parse(store_ls.get('tp-i18n-' + UI_LANG) || 'null'); if (x && x.d) { Object.assign(I18N.dict, x.d); I18N.missing = Object.keys(I18N.en).filter((k) => !(k in x.d)).length; } else I18N.missing = Object.keys(I18N.en).length; } catch (e) { I18N.missing = Object.keys(I18N.en).length; } }
   I18N.trim = new Map(); for (const [k, v] of Object.entries(I18N.dict)) { const t = k.trim(); if (t && !I18N.trim.has(t)) I18N.trim.set(t, v.trim()); }
   const frags = Object.keys(I18N.dict).filter((k) => k.trim().length >= 2).sort((a, b) => b.length - a.length);
   I18N.re = frags.length ? new RegExp(frags.map((k) => k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|'), 'g') : null;
@@ -2456,8 +2461,8 @@ function i18nNode(root) {
   for (let c = root.firstChild; c; c = c.nextSibling) i18nNode(c);
 }
 function i18nStart() {
-  if (UI_LANG !== 'en') return;
-  document.documentElement.lang = 'en'; document.body.classList.add('lang-en');
+  if (UI_LANG === 'th') return;
+  document.documentElement.lang = UI_LANG; document.body.classList.add('lang-en'); if (UI_LANG === 'ar') document.documentElement.dir = 'auto';
   i18nLoad(); i18nNode(document.body);
   new MutationObserver((ms) => {
     for (const m of ms) {
@@ -2467,7 +2472,7 @@ function i18nStart() {
     }
   }).observe(document.body, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ['aria-label', 'title', 'placeholder'] });
 }
-const tr = (th, en) => (UI_LANG === 'en' ? en : th);
+const tr = (th, en) => (UI_LANG === 'th' ? th : en);
 function langSelect(id, val, withAuto, autoLabel) {
   const s = document.createElement('select'); s.id = id; s.className = 'traysel';
   if (withAuto) { const o = document.createElement('option'); o.value = 'auto'; o.textContent = autoLabel; s.appendChild(o); }
@@ -2476,13 +2481,50 @@ function langSelect(id, val, withAuto, autoLabel) {
 }
 function renderLangSettings() {
   const box = $('#langBox'); if (!box) return; box.innerHTML = '';
-  const seg = exEl('span', 'seg', '<button data-l="th">ไทย</button><button data-l="en">English</button>');
-  seg.querySelectorAll('button').forEach((b) => { b.setAttribute('aria-pressed', b.dataset.l === UI_LANG ? 'true' : 'false'); b.onclick = () => setUiLang(b.dataset.l); });
-  const r1 = exEl('div', 'switch', '<span><b>ภาษาของปุ่มและเมนู</b><small>ไทย หรือ English</small></span>'); r1.appendChild(seg); box.appendChild(r1);
+  const r1 = exEl('label', 'field', '<span>ภาษาของปุ่มและเมนู Language</span>'); const s1 = uiLangSelect('uiLangSel'); r1.appendChild(s1); box.appendChild(r1);
+  if (UI_LANG !== 'th' && UI_LANG !== 'en' && I18N.missing) { const n = exEl('div', 'note small', 'ยังมีข้อความ ' + I18N.missing + ' รายการที่แสดงเป็นภาษาอังกฤษ'); const b = exEl('button', 'btn', 'แปลส่วนที่เหลือด้วย AI'); b.type = 'button'; b.onclick = () => uiTranslate(UI_LANG, true); n.appendChild(b); box.appendChild(n); }
   const r2 = exEl('label', 'field', '<span>ภาษาของงานที่ AI สร้าง เช่น สไลด์ โจทย์ คำอธิบาย และคำแนะนำ</span>'); const s2 = langSelect('cLangSel', store_ls.get('tp-clang') || 'auto', true, 'ตามภาษาของแอป'); s2.onchange = () => store_ls.set('tp-clang', s2.value); r2.appendChild(s2); box.appendChild(r2);
   const r3 = exEl('label', 'field', '<span>ภาษาของลายมือที่จะแปลง</span>'); const s3 = langSelect('hLangSel', handLang(), true, 'ตรวจเองอัตโนมัติ (เขียนหลายภาษาปนกันได้)'); s3.onchange = () => store_ls.set('tp-hlang', s3.value); r3.appendChild(s3); box.appendChild(r3);
 }
-function setUiLang(l) { if (l === UI_LANG) return; store_ls.set('tp-lang', l); location.reload(); }
+/* one list of every language, each in its own script, so anyone can find theirs */
+function uiLangSelect(id) {
+  const s = document.createElement('select'); s.id = id; s.className = 'traysel langpick'; s.setAttribute('aria-label', 'ภาษาของปุ่มและเมนู Language');
+  for (const [k, n, en] of LANGS) { const o = document.createElement('option'); o.value = k; o.textContent = n + (n !== en ? '  ' + en : ''); s.appendChild(o); }
+  s.value = UI_LANG; s.onchange = () => setUiLang(s.value); return s;
+}
+function setUiLang(l) {
+  if (l === UI_LANG) return;
+  if (l === 'th' || l === 'en' || store_ls.get('tp-i18n-' + l)) { store_ls.set('tp-lang', l); location.reload(); return; }
+  uiTranslate(l, false);
+}
+/* translate the app's words into a new language once, with the connected AI; kept on this device and in the account */
+async function uiTranslate(l, more) {
+  const name = langName(l);
+  /* translated before on another device of this account */
+  if (!more) { try { const d = S.store && S.store.kind === 'cloud' ? await S.store.get('settings/i18n-' + l) : null; if (d && d.d) { store_ls.set('tp-i18n-' + l, JSON.stringify({ d: d.d })); store_ls.set('tp-lang', l); location.reload(); return; } } catch (e) { /* translate here */ } }
+  if (!AI.anyReady()) { toast('การเปลี่ยนเป็น' + name + ' ต้องเชื่อมต่อ AI ครั้งแรกครั้งเดียว เพื่อแปลปุ่มและเมนู', 4500); openAISetup(); return; }
+  let en = {}; try { en = JSON.parse(document.getElementById('i18nEn').textContent); } catch (e) { return; }
+  let have = {}; try { have = (JSON.parse(store_ls.get('tp-i18n-' + l) || 'null') || {}).d || {}; } catch (e) { have = {}; }
+  const keys = Object.keys(en).filter((k) => !(k in have));
+  const host = document.createElement('div'); host.className = 'sheet'; host.innerHTML = '<div class="panel" role="dialog" aria-label="แปลภาษา"><h2>' + esc(name) + '</h2><div class="tx"></div></div>'; document.body.appendChild(host);
+  const B = waitCard(host.querySelector('.tx'), 'กำลังแปลปุ่มและเมนูเป็น' + name + ' ครั้งเดียว ใช้เวลาราว 1 ถึง 3 นาที', ['แปลส่วนที่ 1', 'แปลส่วนที่เหลือ', 'บันทึก']);
+  const size = 180; let done = 0, failed = 0;
+  try {
+    for (let i = 0; i < keys.length; i += size) {
+      const part = keys.slice(i, i + size), src = {}; part.forEach((k, j) => { src[j] = en[k]; });
+      const prompt = 'Translate the user-interface strings of a teaching notebook app from English into ' + name + '. Keep them short like buttons and menu labels, natural for teachers and students in that language. Keep numbers, symbols, letters A B C D, brand names (Burin, Google, OpenRouter, Gemini, Claude, ChatGPT, Supabase, PDF, QR, AI) and placeholders unchanged. Keep leading and trailing spaces exactly. Reply with JSON only: an object with the same keys and the translated strings.\n' + JSON.stringify(src);
+      try {
+        const r = await AI.run('gen', prompt, { maxTokens: 12000, cache: false, lang: 'th' });
+        const m = String(r.text || '').match(/\{[\s\S]*\}/); const out = m ? JSON.parse(m[0]) : {};
+        part.forEach((k, j) => { const v = out[j]; if (typeof v === 'string' && v.trim()) have[k] = v; });
+      } catch (e) { failed++; if (failed > 2) throw e; }
+      done += part.length; B.step(done >= keys.length ? 2 : 1);
+      try { store_ls.set('tp-i18n-' + l, JSON.stringify({ d: have })); } catch (e) { /* storage full */ }
+    }
+    if (S.store && S.store.kind === 'cloud') await Promise.resolve(S.store.set('settings/i18n-' + l, { d: have, at: now() })).catch(() => {});
+    B.stop(); store_ls.set('tp-lang', l); location.reload();
+  } catch (e) { B.stop(); host.remove(); toast('แปลไม่สำเร็จ ' + aiErr(e), 4000); }
+}
 
 /* ---------- subjects: every notebook has a subject; AI prompts and checks follow it ---------- */
 const SUBJECTS = [
@@ -2516,7 +2558,7 @@ function subjOf(nb) {
 }
 const curSubj = () => subjOf(S.nb);
 const isPhys = () => curSubj()[0] === 'phys';
-const L10 = (t) => (UI_LANG === 'en' && I18N.dict && I18N.dict[t]) || t;
+const L10 = (t) => (UI_LANG !== 'th' && I18N.dict && I18N.dict[t]) || t;
 const subjName = (k, nb) => (k === 'other' ? subjOf(nb)[1] : L10((SUBJECTS.find((x) => x[0] === k) || SUBJECTS[0])[1]));
 function subjectize(prompt) {
   const sj = curSubj(); if (sj[0] === 'phys') return prompt;
@@ -12556,7 +12598,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793247288';
+const BUILD = '1793247393';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
@@ -13356,7 +13398,7 @@ document.addEventListener('visibilitychange', () => { if (document.hidden) { sav
 /* ---------- boot ---------- */
 async function boot() {
   i18nStart();
-  document.querySelectorAll('#stLang button').forEach((b) => { b.setAttribute('aria-pressed', b.dataset.l === UI_LANG ? 'true' : 'false'); b.onclick = () => setUiLang(b.dataset.l); });
+  { const sl = $('#stLang'); if (sl) sl.appendChild(uiLangSelect('stLangSel')); }
   S.color = okHex(store_ls.get('tp-color')) ? store_ls.get('tp-color') : S.recent[0];
   renderTools(); renderLevels(); syncToggles(); fit(); updUndo();
   const C = window.claude && typeof window.claude.use === 'function' ? window.claude : null;
