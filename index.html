@@ -773,6 +773,8 @@ body.nodesk #tTitle::after { content: ''; }
 .diarybar { position: absolute; z-index: 6; left: 12px; bottom: 12px; min-height: 44px; box-sizing: border-box; display: flex; align-items: center; gap: 8px; max-width: calc(100% - 24px); padding: 5px 6px 5px 12px; border-radius: 999px; background: #2B3A67; color: #F6E7C1; box-shadow: 0 6px 18px rgba(20,26,34,0.22); font-size: 13px; white-space: nowrap; }
 .diarybar svg { flex: 0 0 18px; width: 18px; height: 18px; }
 .diarybar span { opacity: 0.85; overflow: hidden; text-overflow: ellipsis; }
+.diarybar button.dstyle { background: transparent; color: #F6E7C1; border: 1px solid rgba(246,231,193,0.55); font-weight: 600; }
+.item .tsize.br { top: auto; bottom: -16px; }
 .diarybar button { flex: 0 0 auto; border: 0; border-radius: 999px; padding: 6px 12px; min-height: 30px; background: #F6E7C1; color: #2B3A67; font: inherit; font-weight: 700; cursor: pointer; }
 body.diary #viewport { box-shadow: inset 0 0 0 3px rgba(201,168,106,0.55); }
 body.focus .diarybar, body.present .diarybar { display: none; }
@@ -1358,7 +1360,7 @@ body.role-student .scnpill .sbtns button[data-s="back"], body.role-student .scnp
       </div>
     </aside>
 
-    <div class="diarybar no-ink" id="diaryBar" hidden role="status"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M15.5 2.8c-4.6.6-8.3 4.6-9.6 10.4l-.9 3.9 M15.5 2.8c.4 3.8-2.4 7.6-7.3 8.6 M5.3 13.6c1.8.2 3.4-.4 4.6-1.6 M3.5 17.2h7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><b>โหมดสมุดตอบได้</b><span>เขียนถึงสมุด แล้ววางปากกาสักครู่ สมุดจะเขียนตอบ</span><button type="button" id="bDiaryOff">ปิดโหมด</button></div>
+    <div class="diarybar no-ink" id="diaryBar" hidden role="status"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M15.5 2.8c-4.6.6-8.3 4.6-9.6 10.4l-.9 3.9 M15.5 2.8c.4 3.8-2.4 7.6-7.3 8.6 M5.3 13.6c1.8.2 3.4-.4 4.6-1.6 M3.5 17.2h7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><b>โหมดสมุดตอบได้</b><span>เขียนถึงสมุด แล้ววางปากกาสักครู่ สมุดจะเขียนตอบ</span><button type="button" id="bDiaryStyle" class="dstyle" title="แตะเพื่อสลับวิธีที่คำตอบปรากฏ">ค่อย ๆ เขียน</button><button type="button" id="bDiaryOff">ปิดโหมด</button></div>
     <div id="viewport">
       <div id="wrap">
         <div class="fpeek" id="peekPrev" hidden aria-hidden="true"></div>
@@ -3233,7 +3235,7 @@ function buildItemEl(it, forExport) {
   else if (it.type === 'life') { buildLife(d, it, forExport); }
   else if (it.type === 'lab') { buildLab(d, it, forExport); }
   else { d.innerHTML = mdToHtml(it.md || ''); if (it.hand && HAND_IDS.includes(it.hand)) { d.classList.add('hand', 'hand-' + it.hand); if (okHex(it.ink)) d.style.color = it.ink; } }
-  if (!forExport && !it.lock && it.by !== 'teacher' && ['graph', 'sim', 'scene', 'lab', 'video', 'svg'].includes(it.type)) { const z = document.createElement('button'); z.type = 'button'; z.className = 'tsize'; z.setAttribute('aria-label', 'ลากเพื่อย่อหรือขยายกล่อง'); z.title = 'ลากเพื่อย่อหรือขยาย'; z.innerHTML = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M8 4h8v8 M16 4L4 16 M4 8v8h8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>'; d.appendChild(z); }
+  if (!forExport && !it.lock && it.by !== 'teacher' && (['graph', 'sim', 'scene', 'lab', 'video', 'svg'].includes(it.type) || it.diary)) { const z = document.createElement('button'); z.type = 'button'; z.className = it.diary ? 'tsize br' : 'tsize'; z.setAttribute('aria-label', 'ลากเพื่อย่อหรือขยายกล่อง'); z.title = 'ลากเพื่อย่อหรือขยาย'; z.innerHTML = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M8 4h8v8 M16 4L4 16 M4 8v8h8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>'; d.appendChild(z); }
   if (!forExport && !it.lock && it.by !== 'teacher' && (!it.type || it.type === 'text' || it.type === 'img' || it.type === 'svg' || ['graph', 'sim', 'scene', 'lab', 'video'].includes(it.type))) { const g = document.createElement('button'); g.type = 'button'; g.className = 'tgrab'; g.setAttribute('aria-label', 'จับเพื่อเลือก ย้าย หรือลบ'); g.innerHTML = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 2.5v15 M2.5 10h15 M10 2.5l-2.2 2.2 M10 2.5l2.2 2.2 M10 17.5l-2.2-2.2 M10 17.5l2.2-2.2 M2.5 10l2.2-2.2 M2.5 10l2.2 2.2 M17.5 10l-2.2-2.2 M17.5 10l-2.2 2.2" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>'; d.appendChild(g); }
   if (!forExport && it.qref && !isStudentSide()) {
     const kb = document.createElement('button'); kb.type = 'button'; kb.className = 'qkey no-ink'; kb.textContent = 'เฉลย'; kb.title = 'ดูเฉลยข้อนี้ เห็นเฉพาะเครื่องนี้ ผู้เรียนและจอฉายไม่เห็น';
@@ -3304,9 +3306,12 @@ const DIARY = { on: false, pending: [], t: null, busy: false, log: {} };
 function diarySync() {
   const on = diaryOn();
   for (const id of ['#bDiary', '#tDiary']) { const b = $(id); if (b) b.setAttribute('aria-pressed', on ? 'true' : 'false'); }
-  const bar = $('#diaryBar'); if (bar) bar.hidden = !on; document.body.classList.toggle('diary', on);
+  const bar = $('#diaryBar'); if (bar) bar.hidden = !on; diaryStyleSync(); document.body.classList.toggle('diary', on);
 }
 function diaryOn() { return !!(S.nb && S.nb.diary); }
+/* how the reply appears: written in slowly like an enchanted diary, or all at once */
+const diaryInstant = () => store_ls.get('tp-diary-style') === 'now';
+function diaryStyleSync() { const b = $('#bDiaryStyle'); if (b) b.textContent = diaryInstant() ? 'ขึ้นทันที' : 'ค่อย ๆ เขียน'; }
 function diarySet(on) {
   if (!S.nb) return; if (on && !needAI('read')) return;
   S.nb = Object.assign({}, S.nb, { diary: !!on }); S.store.update('notebooks/' + S.nid, { diary: !!on }).catch(() => {});
@@ -3342,14 +3347,16 @@ async function diaryAsk() {
     dots.remove();
     if (!text || S.pid !== pid) return;
     log.push(['u', ((read && read.text) || '').slice(0, 300)], ['a', text]); if (log.length > 30) log.splice(0, log.length - 30);
-    const w = clamp(Math.max(360, box[2] - box[0]), 360, Math.min(720, W - 40)), fs = 26;
-    let at = [clamp(box[0], 20, W - w - 20), box[3] + 10];
-    const h = estTextH(text, w, fs) * 1.25;
-    if (at[1] + h > H - 20 || (typeof freeSpot === 'function' && occupiedBoxes().some((b) => at[0] < b[2] && at[0] + w > b[0] && at[1] < b[3] && at[1] + h > b[1]))) { const f = freeSpot(w, h, [box[0], box[3] + 10]); if (f) at = f; }
+    /* a full-width note across the page, placed where there is no writing yet */
+    const fs = 26, w = Math.round(clamp(W - 80, 320, 1100));
+    const h = estTextH(text, w, fs) * 1.25 + 10;
+    let at = [Math.round((W - w) / 2), box[3] + 16];
+    const hit = (x, y) => occupiedBoxes().some((b) => x < b[2] + 10 && x + w > b[0] - 10 && y < b[3] + 10 && y + h > b[1] - 10);
+    if (at[1] + h > H - 20 || hit(at[0], at[1])) { const f = freeSpot(w, h, [at[0], box[3] + 16]); if (f) at = f; }
     const ink = '#2B3A67', id = 'i' + uid();
     addItem({ id, type: 'text', x: Math.round(at[0]), y: Math.round(at[1]), w: Math.round(w), md: text, fs, hand: DIARY_HAND(), ink, diary: true });
     S.page = Object.assign({}, S.page, { diaryLog: log }); savePage();
-    requestAnimationFrame(() => diaryWriteIn(id));
+    if (!diaryInstant()) requestAnimationFrame(() => diaryWriteIn(id));
   } catch (e) { dots.remove(); toast('สมุดยังตอบไม่ได้ ' + aiErr(e), 3500); }
   finally { DIARY.busy = false; if (DIARY.pending.length) DIARY.t = setTimeout(diaryAsk, 1500); }
 }
@@ -3358,8 +3365,10 @@ const DIARY_HAND = () => (HAND_IDS.includes(S.handDefault) ? S.handDefault : 'pe
 function diaryWriteIn(id) {
   const el = itemsEl.querySelector('.item[data-id="' + id + '"]'); if (!el) return;
   const seg = (t) => (typeof Intl !== 'undefined' && Intl.Segmenter ? [...new Intl.Segmenter('th', { granularity: 'grapheme' }).segment(t)].map((x) => x.segment) : Array.from(t));
-  let k = 0; const blocks = el.querySelectorAll('p, li'); const list = blocks.length ? [...blocks] : [el];
-  for (const b of list) { const g = seg(b.textContent); b.innerHTML = g.map((c) => '<span class="dink" style="animation-delay:' + ((k++) * 55 + Math.random() * 20).toFixed(0) + 'ms">' + esc(c) + '</span>').join(''); }
+  /* only the words are rewritten letter by letter: the move and resize buttons on the note stay as they are */
+  let k = 0; const nodes = [], tw = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, { acceptNode: (n) => (n.parentElement.closest('button') ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT) });
+  while (tw.nextNode()) nodes.push(tw.currentNode);
+  for (const n of nodes) { const sp = document.createElement('span'); sp.innerHTML = seg(n.textContent).map((c) => '<span class="dink" style="animation-delay:' + ((k++) * 55 + Math.random() * 20).toFixed(0) + 'ms">' + esc(c) + '</span>').join(''); n.replaceWith(sp); }
   el.classList.add('writing'); setTimeout(() => { el.classList.remove('writing'); }, k * 55 + 900);
 }
 function addItem(it) {
@@ -3464,7 +3473,7 @@ function onDown(e) {
     if (it) {
       e.preventDefault(); closePops(); try { vp.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
       selectItem(it); const pt = { id: e.pointerId, type: e.pointerType, sx: e.clientX, sy: e.clientY, lx: e.clientX, ly: e.clientY, t0: now(), moved: 0 };
-      startScale(pt, 4); P.set(e.pointerId, pt); return;
+      startScale(pt, it.diary ? 2 : 4); P.set(e.pointerId, pt); return;
     }
   }
   const grab = !S.present && (e.target.closest('.item .tgrab') || (e.target.closest('.item.live .vbar, .item.live .gh') && !e.target.closest('input,button,select,textarea')));
@@ -17142,7 +17151,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793258226';
+const BUILD = '1793258969';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
@@ -17474,6 +17483,7 @@ $('#bAIConnect').onclick = () => { openAISetup(); };
 $('#qsAgree').onchange = syncAgree;
 $('#qsOR').onclick = orStart;
 $('#bDiary').onclick = () => diarySet(!diaryOn()); $('#tDiary').onclick = () => diarySet(!diaryOn()); $('#bDiaryOff').onclick = () => diarySet(false);
+$('#bDiaryStyle').onclick = () => { store_ls.set('tp-diary-style', diaryInstant() ? 'ink' : 'now'); diaryStyleSync(); toast(diaryInstant() ? 'คำตอบจะขึ้นทันทีทั้งข้อความ' : 'คำตอบจะค่อย ๆ เขียนทีละตัวเหมือนสมุดมีชีวิต', 2200); };
 $('#bSelNb').onclick = () => { LIBV.sel = LIBV.sel ? null : new Set(); renderLibrary(); };
 setTimeout(() => { orUpgradeCheck().catch(() => {}); }, 8000);
 $('#qsORGo').onclick = () => { const c = $('#qsORCode').value.trim(); if (c) orFinish(c, null); };
