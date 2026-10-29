@@ -4518,7 +4518,7 @@ function waitCard(el, title, steps, opt) {
     if (!box.isConnected) { clearInterval(tick); return; }
     const sec = Math.round((now() - t0) / 1000); box.querySelector('.bt').textContent = sec + ' วินาที';
     const h = box.querySelector('.bhint');
-    h.textContent = sec >= 40 ? 'นานกว่าปกติมาก อาจติดที่เน็ตหรือ AI ไม่ว่าง กดยกเลิกแล้วลองใหม่ได้' : sec >= 12 ? (opt.slowHint || 'AI แบบใช้ฟรีอาจตอบช้าเมื่อมีคนใช้มาก รออีกสักครู่') : '';
+    h.textContent = sec >= 40 ? 'นานกว่าปกติมาก อาจติดที่เน็ตหรือผู้ให้บริการ AI ไม่ว่าง กดยกเลิกแล้วลองใหม่ได้' : sec >= 12 ? (opt.slowHint || aiSlowHint()) : '';
   }, 500);
   function stop() { dead = true; clearInterval(tick); }
   return { step(i) { cur = i; paint(); }, stop, get cancelled() { return cancelled; }, get dead() { return dead; } };
@@ -4543,10 +4543,17 @@ async function orFreeModel(key) {
   for (const re of pref) { const m = ok.find((x) => re.test(x.id)); if (m) return m.id; }
   return '';
 }
-/* a free OpenRouter account that later adds credit gets a stronger model, checked at most once a day */
-async function orUpgradeCheck() {
+/* what the wait message says depends on the model really in use: only a free model is called free */
+function aiModelNow() { const K = AI.cfg && AI.cfg.key; const V = K && (KEY_VENDORS[K.vendor] || KEY_VENDORS.other); return K && K.key ? (K.model || (V && V.model) || '') : ''; }
+function aiIsFree() { return /:free$/.test(aiModelNow()); }
+function aiSlowHint() {
+  if (aiIsFree()) { orUpgradeCheck(true); return 'ตอนนี้ใช้โมเดลฟรี (' + aiModelNow() + ') ซึ่งตอบช้าเมื่อมีคนใช้มาก ถ้าเติมเงินแล้ว ระบบจะเปลี่ยนเป็นโมเดลแบบเสียเงินให้เอง'; }
+  const m = aiModelNow(); return 'AI กำลังคิด' + (m ? ' (' + m + ')' : '') + ' งานยาว งานที่มีรูป หรือเฉลยหลายขั้นใช้เวลานานขึ้น รออีกสักครู่';
+}
+/* a free OpenRouter account that later adds credit gets a stronger model, checked at most once a day (or right away when a free model is slow) */
+async function orUpgradeCheck(force) {
   const K = AI.cfg.key; if (!K || K.vendor !== 'openrouter' || !K.key || !/:free$/.test(K.model || '')) return;
-  const last = +(store_ls.get('tp-orchk') || 0); if (Date.now() - last < 864e5) return; store_ls.set('tp-orchk', String(Date.now()));
+  const last = +(store_ls.get('tp-orchk') || 0); if (Date.now() - last < (force ? 6e5 : 864e5)) return; store_ls.set('tp-orchk', String(Date.now()));
   const info = await orAccount(K.key); if (info.free) return;
   try { const m = await pickModel('openrouter', '', K.key, true); if (m && !/:free$/.test(m)) { K.model = m; AI.save(); toast('บัญชี AI เติมเงินแล้ว เปลี่ยนไปใช้ ' + m + ' ให้แล้ว', 3500); } } catch (e) { /* keep the free model */ }
 }
@@ -4679,7 +4686,7 @@ function aiErr(e) {
   if (code === 'bad_key') return 'คีย์ API ไม่ถูกต้องหรือหมดสิทธิ์ ตรวจที่เมนู หัวข้อผู้ช่วย AI';
   if (code === 'bad_model') return 'ไม่พบโมเดลนี้ ตรวจชื่อโมเดลที่เมนู หัวข้อผู้ช่วย AI' + (e.message ? ' (' + String(e.message).slice(0, 80) + ')' : '');
   if (code === 'ai_off') return 'งานนี้ปิด AI ไว้ เปิดได้ที่เมนู หัวข้อผู้ช่วย AI';
-  if (code === 'rate_limited') return 'ใช้ครบโควตาชั่วคราวของคีย์นี้ (แบบใช้ฟรีจำกัดจำนวนครั้งต่อนาทีและต่อวัน) รอสักครู่แล้วลองอีกครั้ง' + (e.message ? ' : ' + String(e.message).slice(0, 120) : '');
+  if (code === 'rate_limited') return (aiIsFree() ? 'ใช้ครบโควตาชั่วคราวของโมเดลฟรี (จำกัดจำนวนครั้งต่อนาทีและต่อวัน)' : 'ผู้ให้บริการ AI ขอให้ส่งคำขอช้าลงชั่วคราว') + ' รอสักครู่แล้วลองอีกครั้ง' + (e.message ? ' : ' + String(e.message).slice(0, 120) : '');
   if (/^http_5\d\d$/.test(code || '')) return 'ผู้ให้บริการ AI ไม่ว่างชั่วคราว (' + code.replace('http_', '') + ') ระบบลองซ้ำและลองโมเดลอื่นให้แล้วแต่ยังไม่ว่าง รอสักครู่แล้วลองใหม่' + (e.message ? ' : ' + String(e.message).slice(0, 120) : '');
   if (code === 'images_unavailable') return 'มุมมองนี้ส่งภาพให้ AI อ่านไม่ได้';
   if (code === 'invalid_json') return 'AI ตอบกลับไม่ครบ ลองอีกครั้ง';
@@ -17032,7 +17039,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793254946';
+const BUILD = '1793255346';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
