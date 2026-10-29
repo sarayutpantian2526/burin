@@ -3226,6 +3226,17 @@ function visibleItems() { const a = (S.page && S.page.items) || []; return S.pre
 let editing = null;
 function renderItems() {
   if (editing) return;
+  /* replies written before the full-width layout are opened out across the page once */
+  if (S.page && S.page.items && S.page.items.some((it) => it.diary && !it.dv) && !isStudentSide()) {
+    const fw = Math.round(clamp(W - 80, 320, 1100)), items = S.page.items.map((it) => Object.assign({}, it));
+    let bottom = -1e9;
+    for (const it of items.filter((x) => x.diary && !x.dv).sort((a, b) => a.y - b.y)) {
+      it.x = 40; it.w = fw; it.dv = 2; it.y = Math.round(Math.max(it.y, bottom + 12));
+      bottom = it.y + estTextH(it.md || '', fw, it.fs || 26) * 1.25;
+    }
+    S.page = Object.assign({}, S.page, { items });
+    savePage();
+  }
   if (typeof refreshCurThumb === 'function') refreshCurThumb();
   /* reuse the element of every item whose content did not change; only its position and width are updated.
      Pictures and videos are then not reloaded each time something on the page is saved or moved. */
@@ -3421,7 +3432,7 @@ async function diaryAsk() {
     const hit = (x, y) => occupiedBoxes().some((b) => x < b[2] + 10 && x + w > b[0] - 10 && y < b[3] + 10 && y + h > b[1] - 10);
     if (at[1] + h > H - 20 || hit(at[0], at[1])) { const f = freeSpot(w, h, [at[0], box[3] + 16]); if (f) at = f; }
     const ink = '#2B3A67', id = 'i' + uid();
-    addItem({ id, type: 'text', x: Math.round(at[0]), y: Math.round(at[1]), w: Math.round(w), md: text, fs, hand: DIARY_HAND(), ink, diary: true });
+    addItem({ id, type: 'text', x: Math.round(at[0]), y: Math.round(at[1]), w: Math.round(w), md: text, fs, hand: DIARY_HAND(), ink, diary: true, dv: 2 });
     S.page = Object.assign({}, S.page, { diaryLog: log }); savePage();
     if (!diaryInstant()) requestAnimationFrame(() => diaryWriteIn(id));
   } catch (e) { dots.remove(); toast('สมุดยังตอบไม่ได้ ' + aiErr(e), 3500); }
@@ -17281,7 +17292,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793262019';
+const BUILD = '1793262334';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
