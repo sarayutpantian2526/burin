@@ -773,6 +773,10 @@ body.nodesk #tTitle::after { content: ''; }
 .diarybar { position: absolute; z-index: 6; left: 12px; bottom: 12px; min-height: 44px; box-sizing: border-box; display: flex; align-items: center; gap: 8px; max-width: calc(100% - 24px); padding: 5px 6px 5px 12px; border-radius: 999px; background: #2B3A67; color: #F6E7C1; box-shadow: 0 6px 18px rgba(20,26,34,0.22); font-size: 13px; white-space: nowrap; }
 .diarybar svg { flex: 0 0 18px; width: 18px; height: 18px; }
 .diarybar span { opacity: 0.85; overflow: hidden; text-overflow: ellipsis; }
+.diarybar button.dfold { display: flex; align-items: center; gap: 8px; background: transparent; color: inherit; padding: 4px 2px; min-height: 34px; }
+.diarybar.mini { padding: 5px; gap: 0; }
+.diarybar.mini button.dfold { padding: 4px 7px; }
+.diarybar.mini b, .diarybar.mini span, .diarybar.mini #bDiaryStyle, .diarybar.mini #bDiaryOff { display: none; }
 .diarybar button.dstyle { background: transparent; color: #F6E7C1; border: 1px solid rgba(246,231,193,0.55); font-weight: 600; }
 .item .tsize.br { top: auto; bottom: -16px; }
 .diarybar button { flex: 0 0 auto; border: 0; border-radius: 999px; padding: 6px 12px; min-height: 30px; background: #F6E7C1; color: #2B3A67; font: inherit; font-weight: 700; cursor: pointer; }
@@ -1360,7 +1364,7 @@ body.role-student .scnpill .sbtns button[data-s="back"], body.role-student .scnp
       </div>
     </aside>
 
-    <div class="diarybar no-ink" id="diaryBar" hidden role="status"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M15.5 2.8c-4.6.6-8.3 4.6-9.6 10.4l-.9 3.9 M15.5 2.8c.4 3.8-2.4 7.6-7.3 8.6 M5.3 13.6c1.8.2 3.4-.4 4.6-1.6 M3.5 17.2h7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><b>โหมดสมุดตอบได้</b><span>เขียนถึงสมุด แล้ววางปากกาสักครู่ สมุดจะเขียนตอบ</span><button type="button" id="bDiaryStyle" class="dstyle" title="แตะเพื่อสลับวิธีที่คำตอบปรากฏ">ค่อย ๆ เขียน</button><button type="button" id="bDiaryOff">ปิดโหมด</button></div>
+    <div class="diarybar no-ink" id="diaryBar" hidden role="status"><button type="button" id="bDiaryFold" class="dfold" aria-expanded="true" title="แตะเพื่อย่อหรือขยายแถบ"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M15.5 2.8c-4.6.6-8.3 4.6-9.6 10.4l-.9 3.9 M15.5 2.8c.4 3.8-2.4 7.6-7.3 8.6 M5.3 13.6c1.8.2 3.4-.4 4.6-1.6 M3.5 17.2h7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><b>โหมดสมุดตอบได้</b></button><span>เขียนถึงสมุด แล้ววางปากกาสักครู่ สมุดจะเขียนตอบ</span><button type="button" id="bDiaryStyle" class="dstyle" title="แตะเพื่อสลับวิธีที่คำตอบปรากฏ">ค่อย ๆ เขียน</button><button type="button" id="bDiaryOff">ปิดโหมด</button></div>
     <div id="viewport">
       <div id="wrap">
         <div class="fpeek" id="peekPrev" hidden aria-hidden="true"></div>
@@ -3306,11 +3310,12 @@ const DIARY = { on: false, pending: [], t: null, busy: false, log: {} };
 function diarySync() {
   const on = diaryOn();
   for (const id of ['#bDiary', '#tDiary']) { const b = $(id); if (b) b.setAttribute('aria-pressed', on ? 'true' : 'false'); }
-  const bar = $('#diaryBar'); if (bar) bar.hidden = !on; diaryStyleSync(); document.body.classList.toggle('diary', on);
+  const bar = $('#diaryBar'); if (bar) bar.hidden = !on; diaryStyleSync(); diaryFoldSync(); document.body.classList.toggle('diary', on);
 }
 function diaryOn() { return !!(S.nb && S.nb.diary); }
 /* how the reply appears: written in slowly like an enchanted diary, or all at once */
 const diaryInstant = () => store_ls.get('tp-diary-style') === 'now';
+function diaryFoldSync() { const bar = $('#diaryBar'), mini = store_ls.get('tp-diary-mini') === '1'; if (!bar) return; bar.classList.toggle('mini', mini); const f = $('#bDiaryFold'); if (f) { f.setAttribute('aria-expanded', mini ? 'false' : 'true'); f.title = mini ? 'โหมดสมุดตอบได้เปิดอยู่ แตะเพื่อขยายแถบ' : 'แตะเพื่อย่อแถบ'; } }
 function diaryStyleSync() { const b = $('#bDiaryStyle'); if (b) b.textContent = diaryInstant() ? 'ขึ้นทันที' : 'ค่อย ๆ เขียน'; }
 function diarySet(on) {
   if (!S.nb) return; if (on && !needAI('read')) return;
@@ -17151,7 +17156,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793258969';
+const BUILD = '1793259171';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
@@ -17483,6 +17488,7 @@ $('#bAIConnect').onclick = () => { openAISetup(); };
 $('#qsAgree').onchange = syncAgree;
 $('#qsOR').onclick = orStart;
 $('#bDiary').onclick = () => diarySet(!diaryOn()); $('#tDiary').onclick = () => diarySet(!diaryOn()); $('#bDiaryOff').onclick = () => diarySet(false);
+$('#bDiaryFold').onclick = () => { store_ls.set('tp-diary-mini', store_ls.get('tp-diary-mini') === '1' ? '0' : '1'); diaryFoldSync(); };
 $('#bDiaryStyle').onclick = () => { store_ls.set('tp-diary-style', diaryInstant() ? 'ink' : 'now'); diaryStyleSync(); toast(diaryInstant() ? 'คำตอบจะขึ้นทันทีทั้งข้อความ' : 'คำตอบจะค่อย ๆ เขียนทีละตัวเหมือนสมุดมีชีวิต', 2200); };
 $('#bSelNb').onclick = () => { LIBV.sel = LIBV.sel ? null : new Set(); renderLibrary(); };
 setTimeout(() => { orUpgradeCheck().catch(() => {}); }, 8000);
