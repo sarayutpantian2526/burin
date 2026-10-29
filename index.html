@@ -2886,6 +2886,7 @@ function drawInk() {
   drawInto(c, allStrokes(), S.sel ? new Set(S.sel.strokes.map((r) => r.id)) : null);
   if (cSharp && (!cSharp.hidden || S.zoom > 1.2)) drawSharp();
 }
+const drawInkLater = debounce(() => drawInk(), 1500);
 function clearLive() { const c = cLive.getContext('2d'); c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, cLive.width, cLive.height); }
 
 /* ---------- laser ---------- */
@@ -5373,7 +5374,8 @@ function dragItem(el, o) {
   el.addEventListener('pointerdown', (e) => {
     if (e.button > 0 || e.target.closest('.bmore, .bstar, .nbedit, input, select, textarea')) return;
     const d = DRAG = { el, x: e.clientX, y: e.clientY, armed: e.pointerType === 'mouse', moved: false, held: false, id: e.pointerId, down: { target: e.target, pointerType: e.pointerType } };
-    d.t = setTimeout(() => { if (DRAG === d && !d.moved) { d.armed = true; d.held = true; el.classList.add('lift'); if (navigator.vibrate) navigator.vibrate(10); } }, e.pointerType === 'mouse' ? 450 : 280);
+    if (o.tapOnDown && o.onTap) { d.tapped = true; o.onTap(d.down); }
+    d.t = setTimeout(() => { if (DRAG === d && !d.moved) { d.armed = true; d.held = true; el.classList.add('lift'); if (navigator.vibrate) navigator.vibrate(10); } }, o.holdMs || (e.pointerType === 'mouse' ? 450 : 280));
     try { el.setPointerCapture(e.pointerId); } catch (x) { /* fine */ }
   });
   el.addEventListener('pointermove', (e) => {
@@ -5393,7 +5395,7 @@ function dragItem(el, o) {
     if (e.type === 'pointercancel') return;
     if (d.moved) { const all = o.items(); const from = all.indexOf(el), to = d.tgt ? all.indexOf(d.tgt) : -1; if (from >= 0 && to >= 0 && from !== to) o.onMove(from, to); return; }
     if (d.held) { if (o.onHold) o.onHold(el); return; }
-    if (o.onTap) o.onTap(d.down);
+    if (o.onTap && !d.tapped) o.onTap(d.down);
   };
   el.addEventListener('pointerup', end); el.addEventListener('pointercancel', end);
   el.addEventListener('click', (e) => { if (o.onTap) e.preventDefault(); });
@@ -5884,20 +5886,23 @@ function renderTools() {
   const active = S.tool === 'hl' ? S.hlColor : S.color;
   const mkSw = (c, cls, onPick) => {
     const b = document.createElement('button'); b.className = cls; b.type = 'button';
-    b.style.background = c; b.setAttribute('aria-label', colorName(c));
+    b.style.background = c; b.dataset.c = c; b.setAttribute('aria-label', colorName(c));
     b.setAttribute('aria-pressed', String(c).toLowerCase() === String(active).toLowerCase() ? 'true' : 'false');
     b.onclick = onPick; return b;
   };
-  const rc = $('#recent'); rc.innerHTML = '';
+  /* the colour rows are rebuilt only when the colours themselves change; a tap only moves the highlight, so it responds at once */
+  const markActive = (box) => box.querySelectorAll('button').forEach((x) => x.setAttribute('aria-pressed', String(x.dataset.c || '').toLowerCase() === String(active).toLowerCase() ? 'true' : 'false'));
+  const rc = $('#recent'), rsig = S.recent.join(',');
+  if (rc._sig === rsig) markActive(rc); else { rc._sig = rsig; rc.innerHTML = '';
   S.recent.forEach((c, i) => { const b = mkSw(c, 'rsw', null); b.dataset.i = i; b.title = colorName(c) + ' : ลากเพื่อย้ายตำแหน่ง กดค้างเพื่อเอาออก';
-    dragItem(b, { items: () => [...rc.querySelectorAll('.rsw')], onMove: (from, to) => { S.recent = moveIn(S.recent, from, to); store_ls.set('tp-recent', JSON.stringify(S.recent)); renderTools(); }, onTap: () => useColor(c, false),
+    dragItem(b, { items: () => [...rc.querySelectorAll('.rsw')], onMove: (from, to) => { S.recent = moveIn(S.recent, from, to); store_ls.set('tp-recent', JSON.stringify(S.recent)); renderTools(); }, onTap: () => useColor(c, false), tapOnDown: true, holdMs: 650,
       onHold: () => popMenu(b, colorName(c), [['เอาสีนี้ออกจากแถบ', () => { if (S.recent.length > 1) { S.recent = S.recent.filter((_, k) => k !== i); store_ls.set('tp-recent', JSON.stringify(S.recent)); renderTools(); } }]]) });
-    rc.appendChild(b); });
-  const sw = $('#swatches'); sw.innerHTML = '';
-  for (const [c] of PALETTE) sw.appendChild(mkSw(c, 'sw', () => { useColor(c, true); closePops(); }));
-  const mine = $('#mine'); mine.innerHTML = '';
+    rc.appendChild(b); }); }
+  const sw = $('#swatches');
+  if (sw._sig === 'p') markActive(sw); else { sw._sig = 'p'; sw.innerHTML = ''; for (const [c] of PALETTE) sw.appendChild(mkSw(c, 'sw', () => { useColor(c, true); closePops(); })); }
+  const mine = $('#mine'), msig = S.myColors.join(',');
   $('#myLabel').hidden = mine.hidden = !S.myColors.length;
-  for (const c of S.myColors) mine.appendChild(mkSw(c, 'sw', () => { useColor(c, true); closePops(); }));
+  if (mine._sig === msig) markActive(mine); else { mine._sig = msig; mine.innerHTML = ''; for (const c of S.myColors) mine.appendChild(mkSw(c, 'sw', () => { useColor(c, true); closePops(); })); }
   if (okHex(active)) $('#customColor').value = active;
   itemsEl.classList.toggle('editable', S.tool === 'text');
   vp.style.cursor = S.tool === 'text' ? 'text' : 'crosshair';
@@ -5913,7 +5918,8 @@ function renderTips() {
   const ok = TIPS.find((t) => t[0] === S.tip) || TIPS[0];
   if (ok[2] && !S.painter) { S.tip = 'ball'; }
   const fill = (gridId, painter) => {
-    const g = $(gridId); if (!g) return; g.innerHTML = '';
+    const g = $(gridId); if (!g) return;
+    if (g.childNodes.length) { g.querySelectorAll('.tipb').forEach((b) => b.setAttribute('aria-pressed', b.dataset.t === S.tip ? 'true' : 'false')); return; }
     for (const [k, name, pt] of TIPS) {
       if (!!pt !== painter) continue;
       const b = document.createElement('button'); b.type = 'button'; b.className = 'tipb'; b.dataset.t = k; b.setAttribute('aria-pressed', k === S.tip ? 'true' : 'false');
@@ -10422,13 +10428,17 @@ async function studentApply(tpid) {
   if (LIVE.follow && S.pid !== lpid) openPage(lpid);
 }
 /* live ink is played back at the teacher's own pen speed, a fraction of a second behind, so it flows instead of jumping */
-const INK_LAG = 140;
+const INK_LAG = 230; /* a little more delay absorbs uneven network timing, so the line flows instead of stuttering */
 function inkFeed(d, onDone) {
   const tn = performance.now();
   let s = PV.ink[d.id];
   if (!s) s = PV.ink[d.id] = { k: d.k === 'h' ? 'h' : 'p', c: okHex(d.c) ? d.c : '#14181F', w: clamp(+d.w || 3, 1, 40), t: typeof d.t === 'string' ? d.t : undefined, o: isFinite(d.o) ? clamp(+d.o, 0.1, 1) : undefined, p: [], q: [], base: null, last: 0 };
-  const v = d.p.slice(0, 1500).map(Number), n = Math.floor(v.length / 3);
-  if (d.replace) { s.p = []; s.q = []; for (let i = 0; i < n * 3; i++) if (isFinite(v[i])) s.p.push(v[i]); }
+  const v = d.p.slice(0, d.whole ? 6000 : 1500).map(Number), n = Math.floor(v.length / 3);
+  if (d.whole) { /* a whole stroke sent at once (big rooms): drawn out smoothly over about the time it took to write */
+    s.p = []; s.q = []; const dur = clamp(+d.ms || 300, 120, 1200), t0 = tn + 40;
+    for (let i = 0; i < n; i++) { if (!isFinite(v[i * 3]) || !isFinite(v[i * 3 + 1])) continue; s.q.push([v[i * 3], v[i * 3 + 1], isFinite(v[i * 3 + 2]) ? v[i * 3 + 2] : 5, t0 + dur * (i + 1) / n]); }
+  }
+  else if (d.replace) { s.p = []; s.q = []; for (let i = 0; i < n * 3; i++) if (isFinite(v[i])) s.p.push(v[i]); }
   else if (!isFinite(d.ms)) { for (let i = 0; i < n * 3; i++) if (isFinite(v[i])) s.p.push(v[i]); }
   else {
     const ms = +d.ms;
@@ -10461,7 +10471,9 @@ function studentInk(d) {
     delete PV.ink[id];
     if (S.pid !== pid) return;
     const arr = layerArr('teacher');
-    if (!arr.some((x) => x.id === id)) { const st = { id, k: s.k, c: s.c, w: s.w, p: s.p.slice() }; if (s.t) st.t = s.t; if (s.o) st.o = s.o; arr.push(st); drawInk(); studentSaveInk(); }
+    if (!arr.some((x) => x.id === id)) { const st = { id, k: s.k, c: s.c, w: s.w, p: s.p.slice() }; if (s.t) st.t = s.t; if (s.o) st.o = s.o; arr.push(st);
+      try { const c = cInk.getContext('2d'); c.setTransform(S.res, 0, 0, S.res, 0, 0); drawStroke(c, st); } catch (e) { drawInk(); }
+      drawInkLater(); studentSaveInk(); }
   });
 }
 function studentLaser(d) {
@@ -12366,7 +12378,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793241885';
+const BUILD = '1793242231';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
@@ -12771,7 +12783,7 @@ function emitInkDelta(pt) {
   pt.inkSent = to;
   const msg = { pid: S.pid, id: s.id, c: s.c, w: s.w, k: s.k, t: s.t, o: s.o, ms: t - pt.inkStart, p: s.p.slice(from, to) };
   if (S.room && S.watchers) S.room.emit('ink', msg).catch(() => {});
-  if (liveOn()) liveSend('ink', msg);
+  if (liveOn() && !liveCrowd()) liveSend('ink', msg);
 }
 function emitInkDone(pt) {
   if (S.present || !((S.room && S.watchers) || liveOn())) return;
@@ -12780,8 +12792,10 @@ function emitInkDone(pt) {
   if (pt.snapped) msg.replace = true; /* the watcher drops the freehand part it already drew and shows the clean shape */
   if (liveOn()) LIVE.streamed.add(s.id);
   if (S.room && S.watchers) S.room.emit('ink', msg).catch(() => {});
-  if (liveOn()) liveSend('ink', msg);
+  if (liveOn()) liveSend('ink', liveCrowd() && !pt.snapped ? Object.assign({}, msg, { p: s.p.slice(0, 6000), whole: 1 }) : msg);
 }
+/* many students: the realtime service limits messages per second for everyone together, so strokes go whole, one message each */
+function liveCrowd() { return (LIVE.peers || []).length > 5; }
 function emitInk() { /* shapes reach the audience when saved */ }
 let lastLz = 0;
 function emitLaserPt(x, y, down) {
