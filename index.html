@@ -502,7 +502,7 @@ body.student #bLive, body.student #bPresent { display: none; }
 .kadv[open] { display: flex; flex-direction: column; gap: 10px; }
 #qsWho { color: var(--muted); font-weight: 400; margin-left: 6px; }
 .shelf { display: grid; grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: 16px 12px; }
-.bcard { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.bcard { position: relative; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 .bopen { padding: 0; border: 0; background: none; cursor: pointer; display: block; border-radius: 6px 12px 12px 6px; }
 .bopen[aria-current="true"] { outline: 3px solid var(--accent); outline-offset: 3px; }
 .book { position: relative; display: flex; align-items: center; justify-content: center; width: 100%; aspect-ratio: 3 / 4; border-radius: 4px 10px 10px 4px; overflow: hidden; box-shadow: 0 1px 2px rgba(20,26,34,.18), 0 6px 14px rgba(20,26,34,.16), inset -2px 0 0 rgba(255,255,255,.18); }
@@ -582,6 +582,22 @@ body.guest #roleSeg, body.guest #bJoin { display: none !important; }
 .tqh small { color: var(--muted); }
 .tqk { font-size: 11px; padding: 1px 7px; border-radius: 999px; background: var(--bg); color: var(--muted); }
 .tqk.ok { background: var(--ok-soft); color: var(--fg); }
+body.nodesk #viewport { visibility: hidden; }
+body.nodesk #tTitle::after { content: ''; }
+.bcard.selmode .bstar, .bcard.selmode .bmore { visibility: hidden; }
+.bcard .bcheck { position: absolute; top: 8px; left: 8px; width: 28px; height: 28px; border-radius: 50%; border: 2px solid #FFFFFF; background: rgba(20,26,34,0.25); color: transparent; display: grid; place-items: center; box-shadow: 0 1px 4px rgba(0,0,0,0.25); pointer-events: none; }
+.bcard .bcheck svg { width: 18px; height: 18px; }
+.bcard.picked .bcheck { background: var(--accent); color: #FFFFFF; }
+.bcard.picked .bopen { outline: 3px solid var(--accent); outline-offset: 2px; border-radius: 10px; }
+.nbselbar { position: sticky; bottom: 0; z-index: 3; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 10px 12px; margin-top: 10px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 -4px 16px rgba(20,26,34,0.12); }
+.nbselbar b { margin-right: auto; }
+.item .dink { opacity: 0; filter: blur(1.5px); animation: dink 0.5s ease-out forwards; display: inline; }
+@keyframes dink { 0% { opacity: 0; filter: blur(2px); } 60% { opacity: 0.9; filter: blur(0.4px); } 100% { opacity: 1; filter: none; } }
+.diarydots { position: absolute; display: flex; gap: 7px; pointer-events: none; }
+.diarydots i { width: 8px; height: 8px; border-radius: 50%; background: #2B3A67; opacity: 0.2; animation: ddot 1.2s infinite ease-in-out; }
+.diarydots i:nth-child(2) { animation-delay: 0.2s; } .diarydots i:nth-child(3) { animation-delay: 0.4s; }
+@keyframes ddot { 0%, 100% { opacity: 0.15; transform: scale(0.7); } 50% { opacity: 0.8; transform: scale(1.1); } }
+#bDiary[aria-pressed="true"] { background: #2B3A67; color: #F6E7C1; border-color: #2B3A67; }
 .scoreb th.c0 { background: #EEF2FC; } .scoreb th.c1 { background: #FDF1E8; } .scoreb th.c2 { background: #EAF6EF; } .scoreb th.c3 { background: #F4EEFB; }
 .scoreb td.sub { font-weight: 600; background: rgba(47,75,184,0.04); }
 .scoreb input.sc.late { background: #FDEBD3; }
@@ -1019,6 +1035,7 @@ body.role-student .scnpill .sbtns button[data-s="back"], body.role-student .scnp
     <button class="btn icon" id="bUndo" aria-label="ย้อนกลับ"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7.5 4.5L3.5 8.5l4 4 M3.5 8.5h8.5a4.5 4.5 0 0 1 0 9H10" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
     <button class="btn icon" id="bRedo" aria-label="ทำซ้ำ"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M12.5 4.5l4 4-4 4 M16.5 8.5H8a4.5 4.5 0 0 0 0 9h2" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
     <span class="tsep" aria-hidden="true"></span>
+    <button class="btn" id="bDiary" aria-pressed="false" aria-label="สมุดตอบได้" title="สมุดตอบได้ เขียนแล้วสมุดเขียนตอบ"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M15.5 2.8c-4.6.6-8.3 4.6-9.6 10.4l-.9 3.9 M15.5 2.8c.4 3.8-2.4 7.6-7.3 8.6 M5.3 13.6c1.8.2 3.4-.4 4.6-1.6 M3.5 17.2h7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="lbl">สมุดตอบได้</span></button>
     <button class="btn" id="bConvert" aria-label="แปลงเป็นตัวพิมพ์" title="แปลงเป็นตัวพิมพ์"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 15.5c2-3 3-7 4.5-7s.5 5 2 5 2-6 3.5-6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M12 4h6 M15 4v7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span class="lbl">แปลงเป็นตัวพิมพ์</span></button>
     <button class="btn" id="bInsert" aria-label="แทรก" title="แทรก"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="2.5" y="3.5" width="15" height="13" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M3 14l4.5-4.5 3.5 3.5 2-2 4 4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><circle cx="13.5" cy="7.5" r="1.5" fill="currentColor"/></svg><span class="lbl">แทรก</span></button>
     <button class="btn solid" id="bAI" aria-pressed="false" aria-label="สร้างโจทย์" title="สร้างโจทย์"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 2.5l1.8 4.6 4.7 1.9-4.7 1.9L10 15.5l-1.8-4.6L3.5 9l4.7-1.9z" fill="currentColor"/></svg><span class="lbl">สร้างโจทย์</span></button>
@@ -1228,7 +1245,7 @@ body.role-student .scnpill .sbtns button[data-s="back"], body.role-student .scnp
     <div class="seg menutabs" id="menuTabs" role="group" aria-label="ส่วนของเมนู"><button data-m="nb">สมุดทั้งหมด</button><button data-m="acc">บัญชี ซิงก์ และ AI</button><button data-m="set">ภาษา การเขียน และจอ</button></div>
     <div data-mp="nb">
     <div class="libnav"><span class="seg" id="libView" role="group" aria-label="มุมมองสมุด"><button type="button" data-v="all">เอกสาร</button><button type="button" data-v="fav">รายการโปรด</button><button type="button" data-v="shared">แชร์แล้ว</button></span><input id="nbFind" class="nbfind" type="search" placeholder="ค้นหาสมุด" autocomplete="off"></div>
-    <div class="nbtop"><div class="libpath" id="libPath"></div><button class="btn" id="bNewFolder" type="button">โฟลเดอร์ใหม่</button><button class="btn solid" id="bNewToggle" type="button" aria-expanded="false">สร้างสมุดเล่มใหม่</button></div>
+    <div class="nbtop"><div class="libpath" id="libPath"></div><button class="btn" id="bNewFolder" type="button">โฟลเดอร์ใหม่</button><button class="btn" id="bSelNb" type="button" aria-pressed="false">เลือกหลายเล่ม</button><button class="btn solid" id="bNewToggle" type="button" aria-expanded="false">สร้างสมุดเล่มใหม่</button></div>
     <div class="nbnew" id="nbNewBox" hidden>
     <div class="row2">
       <label class="field" style="flex:1 1 220px"><span>ชื่อสมุด</span><input id="nbTitle" placeholder="เช่น สอวน. ม.4 บทที่ 4 งานและพลังงาน" maxlength="80"></label>
@@ -1241,6 +1258,7 @@ body.role-student .scnpill .sbtns button[data-s="back"], body.role-student .scnp
     <button class="btn solid" id="bNewNb">สร้างสมุด</button>
     </div>
     <div id="nbList" class="shelf"></div>
+    <div class="nbselbar" id="nbSelBar" hidden></div>
     </div>
     <div data-mp="set" hidden>
     <h3>ภาษา Language</h3>
@@ -2429,7 +2447,7 @@ function releasePull() {
 const wheelRelease = debounce(releasePull, 220);
 /* the top bar stays on one line: when it runs out of room, buttons show icons only */
 /* the main bar never runs off the screen: first labels go, then the least used buttons move into a "more" menu */
-const TOP_OVERFLOW = ['bExport', 'bExam', 'bLive', 'bTray', 'bScan', 'bJoin', 'bConvert', 'bInsert', 'bAI', 'bPages', 'bFull', 'bRedo'];
+const TOP_OVERFLOW = ['bDiary', 'bExport', 'bExam', 'bLive', 'bTray', 'bScan', 'bJoin', 'bConvert', 'bInsert', 'bAI', 'bPages', 'bFull', 'bRedo'];
 function fitTop() {
   const t = document.querySelector('.top'); if (!t) return;
   t.classList.remove('compact'); t.querySelectorAll('.ovf').forEach((x) => x.classList.remove('ovf'));
@@ -2848,6 +2866,65 @@ const savePage = debounce(() => {
   Promise.resolve(S.store.set('pages/' + S.pid, body)).then(() => setSync(S.store.kind === 'local' ? 'local' : 'saved')).catch(onStoreError);
   if (LIVE.role === 'teacher') liveSendPage();
 }, 300);
+/* ---------- the notebook that writes back: write by hand, pause, and the page answers in handwriting, letter by letter.
+   Your own writing stays on the page. ---------- */
+const DIARY = { on: false, pending: [], t: null, busy: false, log: {} };
+function diaryOn() { return !!(S.nb && S.nb.diary); }
+function diarySet(on) {
+  if (!S.nb) return; if (on && !needAI('read')) return;
+  S.nb = Object.assign({}, S.nb, { diary: !!on }); S.store.update('notebooks/' + S.nid, { diary: !!on }).catch(() => {});
+  $('#bDiary').setAttribute('aria-pressed', on ? 'true' : 'false'); document.body.classList.toggle('diary', !!on);
+  toast(on ? 'สมุดตอบได้แล้ว เขียนอะไรก็ได้ แล้ววางปากกาสักครู่ สมุดจะเขียนตอบ' : 'ปิดสมุดตอบได้แล้ว', 3000);
+}
+function diaryStroke(s) {
+  if (!diaryOn() || !s || s.k === 'h' || isStudentSide() && S.student) return;
+  DIARY.pending.push(s.id); clearTimeout(DIARY.t);
+  DIARY.t = setTimeout(diaryAsk, 2600);
+}
+function diaryPenDown() { if (DIARY.pending.length) clearTimeout(DIARY.t); }
+function diaryPenUp() { if (DIARY.pending.length && !DIARY.busy) { clearTimeout(DIARY.t); DIARY.t = setTimeout(diaryAsk, 2600); } }
+async function diaryAsk() {
+  if (DIARY.busy || !DIARY.pending.length || !diaryOn() || activeLive()) return;
+  const refs = DIARY.pending.map((id) => ({ layer: DEV, id })).filter((r) => findStroke(r)); DIARY.pending = [];
+  if (!refs.length) return;
+  if (refs.length < 2) { const st = findStroke(refs[0]), b = st && sbox(st); if (!b || (b[2] - b[0] < 24 && b[3] - b[1] < 24)) return; }
+  const img = await inkBlob(refs, 20); if (!img) return;
+  DIARY.busy = true; const pid = S.pid, box = img.box;
+  const dots = document.createElement('div'); dots.className = 'diarydots no-ink'; dots.innerHTML = '<i></i><i></i><i></i>'; dots.style.left = box[0] + 'px'; dots.style.top = (box[3] + 14) + 'px'; itemsEl.appendChild(dots);
+  try {
+    const log = DIARY.log[pid] || (DIARY.log[pid] = (S.page && S.page.diaryLog) || []);
+    const subj = subjName(curSubj()[0], S.nb) || 'ทั่วไป';
+    const prompt = 'You are the enchanted notebook in Burin, a Thai teaching notebook, a little like the diary that writes back in the Harry Potter story but kind, wise and safe. The person writes to you by hand; the image shows what they just wrote. The notebook subject is ' + subj + '.\n'
+      + (log.length ? 'Conversation so far on this page (oldest first):\n' + log.slice(-8).map((m) => (m[0] === 'u' ? 'Writer: ' : 'Notebook: ') + m[1]).join('\n') + '\n' : '')
+      + 'First read the handwriting exactly (Thai or English, with any formulas). Then write back as the notebook: warm, natural and personal, like a thoughtful friend who is also a great teacher. If it is a question about the subject, answer it correctly and simply, step by step if needed, and you may ask one small question back to make them think. If it is a greeting or a feeling, reply kindly and briefly. Match the writer\'s language. Keep it short enough to fit a handwritten note: 1 to 4 short sentences, at most about 70 Thai words. Write formulas in plain text (for example v = u + at, F = ma), never LaTeX or markdown, no emoji, no lists.\n'
+      + 'If you cannot read it, say so gently and ask them to write a little larger.\n'
+      + 'Reply in exactly this format:\n@@READ\n(what they wrote)\n@@REPLY\n(your handwritten answer)';
+    const r = await AI.run('read', prompt, { images: [img.blob], maxTokens: 900, cache: false });
+    const sec = sections(r.text), read = sec.find((x) => x.key === 'READ'), rep = sec.find((x) => x.key === 'REPLY');
+    let text = String((rep && rep.text) || r.text || '').replace(/[*_#`$]/g, '').replace(/\n{3,}/g, '\n\n').trim().slice(0, 600);
+    dots.remove();
+    if (!text || S.pid !== pid) return;
+    log.push(['u', ((read && read.text) || '').slice(0, 300)], ['a', text]); if (log.length > 30) log.splice(0, log.length - 30);
+    const w = clamp(Math.max(360, box[2] - box[0]), 360, Math.min(720, W - 40)), fs = 26;
+    let at = [clamp(box[0], 20, W - w - 20), box[3] + 10];
+    const h = estTextH(text, w, fs) * 1.25;
+    if (at[1] + h > H - 20 || (typeof freeSpot === 'function' && occupiedBoxes().some((b) => at[0] < b[2] && at[0] + w > b[0] && at[1] < b[3] && at[1] + h > b[1]))) { const f = freeSpot(w, h, [box[0], box[3] + 10]); if (f) at = f; }
+    const ink = '#2B3A67', id = 'i' + uid();
+    addItem({ id, type: 'text', x: Math.round(at[0]), y: Math.round(at[1]), w: Math.round(w), md: text, fs, hand: DIARY_HAND(), ink, diary: true });
+    S.page = Object.assign({}, S.page, { diaryLog: log }); savePage();
+    requestAnimationFrame(() => diaryWriteIn(id));
+  } catch (e) { dots.remove(); toast('สมุดยังตอบไม่ได้ ' + aiErr(e), 3500); }
+  finally { DIARY.busy = false; if (DIARY.pending.length) DIARY.t = setTimeout(diaryAsk, 1500); }
+}
+const DIARY_HAND = () => (HAND_IDS.includes(S.handDefault) ? S.handDefault : 'pen');
+/* the reply appears as if an invisible pen were writing it: one letter at a time, ink soaking in */
+function diaryWriteIn(id) {
+  const el = itemsEl.querySelector('.item[data-id="' + id + '"]'); if (!el) return;
+  const seg = (t) => (typeof Intl !== 'undefined' && Intl.Segmenter ? [...new Intl.Segmenter('th', { granularity: 'grapheme' }).segment(t)].map((x) => x.segment) : Array.from(t));
+  let k = 0; const blocks = el.querySelectorAll('p, li'); const list = blocks.length ? [...blocks] : [el];
+  for (const b of list) { const g = seg(b.textContent); b.innerHTML = g.map((c) => '<span class="dink" style="animation-delay:' + ((k++) * 55 + Math.random() * 20).toFixed(0) + 'ms">' + esc(c) + '</span>').join(''); }
+  el.classList.add('writing'); setTimeout(() => { el.classList.remove('writing'); }, k * 55 + 900);
+}
 function addItem(it) {
   const before = clone((S.page && S.page.items) || []);
   const items = before.concat([Object.assign({ id: 'i' + uid(), by: DEV }, it)]);
@@ -2931,6 +3008,7 @@ vp.addEventListener('pointercancel', onUp);
 vp.addEventListener('contextmenu', (e) => e.preventDefault());
 
 function onDown(e) {
+  if (DIARY.pending.length) diaryPenDown();
   /* the grab bar of a video, and the title bar of a graph or simulation, pick the item up with any tool */
   if (!S.present && e.target.closest('.item .tsize')) {
     const el = e.target.closest('.item'), it = el && findItem(el.dataset.id);
@@ -3116,7 +3194,7 @@ function onUp(e) {
   if (pt.mode === 'draw') {
     if (S.watchers || liveOn()) emitInkDone(pt);
     S.mine.push(pt.stroke); clearLive(); drawInk();
-    pushUndo({ t: 'add', stroke: pt.stroke }); saveMine();
+    pushUndo({ t: 'add', stroke: pt.stroke }); saveMine(); diaryStroke(pt.stroke);
     if (S.convMode && S.autoConv && pt.stroke.k !== 'h') { S.autoQueue.add(pt.stroke.id); autoConvert(); }
   } else if (pt.mode === 'erase' && pt.snap && Object.keys(pt.snap).length) {
     clearLive();
@@ -3828,14 +3906,24 @@ function watchNotebooks() {
     if (S.nid || (meta && meta.fromCache)) return;
     const last = store_ls.get('tp-last-nb');
     const pick = S.nbs.find((n) => n.id === last) || S.nbs[0];
-    if (pick) { openNotebook(pick.id); return; }
+    if (pick) { store_ls.set('tp-had-nb', '1'); openNotebook(pick.id); return; }
+    if (store_ls.get('tp-had-nb')) { emptyDesk(); return; }
     if (S.creatingFirst) return;
     S.creatingFirst = true;
     try { const nid = await createNotebook(isStudentSide() ? 'สมุดจดของฉัน' : 'สมุดเล่มแรก', 'mp'); openNotebook(nid); }
     catch (e) { onStoreError(e); S.creatingFirst = false; }
   });
 }
+/* no notebook open: a clean desk and the shelf, nothing is created behind the person's back */
+function emptyDesk() {
+  for (const k of ['nb', 'page', 'layers']) { if (S.unsub[k]) { try { S.unsub[k](); } catch (e) { /* closed */ } S.unsub[k] = null; } }
+  S.nid = null; S.nb = null; S.pid = null; S.page = { items: [] }; S.mine = []; S.others = {}; S.tabs = []; try { saveTabs(); } catch (e) { /* fine */ }
+  try { itemsEl.innerHTML = ''; drawInk(); renderTitle(); renderTabs(); } catch (e) { /* the page view is empty anyway */ }
+  document.body.classList.add('nodesk');
+  renderLibrary(); menuTab('nb'); $('#menu').hidden = false;
+}
 function openNotebook(nid, pidWanted) {
+  document.body.classList.remove('nodesk'); store_ls.set('tp-had-nb', '1');
   if (S.nid === nid && pidWanted) { if (pidWanted !== S.pid) openPage(pidWanted); return; }
   if (S.nid === nid) return;
   S.nid = nid; store_ls.set('tp-last-nb', nid);
@@ -4944,6 +5032,7 @@ async function exportPdf() {
 
 /* ---------- rendering UI ---------- */
 function renderTitle() {
+  { const d = $('#bDiary'); if (d) d.setAttribute('aria-pressed', diaryOn() ? 'true' : 'false'); }
   $('#tTitle').textContent = (S.nb && S.nb.title) || 'สมุด';
   const pages = (S.nb && S.nb.pages) || [];
   const i = pages.indexOf(S.pid);
@@ -5361,8 +5450,8 @@ async function deleteNotebook(nb) {
     S.nbs = S.nbs.filter((x) => x.id !== nb.id); renderLibrary();
     await S.store.del('notebooks/' + nb.id);
     for (const pid of nb.pages || []) { const ls = await S.store.list('pages/' + pid + '/layers').catch(() => []); for (const l of ls) await S.store.del('pages/' + pid + '/layers/' + l.id).catch(() => {}); await S.store.del('pages/' + pid).catch(() => {}); }
-    if (last) { const nid = await createNotebook(isStudentSide() ? 'สมุดจดของฉัน' : 'สมุดเล่มใหม่', nb.level || 'mp', nb.subject, nb.subjectName); openNotebook(nid); }
-    toast(last ? 'ลบสมุดแล้ว ระบบสร้างสมุดว่างให้หนึ่งเล่ม เพราะต้องมีสมุดอย่างน้อยหนึ่งเล่ม' : 'ลบสมุด ' + (nb.title || '') + ' แล้ว', last ? 3200 : 1600);
+    if (!S.nbs.length) emptyDesk();
+    toast(S.nbs.length ? 'ลบสมุดแล้ว' : 'ลบสมุดหมดแล้ว กดสร้างสมุดเล่มใหม่เมื่อพร้อม', 2200);
   } catch (e) { onStoreError(e); }
 }
 function askDelete(anchor, nb) {
@@ -5441,6 +5530,33 @@ function renderLibrary() {
   if (!shown.length && !folders.length) { empty(q ? 'ไม่พบสมุดที่ตรงกับคำค้น' : LIBV.view === 'fav' ? 'ยังไม่มีรายการโปรด แตะรูปดาวที่มุมปกสมุดหรือโฟลเดอร์เพื่อเพิ่ม' : LIBV.folder ? 'โฟลเดอร์นี้ยังว่าง ลากสมุดมาวางบนโฟลเดอร์ หรือกดปุ่มจุดสามจุดที่สมุดแล้วเลือกย้ายไปโฟลเดอร์' : 'สมุดทุกเล่มอยู่ในโฟลเดอร์แล้ว'); return; }
   const ids = shown.map((n) => n.id);
   for (const nb of shown) nbCard(nb, el, ids);
+  nbSelBar(shown);
+}
+/* pick several notebooks at once: long-press a cover or tap Select, then favourite, move, or delete them together */
+function nbToggleSel(id) { if (!LIBV.sel) LIBV.sel = new Set(); if (LIBV.sel.has(id)) LIBV.sel.delete(id); else LIBV.sel.add(id); renderLibrary(); }
+function nbSelBar(shown) {
+  const bar = $('#nbSelBar'), btn = $('#bSelNb'); if (btn) { btn.setAttribute('aria-pressed', LIBV.sel ? 'true' : 'false'); btn.textContent = LIBV.sel ? 'เสร็จ' : 'เลือกหลายเล่ม'; }
+  if (!bar) return; if (!LIBV.sel) { bar.hidden = true; return; }
+  for (const id of [...LIBV.sel]) if (!S.nbs.some((n) => n.id === id)) LIBV.sel.delete(id);
+  const picked = S.nbs.filter((n) => LIBV.sel.has(n.id)), n = picked.length; bar.hidden = false; bar.innerHTML = '';
+  bar.appendChild(exEl('b', '', n ? 'เลือก ' + n + ' เล่ม' : 'แตะปกเพื่อเลือก'));
+  const act = (t, f, cls) => { const b = exEl('button', 'btn' + (cls ? ' ' + cls : ''), t); b.type = 'button'; b.disabled = !n && !/ทั้งหมด|ยกเลิก/.test(t); b.onclick = (e) => f(e.currentTarget); bar.appendChild(b); return b; };
+  const all = (shown || []).every((x) => LIBV.sel.has(x.id)) && (shown || []).length;
+  act(all ? 'ไม่เลือกทั้งหมด' : 'เลือกทั้งหมด', () => { if (all) LIBV.sel.clear(); else (shown || []).forEach((x) => LIBV.sel.add(x.id)); renderLibrary(); });
+  act(picked.length && picked.every((x) => x.fav) ? 'เอาออกจากรายการโปรด' : 'รายการโปรด', () => { const on = !picked.every((x) => x.fav); for (const nb of picked) { nb.fav = on; Promise.resolve(S.store.update('notebooks/' + nb.id, { fav: on })).catch(onStoreError); } toast((on ? 'เพิ่มในรายการโปรด ' : 'เอาออกจากรายการโปรด ') + n + ' เล่ม', 1600); renderLibrary(); });
+  act('ย้ายไปโฟลเดอร์', (b) => {
+    const go = (fid, name) => { for (const nb of picked) { nb.folder = fid; Promise.resolve(S.store.update('notebooks/' + nb.id, { folder: fid })).catch(onStoreError); } toast(fid ? 'ย้าย ' + n + ' เล่มไปโฟลเดอร์ ' + name + ' แล้ว' : 'เอา ' + n + ' เล่มออกจากโฟลเดอร์แล้ว', 1800); LIBV.sel = null; renderLibrary(); };
+    const acts = FOLDERS.list.map((f) => ['ย้ายไป ' + f.name, () => go(f.id, f.name)]);
+    if (picked.some((x) => folderOf(x))) acts.unshift(['เอาออกจากโฟลเดอร์', () => go('', '')]);
+    acts.push(['สร้างโฟลเดอร์ใหม่แล้วย้ายไป', () => newFolder(b, (f) => go(f.id, f.name))]);
+    popMenu(b, 'ย้าย ' + n + ' เล่ม', acts);
+  });
+  act('ลบ', (b) => {
+    const pages = picked.reduce((a, x) => a + (x.pages || []).length, 0);
+    popMenu(b, 'ลบสมุด ' + n + ' เล่ม รวม ' + pages + ' หน้า ลบแล้วกู้คืนไม่ได้', [['ยืนยันลบ ' + n + ' เล่ม', async () => { LIBV.sel = null; for (const nb of picked) await deleteNotebook(nb); renderLibrary(); }]]);
+    const c = $('#tabMenu').querySelector('button'); if (c) c.classList.add('danger');
+  }, 'danger');
+  act('ยกเลิก', () => { LIBV.sel = null; renderLibrary(); });
 }
 const STAR_SVG = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 2.6l2.25 4.7 5.15.6-3.8 3.55 1 5.1L10 14.05 5.4 16.55l1-5.1L2.6 7.9l5.15-.6z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>';
 function nbCard(nb, el, ids) {
@@ -5453,7 +5569,8 @@ function nbCard(nb, el, ids) {
       onMove: (from, to) => { const all = [...el.querySelectorAll('.bcard, .fcard')], tg = all[to];
         if (tg && tg.dataset.f) { const f = FOLDERS.list.find((x) => x.id === tg.dataset.f); if (f) { nbSet(nb, { folder: f.id }); toast('ย้ายไปโฟลเดอร์ ' + f.name + ' แล้ว', 1400); } return; }
         if (!ids) return; const cards = all.filter((x) => x.dataset.nb).map((x) => x.dataset.nb); shelfMoveIds(cards, cards.indexOf(nb.id), cards.indexOf(tg.dataset.nb)); },
-      onTap: (e) => { if (e.target.closest('.bline, .bstar, .nbedit')) return; openNotebook(nb.id); closeSheets(); }, onHold: () => nbMenu(card, nb, card) });
+      onTap: (e) => { if (LIBV.sel) { nbToggleSel(nb.id); return; } if (e.target.closest('.bline, .bstar, .nbedit')) return; openNotebook(nb.id); closeSheets(); }, onHold: () => { if (!LIBV.sel) LIBV.sel = new Set(); LIBV.sel.add(nb.id); renderLibrary(); } });
+    if (LIBV.sel) { card.classList.add('selmode'); if (LIBV.sel.has(nb.id)) card.classList.add('picked'); const ck = document.createElement('span'); ck.className = 'bcheck'; ck.innerHTML = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 10.5l3.2 3.2L15 7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>'; card.appendChild(ck); }
     const d = nb.updatedAt ? new Date(nb.updatedAt) : null;
     const meta = document.createElement('div'); meta.className = 'bmeta';
     meta.innerHTML = '<b></b><span></span>'; meta.querySelector('b').textContent = nb.title || 'สมุด';
@@ -11620,7 +11737,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793234238';
+const BUILD = '1793234497';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
@@ -11840,6 +11957,8 @@ $('#qsGo').onclick = quickSetup;
 $('#bAIConnect').onclick = () => { openAISetup(); };
 $('#qsAgree').onchange = syncAgree;
 $('#qsOR').onclick = orStart;
+$('#bDiary').onclick = () => diarySet(!diaryOn());
+$('#bSelNb').onclick = () => { LIBV.sel = LIBV.sel ? null : new Set(); renderLibrary(); };
 setTimeout(() => { orUpgradeCheck().catch(() => {}); }, 8000);
 $('#qsORGo').onclick = () => { const c = $('#qsORCode').value.trim(); if (c) orFinish(c, null); };
 $('#qsKey').addEventListener('input', () => { const g = detectVendor($('#qsKey').value); $('#qsWho').textContent = g ? 'ดูจากคีย์แล้ว เป็นของ ' + KEY_VENDORS[g].name.replace(/\s*\(.*\)/, '') + (g === 'openai' ? ' หรือ Typhoon' : '') : 'ระบบดูจากคีย์ว่าเป็นของผู้ให้บริการไหน'; }); $('#qsClose').onclick = () => { $('#aiSetup').hidden = true; };
