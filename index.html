@@ -863,7 +863,12 @@ body.role-student .qkeybox { display: none; }
 .setrow { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 14px; }
 .setrow small { display: block; color: var(--muted); font-size: 12px; }
 .peekcard { position: absolute; right: 14px; top: 70px; z-index: 9; width: min(340px, calc(100% - 28px)); background: #FFFDF2; border: 1.5px solid #E0B44C; border-radius: 14px; box-shadow: var(--shadow); padding: 10px 12px; font-size: 14px; display: flex; flex-direction: column; gap: 6px; }
-.peekcard .pkh { display: flex; justify-content: space-between; align-items: center; gap: 8px; color: #8A5A0C; }
+.peekcard .pkh { display: flex; justify-content: space-between; align-items: center; gap: 8px; color: #8A5A0C; cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none; }
+.peekcard.dragging { opacity: 0.85; } .peekcard.dragging .pkh { cursor: grabbing; }
+.peekcard { max-height: calc(100% - 90px); overflow-y: auto; transition: opacity 0.15s; }
+.peekcard.min { width: auto; max-width: min(420px, calc(100% - 28px)); }
+.peekcard.min > :not(.pkh):not(.pka) { display: none !important; }
+body.writing .peekcard { opacity: 0.22; pointer-events: none; }
 .peekcard .pke { color: #3E2F1C; }
 body.present .peekcard { display: none !important; }
 .pgchips { max-height: 120px; overflow-y: auto; }
@@ -6149,6 +6154,39 @@ function renderPeek(page, layers) {
   typeset(its);
 }
 function peekStep(d) { const i = PK.pages.indexOf(PK.pid), j = clamp(i + d, 0, PK.pages.length - 1); if (j !== i) { PK.pid = PK.pages[j]; $('#peekBody').scrollTop = 0; peekLoad(); } }
+/* the answer card: drag it by its top bar anywhere it does not get in the way (remembered), fold it to the answer line,
+   and it fades and lets the pen through while the teacher writes */
+function peekFold(on, quiet) {
+  const c = $('#peekCard'); c.classList.toggle('min', !!on); if (!quiet) store_ls.set('tp-peekmin', on ? '1' : '0');
+  const b = c.querySelector('[data-a="min"]'); if (b) { b.setAttribute('aria-label', on ? 'ขยายเฉลย' : 'ย่อเฉลย'); b.title = on ? 'แสดงวิธีทำและเฉลยละเอียด' : 'ย่อให้เหลือแค่คำตอบ'; b.innerHTML = on ? '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 10h10 M10 5v10" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>' : '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 10h10" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>'; }
+}
+function peekPlace() {
+  const c = $('#peekCard'), host = c.offsetParent; if (!host) return;
+  let p = null; try { p = JSON.parse(store_ls.get('tp-peekpos') || 'null'); } catch (e) { p = null; }
+  if (!Array.isArray(p)) { c.style.left = ''; c.style.top = ''; c.style.right = ''; return; }
+  const hw = host.clientWidth, hh = host.clientHeight;
+  c.style.left = clamp(p[0] * hw, 4, Math.max(4, hw - c.offsetWidth - 4)) + 'px'; c.style.top = clamp(p[1] * hh, 4, Math.max(4, hh - 60)) + 'px'; c.style.right = 'auto';
+}
+(function peekCardDrag() {
+  const c = $('#peekCard'); let drag = null, lastTap = 0;
+  c.addEventListener('pointerdown', (e) => {
+    const h = e.target.closest('.pkh'); if (!h || e.target.closest('button')) return;
+    e.preventDefault(); const r = c.getBoundingClientRect(), pr = c.offsetParent.getBoundingClientRect();
+    drag = { dx: e.clientX - r.left, dy: e.clientY - r.top, pr, moved: 0 }; c.classList.add('dragging');
+    try { c.setPointerCapture(e.pointerId); } catch (err) { /* fine */ }
+  });
+  c.addEventListener('pointermove', (e) => {
+    if (!drag) return; drag.moved++;
+    const x = clamp(e.clientX - drag.pr.left - drag.dx, 4, drag.pr.width - c.offsetWidth - 4), y = clamp(e.clientY - drag.pr.top - drag.dy, 4, drag.pr.height - 60);
+    c.style.left = x + 'px'; c.style.top = y + 'px'; c.style.right = 'auto';
+  });
+  const end = () => {
+    if (!drag) return; const d = drag; drag = null; c.classList.remove('dragging');
+    if (d.moved > 2) store_ls.set('tp-peekpos', JSON.stringify([(parseFloat(c.style.left) || 0) / d.pr.width, (parseFloat(c.style.top) || 0) / d.pr.height]));
+    else { const t = now(); if (t - lastTap < 400) { store_ls.del('tp-peekpos'); peekPlace(); } lastTap = t; }
+  };
+  c.addEventListener('pointerup', end); c.addEventListener('pointercancel', end);
+})();
 (function peekDrag() {
   const el = $('#peek'), head = $('#peekHead');
   let drag = null;
@@ -15722,17 +15760,19 @@ function showPeek(itemId) {
   if (k < 0) { toast('กล่องนี้ไม่ได้มาจากชุดโจทย์', 1600); return; }
   const paint = () => {
     const it = list[k], q = qOf(it), num = (it.md || '').match(/^\s*\**\s*(\d+)[.)]/);
-    card.innerHTML = '<div class="pkh"><b>เฉลย' + (num ? ' ข้อ ' + num[1] : q.lab ? ' ' + esc(q.lab) : '') + ' <small>เห็นเฉพาะเครื่องนี้</small></b><span class="pknav"><button class="btn icon sm" data-a="prev" aria-label="ข้อก่อนหน้า"' + (k ? '' : ' disabled') + '><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M12 5l-5 5 5 5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button><span>' + (k + 1) + '/' + list.length + '</span><button class="btn icon sm" data-a="next" aria-label="ข้อถัดไป"' + (k < list.length - 1 ? '' : ' disabled') + '><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M8 5l5 5-5 5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button><button class="btn icon sm" data-a="close" aria-label="ปิด"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6 6l8 8M14 6l-8 8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button></span></div>'
+    card.innerHTML = '<div class="pkh"><b>เฉลย' + (num ? ' ข้อ ' + num[1] : q.lab ? ' ' + esc(q.lab) : '') + ' <small>เห็นเฉพาะเครื่องนี้</small></b><span class="pknav"><button class="btn icon sm" data-a="prev" aria-label="ข้อก่อนหน้า"' + (k ? '' : ' disabled') + '><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M12 5l-5 5 5 5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button><span>' + (k + 1) + '/' + list.length + '</span><button class="btn icon sm" data-a="next" aria-label="ข้อถัดไป"' + (k < list.length - 1 ? '' : ' disabled') + '><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M8 5l5 5-5 5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button><button class="btn icon sm" data-a="min" aria-label="ย่อเฉลย" title="ย่อให้เหลือแค่คำตอบ"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 10h10" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg></button><button class="btn icon sm" data-a="close" aria-label="ปิด"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6 6l8 8M14 6l-8 8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button></span></div>'
       + '<div class="pka">' + keyLine(q) + '</div>' + (q.e ? '<div class="pke">' + mdToHtml(q.e) + '</div>' : '')
       + '<button class="btn solid solbtn" type="button" data-a="sol">เฉลยละเอียด 5 ขั้น</button>';
     card.classList.remove('wide');
     card.querySelector('[data-a="sol"]').onclick = (e) => { e.currentTarget.remove(); showSolution(q, it.id, card); };
     card.querySelector('[data-a="close"]').onclick = () => { card.hidden = true; };
+    card.querySelector('[data-a="min"]').onclick = () => peekFold(!card.classList.contains('min'));
+    peekFold(store_ls.get('tp-peekmin') === '1', true);
     card.querySelector('[data-a="prev"]').onclick = () => { if (k > 0) { k--; paint(); } };
     card.querySelector('[data-a="next"]').onclick = () => { if (k < list.length - 1) { k++; paint(); } };
     document.querySelectorAll('.item.qon').forEach((x) => x.classList.remove('qon'));
     const el = itemsEl.querySelector('.item[data-id="' + it.id + '"]'); if (el) el.classList.add('qon');
-    card.hidden = false; typeset(card);
+    card.hidden = false; peekPlace(); typeset(card);
     clearTimeout(TRAY.peekT); TRAY.peekT = setTimeout(() => { card.hidden = true; document.querySelectorAll('.item.qon').forEach((x) => x.classList.remove('qon')); }, 90000);
   };
   paint();
@@ -16855,7 +16895,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793254321';
+const BUILD = '1793254556';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
