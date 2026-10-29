@@ -1154,6 +1154,7 @@ body.role-student .scnpill .sbtns button[data-s="back"], body.role-student .scnp
           <canvas id="cBg" aria-hidden="true"></canvas>
           <canvas id="cInk" role="img" aria-label="ลายมือในหน้านี้"></canvas>
           <canvas id="cSharp" aria-hidden="true" hidden></canvas>
+          <canvas id="cRemote" aria-hidden="true"></canvas>
           <canvas id="cLive" aria-hidden="true"></canvas>
           <div id="items"></div>
           <svg id="sel" viewBox="0 0 1000 1414" preserveAspectRatio="none" aria-hidden="true"></svg>
@@ -2495,7 +2496,7 @@ const S = {
 
 /* ---------- elements ---------- */
 const vp = $('#viewport'), wrapEl = $('#wrap'), pageEl = $('#page');
-const cBg = $('#cBg'), cInk = $('#cInk'), cLive = $('#cLive'), itemsEl = $('#items'), selEl = $('#sel');
+const cBg = $('#cBg'), cInk = $('#cInk'), cLive = $('#cLive'), cRemote = $('#cRemote'), itemsEl = $('#items'), selEl = $('#sel');
 
 /* ---------- toast & sync ---------- */
 let toastT = null;
@@ -2646,7 +2647,7 @@ function resizeCanvases(force) {
   const res = Math.min(W * S.base * dpr * clamp(S.zoom, 1, 2), 2800) / W;
   if (!force && Math.abs(res - S.res) / (S.res || 1) < 0.08) return;
   S.res = res; S.bgRes = res * 0.6;
-  for (const c of [cInk, cLive]) { c.width = Math.round(W * res); c.height = Math.round(H * res); }
+  for (const c of [cInk, cLive, cRemote]) { c.width = Math.round(W * res); c.height = Math.round(H * res); }
   cBg.width = Math.round(W * S.bgRes); cBg.height = Math.round(H * S.bgRes);
   drawBg(); drawInk();
 }
@@ -3574,7 +3575,10 @@ function armHold(pt, x, y) {
   const f = pt.stroke.p; let L = 0;
   for (let i = 3; i < f.length && L < 400; i += 3) L += Math.hypot(f[i] - f[i - 3], f[i + 1] - f[i - 2]) / 10;
   if (L < 40) return; /* a dot or the tail of a small letter is never a shape */
-  pt.holdT = setTimeout(() => trySnap(pt), 950);
+  /* a letter or a word is never a shape: only drawings bigger than handwriting snap, and only after a clear pause */
+  let bx0 = 1e9, by0 = 1e9, bx1 = -1e9, by1 = -1e9; for (let i = 0; i < f.length; i += 3) { const qx = f[i] / 10, qy = f[i + 1] / 10; if (qx < bx0) bx0 = qx; if (qx > bx1) bx1 = qx; if (qy < by0) by0 = qy; if (qy > by1) by1 = qy; }
+  if (Math.max(bx1 - bx0, by1 - by0) < 70) return;
+  pt.holdT = setTimeout(() => trySnap(pt), 1200);
 }
 function strokePts(flat) { const out = []; for (let i = 0; i < flat.length; i += 3) out.push([flat[i] / 10, flat[i + 1] / 10]); return out; }
 function rdp(pts, eps) {
@@ -4137,7 +4141,7 @@ function openPage(pid) {
   if (editing) commitEdit();
   S.pid = pid; store_ls.set('tp-last-page-' + S.nid, pid);
   if (!S.present) publishLiveLater();
-  PV.ink = {}; PV.laser = null;
+  PV.ink = {}; PV.laser = null; { const c = cRemote.getContext('2d'); c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, cRemote.width, cRemote.height); }
   S.mine = []; S.others = {}; S.ownLoaded = false; S.myRev = 0; S.page = { nb: S.nid, paper: 'grid', items: [] };
   S.undo = []; S.redo = []; updUndo(); clearSel();
   if (S.unsub.page) S.unsub.page();
@@ -12378,7 +12382,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793242231';
+const BUILD = '1793243196';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
@@ -12813,9 +12817,10 @@ function pvLaserUp() {
   const loop = () => { K.raf = 0; if (lzAlpha(K.at) <= 0 && !PV.laser) { K.list = []; drawPresentLive(); return; } drawPresentLive(); K.raf = requestAnimationFrame(loop); };
   if (!K.raf) K.raf = requestAnimationFrame(loop);
 }
+/* the teacher's live lines and laser have their own layer, so a student writing at the same time never wipes them, and they never wipe the student's line */
 function drawPresentLive() {
-  const c = cLive.getContext('2d');
-  c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, cLive.width, cLive.height);
+  const c = cRemote.getContext('2d');
+  c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, cRemote.width, cRemote.height);
   c.setTransform(S.res, 0, 0, S.res, 0, 0);
   for (const s of Object.values(PV.ink)) if (s && s.p.length >= 3) drawStroke(c, s);
   const L = PV.laser;
@@ -12862,7 +12867,7 @@ function exitPresent() {
   $('#presentExit').hidden = true; $('#presentWait').hidden = true;
   store_ls.set('tp-present', '0');
   if (S.room) S.room.presence({ role: null }).catch(() => {});
-  PV.ink = {}; PV.laser = null; clearLive();
+  PV.ink = {}; PV.laser = null; clearLive(); drawPresentLive();
   setTimeout(fit, 60);
 }
 function watchLiveDoc() {
