@@ -546,7 +546,9 @@ body.writing .pagenav, body.writing .diarybar { pointer-events: none; opacity: 0
 .scnhandle { z-index: 3; }
 /* folded by default: only the page number shows, small, so a writing hand does not hit it; tap it to open the controls */
 .pagenav.mini { padding: 2px; gap: 0; opacity: 0.85; }
-.pagenav.mini > *:not(#pgNum):not(#bAnimAll) { display: none !important; }
+.pagenav.mini > *:not(#pgNum):not(#bAnimAll):not(#zNum) { display: none !important; }
+.pagenav.mini #zNum { min-width: 52px; height: 34px; font-size: 13px; }
+@media (max-width: 600px) { .pagenav.mini #zNum { display: flex !important; } }
 .pagenav.mini #pgNum { min-width: 52px; height: 34px; font-size: 13px; }
 .pagenav.left { right: auto; left: 12px; }
 body.navleft .diarybar { left: auto; right: 12px; }
@@ -1393,7 +1395,7 @@ body.role-student .scnpill .sbtns button[data-s="back"], body.role-student .scnp
     <button class="btn" id="bPresent">ใช้หน้าต่างนี้เป็นจอผู้ชม</button>
     <h3>การเขียนและจอ</h3>
     <div class="switch"><span><b>ปุ่มเปลี่ยนหน้าอยู่มุม</b><small>ปุ่มเลขหน้ามุมล่าง ย้ายไปฝั่งที่มือไม่วางตอนเขียน ถนัดขวาเลือกซ้าย ถนัดซ้ายเลือกขวา</small></span><span class="seg" id="navSideSeg" role="group" aria-label="ฝั่งของปุ่มเปลี่ยนหน้า"><button type="button" data-s="left">ซ้าย</button><button type="button" data-s="right">ขวา</button></span></div>
-    <div class="switch"><span><b>เลื่อนหน้าต่อเนื่อง</b><small>เห็นท้ายหน้าก่อนและต้นหน้าถัดไปต่อกัน เลื่อนขึ้นลงข้ามหน้าได้เหมือนม้วนกระดาษ ปิดไว้ จะเปลี่ยนทีละหน้า</small></span><button class="tg" id="tgFlow" role="switch" aria-checked="false" aria-label="เลื่อนหน้าต่อเนื่อง"></button></div>
+    <div class="switch"><span><b>เลื่อนหน้าต่อเนื่อง</b><small>เห็นท้ายหน้าก่อนและต้นหน้าถัดไปต่อกัน เลื่อนขึ้นลงข้ามหน้าได้เหมือนม้วนกระดาษ ปิดไว้ จะเปลี่ยนทีละหน้า</small></span><button class="tg" id="tgFlow" role="switch" aria-checked="false" aria-label="เลื่อนหน้าต่อเนื่อง"><i></i></button></div>
     <div class="switch"><span><b>นิ้ววาดได้</b><small>ปิดไว้ นิ้วจะใช้เลื่อนและซูม ปากกาเขียนอย่างเดียว ระบบปิดให้เองเมื่อพบปากกา</small></span><button class="tg" id="tgFinger" role="switch" aria-checked="true" aria-label="นิ้ววาดได้"><i></i></button></div>
     <div class="switch"><span><b>วางฝ่ามือเพื่อลบ</b><small>สำหรับทีวีทัชสกรีนที่บอกขนาดพื้นที่สัมผัสได้</small></span><button class="tg" id="tgPalm" role="switch" aria-checked="true" aria-label="วางฝ่ามือเพื่อลบ"><i></i></button></div>
     <div class="switch"><span><b>ลากค้างให้เป็นรูปทรง</b><small>ลากเส้นแล้วกดค้างไว้ครู่หนึ่ง จะได้เส้นตรง วงกลม วงรี สามเหลี่ยม หรือสี่เหลี่ยม เส้นตรงลากปรับปลายต่อได้ก่อนยกปากกา</small></span><button class="tg" id="tgShape" role="switch" aria-checked="true" aria-label="ลากค้างให้เป็นรูปทรง"><i></i></button></div>
@@ -12440,7 +12442,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793245736';
+const BUILD = '1793245865';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
