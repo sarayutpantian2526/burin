@@ -640,9 +640,12 @@ body.writing .pagenav, body.writing .diarybar { pointer-events: none; opacity: 0
 .scnhandle { z-index: 3; }
 /* folded by default: only the page number shows, small, so a writing hand does not hit it; tap it to open the controls */
 .pagenav.mini { padding: 2px; gap: 0; opacity: 0.85; }
-.pagenav.mini > *:not(#pgNum):not(#bAnimAll):not(#zNum) { display: none !important; }
+.pagenav.mini > *:not(#pgNum):not(#bAnimAll):not(#zNum):not(#zIn):not(#zOut) { display: none !important; }
+.pagenav.mini #zIn, .pagenav.mini #zOut { display: none; }
 .pagenav.mini #zNum { min-width: 40px; height: 34px; }
 @media (max-width: 600px) { .pagenav.mini #zNum { display: flex !important; } }
+/* with a mouse there is no pinch: small zoom out and zoom in buttons sit beside the fit button */
+@media (hover: hover) and (pointer: fine) { .pagenav.mini #zOut, .pagenav.mini #zIn { display: flex; align-items: center; justify-content: center; min-width: 30px; height: 34px; font-size: 18px; } }
 .pagenav.mini #pgNum { min-width: 52px; height: 34px; font-size: 13px; }
 .pagenav.left { right: auto; left: 12px; }
 /* the writing hand rests at the bottom right: the bar stays on the left, above the page buttons when they are there too */
@@ -17273,7 +17276,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793260797';
+const BUILD = '1793261398';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
@@ -18079,6 +18082,16 @@ vp.addEventListener('wheel', (e) => {
   }
   applyT();
 }, { passive: false });
+/* Ctrl or Command with + - 0 zooms the page, not the whole browser (browser zoom only stretches the picture and blurs it) */
+document.addEventListener('keydown', (e) => {
+  if (!(e.ctrlKey || e.metaKey) || e.altKey) return;
+  const k = e.key;
+  if (k === '+' || k === '=') { e.preventDefault(); zoomTo(S.zoom * 1.25); }
+  else if (k === '-' || k === '_') { e.preventDefault(); zoomTo(S.zoom / 1.25); }
+  else if (k === '0') { e.preventDefault(); $('#zNum').click(); }
+}, true);
+/* when the screen sharpness changes (browser zoom, moving to another monitor) draw the page again at the new sharpness */
+(function watchDpr() { try { const m = matchMedia('(resolution: ' + (window.devicePixelRatio || 1) + 'dppx)'); m.addEventListener('change', () => { resizeCanvases(true); sharpLater(); watchDpr(); }, { once: true }); } catch (e) { /* older browsers */ } })();
 document.addEventListener('keydown', (e) => {
   if (editing || (e.target.closest && e.target.closest('input,select,textarea,[contenteditable="true"]'))) return;
   /* letter shortcuts work with any keyboard language: a Thai, Chinese or Russian layout sends its own letter, so fall back to the physical key */
