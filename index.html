@@ -829,7 +829,9 @@ body.role-student .qkeybox { display: none; }
 .sqa .btn.icon { width: 38px; height: 38px; min-height: 38px; padding: 0; }
 .sqa .btn.icon svg { width: 18px; height: 18px; }
 .sqa .addq { display: inline-flex; align-items: center; gap: 4px; min-height: 36px; padding: 0 12px; }
-.sqa .addq svg { width: 16px; height: 16px; }
+.sqa .addq svg, .sqa .placeq svg { width: 16px; height: 16px; }
+.sqa .placeq { display: inline-flex; align-items: center; gap: 4px; min-height: 38px; padding: 0 10px; margin-right: 4px; white-space: nowrap; }
+@media (max-width: 720px) { .sqa { flex-wrap: wrap; justify-content: flex-end; } .sqa .placeq span { display: none; } }
 .sq .sqk { grid-column: 2 / -1; margin-top: 0; }
 .setqs.pool .sq .sqk { grid-column: 1 / -1; }
 .sq .sqk .qkeybtn { min-height: 26px; padding: 0 10px; font-size: 12px; }
@@ -15847,7 +15849,8 @@ const SICON = {
   up: '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 12.5l5-5 5 5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   down: '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 7.5l5 5 5-5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   del: '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 6h12 M8 6V4.5h4V6 M6 6l.8 10h6.4L14 6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
-  add: '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 4v12 M4 10h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>'
+  add: '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 4v12 M4 10h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
+  place: '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 2.5h7l3 3v12H5z M12 2.5v3h3 M10 8.5v6 M7 11.5h6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>'
 };
 function setData(st) { return { title: st.title, at: st.at, src: st.src, nb: st.nb, qs: st.qs.map((q) => ({ id: q.id, t: q.t, ch: q.ch, d: q.d, k: q.k, q: q.q, c: q.c, a: q.a || 0, e: q.e || '', fig: q.fig || undefined, src: q.src, o: q.o, s: q.s, b: q.b, w: q.w, ans: q.ans || undefined, given: q.given || undefined, lab: q.lab || undefined, img: q.img || undefined })) }; }
 async function setSaveNow(st) {
@@ -15901,6 +15904,19 @@ function exRenderSetEditor(outer) {
     const c = exEl('div', 'sq', '<span class="sqn">' + (i + 1) + '</span><div class="sqb"><div class="sqm"><span class="lv l' + (q.d || 1) + '">' + L[q.d || 1] + '</span><small>' + esc(exChName(q.t, q.ch)) + '</small></div>' + figHtml(q, 160) + '<div class="tqq clamp">' + mdToHtml(q.q) + '</div></div>');
     c.querySelector('.sqb').onclick = () => c.querySelector('.tqq').classList.toggle('clamp');
     const a = exEl('div', 'sqa');
+    /* one question at a time onto the open page, with its answer key on the box */
+    const placed = !!(TRAY.placed[st.id] && TRAY.placed[st.id][q.id]);
+    const pb = exEl('button', 'btn sm placeq' + (placed ? '' : ' solid'), SICON.place + '<span>' + (placed ? 'วางแล้ว' : 'วางลงสมุด') + '</span>'); pb.type = 'button';
+    pb.title = 'วางข้อนี้ลงหน้าที่เปิดอยู่ พร้อมปุ่มเฉลยที่เห็นเฉพาะครู';
+    pb.onclick = async (e) => {
+      e.stopPropagation(); if (!S.page) { toast('เปิดหน้าสมุดก่อน', 1600); return; }
+      pb.disabled = true; await setSaveNow(st);
+      const r = await placeQuestions([q], null, { setId: st.id, numFrom: i + 1 });
+      (TRAY.placed[st.id] || (TRAY.placed[st.id] = {}))[q.id] = 1;
+      toast('วางข้อ ' + (i + 1) + (r.pages ? ' ในหน้าใหม่ถัดไปแล้ว' : ' ลงหน้านี้แล้ว'), 1600);
+      pb.disabled = false; pb.classList.remove('solid'); pb.querySelector('span').textContent = 'วางแล้ว';
+    };
+    a.appendChild(pb);
     a.append(ib(SICON.up, 'ย้ายขึ้น', () => { st.qs.splice(i - 1, 0, st.qs.splice(i, 1)[0]); setChanged(st); }, !i),
       ib(SICON.down, 'ย้ายลง', () => { st.qs.splice(i + 1, 0, st.qs.splice(i, 1)[0]); setChanged(st); }, i === st.qs.length - 1),
       ib(SICON.del, 'เอาข้อนี้ออกจากชุด', () => { st.qs.splice(i, 1); setChanged(st); toast('เอาข้อ ' + (i + 1) + ' ออกแล้ว', 1400); }));
@@ -16839,7 +16855,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793253674';
+const BUILD = '1793254321';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
