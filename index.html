@@ -1211,7 +1211,7 @@ body.role-student .scnpill .sbtns button[data-s="back"], body.role-student .scnp
         <div class="pop" id="popLaser" role="group" aria-label="แบบของเลเซอร์" hidden>
           <div style="display:flex;flex-direction:column;gap:8px;padding:4px">
             <span class="label">แบบเลเซอร์ หายเมื่อยกปากกาหรือนิ้ว</span>
-            <span class="chips" id="lModes"><button class="chip" data-v="dot">จุด</button><button class="chip" data-v="line">เส้นตามที่ลาก</button></span><span class="note small" style="display:block;margin-top:4px">แบบเส้น ขีดได้หลายเส้นต่อกัน เส้นจะค้างไว้ 3 วินาทีหลังยกปากกา แล้วจางหายไปพร้อมกัน</span>
+            <span class="chips" id="lModes"><button class="chip" data-v="dot">จุด</button><button class="chip" data-v="line">เส้นตามที่ลาก</button></span><span class="note small" style="display:block;margin-top:4px">แบบเส้น ขีดได้หลายเส้นต่อกัน เส้นจะค้างไว้ครู่หนึ่งหลังยกปากกา แล้วจางหายไปพร้อมกัน</span>
           </div>
         </div>
         <div class="pop" id="popColors" role="group" aria-label="สีและขนาดเส้น" hidden>
@@ -2266,7 +2266,10 @@ async function runOpenAI(base, key, model, prompt, o, toolsOk) {
   const tools = toolsOk && o.tools ? o.tools.map((t) => ({ type: 'function', function: { name: t.name, description: t.description, parameters: t.inputSchema } })) : undefined;
   const headers = { 'content-type': 'application/json' }; if (key) headers.authorization = 'Bearer ' + key;
   for (let turn = 0; turn < 14; turn++) {
-    const body = { model, messages: msgs, temperature: 0.3, max_tokens: o.maxTokens || 6000 }; if (tools) body.tools = tools;
+    /* models that think before answering spend part of the allowance on thinking: never give them too little room */
+    const isOR = /openrouter\.ai/.test(base);
+    const body = { model, messages: msgs, temperature: 0.3, max_tokens: Math.max(o.maxTokens || 6000, o.grow || 0, 1500) }; if (tools) body.tools = tools;
+    if (isOR && o.grow) body.reasoning = { effort: 'low', exclude: true };
     if (o.effort && !o.noEffort) body.reasoning_effort = o.effort;
     let r;
     try { r = await aiFetch(base + '/chat/completions', { method: 'POST', headers, body: JSON.stringify(body), signal: o.signal }); }
@@ -2285,6 +2288,8 @@ async function runOpenAI(base, key, model, prompt, o, toolsOk) {
     const text = typeof m.content === 'string' ? m.content : Array.isArray(m.content) ? m.content.map((x) => x.text || '').join('') : '';
     if (o.onText) o.onText(text);
     const clean = text.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+    /* the answer ran out of room (usually spent on thinking): ask again with much more room and less thinking, without bothering the user */
+    if (ch.finish_reason === 'length' && (!clean || clean.length < 40) && (o.growN || 0) < 2) { o.growN = (o.growN || 0) + 1; o.grow = Math.min(32000, Math.max(8000, body.max_tokens * 3)); turn--; continue; }
     if (!clean && !o.allowEmpty) throw { code: 'empty_text', why: ch.finish_reason === 'length' ? 'คำตอบยาวเกินกำหนด' : ch.finish_reason === 'content_filter' || ch.finish_reason === 'safety' ? 'ระบบกรองเนื้อหาของผู้ให้บริการ' : '' };
     return { text: clean, truncated: ch.finish_reason === 'length' };
   }
@@ -3450,7 +3455,7 @@ vp.addEventListener('pointerleave', () => { if (!activeLive() && S.tool === 'era
 
 /* laser: a dot, or a line of even strength while held. Lines stay a few seconds after the pen lifts, so several can be
    drawn one after another (circle a word, then an arrow); they fade out together once the pen rests */
-const LZ_HOLD = 3000, LZ_FADE = 600;
+const LZ_HOLD = 1500, LZ_FADE = 450;
 const LZK = { list: [], at: 0, raf: 0 };
 function lzAlpha(at) { const age = now() - at; return age < LZ_HOLD ? 1 : Math.max(0, 1 - (age - LZ_HOLD) / LZ_FADE); }
 function drawLzLine(c, pts, a) {
@@ -12243,7 +12248,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793240880';
+const BUILD = '1793240960';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
