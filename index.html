@@ -91,6 +91,25 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .seg { display: inline-flex; padding: 3px; gap: 2px; border-radius: 12px; background: var(--surface); border: 1px solid var(--line); }
 .seg button { min-height: 38px; padding: 0 12px; border: 0; border-radius: 9px; background: transparent; color: var(--muted); cursor: pointer; font-size: 13px; }
 .seg button[aria-pressed="true"] { background: var(--chrome); color: var(--chrome-fg); font-weight: 600; }
+.avbtn { flex: 0 0 auto; margin-left: auto; width: 32px; height: 32px; padding: 0; border-radius: 50%; border: 2px solid var(--surface); box-shadow: 0 0 0 1px var(--line); background: var(--surface-2); cursor: pointer; overflow: hidden; }
+.avbtn i, .avi { display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; border-radius: 50%; font-style: normal; font-weight: 700; font-size: 14px; color: #FFFFFF; background: var(--av, #9AA1AD) center / cover no-repeat; }
+.avbtn.out i { background: #B8BEC9; }
+.acpop { position: fixed; z-index: 60; top: 46px; right: 12px; width: min(300px, calc(100vw - 24px)); padding: 14px; border-radius: 16px; background: var(--surface); border: 1px solid var(--line); box-shadow: 0 12px 32px rgba(20,26,34,0.2); font-size: 13.5px; }
+.acpop .ah { display: flex; gap: 10px; align-items: center; margin-bottom: 10px; }
+.acpop .ah .avi { flex: 0 0 42px; width: 42px; height: 42px; font-size: 18px; }
+.acpop .ah b { display: block; word-break: break-all; font-size: 14px; }
+.acpop .ah small { color: var(--muted); }
+.acpop .row2 { display: flex; gap: 6px; flex-wrap: wrap; }
+.acpop .row2 .btn { flex: 1 1 auto; }
+.macct { display: flex; align-items: center; gap: 12px; padding: 10px 12px; margin: 4px 0 10px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface-2); }
+.macct .avi { flex: 0 0 40px; width: 40px; height: 40px; font-size: 17px; }
+.macct > div { flex: 1 1 auto; min-width: 0; }
+.macct b { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14.5px; }
+.macct small { display: block; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.macct .btn { flex: 0 0 auto; }
+.macct .btn .sm { display: none; }
+@media (max-width: 600px) { .macct .btn .lg { display: none; } .macct .btn .sm { display: inline; } }
+@media (max-width: 600px) { .avbtn { width: 28px; height: 28px; } .avbtn i { font-size: 12.5px; } .macct { padding: 8px 10px; gap: 10px; } .macct .avi { flex-basis: 34px; width: 34px; height: 34px; } .macct small { display: none; } .acpop { top: 42px; right: 8px; } }
 .acct { display: inline-flex; align-items: center; gap: 7px; min-height: 32px; max-width: 230px; padding: 0 10px 0 3px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--ink, #14181F); font: inherit; font-size: 12.5px; cursor: pointer; }
 .acct i { flex: 0 0 26px; width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-style: normal; font-weight: 700; font-size: 13px; color: #FFFFFF; background: var(--av, #6B7280); }
 .acct span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -1056,13 +1075,14 @@ body.role-student .scnpill .sbtns button[data-s="back"], body.role-student .scnp
   <div class="tabrow" id="tabRow">
     <button class="tabbtn" id="bAllNb" type="button" aria-label="สมุดทั้งหมด" title="สมุดทั้งหมด แตะเพื่อเลือกและจัดลำดับ"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="3" y="3" width="5.5" height="5.5" rx="1.4" fill="none" stroke="currentColor" stroke-width="1.6"/><rect x="11.5" y="3" width="5.5" height="5.5" rx="1.4" fill="none" stroke="currentColor" stroke-width="1.6"/><rect x="3" y="11.5" width="5.5" height="5.5" rx="1.4" fill="none" stroke="currentColor" stroke-width="1.6"/><rect x="11.5" y="11.5" width="5.5" height="5.5" rx="1.4" fill="none" stroke="currentColor" stroke-width="1.6"/></svg><span class="lbl">สมุดทั้งหมด</span></button>
     <div class="tabs" id="tabs" role="group" aria-label="สมุดที่เปิดค้างไว้ แตะเพื่อสลับ ลากเพื่อย้าย แตะค้างเพื่อดูคู่กัน"></div>
+    <button class="avbtn" id="bAcct" type="button" hidden aria-label="บัญชีบนเครื่องนี้" aria-haspopup="dialog"><i></i></button>
   </div>
+  <div class="acpop" id="acctPop" hidden role="dialog" aria-label="บัญชีบนเครื่องนี้"></div>
   <div class="top" role="toolbar" aria-label="แถบหลัก">
     <button class="logo" id="bMenu" aria-label="Burin เมนูและสมุดทั้งหมด" title="Burin : Board for Understanding, Reasoning, Inquiry and Notes"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M9 6.5h8.2c3.6 0 5.8 1.9 5.8 4.8 0 2-1.1 3.4-2.8 4 2.3.5 3.8 2.2 3.8 4.6 0 3.3-2.5 5.6-6.4 5.6H9z M13.2 10.2v4.5h3.4c1.6 0 2.5-.9 2.5-2.3 0-1.4-.9-2.2-2.5-2.2z M13.2 18v5.3h3.9c1.8 0 2.8-1 2.8-2.7 0-1.6-1-2.6-2.8-2.6z" fill="currentColor" fill-rule="evenodd"/><g transform="translate(23.6 8.6) rotate(-45) scale(0.86)"><path d="M2.8 -1.45H9.6V1.45H2.8z" fill="#F6C343"/><path d="M2.8 0.5H9.6V1.45H2.8z" fill="#E0A82A"/><path d="M9.6 -1.45h1.2v2.9h-1.2z" fill="#C9CFDA"/><path d="M10.8 -1.45h1a.6 .6 0 0 1 .6 .6v1.7a.6 .6 0 0 1-.6 .6h-1z" fill="#F28CA0"/><path d="M0 0L2.8 -1.45V1.45z" fill="#F1D3A6"/><path d="M0 0L1.05 -.55V.55z" fill="#26282E"/></g></svg></button>
     <button class="btn icon" id="bPages" aria-label="หน้าในสมุด" aria-pressed="false"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="2.5" y="3.5" width="15" height="13" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M7.5 3.5v13" stroke="currentColor" stroke-width="1.6"/></svg></button>
     <div class="title"><b id="tTitle">กำลังเปิดสมุด</b><span id="tSub"></span></div>
     <span class="pill" id="sync" data-s="local"><i></i><span id="syncT">กำลังเชื่อมต่อ</span></span>
-    <button class="acct" id="bAcct" type="button" hidden aria-label="บัญชีบนเครื่องนี้"><i></i><span></span></button>
     <span class="tsep" aria-hidden="true"></span>
     <button class="btn icon" id="bUndo" aria-label="ย้อนกลับ"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7.5 4.5L3.5 8.5l4 4 M3.5 8.5h8.5a4.5 4.5 0 0 1 0 9H10" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
     <button class="btn icon" id="bRedo" aria-label="ทำซ้ำ"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M12.5 4.5l4 4-4 4 M16.5 8.5H8a4.5 4.5 0 0 0 0 9h2" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
@@ -1279,7 +1299,8 @@ body.role-student .scnpill .sbtns button[data-s="back"], body.role-student .scnp
 </div>
 <div class="sheet" id="menu" hidden>
   <div class="panel wide" role="dialog" aria-label="เมนู">
-    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><h2>เมนู</h2><button class="acct big" id="bAcctMenu" type="button" hidden aria-label="บัญชีบนเครื่องนี้"><i></i><span></span></button><button class="btn" id="bScanMenu" type="button">สแกน QR</button><span class="seg" id="roleSeg" role="group" aria-label="ฝั่งที่ใช้บนเครื่องนี้"><button data-r="teacher">ฝั่งครู</button><button data-r="student">ฝั่งนักเรียน</button></span><button class="btn" id="bMenuClose">กลับไปเขียน</button></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><h2>เมนู</h2><button class="btn" id="bScanMenu" type="button">สแกน QR</button><span class="seg" id="roleSeg" role="group" aria-label="ฝั่งที่ใช้บนเครื่องนี้"><button data-r="teacher">ฝั่งครู</button><button data-r="student">ฝั่งนักเรียน</button></span><button class="btn" id="bMenuClose">กลับไปเขียน</button></div>
+ <div class="macct" id="menuAcct" hidden></div>
     <div class="seg menutabs" id="menuTabs" role="group" aria-label="ส่วนของเมนู"><button data-m="nb">สมุดทั้งหมด</button><button data-m="acc">บัญชี ซิงก์ และ AI</button><button data-m="set">ภาษา การเขียน และจอ</button></div>
     <div data-mp="nb">
     <div class="libnav"><span class="seg" id="libView" role="group" aria-label="มุมมองสมุด"><button type="button" data-v="all">เอกสาร</button><button type="button" data-v="fav">รายการโปรด</button><button type="button" data-v="shared">แชร์แล้ว</button></span><input id="nbFind" class="nbfind" type="search" placeholder="ค้นหาสมุด" autocomplete="off"></div>
@@ -6958,11 +6979,11 @@ function psKin(b, sp, t) {
     /* standing there alive: breathing, a small shift of weight, arms hanging loose */
     const u = 2 * Math.PI * t / 3.2; K.hy = gr + ys - 0.006 * H * (1 + Math.sin(u)); K.hx = x0 + 0.012 * H * Math.sin(u / 2); K.swing = 0.1 * Math.sin(u / 2); K.lean = 0.02 * Math.sin(u / 2); K.phase = 'ยืนหายใจ';
   } else if (b.act === 'wave') {
-    const u = 2 * Math.PI * t * 1.5; K.hy = gr + ys - 0.004 * H * (1 + Math.sin(u / 3)); K.aF = 2.15; K.fF = 2.9 + 0.5 * Math.sin(u); K.swing = 0; K.phase = 'โบกมือทักทาย';
+    const u = 2 * Math.PI * t * 1.5; K.hy = gr + ys - 0.004 * H * (1 + Math.sin(u / 3)); K.aF = 1.8; K.fF = 2.55 + 0.32 * Math.sin(u); K.swing = 0; K.phase = 'โบกมือทักทาย';
   } else if (b.act === 'dance') {
     const u = 2 * Math.PI * t * 1.1, bt = Math.abs(Math.sin(u)); K.hy = gr + ys - 0.07 * Lg * (1 - bt); K.hx = x0 + 0.05 * H * Math.sin(u / 2); K.lean = 0.1 * Math.sin(u / 2);
     const lift = 0.12 * Lg; K.fl = [x0 - 0.09 * H, gr + (Math.sin(u / 2) > 0.3 ? lift * (Math.sin(u / 2) - 0.3) : 0)]; K.fr = [x0 + 0.09 * H, gr + (Math.sin(u / 2) < -0.3 ? lift * (-Math.sin(u / 2) - 0.3) : 0)];
-    K.aF = 1.5 + 0.6 * Math.sin(u); K.fF = K.aF + 0.9; K.aB = -(1.5 + 0.6 * Math.sin(u + Math.PI)); K.fB = K.aB - 0.9; K.phase = 'เต้น';
+    K.aF = 1.25 + 0.5 * Math.sin(u); K.fF = K.aF + 0.8; K.aB = -(1.25 + 0.5 * Math.sin(u + Math.PI)); K.fB = K.aB - 0.8; K.phase = 'เต้น';
   } else if (b.act === 'fall') {
     const T0 = 0.6, L = ys + 0.25 * H; let th = 0;
     if (t > T0) { /* rigid fall about the feet: theta'' = (g/L) sin(theta), started by a push */
@@ -7333,7 +7354,7 @@ function scRuntime(it) {
   return r;
 }
 function scReset(it, r) {
-  const sp = it.spec; r.traces = {}; r.ended = false; r.E0 = null; r.mir = null; r.peek = 0; r.bind = null; r.back = null; r.roll = 0; r.lastPos = null;
+  const sp = it.spec; r.traces = {}; r.ended = false; r.E0 = null; r.mir = null; r.peek = 0; r.turning = null; r.turned = false; r.bind = null; r.back = null; r.roll = 0; r.lastPos = null;
   if (sp.dim === 3) { sc3Reset(sp, r); return; }
   if (sp.domain === 'phys') {
     r.st = phInit(sp);
@@ -7353,7 +7374,7 @@ function scTick(ts) {
     if (!r.playing) continue; const it = findItem(id); if (!it || !r.cv || !r.cv.isConnected) { r.playing = false; continue; }
     any = true; const sp = it.spec;
     if (sp.dim === 3) { sc3Tick(sp, r, dtw); scRender(it, r); continue; }
-    if (sp.domain === 'phys') { if (r.peek) { r.peek -= dtw; if (r.peek <= 0) { r.peek = 0; ipTurn(it, r); } scRender(it, r); continue; } const sim = dtw * (sp.speed || 1) * (r.slow ? 0.25 : 1), n = Math.max(1, Math.ceil(sim / 0.004)); for (let i = 0; i < n; i++) phStep(sp, r.st, sim / n); for (const b of r.st.bodies) { b.trail.push([b.x, b.y]); if (b.trail.length > 400) b.trail.shift(); }
+    if (sp.domain === 'phys') { if (r.turning != null) { r.turning += dtw / 0.4; if (r.turning >= 0.5 && !r.turned) { ipTurn(it, r); r.turned = true; } if (r.turning >= 1) { r.turning = null; r.turned = false; } scRender(it, r); continue; } if (r.peek) { r.peek -= dtw; if (r.peek <= 0) { r.peek = 0; r.turning = 0; r.turned = false; } scRender(it, r); continue; } const sim = dtw * (sp.speed || 1) * (r.slow ? 0.25 : 1), n = Math.max(1, Math.ceil(sim / 0.004)); for (let i = 0; i < n; i++) phStep(sp, r.st, sim / n); for (const b of r.st.bodies) { b.trail.push([b.x, b.y]); if (b.trail.length > 400) b.trail.shift(); }
       const pick = sp.show.graph; if (pick !== 'none') { r.st.hist.push([r.st.t].concat(r.st.bodies.filter((b) => !b.fixed).map((b) => pick === 'x' ? b.x : pick === 'y' ? b.y : pick === 'vx' ? b.vx : pick === 'vy' ? b.vy : pick === 'grf' ? (b.F.N ? b.F.N[1] : 0) : Math.hypot(b.vx, b.vy)))); if (r.st.hist.length > 600) r.st.hist.shift(); }
       const [x0, y0, x1, y1] = phBounds(sp, r.st), far = sp.bare ? 0.3 : Math.max(x1 - x0, y1 - y0) * 3; const edge = sp.bare && it.rig && it.rig.edge;
       if (edge && edge !== 'stay') ipEdge(it, r, x0, x1);
@@ -7618,7 +7639,7 @@ async function openMotionPick() {
   };
   let edge = 'bounce'; try { edge = store_ls.get('tp-edge') || 'bounce'; } catch (e) { /* default */ }
   const goHere = async (kind, act) => { sh.hidden = true; try { await placeInPlace(sp, kind, act, edge); } catch (e) { toast('ทำให้ภาพเคลื่อนที่ไม่สำเร็จ', 3000); } URL.revokeObjectURL(url); };
-  const goLife = async (k) => { sh.hidden = true; try { if (k === 'auto') k = await lifeAuto(sp); if (k === 'person') await placeInPlace(sp, null, edge === 'stay' ? 'idle' : 'walk', edge); else await placeLife(sp, k, edge); } catch (e) { toast('ทำให้ภาพมีชีวิตไม่สำเร็จ', 3000); } URL.revokeObjectURL(url); };
+  const goLife = async (k) => { sh.hidden = true; try { let f = 0; if (k === 'auto') { k = await lifeAuto(sp); if (Array.isArray(k)) { f = k[1]; k = k[0]; } } if (k === 'person') await placeInPlace(sp, null, edge === 'stay' ? 'idle' : 'walk', edge); else await placeLife(sp, k, edge, f); } catch (e) { toast('ทำให้ภาพมีชีวิตไม่สำเร็จ', 3000); } URL.revokeObjectURL(url); };
   /* what happens when it reaches the edge of the paper */
   const er = document.createElement('div'); er.className = 'mvedge'; er.innerHTML = '<span>เมื่อเดินไปถึงขอบกระดาษ</span>';
   for (const [k, n] of [['wrap', 'ออกขอบแล้ววนกลับมาอีกฝั่ง'], ['bounce', 'หันหลังเดินกลับ'], ['peek', 'แอบโผล่ที่ขอบ แล้วกลับมา'], ['stay', 'ไม่ไปไหน']]) { const c = document.createElement('button'); c.type = 'button'; c.className = 'chip'; c.dataset.edge = k; c.textContent = n; c.setAttribute('aria-pressed', k === edge ? 'true' : 'false'); c.onclick = () => { edge = k; try { store_ls.set('tp-edge', k); } catch (e) { /* fine */ } er.querySelectorAll('.chip').forEach((x) => x.setAttribute('aria-pressed', x === c ? 'true' : 'false')); }; er.appendChild(c); }
@@ -7709,7 +7730,19 @@ function ipRig(strokes) {
   for (const s of strokes) { const P = ipPts(s); if (P.length < 6) continue; const b = ipBox([s]), bw = b[2] - b[0], bh = b[3] - b[1], sz = Math.max(bw, bh); if (Math.hypot(P[0][0] - P[P.length - 1][0], P[0][1] - P[P.length - 1][1]) < 0.4 * sz && bh > 0.06 * Hd && bh < 0.45 * Hd && (b[1] + b[3]) / 2 < B[1] + 0.4 * Hd && bw / Math.max(1, bh) > 0.5 && bw / Math.max(1, bh) < 2) { if (!headC || b[1] < headC[1] - headR) { headC = [(b[0] + b[2]) / 2, (b[1] + b[3]) / 2]; headR = sz / 2; } } }
   if (!headC) { const top = all.filter((p) => p[1] < B[1] + 0.1 * Hd); headC = [top.reduce((a, p) => a + p[0], 0) / Math.max(1, top.length) || (B[0] + B[2]) / 2, B[1] + 0.1 * Hd]; headR = 0.1 * Hd; }
   const neck = [headC[0], headC[1] + headR];
-  const hipY = neck[1] + 0.44 * (B[3] - neck[1]); const band = all.filter((p) => Math.abs(p[1] - hipY) < 0.05 * Hd).map((p) => p[0]).sort((a, b) => a - b);
+  /* the hip is where the two legs meet: scan up from the feet while the ink still splits into two or more parts */
+  let hipY = neck[1] + 0.44 * (B[3] - neck[1]);
+  { const gap = Math.max(4, 0.04 * Hd); let last = null, first = null; const dense = [];
+    for (const s of strokes) { const P = ipPts(s); for (let q = 1; q < P.length; q++) { const a = P[q - 1], z = P[q], n = Math.max(1, Math.ceil(Math.hypot(z[0] - a[0], z[1] - a[1]) / 1.5)); for (let m = 0; m < n; m++) dense.push([a[0] + (z[0] - a[0]) * m / n, a[1] + (z[1] - a[1]) * m / n]); } }
+    for (let y = B[3] - 2; y > neck[1] + 0.1 * (B[3] - neck[1]); y -= 2) {
+      const xs = dense.filter((p) => Math.abs(p[1] - y) < 1.2).map((p) => p[0]).sort((a, z) => a - z); if (!xs.length) continue;
+      let n = 1; for (let q = 1; q < xs.length; q++) if (xs[q] - xs[q - 1] > gap) n++;
+      if (n >= 2) { const sp = xs[xs.length - 1] - xs[0]; if (!first) first = [y, sp]; last = [y, sp]; } else if (last != null) break;
+    }
+    /* the legs only look apart a little below where they really join: follow their spread back up to where it would be zero */
+    if (last) { let y = last[0]; if (first && first[1] - last[1] > 2 && first[0] - last[0] > 4) y = last[0] - last[1] * (first[0] - last[0]) / (first[1] - last[1]); y = Math.max(y, last[0] - 0.12 * Hd);
+      if (y > neck[1] + 0.2 * (B[3] - neck[1]) && y < B[3] - 0.12 * Hd) hipY = y; } }
+  const band = all.filter((p) => Math.abs(p[1] - hipY) < 0.05 * Hd).map((p) => p[0]).sort((a, b) => a - b);
   const hip = [band.length ? band[Math.floor(band.length / 2)] : neck[0], hipY];
   const sh = [neck[0] + 0.2 * (hip[0] - neck[0]), neck[1] + 0.2 * (hip[1] - neck[1])];
   const near = (grp, q) => { let best = null, bd = 1e9; for (const p of grp) { const d = Math.hypot(p[0] - q[0], p[1] - q[1]); if (d < bd) { bd = d; best = p; } } return best; };
@@ -7764,7 +7797,7 @@ function ipEdge(it, r, x0, x1) {
   const span = x1 - x0, half = (it.rig.kind === 'person' ? 0.22 * b.hgt : Math.max(b.w || 0, b.h || 0) / 2) || 0.3, m = r.mir || { s: 1, O: 0 }, Kp = W / Math.max(1e-6, span);
   const disp = (m.s * b.x * Kp + m.O) / Kp, goingRight = (b.vx || 0) * m.s >= 0, e = it.rig.edge;
   if (e === 'wrap') { if (goingRight && disp - half > x1) ipShift(r, b, -(span + 2 * half) * m.s); else if (!goingRight && disp + half < x0) ipShift(r, b, (span + 2 * half) * m.s); }
-  else if (e === 'bounce') { if ((goingRight && disp + half > x1) || (!goingRight && disp - half < x0)) ipTurn(it, r); }
+  else if (e === 'bounce') { if ((goingRight && disp + half > x1) || (!goingRight && disp - half < x0)) { if (b.shape === 'person') { r.turning = 0; r.turned = false; } else ipTurn(it, r); } }
   else if (e === 'peek') { if ((goingRight && disp - half * 0.15 > x1) || (!goingRight && disp + half * 0.15 < x0)) r.peek = 2.4; }
 }
 function ipShift(r, b, dx) { if (b.shape === 'person') b.x0 += dx; b.x += dx; }
@@ -7778,6 +7811,7 @@ function ipTurn(it, r) {
 function ipDrawInk(c, it, r, b, X, Y) {
   const rig = it.rig || {}, ry = it.y || 0, P = (w) => [X(w[0]), Y(w[1]) + ry];
   c.save(); c.translate(0, -ry); if (r.mir) { c.translate(r.mir.O, 0); c.scale(r.mir.s, 1); }
+  if (r.turning != null && rig.kind === 'person') { const f = Math.max(0.1, Math.abs(Math.cos(Math.PI * r.turning))), hx = X(b.x); c.translate(hx, 0); c.scale(f, 1); c.translate(-hx, 0); }
   if (rig.kind === 'person') {
     const J = psJoints(b), E0 = r.E0 || (r.E0 = J), d = (k) => [P(J[k])[0] - P(E0[k])[0], P(J[k])[1] - P(E0[k])[1]];
     const A = (j, a, z) => ipAng(P(j[a]), P(j[z]));
@@ -7798,8 +7832,12 @@ function ipDrawInk(c, it, r, b, X, Y) {
       /* a raised or waving arm turns to the pose itself; a swinging arm swings a little around how it was drawn */
       /* a raised arm goes up on its own side of the body, never across the face */
       const side = Math.sign(a.hd[0] - R.sh[0]) || 1, tgt = (ang) => (Math.sign(Math.cos(ang)) === side || Math.abs(Math.cos(ang)) < 1e-3 ? ang : Math.PI - ang);
-      const du = ov ? ipWrap(tgt(A(J, 'sh', ek)) - ipAng(R.sh, a.el)) : 0.6 * ipWrap(A(J, 'sh', ek) - A(Jn, 'sh', ek)), elN = ipRot(a.el, R.sh, du, shN);
-      const df = ov ? ipWrap(tgt(A(J, ek, hk)) - ipAng(a.el, a.hd)) : 0.6 * ipWrap(A(J, ek, hk) - A(Jn, ek, hk)); void flip;
+      /* a swinging arm moves its hand forward and back (scissors), whichever side of the body it was drawn on */
+      const swg = (i ? 1 : -1) * (J.K.swing || 0);
+      let du = ov ? ipWrap(tgt(A(J, 'sh', ek)) - ipAng(R.sh, a.el)) : -0.42 * swg, elN = ipRot(a.el, R.sh, du, shN);
+      let df = ov ? ipWrap(tgt(A(J, ek, hk)) - ipAng(a.el, a.hd)) : -0.42 * swg - 0.18 * Math.max(0, swg); void flip; void Jn;
+      /* arms drawn straight out to the side hang down a little while walking, as real arms do */
+      if (!ov && ['walk', 'run', 'idle', 'wave'].includes(b.act)) { const walking = b.act === 'walk' || b.act === 'run', relax = (walking ? 0.9 : 0.6) * ipWrap(Math.PI / 2 - side * (walking ? 0.12 : 0.5) - ipAng(R.sh, a.el)); if (Math.abs(relax) > 0.15) { du += relax; elN = ipRot(a.el, R.sh, du, shN); df += relax; } }
       T.push([R.sh, shN, du]); T.push([a.el, elN, df]);
     });
     /* bone order matches ipBones: torso, head, then legs, then arms */
@@ -7862,7 +7900,7 @@ async function placeInPlace(sp, kind, act, edge) {
     /* legs drawn very short make a shuffling walk: lengthen them a little, keeping the feet on the ground and lifting the body */
     const top0 = rig.headC ? rig.headC[1] - rig.headR : B[1], leg0 = rig.foot - rig.hip[1], tall = rig.foot - top0;
     if (['walk', 'run', 'dance', 'jump', 'longjump'].includes(act) && leg0 > 4 && leg0 < 0.36 * tall) {
-      const f = Math.min(1.45, 0.4 * tall / leg0), hipY = rig.hip[1], ft = rig.foot;
+      const f = Math.min(1.6, 0.4 * tall / leg0), hipY = rig.hip[1], ft = rig.foot;
       for (const x of body) { const q = x.s.p; for (let j = 1; j < q.length; j += 3) { const y = q[j] / 10, ny = y >= hipY ? ft - (ft - y) * f : y - (f - 1) * leg0; q[j] = Math.round(ny * 10); } boxCache.delete(x.s); }
       rig = ipRig(body.map((x) => x.s)); rig.fixed = +(f.toFixed(2));
     }
@@ -7881,7 +7919,7 @@ async function placeInPlace(sp, kind, act, edge) {
     if (!surf.some((s) => Math.min(s.x1, s.x2) <= hw[0] && Math.max(s.x1, s.x2) >= hw[0] && Math.abs((s.y1 + s.y2) / 2 - fy) < 0.15)) spec.surfaces.unshift({ x1: -50, y1: fy, x2: W / K + 50, y2: fy, mu: 0.8 });
     const v = { walk: 1.3, run: 4, jump: 2.4, longjump: 5.5, fall: 0, squat: 0 }[act] || 0;
     /* the model's leg length follows the drawn legs, so steps fit the legs that were drawn */
-    const hgt = +clamp(2 * ((rig.foot - rig.hip[1]) / K) / 0.98, 1.0, 2.3).toFixed(3);
+    const hgt = +clamp(2 * ((rig.foot - rig.hip[1]) / K) / 0.98, 0.6, 2.3).toFixed(3);
     spec.bodies.push({ id: 'P', label: 'คน', shape: 'person', act, m: 60, hgt, x: hw[0], y: hw[1], v: v || 0, ang: 20, push: 0.6, ink: true });
     spec.params = act === 'walk' || act === 'run' ? [{ key: 'P.v', label: act === 'walk' ? 'ความเร็วเดิน (m/s)' : 'ความเร็ววิ่ง (m/s)', min: act === 'walk' ? 0.5 : 2, max: act === 'walk' ? 2.2 : 8, step: 0.1 }] : act === 'jump' ? [{ key: 'P.v', label: 'ความเร็วตอนพ้นพื้น (m/s)', min: 0.5, max: 4, step: 0.1 }] : act === 'longjump' ? [{ key: 'P.v', label: 'ความเร็ววิ่งเข้าหา (m/s)', min: 2, max: 10, step: 0.5 }, { key: 'P.ang', label: 'มุมกระโดด (องศา)', min: 5, max: 45, step: 1 }] : act === 'fall' ? [{ key: 'P.push', label: 'แรงผลัก', min: 0.1, max: 2, step: 0.1 }] : [];
     spec.params.push({ key: 'P.m', label: 'มวล (kg)', min: 20, max: 120, step: 1 });
@@ -8237,22 +8275,34 @@ const LIFE_KINDS = [
   ['swim', 'ว่ายน้ำ', 'ปลา ปลาวาฬ หางสะบัดเป็นคลื่น', 1],
   ['flicker', 'เปลวไฟ', 'ไฟ เทียน ควัน ไหววูบวาบ', 0],
   ['shake', 'สั่น', 'กระดิ่ง นาฬิกาปลุก คนหนาว', 0],
-  ['drive', 'วิ่งไป', 'รถ รถไฟ เรือ ล้อหมุนไปด้วย', 1]
+  ['drive', 'วิ่งไป', 'รถ รถไฟ เรือ ล้อหมุนไปด้วย', 1],
+  ['walk4', 'เดินสี่ขา', 'หมา แมว ม้า ช้าง ขาก้าวสลับเป็นคู่ทแยง', 1],
+  ['roll', 'กลิ้ง', 'ก้อนหิน ลูกบอล ผลไม้ กลิ้งไปตามพื้น', 1]
 ];
+/* which way a drawing faces: the end with the tail fans out, the end with the head stands taller */
+function lifeFace(ink, B, kind) {
+  const bw = B[2] - B[0], bh = B[3] - B[1], pts = []; for (const s of ink) for (const p of ipPts(s)) pts.push(p);
+  if (!pts.length || bw < 10) return 1;
+  const end = (lo, hi) => pts.filter((p) => p[0] >= lo && p[0] <= hi);
+  if (kind === 'walk4') { const top = (a) => a.length ? Math.min(...a.map((p) => p[1])) : B[3]; const L = top(end(B[0], B[0] + 0.3 * bw)), R = top(end(B[2] - 0.3 * bw, B[2])); return Math.abs(L - R) < 0.05 * bh ? 1 : (R < L ? 1 : -1); }
+  const spread = (a) => a.length ? Math.max(...a.map((p) => p[1])) - Math.min(...a.map((p) => p[1])) : 0;
+  const L = spread(end(B[0], B[0] + 0.1 * bw)), R = spread(end(B[2] - 0.1 * bw, B[2]));
+  return Math.abs(L - R) < 0.08 * bh ? 1 : (L > R ? 1 : -1);
+}
 const LIFE_EDGE = [['wrap', 'ออกขอบหนึ่งแล้ววนกลับมาอีกขอบ'], ['bounce', 'หันกลับเมื่อถึงขอบ'], ['peek', 'แอบที่ขอบ แล้วกลับมา'], ['stay', 'อยู่กับที่']];
 const LIFE = new Map(); let lifeRaf = 0, lifeLast = 0;
 function lifeRegion(B, beh) {
   const bw = B[2] - B[0], bh = B[3] - B[1], mv = beh.move && beh.edge !== 'stay';
-  const up = beh.k === 'hop' ? bh * 1.3 : beh.k === 'flap' ? bh * 0.8 : beh.k === 'bob' ? bh * 0.35 : bh * 0.3;
+  const up = beh.k === 'hop' ? bh * 1.3 : beh.k === 'flap' ? bh * 0.8 : beh.k === 'bob' ? bh * 0.35 : beh.k === 'roll' ? bw * 0.3 : bh * 0.3;
   const y0 = Math.max(0, Math.round(B[1] - up - 20)), y1 = Math.min(H, Math.round(B[3] + bh * 0.25 + 20));
   return mv ? [0, y0, W, y1] : [Math.max(0, Math.round(B[0] - bw * 0.4 - 20)), y0, Math.min(W, Math.round(B[2] + bw * 0.4 + 20)), y1];
 }
-async function placeLife(sp, kind, edge) {
+async function placeLife(sp, kind, edge, face) {
   const body = sp.refs.map((r) => { const s = findStroke(r); return s ? { r, s: clone(s) } : null; }).filter(Boolean);
   const pics = sp.items.map(findItem).filter(Boolean).map((it) => { const b = itemBox(it); return { asset: it.asset, x: b[0], y: b[1], w: b[2] - b[0], h: b[3] - b[1], item: clone(it) }; }).filter((q) => okAsset(q.asset));
   if (!body.length && !pics.length) throw { code: 'empty' };
   const B = ipBox(body.map((x) => x.s), pics), meta = LIFE_KINDS.find((k) => k[0] === kind) || LIFE_KINDS[0];
-  const beh = { k: meta[0], amp: 1, sp: 1, move: meta[3] ? 1 : 0, edge: meta[3] ? (edge || 'bounce') : 'stay', dir: 1 };
+  const beh = { k: meta[0], amp: 1, sp: 1, move: meta[3] ? 1 : 0, edge: meta[3] ? (edge || 'bounce') : 'stay', dir: 1, face: face === -1 || face === 1 ? face : lifeFace(body.map((x) => x.s), B, meta[0]) };
   const wheels = [];
   body.forEach((x, i) => { const P = ipPts(x.s); if (P.length < 8 || body.length < 2) return; const b = ipBox([x.s]), bw = b[2] - b[0], bh = b[3] - b[1], sz = Math.max(bw, bh); if (Math.hypot(P[0][0] - P[P.length - 1][0], P[0][1] - P[P.length - 1][1]) > 0.35 * sz || bw / Math.max(1, bh) < 0.7 || bw / Math.max(1, bh) > 1.4 || (b[1] + b[3]) / 2 < B[1] + 0.45 * (B[3] - B[1]) || sz < 0.1 * (B[2] - B[0]) || sz > 0.7 * (B[2] - B[0])) return; wheels.push({ i: [i], cx: (b[0] + b[2]) / 2, cy: (b[1] + b[3]) / 2, r: sz / 2 }); });
   const removed = [], touched = new Set();
@@ -8267,13 +8317,13 @@ function lifeSet(it, patch) {
   const live = findItem(it.id); if (!live) return; Object.assign(live.beh, patch);
   const R0 = lifeRegion(live.B, live.beh); const before = clone(S.page.items || []);
   const items = S.page.items.map((x) => (x.id === live.id ? Object.assign({}, live, { beh: Object.assign({}, live.beh), x: R0[0], y: R0[1], w: R0[2] - R0[0], h: R0[3] - R0[1] }) : x));
-  const rt = LIFE.get(live.id); if (rt) { rt.dx = 0; rt.dir = 1; rt.state = 'go'; }
+  const rt = LIFE.get(live.id); if (rt) { rt.dx = 0; rt.dir = live.beh.face || 1; rt.state = 'go'; rt.legs = null; rt.wings = null; rt.hull = null; rt.v = 0; }
   setItems(items, before);
 }
 function buildLife(d, it, forExport) {
   d.classList.add('life', 'no-ink'); d.style.height = (it.h || 100) + 'px';
   const cv = document.createElement('canvas'); cv.className = 'lifecv'; cv.style.width = '100%'; cv.style.height = (it.h || 100) + 'px'; d.appendChild(cv);
-  let rt = LIFE.get(it.id); if (!rt) { rt = { t: 0, dx: 0, dir: 1, state: 'go', st0: 0, playing: true, roll: 0 }; LIFE.set(it.id, rt); }
+  let rt = LIFE.get(it.id); if (!rt) { rt = { t: 0, dx: 0, dir: (it.beh && it.beh.face) || 1, state: 'go', st0: 0, playing: true, roll: 0 }; LIFE.set(it.id, rt); }
   rt.cv = cv;
   if (forExport) { requestAnimationFrame(() => lifeDraw(it, rt)); return; }
   const B = it.B, dot = document.createElement('button'); dot.type = 'button'; dot.className = 'lifedot'; dot.title = 'ปรับภาพเคลื่อนไหว'; dot.setAttribute('aria-label', 'ปรับภาพเคลื่อนไหว');
@@ -8295,6 +8345,9 @@ function lifePanel(d, it, dot) {
   const chips = document.createElement('div'); chips.className = 'chips';
   for (const [k, n] of LIFE_EDGE) { const b = document.createElement('button'); b.type = 'button'; b.className = 'chip'; b.textContent = n; b.setAttribute('aria-pressed', (live.beh.edge || 'stay') === k ? 'true' : 'false'); b.onclick = () => lifeSet(it, { edge: k, move: k === 'stay' ? 0 : 1 }); chips.appendChild(b); }
   p.appendChild(chips);
+  const fc = document.createElement('div'); fc.className = 'chips';
+  for (const [f, n] of [[-1, 'หันหน้าไปทางซ้าย'], [1, 'หันหน้าไปทางขวา']]) { const b = document.createElement('button'); b.type = 'button'; b.className = 'chip'; b.textContent = n; b.setAttribute('aria-pressed', (live.beh.face || 1) === f ? 'true' : 'false'); b.title = 'บอกว่าภาพที่วาดหันหน้าไปทางไหน หัวจะนำเวลาเคลื่อนที่ หางหรือขาหลังตามหลัง'; b.onclick = () => lifeSet(it, { face: f }); fc.appendChild(b); }
+  p.appendChild(fc);
   const sl = (label, key, min, max) => { const l = document.createElement('label'); l.className = 'lifesl'; l.innerHTML = '<span>' + label + '</span>'; const r = document.createElement('input'); r.type = 'range'; r.min = min; r.max = max; r.step = 0.05; r.value = live.beh[key]; r.oninput = () => { const L = findItem(it.id); if (L) L.beh[key] = +r.value; }; r.onchange = () => savePage(); l.appendChild(r); p.appendChild(l); };
   sl('ความเร็ว', 'sp', 0.2, 3); sl('ความแรงของท่าทาง', 'amp', 0.2, 2.5);
   const row = document.createElement('div'); row.className = 'row2';
@@ -8314,58 +8367,144 @@ function lifeTick(ts) {
   }
   if (any) lifeRaf = requestAnimationFrame(lifeTick); else lifeLast = 0;
 }
-/* travelling and what happens at the edge of the paper */
+const LIFE_SPEED = { hop: 110, flap: 140, swim: 80, drive: 200, bob: 35, wiggle: 45, walk4: 70, roll: 90 };
+/* legs of a four-legged drawing: ink below the belly, grouped where there are gaps between them */
+function lifeLegs(it) {
+  const B = it.B, bw = B[2] - B[0], bh = B[3] - B[1];
+  /* legs drawn as their own lines: tall thin strokes in the lower part, each swings about its top */
+  const ls = []; it.ink.forEach((s, i) => { const b = ipBox([s]), w = b[2] - b[0], h = b[3] - b[1]; if (h > 1.4 * w && h > 0.15 * bh && b[3] > B[1] + 0.75 * bh && (b[1] + b[3]) / 2 > B[1] + 0.5 * bh) ls.push({ i, px: (b[0] + b[2]) / 2, top: b[1], bot: b[3] }); });
+  if (ls.length >= 2) {
+    ls.sort((a, z) => a.px - z.px); const n = ls.length, L = ls.reduce((a, l) => a + l.bot - l.top, 0) / n;
+    return { strokes: true, L, yz: Math.min(...ls.map((l) => l.top)), legs: ls.map((l, k) => ({ i: l.i, px: l.px, top: l.top, ph: n === 4 ? [0, Math.PI, Math.PI, 0][k] : (k % 2) * Math.PI })) };
+  }
+  const yz = B[1] + 0.7 * bh, xs = [];
+  for (const s of it.ink) for (const p of ipPts(s)) if (p[1] > yz) xs.push(p[0]);
+  xs.sort((a, b) => a - b); const cl = []; let cur = null;
+  for (const x of xs) { if (cur && x - cur[1] <= Math.max(6, 0.05 * bw)) cur[1] = x; else { cur = [x, x]; cl.push(cur); } }
+  let legs = cl.filter((c) => c[1] - c[0] < 0.32 * bw);
+  if (legs.length < 2) legs = [[B[0], (B[0] + B[2]) / 2], [(B[0] + B[2]) / 2, B[2]]];
+  const L = Math.max(4, B[3] - yz), n = legs.length;
+  return { yz, L, legs: legs.map((c, i) => ({ x0: c[0] - 4, x1: c[1] + 4, px: (c[0] + c[1]) / 2, ph: n === 4 ? [0, Math.PI, Math.PI, 0][i] : (i % 2) * Math.PI })) };
+}
+/* wings of a bird drawn from the side: smaller strokes sitting on top of the body stroke */
+function lifeWings(it) {
+  if (it.ink.length < 2) return [];
+  const bx = it.ink.map((s) => ipBox([s])), area = bx.map((b) => (b[2] - b[0]) * (b[3] - b[1])), bi = area.indexOf(Math.max(...area)), b0 = bx[bi], cyb = (b0[1] + b0[3]) / 2;
+  const out = [];
+  it.ink.forEach((s, i) => { if (i === bi) return; const b = bx[i], cx = (b[0] + b[2]) / 2, cy = (b[1] + b[3]) / 2; if (cy < cyb && cx > b0[0] && cx < b0[2] && area[i] > 0.04 * area[bi]) { const P = ipPts(s); let pv = P[0], d = 1e9; for (const p of P) { const q = Math.hypot(p[0] - (b0[0] + b0[2]) / 2, p[1] - cyb); if (q < d) { d = q; pv = p; } } out.push({ i, pv }); } });
+  return out;
+}
+/* travelling and what happens at the edge of the paper. Speed eases in and out, turning back is a quick turn on the spot,
+   animals stop for a moment now and then, a hopping thing only moves forward while it is in the air */
+const lifeNoise = (t, s) => Math.sin(t * 0.37 + s) * 0.6 + Math.sin(t * 0.91 + 2 * s) * 0.3 + Math.sin(t * 2.3 + 3 * s) * 0.1;
+function lifeTarget(it, rt) {
+  const b = it.beh, base = (LIFE_SPEED[b.k] || 60) * (b.sp || 1), t = rt.t + rt.seed;
+  if (rt.state !== 'go') return 0;
+  if (b.k === 'hop') { const u = (rt.hp % 1); return u > 0.18 ? base * 1.5 : 0; }
+  if (b.k === 'swim') return base * (1 + 0.35 * Math.sin(t * 6));
+  if (b.k === 'wiggle') return base * (0.6 + 0.4 * Math.abs(Math.sin(t * 7)));
+  if (b.k === 'bob') return base * (0.7 + 0.3 * lifeNoise(t, 1));
+  if (b.k === 'flap') return base * (0.9 + 0.15 * Math.sin(t * 0.8));
+  return base;
+}
 function lifeMove(it, rt, dt) {
-  const b = it.beh; if (!b.move || b.edge === 'stay') { rt.dx = 0; return; }
-  const B = it.B, bw = B[2] - B[0], speed = { hop: 110, flap: 140, swim: 80, drive: 200, bob: 35, wiggle: 45 }[b.k] || 60;
-  if (rt.state === 'peek') { if (rt.t - rt.st0 > 2.6) { rt.state = 'go'; rt.dir = -rt.dir; } return; }
-  rt.dx += rt.dir * speed * (b.sp || 1) * dt;
+  const b = it.beh, k = b.k, B = it.B, bw = B[2] - B[0], base = (LIFE_SPEED[k] || 60) * (b.sp || 1);
+  if (rt.seed == null) rt.seed = Math.random() * 50;
+  if (rt.hp == null) { rt.hp = 0; rt.gp = 0; rt.v = 0; rt.alt = 0; rt.rest = 6 + Math.random() * 8; }
+  if (!b.move || b.edge === 'stay') { rt.dx = 0; rt.v = 0; rt.hp += dt * (b.sp || 1) / 0.95; rt.gp += dt * (b.sp || 1) * 2.2; return; }
+  /* states: go, slow (coming to the edge or a rest), turn, peek, rest */
+  if (rt.state === 'turn') { rt.tp += dt / 0.38; if (rt.tp >= 0.5 && !rt.flipped) { rt.dir = -rt.dir; rt.flipped = true; } if (rt.tp >= 1) { rt.state = 'go'; rt.tp = 0; } }
+  else if (rt.state === 'peek') { if (rt.t - rt.st0 > 2.6) { rt.state = 'turn'; rt.tp = 0; rt.flipped = false; } }
+  else if (rt.state === 'rest') { if (rt.t - rt.st0 > rt.restFor) { rt.state = 'go'; rt.rest = rt.t + 7 + Math.random() * 9; } }
+  else if ((k === 'walk4' || k === 'hop' || k === 'wiggle') && rt.t > rt.rest && (k !== 'hop' || rt.hp % 1 < 0.05)) { rt.state = 'rest'; rt.st0 = rt.t; rt.restFor = 1 + Math.random() * 1.6; }
+  const tgt = lifeTarget(it, rt), acc = k === 'hop' ? 30 : k === 'drive' ? 1.6 : 3.2;
+  rt.v += (tgt - rt.v) * Math.min(1, dt * acc);
+  rt.dx += rt.dir * rt.v * dt;
+  /* gait clocks follow the real speed so feet do not slide */
+  if (k === 'hop') { if (rt.state === 'go' || rt.hp % 1 > 0.02) rt.hp += dt * (b.sp || 1) / 0.95; }
+  if (k === 'walk4') { const L = (rt.legs && rt.legs.L) || bw * 0.3; rt.gp += dt * rt.v / (0.242 * L); }
+  if (k === 'flap') { const fl = ((rt.t + rt.seed) % 3.4) < 2.3; rt.alt = clamp(rt.alt + (fl ? -1 : 0.7) * dt * (B[3] - B[1]) * 0.22, -(B[3] - B[1]) * 0.7, (B[3] - B[1]) * 0.5); }
   const left = B[0] + rt.dx, right = left + bw;
+  if (rt.state !== 'go') return;
   if (b.edge === 'wrap') { if (left > W + 10) rt.dx -= W + bw + 20; else if (right < -10) rt.dx += W + bw + 20; }
-  else if (b.edge === 'bounce') { if (rt.dir > 0 && right > W - 6) rt.dir = -1; else if (rt.dir < 0 && left < 6) rt.dir = 1; }
+  else if (b.edge === 'bounce') { const ahead = rt.v * rt.v / (2 * Math.max(1, acc * base * 0.6)); if ((rt.dir > 0 && right + ahead > W - 6) || (rt.dir < 0 && left - ahead < 6)) { if (k === 'hop' && rt.hp % 1 > 0.05) return; rt.state = 'turn'; rt.tp = 0; rt.flipped = false; } }
   else if (b.edge === 'peek') { if ((rt.dir > 0 && left + bw * 0.55 > W) || (rt.dir < 0 && right - bw * 0.55 < 0)) { rt.state = 'peek'; rt.st0 = rt.t; } }
 }
 function lifeDraw(it, rt) {
   const cv = rt.cv; if (!cv) return; const w = it.w, h = it.h, dpr = Math.min(3, (window.devicePixelRatio || 1) * Math.max(1, (S.base || 1) * (S.zoom || 1))), cap = Math.min(dpr, Math.sqrt(6e6 / Math.max(1, w * h)));
   if (cv.width !== Math.round(w * cap) || cv.height !== Math.round(h * cap)) { cv.width = Math.round(w * cap); cv.height = Math.round(h * cap); }
   const c = cv.getContext('2d'); c.setTransform(cap, 0, 0, cap, 0, 0); c.clearRect(0, 0, w, h); c.translate(-it.x, -it.y);
-  const B = it.B, b = it.beh, A = b.amp || 1, t = rt.t, bw = B[2] - B[0], bh = B[3] - B[1], cx = (B[0] + B[2]) / 2, cy = (B[1] + B[3]) / 2, TAU = Math.PI * 2;
+  if (rt.seed == null) rt.seed = Math.random() * 50;
+  const B = it.B, b = it.beh, A = b.amp || 1, T0 = rt.t, t = T0 + rt.seed, bw = B[2] - B[0], bh = B[3] - B[1], cx = (B[0] + B[2]) / 2, cy = (B[1] + B[3]) / 2, TAU = Math.PI * 2;
+  const face = b.face || 1, moving = b.move && b.edge !== 'stay', k = b.k, base = (LIFE_SPEED[k] || 60) * (b.sp || 1), vr = moving ? clamp((rt.v || 0) / Math.max(1, base), 0, 1.6) : 1;
   /* whole-body motion: offset, rotation and squash about a pivot */
   let ox = rt.dx, oy = 0, rot = 0, sx = 1, sy = 1, px = cx, py = B[3];
-  const k = b.k;
-  if (k === 'bob') { oy = -Math.sin(t * 2) * bh * 0.12 * A; rot = Math.sin(t * 1.3) * 0.06 * A; py = cy; }
-  else if (k === 'spin') { rot = t * 2.2 * (b.dir || 1); px = cx; py = cy; }
-  else if (k === 'wiggle') { rot = Math.sin(t * 7) * 0.12 * A; sy = 1 + Math.sin(t * 14) * 0.025 * A; }
-  else if (k === 'hop') { const T = 0.9, u = (t % T) / T; if (u < 0.15) { const q = u / 0.15; sy = 1 - 0.18 * A * Math.sin(Math.PI * q); sx = 1 + 0.1 * A * Math.sin(Math.PI * q); } else { const q = (u - 0.15) / 0.85; oy = -4 * q * (1 - q) * bh * 1.1 * A; sy = 1 + 0.08 * A * Math.sin(Math.PI * q); sx = 1 - 0.04 * A * Math.sin(Math.PI * q); } }
-  else if (k === 'breathe') { sy = 1 + Math.sin(t * 2.4) * 0.035 * A; sx = 1 - Math.sin(t * 2.4) * 0.012 * A; }
-  else if (k === 'beat') { const u = (t % 1.1) / 1.1, pulse = Math.exp(-Math.pow((u - 0.12) / 0.05, 2)) + 0.6 * Math.exp(-Math.pow((u - 0.32) / 0.05, 2)); sx = sy = 1 + 0.13 * A * pulse; py = cy; }
-  else if (k === 'shake') { rot = Math.sin(t * 38) * 0.06 * A * (0.6 + 0.4 * Math.sin(t * 2)); py = B[1]; }
-  else if (k === 'flap') { oy = -Math.sin(t * 9) * bh * 0.08 * A + Math.sin(t * 1.4) * bh * 0.2; py = cy; }
-  else if (k === 'drive') { oy = -Math.abs(Math.sin(t * 9)) * 2 * A; }
-  else if (k === 'swim') { oy = Math.sin(t * 1.6) * bh * 0.12 * A; rot = Math.sin(t * 1.6 + 1) * 0.05 * A; py = cy; }
-  const flip = rt.dir < 0 && b.move && b.edge !== 'stay' && k !== 'spin';
-  const peekLean = rt.state === 'peek' ? Math.sin((t - rt.st0) * 3) * 0.12 : 0;
+  if (k === 'bob') { oy = -(Math.sin(t * 1.7) * 0.7 + Math.sin(t * 0.63) * 0.3) * bh * 0.12 * A; rot = (Math.sin(t * 1.1) * 0.05 + lifeNoise(t, 2) * 0.03) * A; py = cy; }
+  else if (k === 'spin') { rot = T0 * 2.2 * face; px = cx; py = cy; }
+  else if (k === 'wiggle') { const st = Math.sin(t * 7); rot = st * 0.11 * A; oy = -Math.abs(st) * bh * 0.03 * A * (moving ? vr : 0.5); sy = 1 + Math.abs(Math.cos(t * 7)) * 0.03 * A; }
+  else if (k === 'hop') {
+    const u = (rt.hp == null ? T0 / 0.95 : rt.hp) % 1;
+    if (u < 0.18) { const q = u / 0.18, d = Math.sin(Math.PI * q); sy = 1 - 0.2 * A * d; sx = 1 + 0.12 * A * d; }
+    else { const q = (u - 0.18) / 0.82; oy = -4 * q * (1 - q) * bh * 1.1 * A; sy = 1 + 0.1 * A * Math.sin(Math.PI * Math.min(1, q * 1.6)) * (1 - q); sx = 2 - sy; rot = -face * (0.5 - q) * 0.25 * A; }
+  }
+  else if (k === 'breathe') { const br = Math.sin(t * 2.2); sy = 1 + br * 0.03 * A; sx = 1 - br * 0.01 * A; rot = Math.sin(t * 0.45) * 0.012 * A; }
+  else if (k === 'beat') { const u = ((T0 * (b.sp || 1) * 0 + T0) % 1.05) / 1.05, pulse = Math.exp(-Math.pow((u - 0.12) / 0.05, 2)) + 0.6 * Math.exp(-Math.pow((u - 0.32) / 0.05, 2)); sx = sy = 1 + 0.13 * A * pulse; py = cy; }
+  else if (k === 'shake') { const on = (t % 2.4) < 1.3 ? 1 : 0.08; rot = Math.sin(t * 38) * 0.07 * A * on; oy = -Math.abs(Math.sin(t * 19)) * 1.5 * on; py = B[1]; }
+  else if (k === 'flap') { const fl = (t % 3.4) < 2.3; oy = (rt.alt || 0) + (fl ? Math.sin(t * 9 + Math.PI) * bh * 0.06 * A : Math.sin(t * 1.3) * bh * 0.03); rot = -face * (fl ? 0.07 : -0.05); py = cy; }
+  else if (k === 'drive') { const bump = Math.sin(rt.dx * 0.05) * 0.6 + Math.sin(rt.dx * 0.13 + 1) * 0.4; oy = -Math.abs(bump) * 1.8 * A; rot = -rt.dir * ((LIFE_SPEED.drive * (b.sp || 1) - (rt.v || 0)) / Math.max(1, LIFE_SPEED.drive)) * 0.03 * (rt.state === 'go' ? 1 : -1) + bump * 0.006; }
+  else if (k === 'swim') { oy = (Math.sin(t * 1.3) * 0.7 + lifeNoise(t, 3) * 0.3) * bh * 0.14 * A; rot = Math.cos(t * 1.3) * 0.06 * A * face; py = cy; }
+  else if (k === 'flicker') { sy = 1 + (Math.sin(t * 11) * 0.5 + Math.sin(t * 17.3) * 0.5) * 0.05 * A; sx = 1 - (sy - 1) * 0.5; }
+  let gait = null;
+  if (k === 'walk4') { gait = rt.legs || (rt.legs = lifeLegs(it)); const gp = rt.gp != null ? rt.gp : T0 * 2.2; gait.ph0 = gp; gait.a = moving ? Math.min(1, vr) : 0.25; oy = -Math.abs(Math.cos(gp)) * 0.03 * bh * A * gait.a; rot = Math.sin(gp) * 0.012 * A * gait.a; }
+  if (k === 'roll') {
+    const r0 = Math.max(4, Math.min(bw, bh) / 2); rot = (moving ? rt.dx : T0 * 50) / r0; px = cx; py = cy;
+    /* an uneven rock rolls on its lowest point: lift it so that point touches the ground line */
+    const pts = rt.hull || (rt.hull = (() => { const a = []; for (const s of it.ink) { const P = ipPts(s); for (let q = 0; q < P.length; q += Math.max(1, Math.floor(P.length / 30))) a.push(P[q]); } return a.length ? a : [[B[0], B[1]], [B[2], B[3]]]; })());
+    let lo = -1e9; const cr = Math.cos(rot), sr = Math.sin(rot); for (const p of pts) { const y = cy + (p[0] - cx) * sr + (p[1] - cy) * cr; if (y > lo) lo = y; }
+    oy = B[3] - lo;
+  }
+  /* turning back: the drawing turns on the spot like a page flipping, instead of jumping to face the other way */
+  let tsx = 1; if (rt.state === 'turn') tsx = Math.max(0.1, Math.abs(Math.cos(Math.PI * (rt.tp || 0))));
+  const flip = moving && k !== 'spin' && k !== 'roll' && rt.dir !== face;
+  const peekLean = rt.state === 'peek' ? Math.sin((T0 - rt.st0) * 2.4) * 0.1 + 0.06 : 0;
   c.save();
-  c.translate(px + ox, py + oy); if (flip) c.scale(-1, 1); c.rotate(rot + peekLean); c.scale(sx, sy); c.translate(-px, -py);
+  c.translate(px + ox, py + oy); c.scale(flip ? -tsx : tsx, 1); c.rotate(rot + peekLean * face); c.scale(sx, sy); c.translate(-px, -py);
+  const gust = 0.65 + 0.35 * lifeNoise(t * 0.8, 4);
   /* shape deformation per point */
   const deform = (x, y) => {
-    if (k === 'sway') { const u = clamp((B[3] - y) / Math.max(1, bh), 0, 1); return [x + Math.sin(t * 1.8 + u * 0.8) * bh * 0.1 * A * u * u, y + Math.abs(Math.sin(t * 1.8)) * bh * 0.012 * u]; }
-    if (k === 'flutter') { const v = clamp((x - B[0]) / Math.max(1, bw), 0, 1); return [x, y + Math.sin(v * TAU * 1.2 - t * 5) * bh * 0.09 * A * v]; }
-    if (k === 'swim') { const v = clamp((B[2] - x) / Math.max(1, bw), 0, 1); return [x, y + Math.sin(v * TAU * 0.9 - t * 6) * bh * 0.14 * A * v * v]; }
-    if (k === 'flap') { const d = (x - cx) / Math.max(1, bw / 2), side = Math.abs(d); return [x, y - Math.sin(t * 9) * bh * 0.45 * A * Math.max(0, side - 0.18)]; }
-    if (k === 'flicker') { const u = clamp((B[3] - y) / Math.max(1, bh), 0, 1); return [x + (Math.sin(t * 13 + y * 0.09) + Math.sin(t * 7.3 + y * 0.05)) * bw * 0.04 * A * u, y - Math.abs(Math.sin(t * 9 + x * 0.05)) * bh * 0.08 * A * u]; }
+    if (k === 'sway') { const u = clamp((B[3] - y) / Math.max(1, bh), 0, 1); const bend = Math.sin(t * 1.6 + u * 0.9) * bh * 0.1 * A * gust * u * u; return [x + bend + Math.sin(t * 9 + x * 0.13 + y * 0.07) * bh * 0.008 * A * u, y + Math.abs(bend) * 0.12 * u]; }
+    if (k === 'flutter') { const v = clamp((face > 0 ? x - B[0] : B[2] - x) / Math.max(1, bw), 0, 1); return [x - face * Math.abs(Math.sin(v * TAU * 1.1 - t * 5)) * bw * 0.02 * v, y + Math.sin(v * TAU * 1.2 - t * 5.5 * (0.8 + 0.3 * gust)) * bh * 0.1 * A * gust * v]; }
+    if (k === 'swim') { const v = clamp((face > 0 ? B[2] - x : x - B[0]) / Math.max(1, bw), 0, 1); return [x, y + Math.sin(v * TAU * 0.9 - t * 6) * bh * 0.14 * A * v * v * (0.6 + 0.4 * Math.min(1.4, vr))]; }
+    if (k === 'walk4') {
+      const fx = face > 0 ? (x - B[0]) / bw : (B[2] - x) / bw;
+      if (!gait.strokes && y > gait.yz) {
+        let lg = null; for (const g of gait.legs) if (x >= g.x0 && x <= g.x1) { lg = g; break; }
+        if (lg) { const ph = gait.ph0 + lg.ph, phi = 0.38 * A * gait.a * Math.sin(ph), wt = clamp((y - gait.yz) / (0.3 * gait.L), 0, 1), th = -face * phi * wt, dx0 = x - lg.px, dy0 = y - gait.yz, lift = Math.max(0, Math.cos(ph)) * 0.12 * gait.L * wt * A * gait.a; return [lg.px + dx0 * Math.cos(th) - dy0 * Math.sin(th), gait.yz + dx0 * Math.sin(th) + dy0 * Math.cos(th) - lift]; }
+      }
+      /* the head nods with each step, the tail wags */
+      if (fx > 0.72 && y < cy + bh * 0.1) return [x, y + Math.sin(gait.ph0 * 2) * bh * 0.025 * A * (fx - 0.72) / 0.28];
+      if (fx < 0.12 && y < (gait.yz || cy)) { const wv = (0.12 - fx) / 0.12; return [x, y + Math.sin(t * 7) * bh * 0.08 * A * wv]; }
+      return null;
+    }
+    if (k === 'flap') { const fl = (t % 3.4) < 2.3, d = (x - cx) / Math.max(1, bw / 2), side = Math.max(0, Math.abs(d) - 0.18), a = fl ? Math.sin(t * 9) : 0.3; return [x - Math.sign(d) * Math.abs(a) * side * bw * 0.04, y - a * bh * 0.45 * A * side]; }
+    if (k === 'flicker') { const u = clamp((B[3] - y) / Math.max(1, bh), 0, 1); return [x + (Math.sin(t * 13 + y * 0.09) + Math.sin(t * 7.3 + y * 0.05)) * bw * 0.04 * A * u * u, y - Math.abs(Math.sin(t * 9 + x * 0.05)) * bh * 0.08 * A * u]; }
+    if (k === 'breathe') { const u = clamp((B[3] - y) / Math.max(1, bh), 0, 1), mid = Math.exp(-Math.pow((u - 0.55) / 0.25, 2)); return [x + (x - cx) * Math.sin(t * 2.2) * 0.025 * A * mid, y]; }
     return null;
   };
-  const deforms = ['sway', 'flutter', 'swim', 'flap', 'flicker'].includes(k);
+  const wings = k === 'flap' ? (rt.wings || (rt.wings = lifeWings(it))) : [], wingSet = new Set(wings.map((q) => q.i));
+  const legOf = new Map(); if (gait && gait.strokes) for (const g of gait.legs) legOf.set(g.i, g);
+  const deforms = ['sway', 'flutter', 'swim', 'flicker', 'breathe', 'walk4'].includes(k) || (k === 'flap' && !wings.length);
   for (const q of it.pics || []) { const im = q.asset && scSprite(q.asset); if (im) c.drawImage(im, q.x, q.y, q.w, q.h); }
   const inW = new Set(); (it.wheels || []).forEach((wl) => wl.i.forEach((i) => inW.add(i)));
   it.ink.forEach((s, i) => {
     if (inW.has(i)) return;
+    if (legOf.has(i)) { const g = legOf.get(i), ph = gait.ph0 + g.ph, th = -face * 0.38 * A * gait.a * Math.sin(ph), lift = Math.max(0, Math.cos(ph)) * 0.12 * gait.L * A * gait.a; c.save(); c.translate(g.px, g.top - lift * 0.5); c.rotate(th); c.translate(-g.px, -g.top); drawStroke(c, s); c.restore(); return; }
+    if (wingSet.has(i)) { const wg = wings.find((q) => q.i === i), fl = (t % 3.4) < 2.3, a = -face * (fl ? Math.sin(t * 9) * 0.6 : -0.15) * A; c.save(); c.translate(wg.pv[0], wg.pv[1]); c.rotate(a); c.translate(-wg.pv[0], -wg.pv[1]); drawStroke(c, s); c.restore(); return; }
     if (!deforms) { drawStroke(c, s); return; }
     const p = s.p.slice(); for (let j = 0; j + 1 < p.length; j += 3) { const n = deform(p[j] / 10, p[j + 1] / 10); if (n) { p[j] = n[0] * 10; p[j + 1] = n[1] * 10; } }
     drawStroke(c, Object.assign({}, s, { p }));
   });
-  if ((it.wheels || []).length) { rt.roll = rt.dx; for (const wl of it.wheels) { c.save(); c.translate(wl.cx, wl.cy); c.rotate((k === 'drive' ? rt.roll : t * 60) / Math.max(4, wl.r)); c.translate(-wl.cx, -wl.cy); wl.i.forEach((i) => it.ink[i] && drawStroke(c, it.ink[i])); c.restore(); } }
+  if ((it.wheels || []).length) { for (const wl of it.wheels) { c.save(); c.translate(wl.cx, wl.cy); c.rotate((k === 'drive' || moving ? rt.dx * (flip ? -1 : 1) : T0 * 60) / Math.max(4, wl.r)); c.translate(-wl.cx, -wl.cy); wl.i.forEach((i) => it.ink[i] && drawStroke(c, it.ink[i])); c.restore(); } }
   c.restore();
 }
 /* choose a behaviour for a drawing: AI looks at it when connected, otherwise its shape decides */
@@ -8373,17 +8512,19 @@ async function lifeAuto(sp) {
   const strokes = sp.refs.map((r) => findStroke(r)).filter(Boolean), keys = LIFE_KINDS.map((k) => k[0]);
   if (AI.ready('read')) {
     try {
-      const ask = AI.run('read', 'This is a small hand drawing on a notebook page. Pick how it should come alive, like a moving picture in a magic newspaper. Answer with exactly one word from this list and nothing else: person (a stick figure or human), ' + keys.join(', ') + '. Guide: plants and trees sway, flags and cloth flutter, hearts beat, balloons and clouds bob, wheels and windmills spin, rabbits and frogs and balls hop, birds and butterflies flap, fish swim, fire flickers, cars and trains drive, cute characters wiggle, a resting creature breathes.', { images: [sp.blob], maxTokens: 20, cache: false });
+      const ask = AI.run('read', 'This is a small hand drawing on a notebook page. Pick how it should come alive, like a moving picture in a magic newspaper. Answer with exactly two words and nothing else: first one word from this list: person (a stick figure or human), ' + keys.join(', ') + '; then left or right, the way the head or front of the thing points. Guide: plants and trees sway, flags and cloth flutter, hearts beat, balloons and clouds bob, windmills spin, rabbits and frogs hop, birds and butterflies flap, fish swim, fire flickers, cars and trains drive, dogs cats horses and other four-legged animals walk4, rocks and balls and fruit roll, cute characters wiggle, a resting creature breathes. Example answer: walk4 left', { images: [sp.blob], maxTokens: 20, cache: false });
       const r = await Promise.race([ask, new Promise((res) => setTimeout(() => res(null), 9000))]);
-      const w = r && String(r.text || '').toLowerCase().match(/[a-z]+/g);
-      const hit = w && w.find((x) => x === 'person' || keys.includes(x));
-      if (hit === 'person') return 'person'; if (hit) return hit;
+      const w = r && String(r.text || '').toLowerCase().match(/[a-z0-9]+/g);
+      const hit = w && w.find((x) => x === 'person' || keys.includes(x)), f = w && (w.includes('left') ? -1 : w.includes('right') ? 1 : 0);
+      if (hit === 'person') return 'person'; if (hit) return f ? [hit, f] : hit;
     } catch (e) { /* fall back to the shape */ }
   }
   if (strokes.length >= 4) { try { const rg = ipRig(strokes); if (rg.headC && rg.legs.filter(Boolean).length === 2 && rg.arms.filter(Boolean).length) return 'person'; } catch (e) { /* not a figure */ } }
   const B = sp.box, bw = B[2] - B[0], bh = B[3] - B[1];
   let round = 0; for (const s of strokes) { const P = ipPts(s); if (P.length < 8) continue; const b = ipBox([s]), z = Math.max(b[2] - b[0], b[3] - b[1]); if (Math.hypot(P[0][0] - P[P.length - 1][0], P[0][1] - P[P.length - 1][1]) < 0.35 * z && (b[1] + b[3]) / 2 > B[1] + 0.55 * bh && z < 0.6 * bw) round++; }
   if (round >= 2 && bw > bh) return 'drive';
+  if (bw > bh * 0.9 && strokes.length) { const g = lifeLegs({ B, ink: strokes }); if (g.legs.length >= 3) return 'walk4'; }
+  if (strokes.length === 1 && Math.abs(bw - bh) < 0.35 * Math.max(bw, bh)) { const P = ipPts(strokes[0]); if (P.length > 8 && Math.hypot(P[0][0] - P[P.length - 1][0], P[0][1] - P[P.length - 1][1]) < 0.3 * Math.max(bw, bh)) return 'roll'; }
   if (bw > 1.6 * bh) return 'swim';
   if (bh > 1.6 * bw) return 'sway';
   return 'wiggle';
@@ -12012,7 +12153,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793235537';
+const BUILD = '1793236363';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
@@ -12099,17 +12240,36 @@ function devSeen() {
   Promise.resolve(S.store.set('devices/' + DEV, { name: devName(), kind: devGuess(), last: now(), role: S.role || 'teacher' })).catch(() => {});
 }
 document.addEventListener('visibilitychange', () => { if (!document.hidden) devSeen(); });
+function acctPhoto() { const m = (CLOUD.user && CLOUD.user.user_metadata) || {}, u = m.avatar_url || m.picture || ''; return /^https:\/\//.test(u) ? u : ''; }
+function avFill(el, on, em) {
+  el.style.setProperty('--av', on ? acctColor(em) : '#B8BEC9'); const ph = on ? acctPhoto() : '';
+  el.style.backgroundImage = ph ? 'url("' + ph.replace(/["\\]/g, '') + '")' : ''; el.textContent = ph ? '' : on ? em.slice(0, 1).toUpperCase() : '';
+  if (!on) el.innerHTML = '<svg viewBox="0 0 20 20" width="60%" height="60%" aria-hidden="true"><circle cx="10" cy="7" r="3.4" fill="currentColor"/><path d="M3.5 17c.8-3.4 3.4-5 6.5-5s5.7 1.6 6.5 5" fill="currentColor"/></svg>';
+}
 function renderAcct() {
-  const inClaude = !!(window.claude && window.claude.use), on = CLOUD.state === 'on' && CLOUD.user, can = CLOUD.ready() || on;
-  for (const id of ['#bAcct', '#bAcctMenu']) {
-    const b = $(id); if (!b) continue; b.hidden = inClaude || !can;
-    const em = on ? CLOUD.user.email || 'บัญชีคลาวด์' : '';
-    b.classList.toggle('out', !on); b.style.setProperty('--av', acctColor(em));
-    b.querySelector('i').textContent = on ? em.slice(0, 1).toUpperCase() : '?';
-    b.querySelector('span').textContent = on ? em : 'ยังไม่เข้าระบบ';
-    b.title = on ? 'เครื่องนี้ (' + devName() + ') ใช้บัญชี ' + em + ' แตะเพื่อดูหรือสลับบัญชี' : 'เครื่องนี้ยังไม่ได้เข้าระบบ สมุดเก็บในเครื่องนี้เท่านั้น แตะเพื่อเข้าระบบ';
+  const inClaude = !!(window.claude && window.claude.use), on = !!(CLOUD.state === 'on' && CLOUD.user), can = CLOUD.ready() || on, em = on ? CLOUD.user.email || 'บัญชีคลาวด์' : '';
+  const b = $('#bAcct');
+  if (b) { b.hidden = inClaude || !can; b.classList.toggle('out', !on); avFill(b.querySelector('i'), on, em); b.title = on ? em + ' บนเครื่องนี้ (' + devName() + ') แตะเพื่อดูรายละเอียด' : 'ยังไม่เข้าระบบ แตะเพื่อเข้าระบบ'; b.setAttribute('aria-label', on ? 'บัญชี ' + em : 'ยังไม่เข้าระบบ'); }
+  const m = $('#menuAcct');
+  if (m) {
+    m.hidden = inClaude || !can; m.innerHTML = '<i class="avi"></i><div><b></b><small></small></div>';
+    avFill(m.querySelector('.avi'), on, em);
+    m.querySelector('b').textContent = on ? em : 'ยังไม่ได้เข้าระบบ';
+    m.querySelector('small').textContent = on ? 'เครื่องนี้: ' + devName() + ' สมุด คะแนน และ AI ของบัญชีนี้ใช้ได้ทุกเครื่อง' : 'สมุดเก็บในเครื่องนี้เท่านั้น เข้าระบบเพื่อใช้ได้ทุกเครื่อง';
+    const go = document.createElement('button'); go.type = 'button'; go.className = 'btn' + (on ? '' : ' solid'); go.innerHTML = on ? '<span class="lg">บัญชีและสลับบัญชี</span><span class="sm">สลับ</span>' : 'เข้าสู่ระบบ'; go.onclick = () => (on ? openAcct() : ($('#menu').hidden = true, openAuth())); m.appendChild(go);
   }
 }
+function acctPop() {
+  const p = $('#acctPop'); if (!p.hidden) { p.hidden = true; return; }
+  const on = !!(CLOUD.state === 'on' && CLOUD.user), em = on ? CLOUD.user.email || '' : '';
+  if (!on) { openAuth(); return; }
+  p.innerHTML = '<div class="ah"><i class="avi"></i><div><b></b><small></small></div></div><div class="row2"></div>';
+  avFill(p.querySelector('.avi'), on, em); p.querySelector('b').textContent = em; p.querySelector('small').textContent = 'เครื่องนี้: ' + devName();
+  const row = p.querySelector('.row2'), add = (t, f, solid) => { const x = document.createElement('button'); x.type = 'button'; x.className = 'btn' + (solid ? ' solid' : ''); x.textContent = t; x.onclick = () => { p.hidden = true; f(); }; row.appendChild(x); };
+  add('บัญชีและสลับบัญชี', openAcct, true); add('ออกจากระบบ', () => acctSwitch(null));
+  p.hidden = false;
+}
+document.addEventListener('pointerdown', (e) => { const p = $('#acctPop'); if (p && !p.hidden && !p.contains(e.target) && e.target.closest('#bAcct') == null) p.hidden = true; }, true);
 async function acctSwitch(email) {
   /* save everything first, sign out, then come back to the sign-in form (with the chosen email filled in) */
   toast('กำลังบันทึกและออกจากระบบ', 4000);
@@ -12161,7 +12321,7 @@ function openAcct() {
   if (on) box.appendChild(exEl('div', 'note small', 'ก่อนสลับ ระบบบันทึกงานขึ้นคลาวด์ให้ก่อน งานของบัญชีเดิมไม่ปนกับบัญชีใหม่ และคีย์ AI ของบัญชีเดิมไม่ติดไปกับบัญชีใหม่'));
   $('#acctSheet').hidden = false;
 }
-$('#bAcct').onclick = openAcct; $('#bAcctMenu').onclick = openAcct; $('#bAcctX').onclick = () => { $('#acctSheet').hidden = true; };
+$('#bAcct').onclick = acctPop; $('#bAcctX').onclick = () => { $('#acctSheet').hidden = true; };
 function renderCloud() {
   const box = $('#cloudBox');
   const inClaude = !!(window.claude && window.claude.use);
@@ -12217,7 +12377,7 @@ function syncToggles() {
 }
 function hideLoading() { $('#loading').hidden = true; }
 function togglePages(v) { const el = $('#pages'); el.hidden = v === undefined ? !el.hidden : !v; $('#bPages').setAttribute('aria-pressed', el.hidden ? 'false' : 'true'); setTimeout(fit, 0); }
-function closeSheets() { $('#acctSheet').hidden = true; $('#shareSheet').hidden = true; $('#startSheet').hidden = true; $('#deckSheet').hidden = true; $('#hwSheet').hidden = true; $('#hoSheet').hidden = true; $('#pdfSheet').hidden = true; $('#qmSheet').hidden = true; $('#liveSheet').hidden = true; $('#sqSheet').hidden = true; $('#handSheet').hidden = true; $('#examSheet').hidden = true; $('#aiSetup').hidden = true; $('#labSheet').hidden = true; $('#simSheet').hidden = true; $('#mediaSheet').hidden = true; $('#menu').hidden = true; $('#exportSheet').hidden = true; $('#insSheet').hidden = true; }
+function closeSheets() { $('#acctSheet').hidden = true; $('#acctPop').hidden = true; $('#shareSheet').hidden = true; $('#startSheet').hidden = true; $('#deckSheet').hidden = true; $('#hwSheet').hidden = true; $('#hoSheet').hidden = true; $('#pdfSheet').hidden = true; $('#qmSheet').hidden = true; $('#liveSheet').hidden = true; $('#sqSheet').hidden = true; $('#handSheet').hidden = true; $('#examSheet').hidden = true; $('#aiSetup').hidden = true; $('#labSheet').hidden = true; $('#simSheet').hidden = true; $('#mediaSheet').hidden = true; $('#menu').hidden = true; $('#exportSheet').hidden = true; $('#insSheet').hidden = true; }
 
 /* ---------- wiring ---------- */
 document.querySelectorAll('.tool[data-tool]').forEach((b) => {
