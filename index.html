@@ -775,11 +775,11 @@ body.nodesk #tTitle::after { content: ''; }
 .bcard.picked .bopen { outline: 3px solid var(--accent); outline-offset: 2px; border-radius: 10px; }
 .nbselbar { position: sticky; bottom: 0; z-index: 3; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 10px 12px; margin-top: 10px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 -4px 16px rgba(20,26,34,0.12); }
 .nbselbar b { margin-right: auto; }
-.item .dink { opacity: 0; display: inline; position: relative; }
-.item .dink.on { animation: dwipe 0.22s ease-out forwards; }
-@keyframes dwipe { 0% { opacity: 0.5; clip-path: inset(-0.8em 100% -0.8em 0); } 100% { opacity: 1; clip-path: inset(-0.8em -0.2em -0.8em 0); } }
-.item .dnib { display: inline-block; position: relative; width: 0; height: 1em; vertical-align: baseline; pointer-events: none; }
-.item .dnib svg { position: absolute; left: -0.1em; bottom: -0.05em; width: 0.95em; height: 0.95em; display: block; filter: drop-shadow(0 1px 1px rgba(0,0,0,0.25)); }
+.item .dink { opacity: 0; display: inline; }
+.item .dink.on { opacity: 1; }
+.item .dsvg { position: absolute; left: 0; top: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
+.item .dsvg text { stroke-linecap: round; stroke-linejoin: round; }
+.item .dbase { display: inline-block; width: 0; height: 0; vertical-align: baseline; }
 @keyframes dink { 0% { opacity: 0; filter: blur(2px); } 60% { opacity: 0.9; filter: blur(0.4px); } 100% { opacity: 1; filter: none; } }
 .diarydots { position: absolute; display: flex; gap: 7px; pointer-events: none; }
 .diarydots i { width: 8px; height: 8px; border-radius: 50%; background: #2B3A67; opacity: 0.2; animation: ddot 1.2s infinite ease-in-out; }
@@ -3404,7 +3404,10 @@ async function diaryAsk() {
     if (!text || S.pid !== pid) return;
     log.push(['u', ((read && read.text) || '').slice(0, 300)], ['a', text]); if (log.length > 30) log.splice(0, log.length - 30);
     /* a full-width note across the page, placed where there is no writing yet */
-    const fs = 26, w = Math.round(clamp(W - 80, 320, 1100));
+    /* write back at the size they wrote: the typical height of their strokes sets the letter size */
+    const hs = refs.map((r) => { const st = findStroke(r), bb = st && sbox(st); return bb ? bb[3] - bb[1] : 0; }).filter((v) => v > 4).sort((a, b) => a - b);
+    const hMid = hs.length ? hs[Math.floor(hs.length / 2)] : 26;
+    const fs = Math.round(clamp(hMid * 1.15, 14, 80)), w = Math.round(clamp(W - 80, 320, 1100));
     const h = estTextH(text, w, fs) * 1.25 + 10;
     let at = [Math.round((W - w) / 2), box[3] + 16];
     const hit = (x, y) => occupiedBoxes().some((b) => x < b[2] + 10 && x + w > b[0] - 10 && y < b[3] + 10 && y + h > b[1] - 10);
@@ -3430,21 +3433,37 @@ function diaryWriteIn(id) {
     for (const c of seg(n.textContent)) { const g = document.createElement('span'); g.className = 'dink'; g.textContent = c; sp.appendChild(g); marks.push(g); }
     n.replaceWith(sp);
   }
-  /* written like a person: a pen tip moves along, quick inside a word, a breath between words, a longer pause at the end of a sentence */
-  const nib = document.createElement('span'); nib.className = 'dnib'; nib.setAttribute('aria-hidden', 'true');
-  nib.innerHTML = '<svg viewBox="0 0 20 20"><path d="M3 17l2.2-6.4L14.6 1.2a1.6 1.6 0 0 1 2.3 0l1.9 1.9a1.6 1.6 0 0 1 0 2.3L9.4 14.8z M5.2 10.6l4.2 4.2" fill="#F6E7C1" stroke="#2B3A67" stroke-width="1.3" stroke-linejoin="round"/></svg>';
   el.classList.add('writing');
+  /* each letter is drawn as ink lines tracing its own shape, then the ink settles: an SVG copy of the letter sits exactly over it while it is drawn */
+  const cs = getComputedStyle(el), fsz = parseFloat(cs.fontSize) || 26, NS = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(NS, 'svg'); svg.setAttribute('class', 'dsvg'); svg.setAttribute('aria-hidden', 'true');
+  svg.style.fontFamily = cs.fontFamily; svg.style.fontSize = fsz + 'px'; svg.style.fontWeight = cs.fontWeight;
+  el.appendChild(svg);
+  const ink = cs.color, L = Math.round(fsz * 7), probe = document.createElement('i'); probe.className = 'dbase';
+  const place = (g) => {
+    if (!g.textContent.trim()) return null;
+    g.appendChild(probe); const x = g.offsetLeft, y = probe.offsetTop; probe.remove();
+    const t = document.createElementNS(NS, 'text'); t.setAttribute('x', x); t.setAttribute('y', y); t.textContent = g.textContent;
+    t.style.stroke = ink; t.style.strokeWidth = Math.max(0.6, fsz * 0.03) + 'px'; t.style.fill = ink; t.style.strokeDasharray = L; t.style.strokeDashoffset = L;
+    svg.appendChild(t); return t;
+  };
   let i = 0;
   const step = () => {
     if (!el.isConnected) return;
-    if (i >= marks.length) { nib.remove(); el.classList.remove('writing'); return; }
-    const g = marks[i++], c = g.textContent; g.classList.add('on'); g.after(nib);
-    let ms = 60 + Math.random() * 45 + (c.length > 1 ? 20 : 0);
-    if (c === ' ') ms = 150 + Math.random() * 120;
-    else if (/[,;:]/.test(c)) ms = 260 + Math.random() * 120;
-    else if (/[.!?ฯ]/.test(c) || (c === ' ' && marks[i] && /\s/.test(marks[i].textContent))) ms = 520 + Math.random() * 260;
-    else if (c === '\n') ms = 600;
-    if (Math.random() < 0.04) ms += 220;
+    if (i >= marks.length) { setTimeout(() => { svg.remove(); el.classList.remove('writing'); }, 900); return; }
+    const g = marks[i++], c = g.textContent, t = place(g);
+    const dur = t ? 260 + Math.random() * 160 + (c.length > 1 ? 120 : 0) : 0;
+    if (t) {
+      /* the outline is traced first, then the ink fills in, then the real letter takes over */
+      t.animate([{ strokeDashoffset: L, fillOpacity: 0, strokeOpacity: 1 }, { strokeDashoffset: 0, fillOpacity: 0, strokeOpacity: 1, offset: 0.7 }, { strokeDashoffset: 0, fillOpacity: 1, strokeOpacity: 0 }], { duration: dur, easing: 'ease-in-out', fill: 'forwards' })
+        .finished.then(() => { g.classList.add('on'); t.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 300, fill: 'forwards' }); }).catch(() => { g.classList.add('on'); });
+    } else g.classList.add('on');
+    /* the next letter starts before this one is quite finished, the way a hand moves on; longer breaths between words and sentences */
+    let ms = dur * 0.6 + Math.random() * 40;
+    if (c === ' ') ms = 140 + Math.random() * 120;
+    else if (/[,;:]/.test(c)) ms += 220;
+    else if (/[.!?ฯ]/.test(c)) ms += 480 + Math.random() * 240;
+    if (Math.random() < 0.05) ms += 200;
     setTimeout(step, ms);
   };
   setTimeout(step, 250);
@@ -17250,7 +17269,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793259755';
+const BUILD = '1793260234';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
