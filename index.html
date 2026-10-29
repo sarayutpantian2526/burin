@@ -853,6 +853,37 @@ body.role-student .qkeybox { display: none; }
   .setnavi { flex: 0 0 auto; max-width: 180px; border-color: var(--line); }
   .setnavi b { -webkit-line-clamp: 1; white-space: nowrap; display: block; }
 }
+.setfbar { display: flex; gap: 8px; flex-wrap: wrap; }
+.setfbar input { flex: 1 1 240px; min-width: 0; min-height: 44px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); color: var(--fg); font: inherit; padding: 0 12px; }
+.setfbar select { flex: 0 0 auto; width: auto; min-width: 150px; }
+.setlist { display: flex; flex-direction: column; gap: 6px; }
+.setrow2 { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 6px 10px; padding: 8px 10px 8px 6px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+.setrow2 .star { width: 38px; height: 38px; min-height: 38px; padding: 0; border: 0; background: transparent; color: var(--muted); }
+.setrow2 .star.on { color: #C98A06; }
+.setrow2 .star svg { width: 20px; height: 20px; }
+.srinfo { min-width: 0; cursor: pointer; display: flex; flex-direction: column; gap: 2px; }
+.srinfo b { font-size: 14.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.srinfo small { font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sracts { display: flex; gap: 4px; align-items: center; }
+.sracts .btn.sm { min-height: 36px; padding: 0 12px; }
+.sracts .btn.icon { width: 36px; height: 36px; min-height: 36px; padding: 0; }
+.sracts .btn.icon svg { width: 18px; height: 18px; }
+@media (max-width: 560px) { .setrow2 { grid-template-columns: auto 1fr; } .sracts { grid-column: 1 / -1; justify-content: flex-end; } }
+.traycur { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; text-align: left; padding: 8px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--fg); font: inherit; cursor: pointer; }
+.traycur span { display: flex; flex-direction: column; min-width: 0; }
+.traycur small { font-size: 11.5px; color: var(--muted); }
+.traycur b { font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.traycur em { font-style: normal; font-size: 13px; color: var(--accent); font-weight: 600; white-space: nowrap; }
+.trayfind { display: flex; flex-direction: column; gap: 8px; padding: 8px; border-radius: 12px; background: var(--surface-2); }
+.setlist.compact { max-height: 46vh; overflow-y: auto; gap: 4px; }
+.setpick { display: flex; align-items: center; gap: 6px; width: 100%; text-align: left; padding: 8px 10px; border: 1px solid transparent; border-radius: 10px; background: var(--surface); color: var(--fg); font: inherit; cursor: pointer; }
+.setpick span { display: flex; flex-direction: column; min-width: 0; }
+.setpick b { font-size: 13.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.setpick small { font-size: 11.5px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.setpick i { color: #C98A06; display: inline-flex; } .setpick i svg { width: 14px; height: 14px; }
+.setpick.cur { border-color: var(--accent); background: var(--accent-soft); }
+.trayrecent { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; }
+.trayrecent .chip { flex: 0 0 auto; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12.5px; }
 .setfind { display: flex; gap: 8px; flex-wrap: wrap; }
 .setfind select { flex: 1 1 220px; min-width: 0; }
 .setfind input { flex: 1 1 180px; min-width: 0; min-height: 40px; }
@@ -14323,7 +14354,7 @@ async function exAIFromPage() {
 async function exSaveSet(qs) {
   const id = 's' + now().toString(36) + uid().slice(0, 3);
   const title = 'ชุด ' + [...new Set(qs.map((q) => exChName(q.t, q.ch)))].slice(0, 2).join(' + ') + ' ' + new Date().toLocaleDateString(LOC, { day: 'numeric', month: 'short' });
-  const set = { id, title, at: now(), qs: qs.map((q) => ({ id: q.id, t: q.t, ch: q.ch, d: q.d, k: q.k, q: q.q, c: q.c, a: q.a || 0, e: q.e || '', fig: q.fig || undefined, src: q.src, o: q.o, s: q.s, b: q.b, w: q.w })) };
+  const set = { id, title, at: now(), nb: S.nid || null, qs: qs.map((q) => ({ id: q.id, t: q.t, ch: q.ch, d: q.d, k: q.k, q: q.q, c: q.c, a: q.a || 0, e: q.e || '', fig: q.fig || undefined, src: q.src, o: q.o, s: q.s, b: q.b, w: q.w })) };
   EX.sets = EX.sets || []; EX.sets.push(set);
   await S.store.set('exs/' + id, Object.assign({}, set, { id: undefined })).catch(() => {});
   return set;
@@ -15350,7 +15381,7 @@ async function pqSave(btn) {
       qs.push({ id: q.id, t: q.t, ch: q.ch, d: 2, k: q.kind === 'example' ? 'ex' : '', q: q.q || ('[ภาพโจทย์ ' + q.lab + ']'), c: q.c, a: q.a || 0, ans: q.c.length ? '' : q.ans, e: q.e || '', given: q.given || '', lab: q.lab || '', img: { asset: up.id, ar: Math.round(q.crop.ar * 1000) / 1000, fr: Math.round(q.crop.frac * 100) / 100 }, src: 'pdf' });
     }
     const id = 's' + now().toString(36) + uid().slice(0, 3);
-    const set = { id, title: PQ.name || 'PDF', at: now(), src: 'pdf', qs };
+    const set = { id, title: PQ.name || 'PDF', at: now(), src: 'pdf', nb: S.nid || null, qs };
     if (!EX.loaded) await exLoad();
     EX.sets = (EX.sets || []).concat([set]);
     await S.store.set('exs/' + id, Object.assign({}, set, { id: undefined })).catch(onStoreError);
@@ -15637,12 +15668,14 @@ function figHtml(q, w) { if (!q || !q.fig) return ''; const s = cleanSvg(q.fig);
 
 /* ---------- question sets: prepared in advance or made on the spot, saved, recalled one question at a time ---------- */
 const SPACE_OPTS = [[0, 'ไม่เว้น'], [140, 'เว้นน้อย'], [300, 'เว้นปานกลาง'], [520, 'เว้นมาก']];
+const TF = { q: '', show: 'all', sort: 'used', more: 0 };
 const TRAY = { setId: store_ls.get('tp-tray-set') || null, space: +(store_ls.get('tp-tray-space') || 140), placed: {}, peek: {}, lastBottom: {} };
 function setById(id) { return (EX.sets || []).find((s) => s.id === id) || null; }
 function figSize(svg, wMax) { const m = String(svg).match(/viewBox="[\d.\s-]*?\s([\d.]+)\s([\d.]+)"/); const vw = m ? +m[1] : 340, vh = m ? +m[2] : 220; const w = Math.min(wMax || 360, vw * 1.15); return [Math.round(w), Math.round(w * vh / vw)]; }
 /* place questions as separate boxes (figure and text per question), leaving room to work, adding pages when needed */
 async function placeQuestions(qs, near, opt) {
   opt = opt || {}; if (!qs.length || !S.page) return { pages: 0, here: 0 };
+  if (opt.setId && typeof setUse === 'function') { const st0 = setById(opt.setId); if (st0 && (!st0.used || now() - st0.used > 60000)) setUse(st0); }
   const fs = opt.fs || 20, w = opt.w || (W - 100), space = opt.space != null ? opt.space : TRAY.space, bottom = H - 30, top = 40, x0 = Math.round((W - w) / 2);
   const units = [];
   if (opt.header) units.push({ parts: [{ type: 'text', md: opt.header, h: await measureMd(opt.header, w, fs), w, fs }], gap: 10 });
@@ -15697,13 +15730,30 @@ function openTray(setId) {
 function closeTray() { $('#qtray').hidden = true; $('#bTray').setAttribute('aria-pressed', 'false'); $('#peekCard').hidden = true; setTimeout(fit, 0); }
 function renderTray() {
   const body = $('#trayBody'); if (!body) return; body.innerHTML = '';
-  const sets = (EX.sets || []).slice().sort((a, b) => (b.at || 0) - (a.at || 0));
-  const sel = document.createElement('select'); sel.className = 'traysel';
-  if (!sets.length) { const o = document.createElement('option'); o.textContent = 'ยังไม่มีชุดโจทย์'; sel.appendChild(o); }
-  for (const s of sets) { const o = document.createElement('option'); o.value = s.id; o.textContent = s.title + ' (' + s.qs.length + ' ข้อ)'; sel.appendChild(o); }
+  const sets = (EX.sets || []).slice().sort((a, b) => Math.max(b.used || 0, b.at || 0) - Math.max(a.used || 0, a.at || 0));
   if (!setById(TRAY.setId) && sets[0]) TRAY.setId = sets[0].id;
-  sel.value = TRAY.setId || ''; sel.onchange = () => { TRAY.setId = sel.value; store_ls.set('tp-tray-set', sel.value); renderTray(); };
-  body.appendChild(sel);
+  const pick = (id) => { TRAY.setId = id; TRAY.find = false; store_ls.set('tp-tray-set', id); setUse(setById(id)); renderTray(); };
+  /* the set in use, and a searchable list to change it; the recently used ones are one tap away */
+  const curSet = setById(TRAY.setId);
+  const cur = exEl('button', 'traycur', '<span><small>ชุดที่ใช้อยู่</small><b></b></span><em>' + (TRAY.find ? 'ปิดรายการ' : 'เปลี่ยนชุด') + '</em>'); cur.type = 'button';
+  cur.querySelector('b').textContent = curSet ? curSet.title + ' (' + curSet.qs.length + ' ข้อ)' : 'ยังไม่มีชุดโจทย์';
+  cur.onclick = () => { TRAY.find = !TRAY.find; TF.focus = TRAY.find; renderTray(); }; body.appendChild(cur);
+  if (TRAY.find) {
+    const box = exEl('div', 'trayfind'), lh = exEl('div', 'setlist compact');
+    const draw = () => {
+      lh.innerHTML = ''; const all = setFiltered(TF);
+      if (!all.length) lh.appendChild(exEl('div', 'note small', 'ไม่พบชุด'));
+      for (const st of all.slice(0, 30 + (TF.more || 0))) {
+        const b = exEl('button', 'setpick' + (st.id === TRAY.setId ? ' cur' : ''), (st.pin ? '<i>' + SET_STAR(true) + '</i>' : '') + '<span><b></b><small></small></span>'); b.type = 'button';
+        b.querySelector('b').textContent = st.title; b.querySelector('small').textContent = st.qs.length + ' ข้อ' + (setMeta(st) ? ' : ' + setMeta(st) : '');
+        b.onclick = () => pick(st.id); lh.appendChild(b);
+      }
+      if (all.length > 30 + (TF.more || 0)) { const m = exEl('button', 'btn sm', 'แสดงเพิ่ม'); m.onclick = () => { TF.more = (TF.more || 0) + 30; draw(); }; lh.appendChild(m); }
+    };
+    setFinderBar(box, TF, draw, true); box.appendChild(lh); body.appendChild(box); draw();
+  } else if (sets.length > 1) {
+    const rc = exEl('div', 'trayrecent'); for (const st of sets.filter((x) => x.id !== TRAY.setId).slice(0, 3)) { const b = exEl('button', 'chip', ''); b.type = 'button'; b.textContent = st.title; b.title = 'สลับไปชุดนี้'; b.onclick = () => pick(st.id); rc.appendChild(b); } body.appendChild(rc);
+  }
   const row0 = exEl('div', 'row2');
   const mk = exEl('button', 'btn', 'สร้างชุดใหม่'); mk.onclick = () => { closeTray(); EX.tab = 'sets'; openExam(); }; row0.appendChild(mk);
   const qm = exEl('button', 'btn', 'ด้นสดจากหน้านี้'); qm.onclick = () => { QM.out = 'tray'; openQuizMakerFrom('page'); }; row0.appendChild(qm);
@@ -15862,27 +15912,86 @@ function solPlace(steps, itemId) {
   toast('วางเฉลยละเอียดแล้ว ผู้เรียนและจอฉายไม่เห็น', 2200);
 }
 /* ----- set library and editor (teacher) ----- */
+/* ----- many sets: search by name, chapter or any question text; pin favourites; filter to this notebook; sorted by last use.
+   The same finder is used here and in the side panel ----- */
+function setMeta(st) {
+  const cnt = {}; for (const q of st.qs || []) { const k = q.t + ':' + q.ch; cnt[k] = (cnt[k] || 0) + 1; }
+  const top = Object.entries(cnt).sort((a, b) => b[1] - a[1]).slice(0, 2).map(([k]) => { const [t, ch] = k.split(':'); return exChName(t, +ch); }).filter(Boolean);
+  return top.join(', ');
+}
+function setUse(st) {
+  if (!st) return; st.used = now(); st.uses = (st.uses || 0) + 1; if (S.nid) st.nbs = [...new Set((st.nbs || []).concat([S.nid]))].slice(-20);
+  Promise.resolve(S.store.update('exs/' + st.id, { used: st.used, uses: st.uses, nbs: st.nbs || [] })).catch(() => {});
+}
+function setPin(st, on) { st.pin = !!on; Promise.resolve(S.store.update('exs/' + st.id, { pin: st.pin })).catch(() => {}); }
+const SETF = { q: '', show: store_ls.get('tp-setf-show') || 'all', sort: store_ls.get('tp-setf-sort') || 'used', more: 0 };
+function setFiltered(F) {
+  const f = (F.q || '').trim().toLowerCase();
+  let list = (EX.sets || []).slice();
+  if (F.show === 'pin') list = list.filter((x) => x.pin);
+  else if (F.show === 'nb') list = list.filter((x) => x.nb === S.nid || (x.nbs || []).includes(S.nid));
+  if (f) list = list.filter((x) => (x.title + ' ' + setMeta(x)).toLowerCase().includes(f) || (x.qs || []).some((q) => String(q.q || '').toLowerCase().includes(f)));
+  const key = F.sort === 'name' ? null : F.sort === 'new' ? (x) => x.at || 0 : (x) => Math.max(x.used || 0, x.at || 0);
+  list.sort((a, b) => (b.pin ? 1 : 0) - (a.pin ? 1 : 0) || (key ? key(b) - key(a) : String(a.title).localeCompare(String(b.title), 'th')));
+  return list;
+}
+function setDateTxt(t) { return t ? new Date(t).toLocaleDateString(LOC, { day: 'numeric', month: 'short', year: '2-digit' }) : ''; }
+const SET_STAR = (on) => '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 2.8l2.2 4.6 5 .6-3.7 3.4 1 5-4.5-2.5-4.5 2.5 1-5L2.8 8l5-.6z" fill="' + (on ? 'currentColor' : 'none') + '" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>';
+/* the search, filters and sort shared by the set list and the side panel */
+function setFinderBar(host, F, redraw, compact) {
+  const bar = exEl('div', 'setfbar');
+  const q = document.createElement('input'); q.type = 'search'; q.placeholder = 'ค้นชื่อชุด บท หรือข้อความในโจทย์'; q.value = F.q; q.setAttribute('aria-label', 'ค้นชุดโจทย์');
+  q.oninput = debounce(() => { F.q = q.value; F.more = 0; redraw(); }, 200);
+  bar.appendChild(q);
+  if (!compact) {
+    const so = document.createElement('select'); so.className = 'traysel'; so.setAttribute('aria-label', 'เรียงลำดับ');
+    for (const [v, t] of [['used', 'ใช้ล่าสุดก่อน'], ['new', 'สร้างล่าสุดก่อน'], ['name', 'ตามชื่อ']]) { const o = document.createElement('option'); o.value = v; o.textContent = t; so.appendChild(o); }
+    so.value = F.sort; so.onchange = () => { F.sort = so.value; store_ls.set('tp-setf-sort', F.sort); redraw(); }; bar.appendChild(so);
+  }
+  host.appendChild(bar);
+  const nAll = (EX.sets || []).length, nPin = (EX.sets || []).filter((x) => x.pin).length, nNb = (EX.sets || []).filter((x) => x.nb === S.nid || (x.nbs || []).includes(S.nid)).length;
+  const ch = exChips(host, [['all', 'ทั้งหมด ' + nAll], ['nb', 'ใช้ในสมุดนี้ ' + nNb], ['pin', 'ปักหมุด ' + nPin]], (v) => v === F.show, (v) => { F.show = v; F.more = 0; store_ls.set('tp-setf-show', v); host.querySelectorAll('.setfchips .chip').forEach((c, k) => c.setAttribute('aria-pressed', ['all', 'nb', 'pin'][k] === v ? 'true' : 'false')); redraw(); });
+  const last = host.lastElementChild; if (last) last.classList.add('setfchips');
+  setTimeout(() => { if (F.focus) { q.focus(); F.focus = false; } }, 0);
+  return q;
+}
 function exRenderSets(body) {
   if (EX.editSet) return exRenderSetEditor(body);
-  const sets = (EX.sets || []).slice().sort((a, b) => (b.at || 0) - (a.at || 0));
   const top = exEl('div', 'row2');
-  const nb = exEl('button', 'btn solid', 'สร้างชุดใหม่ เตรียมไว้ล่วงหน้า'); nb.onclick = () => { EX.editSet = { id: 's' + now().toString(36) + uid().slice(0, 3), title: 'ชุดใหม่ ' + new Date().toLocaleDateString(LOC, { day: 'numeric', month: 'short' }), at: now(), qs: [], fresh: true }; exRender(); }; top.appendChild(nb);
+  const nb = exEl('button', 'btn solid', 'สร้างชุดใหม่'); nb.onclick = () => { EX.editSet = { id: 's' + now().toString(36) + uid().slice(0, 3), title: 'ชุดใหม่ ' + new Date().toLocaleDateString(LOC, { day: 'numeric', month: 'short' }), at: now(), qs: [], fresh: true, nb: S.nid || null }; exRender(); }; top.appendChild(nb);
   body.appendChild(top);
-  body.appendChild(exEl('div', 'note', 'ชุดโจทย์ใช้ได้สองแบบ: เตรียมไว้ก่อนสอน หรือด้นสดจากสิ่งที่เขียน ทุกชุดเก็บไว้เรียกใช้ซ้ำ เปิดแผงชุดโจทย์ข้างหน้ากระดาษเพื่อหยิบวางทีละข้อ ดูเฉลยได้คนเดียว ส่งออกเป็นเอกสารประกอบการสอน หรือมอบหมายเป็นการบ้าน'));
-  if (!sets.length) { body.appendChild(exEl('div', 'note', 'ยังไม่มีชุดโจทย์')); return; }
-  for (const st of sets) {
-    const r = exEl('div', 'setrow', '<div><b>' + esc(st.title) + '</b><small>' + st.qs.length + ' ข้อ : ' + new Date(st.at).toLocaleDateString(LOC, { day: 'numeric', month: 'short', year: '2-digit' }) + (EX.att.some((a) => a.setId === st.id) ? ' : มีผู้ทำแล้ว' : '') + '</small></div>');
-    const acts = exEl('div', 'bacts');
-    const add = (t, f, cls) => { const b = exEl('button', 'btn' + (cls ? ' ' + cls : ''), t); b.onclick = f; acts.appendChild(b); };
-    add('เปิดในแผงข้างหน้า', () => { $('#examSheet').hidden = true; openTray(st.id); }, 'solid');
-    add('แก้ไข', () => { EX.editSet = clone(st); exRender(); });
-    add('ส่งออกเป็นเอกสาร', () => openHandout(st));
-    const mc = st.qs.every((q) => q.c && q.c.length >= 2);
-    if (mc && typeof openAssign === 'function') add('มอบหมายเป็นการบ้าน', () => openAssign(st));
-    if (mc && LIVE.role === 'teacher' && LIVE.ready) add('ส่งห้องสด', () => liveSendSet(st));
-    { const del = exEl('button', 'btn danger', 'ลบ'); del.title = 'ลบชุดนี้'; del.onclick = () => setDelete(st, del, () => exRender()); acts.appendChild(del); }
-    r.appendChild(acts); body.appendChild(r);
-  }
+  if (!(EX.sets || []).length) { body.appendChild(exEl('div', 'note', 'ยังไม่มีชุดโจทย์ สร้างไว้ก่อนสอน หรือด้นสดจากสิ่งที่เขียนในแท็บ จากหน้านี้ ทุกชุดเก็บไว้เรียกใช้ซ้ำได้')); return; }
+  const listHost = exEl('div', 'setlist');
+  const draw = () => {
+    listHost.innerHTML = '';
+    const all = setFiltered(SETF), show = all.slice(0, 40 + SETF.more);
+    if (!all.length) listHost.appendChild(exEl('div', 'note small', SETF.q ? 'ไม่พบชุดที่ตรงกับคำค้น' : SETF.show === 'pin' ? 'ยังไม่มีชุดที่ปักหมุด แตะรูปดาวหน้าชื่อชุดเพื่อปักหมุด' : 'ยังไม่มีชุดที่ใช้ในสมุดนี้'));
+    for (const st of show) {
+      const r = exEl('div', 'setrow2');
+      const star = exEl('button', 'btn icon star' + (st.pin ? ' on' : ''), SET_STAR(st.pin)); star.type = 'button'; star.title = st.pin ? 'เลิกปักหมุด' : 'ปักหมุดไว้บนสุด'; star.setAttribute('aria-label', star.title);
+      star.onclick = () => { setPin(st, !st.pin); draw(); };
+      const info = exEl('div', 'srinfo', '<b></b><small></small>');
+      info.querySelector('b').textContent = st.title;
+      info.querySelector('small').textContent = [st.qs.length + ' ข้อ', setMeta(st), st.used ? 'ใช้ ' + setDateTxt(st.used) : 'สร้าง ' + setDateTxt(st.at), EX.att.some((a) => a.setId === st.id) ? 'มีผู้ทำแล้ว' : ''].filter(Boolean).join(' : ');
+      info.onclick = () => { EX.editSet = clone(st); exRender(); };
+      const use = exEl('button', 'btn solid sm', 'ใช้สอน'); use.type = 'button'; use.title = 'เปิดในแผงข้างหน้ากระดาษ วางทีละข้อ ดูเฉลยได้คนเดียว'; use.onclick = () => { setUse(st); $('#examSheet').hidden = true; openTray(st.id); };
+      const ed = exEl('button', 'btn sm', 'แก้ไข'); ed.type = 'button'; ed.onclick = () => { EX.editSet = clone(st); exRender(); };
+      const more = exEl('button', 'btn icon sm', '<svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="4.5" cy="10" r="1.6" fill="currentColor"/><circle cx="10" cy="10" r="1.6" fill="currentColor"/><circle cx="15.5" cy="10" r="1.6" fill="currentColor"/></svg>'); more.type = 'button'; more.title = 'คำสั่งอื่น'; more.setAttribute('aria-label', 'คำสั่งอื่นของชุดนี้');
+      more.onclick = () => {
+        const mc = st.qs.every((q) => q.c && q.c.length >= 2), acts = [['ส่งออกเป็นเอกสาร', () => { setUse(st); openHandout(st); }]];
+        if (mc && typeof openAssign === 'function') acts.push(['มอบหมายเป็นการบ้าน', () => { setUse(st); openAssign(st); }]);
+        if (mc && LIVE.role === 'teacher' && LIVE.ready) acts.push(['ส่งให้ห้องเรียนสด', () => { setUse(st); liveSendSet(st); }]);
+        acts.push(['ทำสำเนาชุดนี้', async () => { const id = 's' + now().toString(36) + uid().slice(0, 3); const cp = Object.assign(clone(st), { id, title: st.title + ' (สำเนา)', at: now(), used: 0, uses: 0, pin: false }); const d = Object.assign({}, cp); delete d.id; await S.store.set('exs/' + id, d).catch(() => {}); EX.sets = (EX.sets || []).concat([cp]); toast('ทำสำเนาแล้ว', 1400); draw(); }]);
+        acts.push(['ลบชุดนี้', () => popMenu(more, 'ลบชุด "' + st.title + '" ย้อนกลับไม่ได้', [['ลบเลย', () => { S.store.del('exs/' + st.id).catch(() => {}); EX.sets = EX.sets.filter((x) => x.id !== st.id); toast('ลบแล้ว', 1400); exRender(); }], ['ไม่ลบ', () => {}]])]);
+        popMenu(more, st.title, acts);
+      };
+      const acts = exEl('div', 'sracts'); acts.append(use, ed, more);
+      r.append(star, info, acts); listHost.appendChild(r);
+    }
+    if (all.length > show.length) { const m = exEl('button', 'btn', 'แสดงเพิ่ม (เหลือ ' + (all.length - show.length) + ' ชุด)'); m.onclick = () => { SETF.more += 40; draw(); typeset(listHost); }; listHost.appendChild(m); }
+  };
+  setFinderBar(body, SETF, () => { draw(); }, false);
+  body.appendChild(listHost); draw();
 }
 /* set editor: a pinned bar with the name, save state, done and delete; compact rows with icon buttons; saved by itself after every change */
 const SICON = {
@@ -15892,7 +16001,7 @@ const SICON = {
   add: '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 4v12 M4 10h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
   place: '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 2.5h7l3 3v12H5z M12 2.5v3h3 M10 8.5v6 M7 11.5h6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>'
 };
-function setData(st) { return { title: st.title, at: st.at, src: st.src, nb: st.nb, qs: st.qs.map((q) => ({ id: q.id, t: q.t, ch: q.ch, d: q.d, k: q.k, q: q.q, c: q.c, a: q.a || 0, e: q.e || '', fig: q.fig || undefined, src: q.src, o: q.o, s: q.s, b: q.b, w: q.w, ans: q.ans || undefined, given: q.given || undefined, lab: q.lab || undefined, img: q.img || undefined })) }; }
+function setData(st) { return { title: st.title, at: st.at, src: st.src, nb: st.nb, nbs: st.nbs || [], pin: !!st.pin, used: st.used || 0, uses: st.uses || 0, qs: st.qs.map((q) => ({ id: q.id, t: q.t, ch: q.ch, d: q.d, k: q.k, q: q.q, c: q.c, a: q.a || 0, e: q.e || '', fig: q.fig || undefined, src: q.src, o: q.o, s: q.s, b: q.b, w: q.w, ans: q.ans || undefined, given: q.given || undefined, lab: q.lab || undefined, img: q.img || undefined })) }; }
 async function setSaveNow(st) {
   st.title = (st.title || '').trim() || 'ชุดโจทย์'; st.at = st.at || now();
   if (st.fresh && !st.qs.length) return; /* an empty new set is not kept */
@@ -16895,7 +17004,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793254556';
+const BUILD = '1793254739';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
