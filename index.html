@@ -519,6 +519,8 @@ body.present .updbar { display: none !important; }
 body.student #bLive, body.student #bPresent { display: none; }
 #qmBody textarea { min-height: 70px; }
 .pagenav .zsep { width: 1px; align-self: stretch; margin: 6px 2px; background: var(--line); }
+body.writing .pagenav, body.writing .diarybar { pointer-events: none; opacity: 0.35; transition: opacity 0.15s; }
+.pagenav { transition: opacity 0.25s; }
 .pagenav .animall { gap: 6px; padding: 0 12px; font-weight: 600; color: var(--accent); }
 .pagenav .animall span { font-size: 13px; }
 .pagenav .animall:not(.on) { background: var(--accent); color: var(--accent-fg); }
@@ -3226,7 +3228,11 @@ function onDown(e) {
   if (e.pointerType === 'mouse' && e.button !== 0) { pt.mode = 'pan'; return; }
   beginTool(pt, e);
 }
+/* while writing, the page number and zoom buttons at the corner ignore a resting hand */
+function writingOn() { document.body.classList.add('writing'); clearTimeout(writingOn.t); }
+function writingOff() { clearTimeout(writingOn.t); writingOn.t = setTimeout(() => document.body.classList.remove('writing'), 900); }
 function beginTool(pt, e) {
+  if (e.pointerType === 'pen' || e.pointerType === 'mouse' || S.finger) writingOn();
   const [x, y] = toLogical(e.clientX, e.clientY);
   if ((S.tool === 'pen' || S.tool === 'hl') && S.sel && S.sel.box && nearHandle(S.sel.box, x, y) >= 0) { startScale(pt, nearHandle(S.sel.box, x, y)); return; }
   if ((S.tool === 'pen' || S.tool === 'hl') && S.sel && S.sel.box && inBox(S.sel.box, x, y)) {
@@ -3342,6 +3348,7 @@ function onMove(e) {
 }
 function onUp(e) {
   const pt = P.get(e.pointerId); if (!pt) return;
+  if (document.body.classList.contains('writing')) writingOff();
   P.delete(e.pointerId);
   if (pt.type === 'pen') S.penDown = Math.max(0, S.penDown - 1);
   if (G && G.ids.includes(e.pointerId)) { endGesture(); return; }
@@ -10089,7 +10096,7 @@ async function liveSendAll() {
     const pg = await S.store.get('pages/' + pid); if (!pg) continue;
     const ls = await S.store.list('pages/' + pid + '/layers').catch(() => []); const strokes = []; for (const l of ls) for (const st of l.strokes || []) strokes.push(st);
     const items = await shareItems(pg.items, 86400), parts = chunkStrokes(strokes, 90000), rev = now();
-    liveSend('page', { tpid: pid, idx: i, n: pages.length, nb: S.nb.title || '', level: S.nb.level || 'mp', subject: S.nb.subject || 'phys', subjectName: S.nb.subjectName || null, orient: pg.orient || null, paper: pg.paper || 'grid', items, rev, parts: parts.length, bg: true });
+    liveSend('page', { tpid: pid, idx: i, n: pages.length, tnid: S.nid, order: pages.slice(0, 400), nb: S.nb.title || '', level: S.nb.level || 'mp', subject: S.nb.subject || 'phys', subjectName: S.nb.subjectName || null, orient: pg.orient || null, paper: pg.paper || 'grid', items, rev, parts: parts.length, bg: true });
     for (let k = 0; k < parts.length; k++) { await new Promise((r) => setTimeout(r, 60)); liveSend('strokes', { tpid: pid, rev, part: k, strokes: parts[k] }); }
     await new Promise((r) => setTimeout(r, 250));
   }
@@ -10161,7 +10168,7 @@ async function liveSendPageNow() {
   const items = await shareItems(S.page.items, 86400);
   const strokes = S.mine.concat(...Object.values(S.others));
   const parts = chunkStrokes(strokes, 90000);
-  liveSend('page', { tpid: S.pid, idx: pages.indexOf(S.pid), n: pages.length, nb: S.nb.title || '', level: S.nb.level || 'mp', subject: S.nb.subject || 'phys', subjectName: S.nb.subjectName || null, orient: S.page.orient || null, paper: S.page.paper || 'grid', items, rev, parts: parts.length });
+  liveSend('page', { tpid: S.pid, idx: pages.indexOf(S.pid), n: pages.length, tnid: S.nid, order: pages.slice(0, 400), nb: S.nb.title || '', level: S.nb.level || 'mp', subject: S.nb.subject || 'phys', subjectName: S.nb.subjectName || null, orient: S.page.orient || null, paper: S.page.paper || 'grid', items, rev, parts: parts.length });
   parts.forEach((p, i) => setTimeout(() => liveSend('strokes', { tpid: S.pid, rev, part: i, strokes: p }), 40 * (i + 1)));
 }
 const liveSendPage = debounce(liveSendPageNow, 900);
@@ -10298,24 +10305,57 @@ async function studentNotebook(key, title, level) {
   }
   return nid;
 }
+/* each of the teacher's notebooks gets its own notebook on the student's side, even when the room code stays the same
+   from lesson to lesson, so pages of different lessons never mix and page numbers match the teacher's */
+async function studentNbFor(d) {
+  if (!d || typeof d.tnid !== 'string' || !LIVE.code) return;
+  const key = 'class-' + LIVE.code + ':' + d.tnid.replace(/[^A-Za-z0-9_-]/g, '').slice(0, 40);
+  if (LIVE.tkey === key && LIVE.nid) return;
+  const title = (d.nb || 'ห้องเรียน') + ' (ห้อง ' + LIVE.code + ')';
+  let nid = store_ls.get('tp-snb-' + key);
+  if (nid && !(await S.store.get('notebooks/' + nid))) nid = null;
+  if (!nid) { const f = (S.nbsAll || S.nbs || []).find((n) => n.from === key); if (f) nid = f.id; }
+  if (!nid && LIVE.nid) {
+    /* the notebook opened when joining is still empty: it becomes this lesson's notebook */
+    const cur = await S.store.get('notebooks/' + LIVE.nid);
+    if (cur && !(cur.pages || []).length) { nid = LIVE.nid; await S.store.update('notebooks/' + nid, { from: key, title, titleSet: true, level: d.level || cur.level || 'mp', subject: d.subject || cur.subject || 'phys', subjectName: d.subjectName || null }); }
+  }
+  if (!nid) { nid = 'n' + uid(); await S.store.set('notebooks/' + nid, { title, titleSet: true, level: d.level || 'mp', subject: d.subject || 'phys', subjectName: d.subjectName || null, pages: [], color: COVERS[1], createdAt: now(), updatedAt: now(), from: key, side: 'student' }); }
+  store_ls.set('tp-snb-' + key, nid); store_ls.set('tp-snb-last-' + LIVE.code, key);
+  LIVE.tkey = key; if (LIVE.nid !== nid) { LIVE.nid = nid; openNotebook(nid); }
+}
 async function studentPutPage(nid, lpid, idx, d, strokes) {
   const old = await S.store.get('pages/' + lpid);
   const mine = ((old && old.items) || []).filter((it) => it.by !== 'teacher');
   await S.store.set('pages/' + lpid, { nb: nid, paper: d.paper || 'grid', orient: d.orient === 'land' ? 'land' : undefined, items: (d.items || []).map((it) => Object.assign({}, it, { by: 'teacher' })).concat(mine), rev: now(), tidx: idx });
   if (strokes) await S.store.set('pages/' + lpid + '/layers/teacher', { strokes, rev: now(), dev: 'teacher' });
-  const nb = await S.store.get('notebooks/' + nid); const pages = (nb.pages || []).slice();
-  if (!pages.includes(lpid)) {
-    let at = pages.length;
-    for (let i = 0; i < pages.length; i++) { const p = await S.store.get('pages/' + pages[i]); if (p && isFinite(p.tidx) && p.tidx > idx) { at = i; break; } }
-    pages.splice(at, 0, lpid);
-    await S.store.update('notebooks/' + nid, { pages, updatedAt: now(), title: nb.title });
+  const nb = await S.store.get('notebooks/' + nid); if (!nb) return; const pages = (nb.pages || []).slice();
+  const tid = (x) => 'T' + String(x).replace(/[^A-Za-z0-9]/g, '');
+  const order = Array.isArray(d.order) ? d.order.map(tid) : null;
+  if (!pages.includes(lpid)) pages.push(lpid);
+  let next = pages;
+  if (order) {
+    /* keep the teacher's pages in the teacher's order; a page the student added stays right after the teacher's page it followed */
+    const groups = [], lead = []; let g = null;
+    for (const p of pages) { if (p.startsWith('T') && (order.includes(p) || p === lpid)) { g = [p]; groups.push(g); } else (g || lead).push(p); }
+    const pos = (grp) => { const i = order.indexOf(grp[0]); return i < 0 ? (grp[0] === lpid ? idx : 1e6) : i; };
+    groups.sort((a, z) => pos(a) - pos(z));
+    next = lead.concat(...groups);
+  } else if (pages.indexOf(lpid) === pages.length - 1 && pages.length > 1) {
+    let at = pages.length - 1;
+    for (let i = 0; i < pages.length - 1; i++) { const p = await S.store.get('pages/' + pages[i]); if (p && isFinite(p.tidx) && p.tidx > idx) { at = i; break; } }
+    next = pages.slice(0, -1); next.splice(at, 0, lpid);
   }
+  if (next.join() !== (nb.pages || []).join()) await S.store.update('notebooks/' + nid, { pages: next, updatedAt: now(), title: nb.title });
 }
 async function studentJoin(code) {
   LIVE.code = code; LIVE.role = 'student';
   if (!LIVE.name) { openJoin(code); return; }
   $('#joinSheet').hidden = true;
-  const nid = await studentNotebook('class-' + code, 'ห้องเรียน ' + code + ' ' + new Date().toLocaleDateString(LOC, { day: 'numeric', month: 'short' }), 'mp');
+  /* back in the same room: open the notebook of the last lesson from this room */
+  let nid = null; const lastKey = store_ls.get('tp-snb-last-' + code), lastNid = lastKey && store_ls.get('tp-snb-' + lastKey);
+  if (lastNid && (await S.store.get('notebooks/' + lastNid))) { nid = lastNid; LIVE.tkey = lastKey; }
+  if (!nid) nid = await studentNotebook('class-' + code, 'ห้องเรียน ' + code + ' ' + new Date().toLocaleDateString(LOC, { day: 'numeric', month: 'short' }), 'mp');
   LIVE.nid = nid; openNotebook(nid);
   $('#livePill').hidden = false; liveStudentPill('กำลังเชื่อมต่อ'); lpFold(true);
   let sb; try { sb = await cloudClient(); } catch (e) { liveStudentPill('เชื่อมต่อไม่ได้'); return; }
@@ -10361,7 +10401,7 @@ async function studentGotPage(d) {
   if (!LIVE.gotPage) { LIVE.gotPage = true; liveStudentPill('เชื่อมต่อแล้ว'); }
   const P = LIVE.parts[d.tpid] = { d, rev: d.rev, need: d.parts || 1, got: [] };
   if (P.need === 0) studentApply(d.tpid);
-  if (LIVE.nid) { const nb = await S.store.get('notebooks/' + LIVE.nid); if (nb && d.nb && !nb.titleSet) S.store.update('notebooks/' + LIVE.nid, { title: d.nb + ' (ห้อง ' + LIVE.code + ')', titleSet: true, level: d.level || nb.level, subject: d.subject || nb.subject || 'phys', subjectName: d.subjectName || nb.subjectName || null }).catch(() => {}); }
+  if (false && LIVE.nid) { const nb = await S.store.get('notebooks/' + LIVE.nid); if (nb && d.nb && !nb.titleSet) S.store.update('notebooks/' + LIVE.nid, { title: d.nb + ' (ห้อง ' + LIVE.code + ')', titleSet: true, level: d.level || nb.level, subject: d.subject || nb.subject || 'phys', subjectName: d.subjectName || nb.subjectName || null }).catch(() => {}); }
 }
 function studentGotStrokes(d) {
   const P = d && LIVE.parts[d.tpid]; if (!P || P.rev !== d.rev || !Array.isArray(d.strokes)) return;
@@ -10372,7 +10412,10 @@ async function studentApply(tpid) {
   const P = LIVE.parts[tpid]; if (!P) return; delete LIVE.parts[tpid];
   const strokes = [].concat(...P.got.filter(Boolean)).filter((s) => s && Array.isArray(s.p) && typeof s.id === 'string');
   const lpid = 'T' + tpid.replace(/[^A-Za-z0-9]/g, '');
+  await studentNbFor(P.d);
   await studentPutPage(LIVE.nid, lpid, P.d.idx, P.d, strokes);
+  /* the teacher's other pages are fetched too, so page numbers on both sides match */
+  if (!P.d.bg && P.d.n > 1 && LIVE.pulledFor !== LIVE.tkey) { LIVE.pulledFor = LIVE.tkey; const nb = await S.store.get('notebooks/' + LIVE.nid); const have = ((nb && nb.pages) || []).filter((x) => x.startsWith('T')).length; if (have < P.d.n) setTimeout(() => liveSend('pullall', { sid: LIVE.sid }), 600); }
   PV.ink = {}; if (S.pid === lpid) drawPresentLive();
   if (P.d.bg) return;
   LIVE.cur = lpid;
@@ -12323,7 +12366,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793241622';
+const BUILD = '1793241885';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
@@ -12602,6 +12645,10 @@ function zoomTo(z) {
 $('#zIn').onclick = () => zoomTo(S.zoom * 1.4);
 $('#zOut').onclick = () => zoomTo(S.zoom / 1.4);
 $('#zNum').onclick = () => zoomTo(1);
+/* a hand resting on the corner while the pen writes (or a palm) does not press the page and zoom buttons */
+{ const nav = document.querySelector('.pagenav'); let block = 0;
+  nav.addEventListener('pointerdown', (e) => { if (e.pointerType === 'touch' && (S.penDown > 0 || now() - (S.lastPen || 0) < 1500 || (e.width || 0) > 40 || (e.height || 0) > 40)) { block = now(); e.preventDefault(); e.stopPropagation(); } }, true);
+  nav.addEventListener('click', (e) => { if (now() - block < 800) { e.preventDefault(); e.stopPropagation(); } }, true); }
 $('#qmClose').onclick = () => { $('#qmSheet').hidden = true; };
 $('#liveClose').onclick = () => { $('#liveSheet').hidden = true; };
 $('#jGo').onclick = () => {
