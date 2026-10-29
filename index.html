@@ -547,14 +547,18 @@ body.writing .pagenav, body.writing .diarybar { pointer-events: none; opacity: 0
 /* folded by default: only the page number shows, small, so a writing hand does not hit it; tap it to open the controls */
 .pagenav.mini { padding: 2px; gap: 0; opacity: 0.85; }
 .pagenav.mini > *:not(#pgNum):not(#bAnimAll):not(#zNum) { display: none !important; }
-.pagenav.mini #zNum { min-width: 52px; height: 34px; font-size: 13px; }
+.pagenav.mini #zNum { min-width: 40px; height: 34px; }
 @media (max-width: 600px) { .pagenav.mini #zNum { display: flex !important; } }
 .pagenav.mini #pgNum { min-width: 52px; height: 34px; font-size: 13px; }
 .pagenav.left { right: auto; left: 12px; }
 body.navleft .diarybar { left: auto; right: 12px; }
 @media (max-width: 600px) { .pagenav.left { left: 6px; } body.navleft .diarybar { right: 8px; } }
 body.tv .pagenav.left { left: 14px; }
-.pagenav #zNum { min-width: 56px; font-variant-numeric: tabular-nums; }
+.pagenav #zNum { min-width: 44px; gap: 4px; }
+.pagenav #zNum .fitlbl { display: none; font-size: 13px; font-weight: 700; }
+.pagenav #zNum.said .fitlbl { display: inline; }
+.pagenav #zNum.said svg { display: none; }
+.pagenav #zNum.off { color: var(--accent); background: var(--surface-2); }
 .busy { display: flex; flex-direction: column; gap: 8px; padding: 12px 14px; border-radius: 14px; background: var(--accent-soft); border: 1px solid var(--line); }
 .busy .bh { display: flex; align-items: center; gap: 10px; }
 .busy .bh b { flex: 1; font-size: 15px; }
@@ -1289,7 +1293,7 @@ body.role-student .scnpill .sbtns button[data-s="back"], body.role-student .scnp
         <button id="pgPrev" aria-label="หน้าก่อน"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M12.5 4.5L7 10l5.5 5.5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
         <button class="num" id="pgNum" aria-label="ดูทุกหน้า">1 / 1</button>
         <button id="pgNext" aria-label="หน้าถัดไป"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7.5 4.5L13 10l-5.5 5.5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
-        <span class="zsep"></span><button id="zOut" aria-label="ย่อ">−</button><button class="num" id="zNum" aria-label="กลับขนาดพอดีหน้าจอ">100%</button><button id="zIn" aria-label="ขยาย">+</button>
+        <span class="zsep"></span><button id="zOut" aria-label="ย่อ">−</button><button class="fitb" id="zNum" aria-label="พอดีหน้า" title="พอดีหน้า"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 7V3h4 M13 3h4v4 M17 13v4h-4 M7 17H3v-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><rect x="7" y="6" width="6" height="8" rx="1" fill="none" stroke="currentColor" stroke-width="1.5"/></svg><span class="fitlbl">พอดี</span></button><button id="zIn" aria-label="ขยาย">+</button>
       </div>
       <div class="pull no-ink" id="pull" hidden></div>
 
@@ -1394,7 +1398,7 @@ body.role-student .scnpill .sbtns button[data-s="back"], body.role-student .scnp
     <div class="note">ใช้ตอนแชร์หน้าจอหรือฉายขึ้นทีวี ผู้ชมจะเห็นเฉพาะกระดาษและสิ่งที่อยู่บนกระดาษ ไม่เห็นแถบเครื่องมือ จอผู้ชมจะเปลี่ยนหน้าและเลื่อนตามเครื่องที่เขียน เห็นลายมือและเลเซอร์ทันที<br><br>เปิดแอปนี้อีกหน้าต่างหนึ่งหรือบนอีกเครื่อง แล้วกดปุ่มด้านล่าง จากนั้นแชร์เฉพาะหน้าต่างนั้นในโปรแกรมประชุม ออกจากจอผู้ชมได้ด้วยการแตะจอสามครั้งติดกัน</div>
     <button class="btn" id="bPresent">ใช้หน้าต่างนี้เป็นจอผู้ชม</button>
     <h3>การเขียนและจอ</h3>
-    <div class="switch"><span><b>ปุ่มเปลี่ยนหน้าอยู่มุม</b><small>ปุ่มเลขหน้ามุมล่าง ย้ายไปฝั่งที่มือไม่วางตอนเขียน ถนัดขวาเลือกซ้าย ถนัดซ้ายเลือกขวา</small></span><span class="seg" id="navSideSeg" role="group" aria-label="ฝั่งของปุ่มเปลี่ยนหน้า"><button type="button" data-s="left">ซ้าย</button><button type="button" data-s="right">ขวา</button></span></div>
+    <div class="switch"><span><b>ปุ่มเปลี่ยนหน้าอยู่มุมขวา</b><small>ปิดไว้ ปุ่มเลขหน้าอยู่มุมซ้ายล่าง ห่างจากมือขวาที่วางตอนเขียน คนถนัดซ้ายเปิดสวิตช์นี้</small></span><button class="tg" id="tgNavRight" role="switch" aria-checked="false" aria-label="ปุ่มเปลี่ยนหน้าอยู่มุมขวา"><i></i></button></div>
     <div class="switch"><span><b>เลื่อนหน้าต่อเนื่อง</b><small>เห็นท้ายหน้าก่อนและต้นหน้าถัดไปต่อกัน เลื่อนขึ้นลงข้ามหน้าได้เหมือนม้วนกระดาษ ปิดไว้ จะเปลี่ยนทีละหน้า</small></span><button class="tg" id="tgFlow" role="switch" aria-checked="false" aria-label="เลื่อนหน้าต่อเนื่อง"><i></i></button></div>
     <div class="switch"><span><b>นิ้ววาดได้</b><small>ปิดไว้ นิ้วจะใช้เลื่อนและซูม ปากกาเขียนอย่างเดียว ระบบปิดให้เองเมื่อพบปากกา</small></span><button class="tg" id="tgFinger" role="switch" aria-checked="true" aria-label="นิ้ววาดได้"><i></i></button></div>
     <div class="switch"><span><b>วางฝ่ามือเพื่อลบ</b><small>สำหรับทีวีทัชสกรีนที่บอกขนาดพื้นที่สัมผัสได้</small></span><button class="tg" id="tgPalm" role="switch" aria-checked="true" aria-label="วางฝ่ามือเพื่อลบ"><i></i></button></div>
@@ -2607,7 +2611,7 @@ function flowSet(on) {
   document.querySelectorAll('#flowSeg button').forEach((b) => b.setAttribute('aria-pressed', (b.dataset.f === '1') === !!on ? 'true' : 'false'));
   renderPeeks().catch(() => {}); if (!on) { clampT(); applyT(); }
 }
-function applyT() { if (FLOW.on) flowCheckLater(); const zn = document.getElementById('zNum'); if (zn) zn.textContent = Math.round(S.zoom * 100) + '%'; widthsLater(); wrapEl.style.transform = 'translate(' + S.tx + 'px,' + (S.ty + rubber(S.pull || 0)) + 'px) scale(' + S.zoom + ')'; if (S.watchers && !S.present) viewLater(); sharpLater(); }
+function applyT() { if (FLOW.on) flowCheckLater(); const zn = document.getElementById('zNum'); if (zn) { const pc = Math.round(S.zoom * 100); zn.classList.toggle('off', Math.abs(pc - 100) > 1); zn.title = pc === 100 ? 'พอดีหน้า' : 'ตอนนี้ ' + pc + '% แตะเพื่อกลับมาพอดีหน้า'; zn.setAttribute('aria-label', zn.title); } widthsLater(); wrapEl.style.transform = 'translate(' + S.tx + 'px,' + (S.ty + rubber(S.pull || 0)) + 'px) scale(' + S.zoom + ')'; if (S.watchers && !S.present) viewLater(); sharpLater(); }
 function topY() { return S.tv ? 12 : 72; }
 function bounds() {
   const vw = vp.clientWidth, vh = vp.clientHeight;
@@ -12442,7 +12446,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793245865';
+const BUILD = '1793246028';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
@@ -12696,7 +12700,7 @@ $('#pgNext').onclick = () => { const [i, n] = pageIndex(); if (i >= n - 1) addPa
 /* page controls: folded to the page number; tap to open, folds again by itself */
 const NAV = { side: store_ls.get('tp-navside') === 'right' ? 'right' : 'left', t: 0 };
 function navFold(on) { const n = document.querySelector('.pagenav'); n.classList.toggle('mini', on); clearTimeout(NAV.t); if (!on) NAV.t = setTimeout(() => navFold(true), 5000); }
-function navSide(side) { NAV.side = side === 'right' ? 'right' : 'left'; store_ls.set('tp-navside', NAV.side); document.querySelector('.pagenav').classList.toggle('left', NAV.side === 'left'); document.body.classList.toggle('navleft', NAV.side === 'left'); document.querySelectorAll('#navSideSeg button').forEach((b) => b.setAttribute('aria-pressed', b.dataset.s === NAV.side ? 'true' : 'false')); }
+function navSide(side) { NAV.side = side === 'right' ? 'right' : 'left'; store_ls.set('tp-navside', NAV.side); document.querySelector('.pagenav').classList.toggle('left', NAV.side === 'left'); document.body.classList.toggle('navleft', NAV.side === 'left'); const tn = $('#tgNavRight'); if (tn) tn.setAttribute('aria-checked', NAV.side === 'right' ? 'true' : 'false'); }
 navSide(NAV.side);
 document.querySelector('.pagenav').addEventListener('click', (e) => { if (!document.querySelector('.pagenav').classList.contains('mini') && e.target.closest('button')) navFold(false); });
 $('#pgNum').onclick = (e) => { const n = document.querySelector('.pagenav'); if (n.classList.contains('mini')) { e.stopPropagation(); navFold(false); return; } togglePages(); };
@@ -12726,7 +12730,7 @@ function zoomTo(z) {
 }
 $('#zIn').onclick = () => zoomTo(S.zoom * 1.4);
 $('#zOut').onclick = () => zoomTo(S.zoom / 1.4);
-$('#zNum').onclick = () => zoomTo(1);
+$('#zNum').onclick = () => { zoomTo(1); const z = $('#zNum'); z.classList.add('said'); clearTimeout(z._t); z._t = setTimeout(() => z.classList.remove('said'), 1200); };
 /* a hand resting on the corner while the pen writes (or a palm) does not press the page and zoom buttons */
 { const nav = document.querySelector('.pagenav'); let block = 0;
   nav.addEventListener('pointerdown', (e) => { if (e.pointerType === 'touch' && (S.penDown > 0 || now() - (S.lastPen || 0) < 1500 || (e.width || 0) > 40 || (e.height || 0) > 40)) { block = now(); e.preventDefault(); e.stopPropagation(); } }, true);
@@ -13152,7 +13156,7 @@ function setDockPos(fx, fy) {
   try { const p = JSON.parse(store_ls.get('tp-dock') || 'null'); if (Array.isArray(p) && isFinite(p[0]) && isFinite(p[1])) setTimeout(() => setDockPos(p[0], p[1]), 0); } catch (e) {}
 })();
 $('#tgFlow').onclick = () => flowSet(!FLOW.on);
-document.querySelectorAll('#navSideSeg button').forEach((b) => { b.onclick = () => navSide(b.dataset.s); });
+$('#tgNavRight').onclick = () => navSide(NAV.side === 'right' ? 'left' : 'right');
 document.querySelectorAll('#flowSeg button').forEach((b) => { b.onclick = () => flowSet(b.dataset.f === '1'); });
 flowSet(FLOW.on);
 $('#tgTV').onclick = () => { S.tv = !S.tv; store_ls.set('tp-tv', S.tv ? '1' : '0'); if (S.tv) { S.finger = true; S.palm = true; } syncToggles(); fit(); };
