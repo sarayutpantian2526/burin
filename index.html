@@ -833,6 +833,24 @@ body.role-student .qkeybox { display: none; }
 .sq .sqk { grid-column: 2 / -1; margin-top: 0; }
 .setqs.pool .sq .sqk { grid-column: 1 / -1; }
 .sq .sqk .qkeybtn { min-height: 26px; padding: 0 10px; font-size: 12px; }
+.setsplit { display: grid; grid-template-columns: 210px 1fr; gap: 14px; align-items: start; }
+.setmain { min-width: 0; display: flex; flex-direction: column; gap: 10px; }
+.setnav { position: sticky; top: 0; display: flex; flex-direction: column; gap: 4px; max-height: 70vh; overflow-y: auto; padding-right: 2px; }
+.setnavi { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; text-align: left; min-height: 44px; padding: 8px 10px; border: 1px solid transparent; border-radius: 10px; background: transparent; color: var(--fg); font: inherit; cursor: pointer; }
+.setnavi b { font-size: 13.5px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.setnavi small { font-size: 12px; color: var(--muted); }
+.setnavi:hover { background: var(--surface-2); }
+.setnavi.cur { background: var(--accent-soft); border-color: var(--accent); }
+.setnavi.cur b { color: var(--accent); }
+.setnavi.back, .setnavi.add { font-size: 13px; font-weight: 600; color: var(--accent); justify-content: center; }
+.setnavi.back { border-color: var(--line); }
+.addtoggle { align-self: flex-start; }
+@media (max-width: 720px) {
+  .setsplit { grid-template-columns: 1fr; gap: 8px; }
+  .setnav { position: static; flex-direction: row; overflow-x: auto; max-height: none; padding-bottom: 4px; }
+  .setnavi { flex: 0 0 auto; max-width: 180px; border-color: var(--line); }
+  .setnavi b { -webkit-line-clamp: 1; white-space: nowrap; display: block; }
+}
 .setfind { display: flex; gap: 8px; flex-wrap: wrap; }
 .setfind select { flex: 1 1 220px; min-width: 0; }
 .setfind input { flex: 1 1 180px; min-width: 0; min-height: 40px; }
@@ -15849,8 +15867,24 @@ function setDelete(st, btn, after) {
   S.store.del('exs/' + st.id).catch(() => {}); EX.sets = (EX.sets || []).filter((x) => x.id !== st.id);
   toast('ลบชุด ' + (st.title || '') + ' แล้ว', 1800); if (after) after();
 }
-function exRenderSetEditor(body) {
+/* while editing, every set stays one tap away: a list at the side (a row of chips on a narrow screen) */
+function exRenderSetEditor(outer) {
   const st = EX.editSet, L = ['', 'ง่าย', 'กลาง', 'ยาก'];
+  const split = exEl('div', 'setsplit'), nav = exEl('nav', 'setnav'), body = exEl('div', 'setmain');
+  nav.setAttribute('aria-label', 'ชุดโจทย์ทั้งหมด');
+  const go = async (next) => { await setSaveNow(st); EX.editSet = next; EX.addMore = 0; exRender(); const m = document.querySelector('.setmain'); if (m) m.scrollIntoView({ block: 'start' }); };
+  const back = exEl('button', 'setnavi back', 'รายการชุดทั้งหมด'); back.type = 'button'; back.onclick = async () => { await setSaveNow(st); EX.editSet = null; exRender(); }; nav.appendChild(back);
+  const all = (EX.sets || []).slice().sort((a, b) => (b.at || 0) - (a.at || 0));
+  if (st.fresh && !all.some((x) => x.id === st.id)) all.unshift(st);
+  for (const x of all) {
+    const b = exEl('button', 'setnavi' + (x.id === st.id ? ' cur' : ''), '<b></b><small></small>'); b.type = 'button';
+    b.querySelector('b').textContent = x.id === st.id ? (st.title || 'ชุดใหม่') : x.title; b.querySelector('small').textContent = (x.id === st.id ? st.qs.length : x.qs.length) + ' ข้อ';
+    if (x.id === st.id) b.setAttribute('aria-current', 'true'); else b.onclick = () => go(clone(x));
+    nav.appendChild(b);
+  }
+  const nw = exEl('button', 'setnavi add', 'สร้างชุดใหม่'); nw.type = 'button'; nw.onclick = () => go({ id: 's' + now().toString(36) + uid().slice(0, 3), title: 'ชุดใหม่ ' + new Date().toLocaleDateString(LOC, { day: 'numeric', month: 'short' }), at: now(), qs: [], fresh: true }); nav.appendChild(nw);
+  split.append(nav, body); outer.appendChild(split);
+  setTimeout(() => { const c = nav.querySelector('.cur'); if (c) c.scrollIntoView({ block: 'nearest', inline: 'nearest' }); }, 0);
   const head = exEl('div', 'sethead');
   const inp = document.createElement('input'); inp.value = st.title; inp.maxLength = 80; inp.setAttribute('aria-label', 'ชื่อชุด'); inp.placeholder = 'ชื่อชุด';
   inp.oninput = () => { st.title = inp.value; setSaveLater(st); setSaveMark(); };
@@ -15876,7 +15910,9 @@ function exRenderSetEditor(body) {
   });
   body.appendChild(ol);
   /* adding: the tracks of this notebook's subject, a chapter, difficulty and a search */
-  body.appendChild(exEl('h3', '', 'เพิ่มโจทย์'));
+  const openAdd = EX.addOpen != null ? EX.addOpen : !st.qs.length;
+  const at = exEl('button', 'btn addtoggle' + (openAdd ? '' : ' solid'), openAdd ? 'ซ่อนส่วนเพิ่มโจทย์' : 'เพิ่มโจทย์เข้าชุด'); at.type = 'button'; at.onclick = () => { EX.addOpen = !openAdd; exRender(); }; body.appendChild(at);
+  if (!openAdd) { setSaveMark(); typeset(body); return; }
   let tracks = (typeof subjTracks === 'function' ? subjTracks() : []).filter((k) => CURRIC[k]); if (!tracks.length) tracks = ['olymp', 'ijso'];
   const dt = typeof defaultTrack === 'function' ? defaultTrack(S.nb) : null;
   const tr = tracks.includes(EX.addTrack) ? EX.addTrack : tracks.includes(dt) ? dt : tracks[0], ch = EX.addCh || 0;
@@ -16803,7 +16839,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793253506';
+const BUILD = '1793253674';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
