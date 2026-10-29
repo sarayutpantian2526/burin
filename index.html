@@ -564,6 +564,10 @@ body.present .updbar { display: none !important; }
 .roster { display: flex; flex-wrap: wrap; gap: 6px; }
 .roster span { padding: 4px 10px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-size: 13px; }
 .roster .none, .qr .none { background: none; color: var(--muted); }
+.roster .rname { min-height: 36px; padding: 4px 12px; border: 0; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font: inherit; font-size: 14px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+.roster .rname small { color: var(--muted); font-size: 12px; text-decoration: line-through; }
+.roster .rname.none { background: var(--surface-2); color: var(--muted); }
+#lpHw[hidden] { display: none !important; }
 #bLive.on { background: var(--ok-soft); border-color: var(--ok); }
 #bLiveN { font-style: normal; font-size: 12px; font-weight: 700; color: var(--ok); }
 #bLiveN:empty { display: none; }
@@ -1358,7 +1362,7 @@ body.role-student .scnpill .sbtns button[data-s="back"], body.role-student .scnp
       </div>
       <div class="toast no-ink" id="toast" hidden></div>
       <div class="peekcard no-ink" id="peekCard" hidden></div>
-      <div class="livepill no-ink mini" id="livePill" hidden><button id="lpDot" class="lpdot" type="button" aria-expanded="false" aria-label="แสดงคำสั่งห้องเรียน"><i></i><span id="lpMsg"></span></button><button id="lpFollow" aria-pressed="true">ตามผู้สอน</button><button id="lpQuiz">แบบฝึก</button><button id="lpPull">ดึงทุกหน้า</button><button id="lpLeave">ออก</button></div>
+      <div class="livepill no-ink mini" id="livePill" hidden><button id="lpDot" class="lpdot" type="button" aria-expanded="false" aria-label="แสดงคำสั่งห้องเรียน"><i></i><span id="lpMsg"></span></button><button id="lpFollow" aria-pressed="true">ตามผู้สอน</button><button id="lpQuiz">แบบฝึก</button><button id="lpHw" hidden>การบ้าน</button><button id="lpPull">ดึงทุกหน้า</button><button id="lpLeave">ออก</button></div>
       <input type="file" id="fImg" accept="image/*" hidden>
       <input type="file" id="fPdf" accept="application/pdf,.pdf" hidden>
       <input type="file" id="fVid" accept="video/mp4,video/webm,video/quicktime,video/*" hidden>
@@ -13990,21 +13994,52 @@ function liveCodeFor(key, fresh) {
   if (!c || !/^[A-Z2-9]{6}$/.test(c)) { const used = new Set(Object.values(m)); do { c = newCode(); } while (used.has(c)); m[key] = c; store_ls.set('tp-class-codes', JSON.stringify(m)); }
   return c;
 }
-function liveWhose() { const c = LIVE.clsId && CLS.list.find((x) => x.id === LIVE.clsId); return c ? 'ห้อง ' + classLabel(c) : 'สมุด ' + ((S.nb && S.nb.title) || ''); }
+/* every notebook keeps its own room code (one per class taught from it), saved with the notebook so it is the same on every device,
+   and printed QR codes, homework and the names the teacher gives students all stay tied to that notebook */
+function nbOf(id) { return (S.nbs || []).find((n) => n.id === id) || (S.nb && S.nid === id ? S.nb : null); }
+function nbPatch(id, patch) { const nb = nbOf(id); if (nb) Object.assign(nb, patch); if (S.nb && S.nid === id && S.nb !== nb) Object.assign(S.nb, patch); return Promise.resolve(S.store.update('notebooks/' + id, patch)).catch(() => {}); }
+function liveRoomCode(nid, clsId, fresh) {
+  const nb = nbOf(nid), k = clsId || '-', rooms = Object.assign({}, (nb && nb.rooms) || {});
+  const used = new Set(); for (const n of S.nbs || []) if (n.id !== nid) for (const v of Object.values(n.rooms || {})) used.add(v);
+  for (const [kk, v] of Object.entries(rooms)) if (kk !== k) used.add(v);
+  let c = !fresh && rooms[k];
+  if (!c && !fresh) { const old = liveCodes()[clsId ? 'c:' + clsId : 'n:' + nid]; if (old && !used.has(old)) c = old; }
+  if (!c || !/^[A-Z2-9]{6}$/.test(c)) { do { c = newCode(); } while (used.has(c)); }
+  if (rooms[k] !== c) { rooms[k] = c; if (nb) nbPatch(nid, { rooms }); }
+  const m = liveCodes(); m['n:' + nid + (clsId ? '|' + clsId : '')] = c; store_ls.set('tp-class-codes', JSON.stringify(m));
+  return c;
+}
+/* names the teacher gave students in this notebook's room, by the student's device id */
+function liveNames(nid) { const nb = nbOf(nid || LIVE.nbId); return (nb && nb.roomNames) || {}; }
+function liveRename(p, anchor) {
+  askName(anchor, 'ชื่อของผู้เรียนคนนี้ในห้อง' + (p.orig && p.orig !== p.name ? ' (เขาพิมพ์มาว่า ' + p.orig + ')' : ''), p.name, (v) => {
+    const names = Object.assign({}, liveNames()); names[p.sid] = v.slice(0, 60);
+    if (LIVE.nbId) nbPatch(LIVE.nbId, { roomNames: names });
+    p.name = v; liveSend('rename', { sid: p.sid, name: v }); liveRender(); toast('เปลี่ยนชื่อเป็น ' + v + ' แล้ว', 1600);
+  });
+}
+function liveWhose() { const c = LIVE.clsId && CLS.list.find((x) => x.id === LIVE.clsId), nb = nbOf(LIVE.nbId || S.nid); return 'สมุด ' + ((nb && nb.title) || '') + (c ? ' ห้อง ' + classLabel(c) : ''); }
 async function liveOpen() {
   if (CLOUD.state !== 'on') { toast('ห้องเรียนสดต้องเข้าระบบคลาวด์ก่อน', 3000); return; }
   /* each class (or, with no class chosen, each notebook) has its own room code, kept for next time */
-  const sb = CLOUD.client; if (!LIVE.code) LIVE.code = liveCodeFor(liveKey()); store_ls.set('tp-class', LIVE.code);
+  const sb = CLOUD.client; if (!LIVE.nbId) LIVE.nbId = S.nid; if (!LIVE.code) LIVE.code = liveRoomCode(LIVE.nbId, LIVE.clsId); store_ls.set('tp-class', LIVE.code); store_ls.set('tp-live-nb', LIVE.nbId || '');
   LIVE.role = 'teacher';
   const ch = sb.channel('class-' + LIVE.code, { config: { broadcast: { self: false }, presence: { key: 'teacher-' + TAB } } });
   ch.on('broadcast', { event: 'pullall' }, () => { clearTimeout(LIVE.pullT); LIVE.pullT = setTimeout(liveSendAll, 400); });
-  ch.on('broadcast', { event: 'join' }, (m) => { liveSendRoster(m.payload);  liveSendPage(); if (LIVE.set) liveSend('quiz', liveQuizPayload()); if (LIVE.revealed) liveSend('reveal', liveRevealPayload()); });
+  ch.on('broadcast', { event: 'join' }, (m) => { liveSendRoster(m.payload);  liveSendPage(); liveSendHw(); { const al = m.payload && liveNames()[m.payload.sid]; if (al && al !== m.payload.name) liveSend('rename', { sid: m.payload.sid, name: al }); } if (LIVE.set) liveSend('quiz', liveQuizPayload()); if (LIVE.revealed) liveSend('reveal', liveRevealPayload()); });
   ch.on('broadcast', { event: 'ans' }, (m) => liveGotAnswer(m.payload));
-  ch.on('presence', { event: 'sync' }, () => { const st = ch.presenceState(); const seen = LIVE.seen || (LIVE.seen = new Set()); let fresh = false; for (const k in st) if (!k.startsWith('teacher-') && !seen.has(k)) { seen.add(k); fresh = true; } if (fresh) liveSendPage(); LIVE.peers = []; for (const k in st) { const m = (st[k] || []).slice(-1)[0] || {}; if (m.role === 'student') LIVE.peers.push({ sid: k, name: m.name || 'ไม่ระบุชื่อ', no: m.no || null, stu: m.stu || null }); } LIVE.peers.sort((x, y) => (x.no || 999) - (y.no || 999)); liveRender(); });
-  ch.subscribe((s) => { if (s === 'SUBSCRIBED') { LIVE.ready = true; ch.track({ role: 'teacher' }); liveSendPage(); liveSendRoster(); liveRender(); } });
+  ch.on('presence', { event: 'sync' }, () => { const st = ch.presenceState(); const seen = LIVE.seen || (LIVE.seen = new Set()); let fresh = false; for (const k in st) if (!k.startsWith('teacher-') && !seen.has(k)) { seen.add(k); fresh = true; } if (fresh) liveSendPage(); LIVE.peers = []; for (const k in st) { const m = (st[k] || []).slice(-1)[0] || {}; if (m.role === 'student') { const al = liveNames()[k]; LIVE.peers.push({ sid: k, name: al || m.name || 'ไม่ระบุชื่อ', orig: m.name || '', no: m.no || null, stu: m.stu || null }); } } LIVE.peers.sort((x, y) => (x.no || 999) - (y.no || 999)); liveRender(); });
+  ch.subscribe((s) => { if (s === 'SUBSCRIBED') { LIVE.ready = true; ch.track({ role: 'teacher' }); liveSendPage(); liveSendRoster(); liveSendHw(true); liveRender(); } });
   LIVE.ch = ch; liveRender(); $('#bLive').classList.add('on');
   /* the room stays open after the app reloads or updates, until the teacher closes it */
   store_ls.set('tp-live-on', '1'); store_ls.set('tp-live-cls', LIVE.clsId || '');
+}
+/* homework given from this notebook is listed for the students in its room */
+async function liveSendHw(reload) {
+  if (LIVE.role !== 'teacher' || !LIVE.ready) return;
+  try { if (reload || !HW.list) await hwLoad(); } catch (e) { return; }
+  const list = (HW.list || []).filter((a) => a.open !== false && a.data && a.data.nb && a.data.nb.id === LIVE.nbId).slice(0, 12).map((a) => ({ id: a.id, title: a.title, due: a.due || null }));
+  LIVE.hw = list; liveSend('hw', { list });
 }
 async function liveSendRoster(p) {
   const c = LIVE.clsId && CLS.list.find((x) => x.id === LIVE.clsId); if (!c) return;
@@ -14014,7 +14049,7 @@ async function liveSendRoster(p) {
 }
 function liveClose() {
   if (LIVE.ch) { liveSend('end', {}); try { CLOUD.client.removeChannel(LIVE.ch); } catch (e) { /* closed */ } }
-  store_ls.del('tp-live-on'); store_ls.del('tp-live-cls'); LIVE.seen = null;
+  store_ls.del('tp-live-on'); store_ls.del('tp-live-cls'); store_ls.del('tp-live-nb'); LIVE.seen = null; LIVE.nbId = null; LIVE.hw = null;
   LIVE.ch = null; LIVE.ready = false; LIVE.role = null; LIVE.peers = []; LIVE.clsId = null; LIVE.set = null; LIVE.ans = {}; LIVE.revealed = false;
   $('#bLive').classList.remove('on'); $('#bLiveN').textContent = ''; liveRender();
 }
@@ -14045,7 +14080,7 @@ async function liveGotAnswer(d) {
   if (!LIVE.set || !d || d.id !== LIVE.set.id || typeof d.sid !== 'string') return;
   const lc = LIVE.clsId && CLS.list.find((x) => x.id === LIVE.clsId);
   const r = lc && typeof d.stu === 'string' ? (lc.roster || []).find((x) => x.sid === d.stu) : null;
-  const name = r ? r.name : String(d.name || 'ไม่ระบุชื่อ').slice(0, 40);
+  const name = r ? r.name : String(liveNames()[d.sid] || d.name || 'ไม่ระบุชื่อ').slice(0, 40);
   LIVE.ans[d.sid] = { name: r ? r.no + '. ' + r.name : name, ans: d.ans || {} };
   const set = LIVE.set, items = set.qs.map((q) => { const a = (d.ans || {})[q.id]; const ch = a && isFinite(a[0]) ? +a[0] : -1; return [q.id, q.t + ':' + q.ch, ch === (q.a || 0) ? 1 : 0, a && isFinite(a[1]) ? Math.round(+a[1]) : 0, ch]; });
   const key = set.id + '_' + d.sid;
@@ -14067,7 +14102,8 @@ function liveRender() {
     box.appendChild(exEl('div', 'note', 'เปิดห้องแล้วให้ผู้เรียนสแกน QR หรือเปิดลิงก์บนโทรศัพท์ แท็บเล็ต หรือคอมพิวเตอร์ ไม่ต้องสมัครบัญชี ผู้เรียนเห็นหน้าที่อาจารย์กำลังสอนพร้อมลายมือทันที และจดทับลงบนสำเนาของตัวเองได้ สมุดของผู้เรียนเก็บในเครื่องผู้เรียน หลังจบคาบยังเปิดอ่านและส่งออก PDF ได้'));
     const cf = exEl('label', 'field', '<span>ห้องเรียน (ให้ผู้เรียนยืนยันตัวด้วยรหัสหรือเลขที่ และเก็บคะแนนแบบฝึกเข้าห้องนี้)</span>'); box.appendChild(cf);
     const fillCls = () => cf.appendChild(classSelect('liveCls', true)); if (CLS.loaded) fillCls(); else clsLoad().then(fillCls);
-    const b = exEl('button', 'btn solid', 'เปิดห้องเรียนสด'); b.onclick = () => { LIVE.clsId = ($('#liveCls') && $('#liveCls').value) || null; LIVE.code = null; liveOpen(); }; box.appendChild(b);
+    const b = exEl('button', 'btn solid', 'เปิดห้องเรียนสด'); b.onclick = () => { LIVE.clsId = ($('#liveCls') && $('#liveCls').value) || null; LIVE.code = null; LIVE.nbId = S.nid; liveOpen(); }; box.appendChild(b);
+    if (S.nb && S.nb.rooms && S.nb.rooms['-']) box.appendChild(exEl('div', 'note small', 'สมุดนี้ใช้รหัสห้อง <b>' + esc(S.nb.rooms['-']) + '</b> ประจำ ผู้เรียนใช้รหัสเดิมเข้าได้ทุกครั้ง' + (Object.keys(S.nb.rooms).length > 1 ? ' (ถ้าเลือกห้องเรียน แต่ละห้องมีรหัสของตัวเอง)' : '')));
   } else {
     const link = classLink(LIVE.code);
     const top = exEl('div', 'livetop', '<div class="qr" id="liveQR"></div><div class="lcode"><span>รหัสห้องของ' + esc(liveWhose()) + '</span><b>' + LIVE.code + '</b><small>' + esc(link) + '</small></div>');
@@ -14076,12 +14112,19 @@ function liveRender() {
     const cp = exEl('button', 'btn', 'คัดลอกลิงก์'); cp.onclick = () => { navigator.clipboard && navigator.clipboard.writeText(link).then(() => toast('คัดลอกแล้ว', 1200)).catch(() => {}); }; row.appendChild(cp);
     const big = exEl('button', 'btn', 'วาง QR ลงหน้ากระดาษให้ทั้งห้องเห็น'); big.onclick = liveQRToPage; row.appendChild(big);
     const rs = exEl('button', 'btn', 'ส่งหน้านี้อีกครั้ง'); rs.onclick = liveSendPageNow; row.appendChild(rs);
-    const nc = exEl('button', 'btn', 'เปลี่ยนรหัสห้อง'); nc.title = 'ใช้รหัสใหม่สำหรับ' + liveWhose() + ' ผู้เรียนที่ใช้รหัสเดิมจะเข้าไม่ได้'; nc.onclick = () => { const cls = LIVE.clsId, key = liveKey(); liveClose(); LIVE.clsId = cls; LIVE.code = liveCodeFor(key, true); liveOpen(); toast('เปลี่ยนรหัสห้องแล้ว', 1800); }; row.appendChild(nc);
+    const nc = exEl('button', 'btn', 'เปลี่ยนรหัสห้อง'); nc.title = 'ใช้รหัสใหม่สำหรับ' + liveWhose() + ' ผู้เรียนที่ใช้รหัสเดิมจะเข้าไม่ได้'; nc.onclick = () => { const cls = LIVE.clsId, nid = LIVE.nbId; liveClose(); LIVE.clsId = cls; LIVE.nbId = nid; LIVE.code = liveRoomCode(nid, cls, true); liveOpen(); toast('เปลี่ยนรหัสห้องแล้ว', 1800); }; row.appendChild(nc);
     const cl = exEl('button', 'btn', 'ปิดห้อง'); cl.onclick = () => { liveClose(); store_ls.set('tp-class', ''); LIVE.code = null; }; row.appendChild(cl);
     box.appendChild(row);
     const lc = LIVE.clsId && CLS.list.find((x) => x.id === LIVE.clsId);
     box.appendChild(exEl('h3', '', 'ผู้เรียนในห้อง ' + n + ' คน' + (lc ? ' จาก ' + (lc.roster || []).length + ' คน ' + esc(classLabel(lc)) : '')));
-    box.appendChild(exEl('div', 'roster', LIVE.peers.map((p) => '<span' + (lc && !p.stu ? ' class="none"' : '') + '>' + esc((p.no ? p.no + '. ' : '') + p.name) + (lc && !p.stu ? ' (ยังไม่ยืนยันตัว)' : '') + '</span>').join('') || '<span class="none">ยังไม่มีผู้เรียนเข้าห้อง</span>'));
+    const ros = exEl('div', 'roster', LIVE.peers.length ? '' : '<span class="none">ยังไม่มีผู้เรียนเข้าห้อง</span>');
+    for (const p of LIVE.peers) {
+      const sp = exEl('button', 'rname' + (lc && !p.stu ? ' none' : ''), esc((p.no ? p.no + '. ' : '') + p.name) + (p.orig && p.orig !== p.name ? '<small>' + esc(p.orig) + '</small>' : '') + (lc && !p.stu ? ' (ยังไม่ยืนยันตัว)' : ''));
+      sp.type = 'button'; sp.title = 'แตะเพื่อแก้ชื่อ'; sp.onclick = () => liveRename(p, sp); ros.appendChild(sp);
+    }
+    box.appendChild(ros);
+    if (LIVE.peers.length) box.appendChild(exEl('div', 'note small', 'แตะชื่อเพื่อแก้เป็นชื่อจริง ระบบจำไว้กับสมุดนี้ ครั้งหน้าที่ผู้เรียนคนเดิมเข้าห้องด้วยเครื่องเดิมจะขึ้นชื่อที่แก้แล้ว และใช้กับคะแนนแบบฝึกและการบ้านของสมุดนี้'));
+    if (LIVE.hw && LIVE.hw.length) box.appendChild(exEl('div', 'note small', 'การบ้านของสมุดนี้ที่ผู้เรียนในห้องเห็น: ' + LIVE.hw.map((a) => esc(a.title)).join(', ')));
     if (lc) { const here = new Set(LIVE.peers.map((p) => p.stu).filter(Boolean)); const miss = (lc.roster || []).filter((r) => !here.has(r.sid)); if (miss.length && miss.length < (lc.roster || []).length) box.appendChild(exEl('div', 'note small', 'ยังไม่เข้าห้อง: ' + miss.slice(0, 60).map((r) => esc(r.no + '. ' + r.name)).join(', '))); }
     box.appendChild(exEl('h3', '', 'แบบฝึกในห้อง'));
     if (!LIVE.set) {
@@ -14227,6 +14270,8 @@ async function studentJoin(code) {
   ch.on('broadcast', { event: 'reveal' }, (m) => studentReveal(m.payload));
   ch.on('broadcast', { event: 'quizend' }, () => { $('#sqSheet').hidden = true; });
   ch.on('broadcast', { event: 'roster' }, (m) => studentRoster(m.payload));
+  ch.on('broadcast', { event: 'rename' }, (m) => { const d = m.payload; if (!d || d.sid !== LIVE.sid || typeof d.name !== 'string' || LIVE.stu) return; LIVE.name = d.name.slice(0, 60); store_ls.set('tp-sname', LIVE.name); try { ch.track({ role: 'student', name: LIVE.name }); } catch (e) { /* offline */ } toast('ผู้สอนตั้งชื่อของคุณในห้องนี้เป็น ' + LIVE.name, 3000); });
+  ch.on('broadcast', { event: 'hw' }, (m) => { const L = (m.payload && Array.isArray(m.payload.list)) ? m.payload.list.filter((a) => a && typeof a.id === 'string' && /^[a-z0-9]{6,20}$/.test(a.id)).slice(0, 12) : []; LIVE.hwList = L; const b = $('#lpHw'); b.hidden = !L.length; b.textContent = 'การบ้าน ' + L.length; });
   ch.on('broadcast', { event: 'end' }, () => { liveStudentPill('ผู้สอนปิดห้องแล้ว สมุดยังอยู่ในเครื่องนี้'); });
   /* is the teacher in the room? if not yet, wait and join by itself the moment the teacher opens it */
   LIVE.gotPage = false;
@@ -14254,6 +14299,7 @@ async function studentRoster(R) {
 function lpFold(on) { const p = $('#livePill'); p.classList.toggle('mini', on); $('#lpDot').setAttribute('aria-expanded', on ? 'false' : 'true'); clearTimeout(lpFold.t); if (!on) lpFold.t = setTimeout(() => lpFold(true), 6000); }
 $('#lpDot').onclick = () => lpFold(!$('#livePill').classList.contains('mini'));
 ['#lpFollow', '#lpQuiz', '#lpPull'].forEach((q) => $(q).addEventListener('click', () => lpFold(true)));
+$('#lpHw').onclick = (e) => { const L = LIVE.hwList || []; if (!L.length) return; popMenu(e.currentTarget, 'การบ้านของห้องนี้', L.map((a) => [a.title + (a.due ? ' (ส่ง ' + new Date(a.due).toLocaleDateString(LOC, { day: 'numeric', month: 'short' }) + ')' : ''), () => { const w = window.open(hwLink(a.id), '_blank'); if (!w) location.href = hwLink(a.id); }])); };
 function liveStudentPill(msg) { $('#lpMsg').textContent = 'ห้อง ' + LIVE.code + (/^(เชื่อมต่อแล้ว|กำลังเชื่อมต่อ)$/.test(msg) ? '' : ' ' + msg); $('#lpDot').title = 'ห้อง ' + LIVE.code + ' ' + msg; $('#livePill').dataset.s = /เชื่อมต่อแล้ว/.test(msg) ? 'on' : 'wait'; $('#lpFollow').setAttribute('aria-pressed', LIVE.follow ? 'true' : 'false'); }
 async function studentGotPage(d) {
   if (!d || typeof d.tpid !== 'string') return;
@@ -15793,10 +15839,12 @@ async function createAssignment() {
   const qs = set.qs.map((q) => { const x = { id: q.id, t: q.t, ch: q.ch, q: q.q, c: q.c, d: q.d, fig: q.fig }; if (o.instant) { x.a = q.a || 0; x.e = q.e || ''; } return x; });
   const data = { title: $('#hwTitle').value.trim() || set.title, setId: set.id, qs, online: o.online, files: o.files, instant: o.instant, teacher: (S.nb && S.nb.title) || '' };
   const cls = CLS.list.find((c) => c.id === ($('#hwCls') && $('#hwCls').value));
+  if (S.nid && S.nb) data.nb = { id: S.nid, title: S.nb.title || '', room: liveRoomCode(S.nid, cls ? cls.id : null) };
   if (cls) { data.clsId = cls.id; data.cls = await rosterHashed(cls); }
   try {
     const { error } = await CLOUD.client.from('assignments').insert({ id, owner: CLOUD.user.id, title: data.title, data, due, open: true });
     if (error) throw error;
+    if (LIVE.role === 'teacher' && data.nb && data.nb.id === LIVE.nbId) setTimeout(() => liveSendHw(true), 500);
     if (cls && !(cls.items || []).some((it) => it.ref === id)) { const P = clsPlan(cls); cls.items = (cls.items || []).concat([{ id: 'k' + uid(), name: data.title.slice(0, 40), max: qs.length, kind: 'hw', ref: id, at: now(), due: due || null, cat: P.newCat || (P.cats[0] && P.cats[0].id) || null }]); await clsSave(cls); }
     out.innerHTML = '<div class="livetop"><div class="qr" id="hwQR"></div><div class="lcode"><span>ลิงก์การบ้าน ส่งในกลุ่มแชตของห้องได้เลย</span><small>' + esc(hwLink(id)) + '</small></div></div>';
     const cp = exEl('button', 'btn', 'คัดลอกลิงก์'); cp.onclick = () => navigator.clipboard && navigator.clipboard.writeText(hwLink(id)).then(() => toast('คัดลอกแล้ว', 1200)).catch(() => {}); out.appendChild(cp);
@@ -15812,7 +15860,10 @@ async function hwLoad() {
 async function hwLoadSubs(aid) {
   const { data, error } = await CLOUD.client.from('submissions').select('id,name,data,created_at').eq('assignment', aid).order('created_at', { ascending: true });
   if (error) throw error;
-  const latest = new Map(); for (const s of data || []) latest.set((s.data && s.data.stu && s.data.stu.sid) ? 'id:' + s.data.stu.sid : s.name.trim(), s); /* last hand-in per learner */
+  /* a name the teacher gave this student in the notebook's live room replaces the name typed on the form */
+  const a = (HW.list || []).find((x) => x.id === aid), al = a && a.data && a.data.nb ? liveNames(a.data.nb.id) : {};
+  for (const s of data || []) { const dv = s.data && s.data.dev; if (dv && al[dv] && al[dv] !== s.name) { s.typed = s.name; s.name = al[dv]; } }
+  const latest = new Map(); for (const s of data || []) latest.set((s.data && s.data.stu && s.data.stu.sid) ? 'id:' + s.data.stu.sid : (s.data && s.data.dev && al[s.data.dev]) ? 'dev:' + s.data.dev : s.name.trim(), s); /* last hand-in per learner */
   HW.subs[aid] = [...latest.values()]; return HW.subs[aid];
 }
 function hwKeyFor(a, q) { if (q.a != null) return q.a; const set = setById(a.data.setId); const sq = set && set.qs.find((x) => x.id === q.id); return sq ? (sq.a || 0) : null; }
@@ -15999,7 +16050,7 @@ async function openHomework(id, termCls) {
         if (ue) throw ue; paths.push(path);
       }
       W8.step(1);
-      const { error: ie } = await sb.from('submissions').insert({ id: sid, assignment: a.id, name, data: { answers: st.answers, files: paths, at: now(), stu: stu ? { sid: stu.sid, no: stu.no } : undefined } });
+      const { error: ie } = await sb.from('submissions').insert({ id: sid, assignment: a.id, name, data: { answers: st.answers, files: paths, at: now(), dev: LIVE.sid, stu: stu ? { sid: stu.sid, no: stu.no } : undefined } });
       if (ie) throw ie;
       W8.stop(); res.innerHTML = '';
       try { const sent = JSON.parse(store_ls.get('tp-sent') || '[]'); if (!sent.includes(a.id)) sent.push(a.id); store_ls.set('tp-sent', JSON.stringify(sent.slice(-300))); } catch (e) { /* this device only */ }
@@ -16231,7 +16282,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793248366';
+const BUILD = '1793248499';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
@@ -17094,7 +17145,7 @@ async function boot() {
   if (!S.student) { watchLiveDoc(); aiCloudWatch(); devSeen(); }
   curricLoadCustom();
   if (S.store && S.store.kind === 'cloud') Promise.resolve(S.store.get('settings/curric-x')).then((d) => { if (d && d.m) { let m = {}; try { m = JSON.parse(store_ls.get('tp-curric-x') || '{}'); } catch (e) { m = {}; } store_ls.set('tp-curric-x', JSON.stringify(Object.assign(m, d.m))); curricLoadCustom(); } }).catch(() => {});
-  if (!S.student && CLOUD.state === 'on' && store_ls.get('tp-live-on') === '1' && store_ls.get('tp-class') && S.role !== 'student') { LIVE.clsId = store_ls.get('tp-live-cls') || null; LIVE.code = store_ls.get('tp-class'); setTimeout(() => { liveOpen().then(() => toast('ห้องเรียนสด ' + LIVE.code + ' ยังเปิดอยู่ ผู้เรียนเชื่อมต่อได้ตามเดิม', 3000)).catch(() => {}); }, 800); }
+  if (!S.student && CLOUD.state === 'on' && store_ls.get('tp-live-on') === '1' && store_ls.get('tp-class') && S.role !== 'student') { LIVE.clsId = store_ls.get('tp-live-cls') || null; LIVE.nbId = store_ls.get('tp-live-nb') || null; LIVE.code = store_ls.get('tp-class'); setTimeout(() => { liveOpen().then(() => toast('ห้องเรียนสด ' + LIVE.code + ' ยังเปิดอยู่ ผู้เรียนเชื่อมต่อได้ตามเดิม', 3000)).catch(() => {}); }, 800); }
   renderAcct();
   if (store_ls.get('tp-auth-next') != null && CLOUD.state === 'signedout') { const em = store_ls.get('tp-auth-next'); store_ls.del('tp-auth-next'); setTimeout(() => { openAuth(); if (em) { $('#aEmail').value = em; setTimeout(() => $('#aPass').focus({ preventScroll: true }), 80); } }, 300); }
   if (mC && CLOUD.ready()) studentJoin(mC[1].toUpperCase());
