@@ -421,6 +421,16 @@ body.tv .grip { height: 68px; width: 32px; }
 #tabMenu b { font-size: 13px; padding: 6px 12px 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 260px; }
 #tabMenu button { min-height: 44px; text-align: left; padding: 0 12px; border: 0; border-radius: 10px; background: transparent; cursor: pointer; font-size: 14px; }
 #tabMenu button:hover { background: var(--surface-2); }
+#tabMenu.cards { width: 340px; max-width: calc(100vw - 16px); padding: 8px; gap: 6px; }
+#tabMenu.cards > b { white-space: normal; max-width: none; font-size: 15px; padding: 6px 8px 2px; }
+#tabMenu > p.mnote { margin: 0 8px 4px; font-size: 13px; color: var(--muted); line-height: 1.45; }
+#tabMenu button.mopt { display: flex; flex-direction: row; text-align: left; align-items: flex-start; gap: 12px; padding: 12px; border: 1px solid var(--line, rgba(0,0,0,.1)); border-radius: 12px; background: var(--surface); }
+#tabMenu button.mopt:hover { background: var(--surface-2); border-color: var(--accent, #2f4bbf); }
+#tabMenu .mci { flex: none; width: 40px; height: 40px; border-radius: 10px; display: grid; place-items: center; background: var(--surface-2); color: var(--accent, #2f4bbf); }
+#tabMenu .mci svg { width: 24px; height: 24px; }
+#tabMenu .mct { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+#tabMenu .mct b { font-size: 15px; padding: 0; white-space: normal; max-width: none; }
+#tabMenu .mct small { font-size: 13px; color: var(--muted); line-height: 1.45; white-space: normal; }
 .peek { position: absolute; right: 12px; top: 70px; z-index: 7; width: 300px; max-width: calc(100% - 24px); max-height: calc(100% - 90px); display: flex; flex-direction: column; background: var(--surface); border-radius: 16px; box-shadow: var(--shadow); overflow: hidden; border: 1px solid var(--line); }
 .peek.big { width: 470px; }
 .peek header { display: flex; align-items: center; gap: 2px; padding: 4px 4px 4px 12px; cursor: grab; touch-action: none; }
@@ -2815,7 +2825,7 @@ function drawSharp() {
   if (!cSharp) return;
   const dpr = Math.min(window.devicePixelRatio || 1, 3);
   const need = W * S.base * S.zoom * dpr > W * (S.res || 1) * 1.15;
-  if (!need || S.present || !S.page) { if (!cSharp.hidden) { cSharp.hidden = true; cSharp.width = cSharp.height = 1; } return; }
+  if (!need || !S.page) { if (!cSharp.hidden) { cSharp.hidden = true; cSharp.width = cSharp.height = 1; } return; }
   const pr = pageEl.getBoundingClientRect(), vr = vp.getBoundingClientRect();
   const x0 = Math.max(pr.left, vr.left), y0 = Math.max(pr.top, vr.top), x1 = Math.min(pr.right, vr.right), y1 = Math.min(pr.bottom, vr.bottom);
   if (x1 - x0 < 4 || y1 - y0 < 4) { cSharp.hidden = true; return; }
@@ -5535,7 +5545,14 @@ const moveIn = (arr, from, to) => { const a = arr.slice(); a.splice(to, 0, a.spl
 function popMenu(anchor, title, actions) {
   const m = $('#tabMenu'); m.innerHTML = '';
   const t = document.createElement('b'); t.textContent = title; m.appendChild(t);
-  for (const [label, fn] of actions) { const b = document.createElement('button'); b.type = 'button'; b.setAttribute('role', 'menuitem'); b.textContent = label; b.onclick = () => { m.hidden = true; fn(); }; m.appendChild(b); }
+  /* an action may carry a short explanation and an icon: it then shows as a card */
+  m.classList.toggle('cards', actions.some((a) => a[2]));
+  for (const [label, fn, desc, icon] of actions) {
+    const b = document.createElement('button'); b.type = 'button'; b.setAttribute('role', 'menuitem');
+    if (desc) { b.className = 'mopt'; b.innerHTML = (icon ? '<span class="mci">' + icon + '</span>' : '') + '<span class="mct"><b></b><small></small></span>'; b.querySelector('b').textContent = label; b.querySelector('small').textContent = desc; }
+    else b.textContent = label;
+    b.onclick = () => { m.hidden = true; fn(); }; m.appendChild(b);
+  }
   const r = anchor.getBoundingClientRect();
   m.style.left = Math.round(clamp(r.left, 8, window.innerWidth - 240)) + 'px'; m.style.top = Math.round(r.bottom + 6) + 'px'; m.hidden = false;
   menuFit(m, r);
@@ -16214,7 +16231,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793248117';
+const BUILD = '1793248366';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
@@ -16609,8 +16626,9 @@ function emitView() {
   if (!S.room || S.present || !S.watchers || !S.pid) return;
   const t = now(); if (t - lastView < 110) { viewLater(); return; } lastView = t;
   const r = vp.getBoundingClientRect();
-  const y0 = toLogical(r.left, r.top)[1], y1 = toLogical(r.left, r.bottom)[1];
-  S.room.emit('view', { pid: S.pid, y0: Math.round(y0), y1: Math.round(y1) }).catch(() => {});
+  /* the whole rectangle the teacher sees, so the viewer screen can match zoom and position exactly */
+  const a = toLogical(r.left, r.top), b = toLogical(r.right, r.bottom);
+  S.room.emit('view', { pid: S.pid, x0: Math.round(a[0]), y0: Math.round(a[1]), x1: Math.round(b[0]), y1: Math.round(b[1]) }).catch(() => {});
 }
 const viewLater = debounce(emitView, 140);
 const liveOn = () => LIVE.role === 'teacher' && LIVE.ready;
@@ -16672,17 +16690,24 @@ function drawPresentLive() {
 }
 function followView() {
   if (!PV.view) return;
-  const vh = vp.clientHeight, mid = (PV.view.y0 + PV.view.y1) / 2;
-  const span = Math.max(80, PV.view.y1 - PV.view.y0);
-  PV.ty = clamp(vh / 2 - mid * S.base, Math.min(vh - H * S.base - 8, 8), 8);
-  if (span * S.base > vh * 1.05) PV.ty = clamp(-PV.view.y0 * S.base, Math.min(vh - H * S.base - 8, 8), 8);
+  const vw = vp.clientWidth, vh = vp.clientHeight, v = PV.view;
+  if (v.x0 != null) {
+    /* show exactly the teacher's rectangle, scaled to fit this screen and centred */
+    const k = Math.min(vw / (v.x1 - v.x0), vh / (v.y1 - v.y0));
+    PV.to = { z: k / S.base, tx: vw / 2 - (v.x0 + v.x1) / 2 * k, ty: vh / 2 - (v.y0 + v.y1) / 2 * k };
+  } else {
+    const mid = (v.y0 + v.y1) / 2, span = Math.max(80, v.y1 - v.y0);
+    let ty = clamp(vh / 2 - mid * S.base, Math.min(vh - H * S.base - 8, 8), 8);
+    if (span * S.base > vh * 1.05) ty = clamp(-v.y0 * S.base, Math.min(vh - H * S.base - 8, 8), 8);
+    PV.to = { z: 1, tx: (vw - W * S.base) / 2, ty };
+  }
   if (!PV.raf) PV.raf = requestAnimationFrame(stepFollow);
 }
 function stepFollow() {
-  PV.raf = 0; if (PV.ty == null) return;
-  const d = PV.ty - S.ty;
-  if (Math.abs(d) < 0.5) { S.ty = PV.ty; applyT(); return; }
-  S.ty += d * 0.22; applyT();
+  PV.raf = 0; const to = PV.to; if (!to) return;
+  const dz = to.z - S.zoom, dx = to.tx - S.tx, dy = to.ty - S.ty;
+  if (Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5 && Math.abs(dz) < 0.002) { S.zoom = to.z; S.tx = to.tx; S.ty = to.ty; applyT(); return; }
+  S.zoom += dz * 0.25; S.tx += dx * 0.25; S.ty += dy * 0.25; applyT();
   PV.raf = requestAnimationFrame(stepFollow);
 }
 function presentFit() {
@@ -16723,7 +16748,7 @@ function setupRoom(room) {
     S.watchers = ch.peers.filter((p) => !p.sameTab && p.presence && p.presence.role === 'present').length;
     if (ch.joined.some((p) => p.presence && p.presence.role === 'present') || ch.updated.some((p) => p.presence && p.presence.role === 'present')) { publishLive(); setTimeout(emitView, 300); }
   }, () => {});
-  room.on('view', (m) => { if (!S.present || m.sameTab || !m.data || m.data.pid !== S.pid) return; const v = m.data; if (isFinite(v.y0) && isFinite(v.y1)) { PV.view = { y0: +v.y0, y1: +v.y1 }; followView(); } }, () => {});
+  room.on('view', (m) => { if (!S.present || m.sameTab || !m.data || m.data.pid !== S.pid) return; const v = m.data; if (isFinite(v.y0) && isFinite(v.y1)) { PV.view = { y0: +v.y0, y1: +v.y1 }; if (isFinite(v.x0) && isFinite(v.x1) && v.x1 > v.x0 && v.y1 > v.y0) { PV.view.x0 = +v.x0; PV.view.x1 = +v.x1; } followView(); } }, () => {});
   room.on('ink', (m) => {
     if (!S.present || m.sameTab || !m.data || m.data.pid !== S.pid) return;
     const d = m.data; if (typeof d.id !== 'string' || !Array.isArray(d.p)) return;
@@ -16746,10 +16771,17 @@ function presentTap() {
 $('#presentExit').onclick = exitPresent;
 $('#bPresent').onclick = () => { store_ls.set('tp-present', '1'); enterPresent(); };
 /* audience screen from the main bar: open it in a new window (drag that window to the TV or share it), or turn this window into it */
-$('#bViewer').onclick = (e) => popMenu(e.currentTarget, 'จอผู้ชม เห็นแต่กระดาษ ลายมือ และเลเซอร์ ไม่เห็นแถบเครื่องมือ', [
-  ['เปิดจอผู้ชมในหน้าต่างใหม่ แล้วลากไปจอทีวีหรือแชร์หน้าต่างนั้น', () => { const w = window.open(location.origin + location.pathname + '#present', 'burin-present', 'popup,width=1280,height=760'); if (!w) toast('เบราว์เซอร์กันหน้าต่างใหม่ไว้ ใช้ตัวเลือกล่างแทน', 3500); }],
-  ['ใช้หน้าต่างนี้เป็นจอผู้ชม (แตะจอสามครั้งติดกันเพื่อออก)', () => { store_ls.set('tp-present', '1'); enterPresent(); }]
-]);
+$('#bViewer').onclick = (e) => {
+  const ic1 = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="4" width="13" height="10" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.6"/><rect x="9" y="9" width="12.5" height="10" rx="1.5" fill="var(--surface-2)" stroke="currentColor" stroke-width="1.6"/></svg>';
+  const ic2 = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="4" width="19" height="13" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M8 20.5h8 M12 17v3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
+  popMenu(e.currentTarget, 'ฉายขึ้นจอผู้ชม', [
+    ['เปิดหน้าต่างใหม่', () => { const w = window.open(location.origin + location.pathname + '#present', 'burin-present', 'popup,width=1280,height=760'); if (!w) toast('เบราว์เซอร์กันหน้าต่างใหม่ไว้ ใช้ตัวเลือกล่างแทน', 3500); }, 'เหมาะกับต่อโปรเจกเตอร์หรือทีวีเป็นจอที่สอง ลากหน้าต่างใหม่ไปไว้บนจอนั้น หรือเลือกแชร์หน้าต่างนั้นในโปรแกรมประชุม เครื่องนี้ยังเขียนต่อได้ตามปกติ', ic1],
+    ['ใช้หน้าต่างนี้', () => { store_ls.set('tp-present', '1'); enterPresent(); }, 'เหมาะกับเครื่องที่ต่อจอใหญ่อยู่แล้ว หน้าต่างนี้จะเหลือแต่หน้ากระดาษ ออกได้โดยแตะจอสามครั้งติดกัน หรือกด Esc', ic2]
+  ]);
+  const m = $('#tabMenu'), n = document.createElement('p'); n.className = 'mnote';
+  n.textContent = 'จอผู้ชมเห็นกระดาษ ลายมือ และเลเซอร์ ตรงกับที่จอครูเห็น ทั้งตำแหน่งและการซูม ไม่เห็นแถบเครื่องมือ และไม่เห็นสิ่งที่ตั้งให้ครูเห็นคนเดียว';
+  m.insertBefore(n, m.children[1]); menuFit(m, e.currentTarget.getBoundingClientRect());
+};
 window.addEventListener('resize', debounce(() => { if (S.present) presentFit(); }, 160));
 document.addEventListener('keydown', (e) => { if (S.present && e.key === 'Escape') exitPresent(); });
 window.addEventListener('hashchange', () => { const h = (location.hash || '').replace('#', ''); if (h === 'present' && !S.present) enterPresent(); else if (h !== 'present' && S.present && store_ls.get('tp-present') !== '1') exitPresent(); });
