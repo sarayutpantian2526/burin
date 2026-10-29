@@ -633,8 +633,10 @@ body.writing .pagenav, body.writing .diarybar { pointer-events: none; opacity: 0
 @media (max-width: 600px) { .pagenav.mini #zNum { display: flex !important; } }
 .pagenav.mini #pgNum { min-width: 52px; height: 34px; font-size: 13px; }
 .pagenav.left { right: auto; left: 12px; }
-body.navleft .diarybar { left: auto; right: 12px; }
-@media (max-width: 600px) { .pagenav.left { left: 6px; } body.navleft .diarybar { right: 8px; } }
+/* the writing hand rests at the bottom right: the bar stays on the left, above the page buttons when they are there too */
+body.navleft .diarybar { bottom: 70px; }
+@media (max-width: 600px) { .pagenav.left { left: 6px; } }
+@media (max-width: 700px) { body.navleft .diarybar { bottom: 124px; } }
 body.tv .pagenav.left { left: 14px; }
 .pagenav #zNum { min-width: 44px; gap: 4px; }
 .pagenav #zNum .fitlbl { display: none; font-size: 13px; font-weight: 700; }
@@ -17140,7 +17142,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793257825';
+const BUILD = '1793258226';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
