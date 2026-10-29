@@ -249,6 +249,18 @@ body.tv .toast { bottom: 112px; }
 /* drawers */
 .drawer { flex: none; width: 210px; background: var(--surface); border-radius: var(--r); display: flex; flex-direction: column; overflow: hidden; border: 1px solid var(--line); }
 .drawer.wide { width: 380px; }
+.aipages .chip { min-width: 44px; }
+.aipages .chip.cur { font-weight: 700; }
+#aiPagesHint { font-weight: 400; color: var(--muted); font-size: 12px; }
+.aimore { flex: none; display: flex; flex-direction: column; align-items: stretch; gap: 4px; padding: 10px 12px 12px; border-top: 1px solid var(--line); background: var(--surface); }
+.aimore[hidden] { display: none; }
+.aimore .btn { min-height: 50px; font-size: 16px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+.aimore .btn svg { width: 20px; height: 20px; }
+.aimore small { text-align: center; color: var(--muted); font-size: 12px; }
+#aiOut .card .keyhid { display: flex; flex-direction: column; gap: 6px; }
+#aiOut .card .keyhid[hidden] { display: none; }
+#aiOut .card .kbtn { align-self: flex-start; }
+#aiOut .card.ins { outline: 2px solid var(--ok, #1D7350); outline-offset: -2px; }
 .drawer header { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 12px 12px 8px 16px; font-weight: 700; }
 .drawer .body { flex: 1; overflow-y: auto; padding: 4px 12px 16px; display: flex; flex-direction: column; gap: 10px; -webkit-user-select: text; user-select: text; }
 @media (max-width: 900px) {
@@ -1403,9 +1415,12 @@ body.role-student .scnpill .sbtns button[data-s="back"], body.role-student .scnp
         <div class="note" id="aiAvail">อ่านหน้าที่กำลังสอน แล้วสร้างตัวอย่าง โจทย์ฝึก และข้อสอบที่ใช้สถานการณ์และตัวเลขเดียวกัน ทุกคำตอบคำนวณซ้ำด้วยเครื่องคำนวณก่อนแสดง</div>
         <span class="label">ระดับ</span>
         <div class="chips" id="levelChips"></div>
-        <button class="btn solid" id="bGenPage">สร้างโจทย์จากหน้านี้</button>
+        <span class="label">หน้าที่ใช้สร้างโจทย์ <small id="aiPagesHint">แตะเลือกได้หลายหน้า</small></span>
+        <div class="chips aipages" id="aiPages"></div>
+        <button class="btn solid" id="bGenPage">สร้างโจทย์จากหน้าที่เลือก</button>
         <div id="aiOut" style="display:flex;flex-direction:column;gap:10px"></div>
       </div>
+      <footer class="aimore" id="aiMore" hidden><button class="btn solid" id="bGenMore" type="button"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 4v12 M4 10h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>สร้างโจทย์เพิ่ม</button><small>อีก 3 ข้อจากหน้าเดิม ไม่ซ้ำข้อที่มีแล้ว</small></footer>
     </aside>
   </div>
 </div>
@@ -2328,7 +2343,7 @@ const AI = {
   srcName(s) { return s === 'claude' ? 'Claude ในบัญชีของคุณ' : s === 'local' ? 'AI ในเครื่อง' : s === 'key' ? (KEY_VENDORS[this.cfg.key.vendor] || KEY_VENDORS.other).name : 'ปิดอยู่'; },
   async run(task, prompt, o) {
     o = o || {};
-    prompt = subjectize(String(prompt)); prompt += langDirective(prompt, o);
+    prompt = subjectize(String(prompt)); if (/LaTeX|\$\.\.\.\$|\$ signs|math/i.test(prompt) && !o.noNotation) prompt += MATH_NOTATION; prompt += langDirective(prompt, o);
     const s = this.src(task);
     if (s === 'claude') { if (!this.claude) throw { code: 'not_granted' }; return this.claude(prompt, o); }
     if (s === 'local') { const L = this.cfg.local; return runOpenAI(L.url, '', L.model, prompt, L.vision ? o : Object.assign({}, o, { images: null }), L.tools); }
@@ -2537,7 +2552,7 @@ async function uiTranslate(l, more) {
       const part = keys.slice(i, i + size), src = {}; part.forEach((k, j) => { src[j] = en[k]; });
       const prompt = 'Translate the user-interface strings of a teaching notebook app from English into ' + name + '. Keep them short like buttons and menu labels, natural for teachers and students in that language. Keep numbers, symbols, letters A B C D, brand names (Burin, Google, OpenRouter, Gemini, Claude, ChatGPT, Supabase, PDF, QR, AI) and placeholders unchanged. Keep leading and trailing spaces exactly. Reply with JSON only: an object with the same keys and the translated strings.\n' + JSON.stringify(src);
       try {
-        const r = await AI.run('gen', prompt, { maxTokens: 12000, cache: false, lang: 'th' });
+        const r = await AI.run('gen', prompt, { maxTokens: 12000, cache: false, lang: 'th', noNotation: true });
         const m = String(r.text || '').match(/\{[\s\S]*\}/); const out = m ? JSON.parse(m[0]) : {};
         part.forEach((k, j) => { const v = out[j]; if (typeof v === 'string' && v.trim()) have[k] = v; });
       } catch (e) { failed++; if (failed > 2) throw e; }
@@ -2583,6 +2598,8 @@ const curSubj = () => subjOf(S.nb);
 const isPhys = () => curSubj()[0] === 'phys';
 const L10 = (t) => (UI_LANG !== 'th' && I18N.dict && I18N.dict[t]) || t;
 const subjName = (k, nb) => (k === 'other' ? subjOf(nb)[1] : L10((SUBJECTS.find((x) => x[0] === k) || SUBJECTS[0])[1]));
+/* the notation teachers write by hand and students see in Thai textbooks: arrow over a vector, upright units, real minus and times signs */
+const MATH_NOTATION = '\n\nNOTATION (follow exactly in every formula): a vector is a letter with an arrow over it as written by hand, $\\vec{F}$, $\\vec{v}$, $\\vec{a}$, never bold; a vector from point A to point B is $\\overrightarrow{AB}$; unit vectors $\\hat{i}, \\hat{j}, \\hat{k}$ (or $\\hat{x}$, $\\hat{n}$); the size of a vector is $|\\vec{F}|$ or plain italic $F$; net force $\\sum \\vec{F}$ or $\\vec{F}_{\\text{net}}$; change $\\Delta v$; dot product $\\vec{A}\\cdot\\vec{B}$, cross product $\\vec{A}\\times\\vec{B}$; multiplication of numbers $\\times$ (scientific notation $3.0\\times10^{8}$), never * or x; units upright after a thin space, $20\\,\\mathrm{m/s}$, $9.8\\,\\mathrm{m/s^2}$, $5\\,\\mathrm{N}$, $2\\,\\mathrm{k\\Omega}$; angles $30^\\circ$; descriptive subscripts upright, $v_{\\text{max}}$, $E_{\\text{k}}$, numeric or single-letter subscripts plain, $v_0$, $F_x$; fractions with \\frac; no Unicode math characters (√ × → ² ° ±) outside or inside $...$, use the LaTeX commands.';
 function subjectize(prompt) {
   const sj = curSubj(); if (sj[0] === 'phys') return prompt;
   return prompt.replace(/\bphysics\b/g, sj[2]).replace(/\bPhysics\b/g, sj[2][0].toUpperCase() + sj[2].slice(1)) + '\n\nSUBJECT: this notebook is about ' + sj[2] + ', not physics; adapt every instruction above to ' + sj[2] + '. ' + sj[3];
@@ -4280,6 +4297,7 @@ function openPage(pid) {
   saveMine.flush(); savePage.flush();
   if (editing) commitEdit();
   S.pid = pid; store_ls.set('tp-last-page-' + S.nid, pid);
+  if (!$('#ai').hidden) setTimeout(renderAIPages, 0);
   if (!S.present) publishLiveLater();
   PV.ink = {}; PV.laser = null; { const c = cRemote.getContext('2d'); c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, cRemote.width, cRemote.height); }
   S.mine = []; S.others = {}; S.ownLoaded = false; S.myRev = 0; S.page = { nb: S.nid, paper: 'grid', items: [] };
@@ -4533,6 +4551,9 @@ async function quickSetup() {
 }
 function inkBlob(refs, pad) {
   const list = refs ? refs.map(findStroke).filter(Boolean).map((s) => ({ s })) : allStrokes();
+  return strokesBlob(list, pad);
+}
+function strokesBlob(list, pad) {
   if (!list.length) return Promise.resolve(null);
   let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
   for (const r of list) { boxCache.delete(r.s); const b = sbox(r.s); x0 = Math.min(x0, b[0]); y0 = Math.min(y0, b[1]); x1 = Math.max(x1, b[2]); y1 = Math.max(y1, b[3]); }
@@ -4567,7 +4588,7 @@ function aiErr(e) {
   if (code === 'prompt_too_large') return 'เนื้อหาในหน้ายาวเกินไป วงเฉพาะส่วนที่ต้องการแล้วลองใหม่';
   return 'เชื่อมต่อ AI ไม่สำเร็จ ลองอีกครั้ง' + (code ? ' (รหัส ' + code + ')' : (e && e.message ? ' (' + String(e.message).slice(0, 80) + ')' : ''));
 }
-function openAI() { $('#calc').hidden = true; $('#ai').hidden = false; $('#bAI').setAttribute('aria-pressed', 'true'); }
+function openAI() { $('#calc').hidden = true; $('#ai').hidden = false; $('#bAI').setAttribute('aria-pressed', 'true'); renderAIPages(); }
 function aiCard(html) { const d = document.createElement('div'); d.className = 'card'; d.innerHTML = html; $('#aiOut').prepend(d); return d; }
 function busyCard(title) {
   const ctl = new AbortController();
@@ -4839,23 +4860,63 @@ async function tidySelection() {
   } catch (e) { B.d.innerHTML = '<span class="k">วาดใหม่ตามหลักฟิสิกส์</span><div class="note err">' + esc(aiErr(e)) + '</div>'; }
 }
 
-async function generate(fromSel) {
-  if (!needAI('gen')) return;
-  openAI();
+/* classroom assistant: questions from the pages the teacher picks. Answers stay hidden until the teacher asks (the screen may be on the projector);
+   a question put on the page carries the "เฉลย" key, seen only on this teacher's screen */
+const GA = { pids: null, custom: false, made: [], set: null, srcKey: '' };
+function gaPids() {
+  const pages = (S.nb && S.nb.pages) || [];
+  if (!GA.custom || !GA.pids) GA.pids = S.pid ? [S.pid] : [];
+  GA.pids = GA.pids.filter((p) => pages.includes(p));
+  if (!GA.pids.length && S.pid) GA.pids = [S.pid];
+  return GA.pids;
+}
+function renderAIPages() {
+  const el = $('#aiPages'); if (!el) return; el.innerHTML = '';
+  const pages = (S.nb && S.nb.pages) || [], sel = gaPids();
+  pages.slice(0, 60).forEach((pid, i) => {
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'chip' + (pid === S.pid ? ' cur' : '');
+    b.textContent = pid === S.pid ? (i + 1) + ' หน้านี้' : String(i + 1);
+    b.setAttribute('aria-pressed', sel.includes(pid) ? 'true' : 'false');
+    b.onclick = () => {
+      GA.custom = true; const cur = gaPids().slice(); const k = cur.indexOf(pid);
+      if (k >= 0) { if (cur.length > 1) cur.splice(k, 1); } else { if (cur.length >= 4) { toast('เลือกได้ครั้งละไม่เกิน 4 หน้า', 1600); return; } cur.push(pid); }
+      GA.pids = cur.sort((a, z) => pages.indexOf(a) - pages.indexOf(z)); renderAIPages();
+    };
+    el.appendChild(b);
+  });
+  const n = sel.length; $('#bGenPage').textContent = n > 1 ? 'สร้างโจทย์จาก ' + n + ' หน้าที่เลือก' : (sel[0] === S.pid ? 'สร้างโจทย์จากหน้านี้' : 'สร้างโจทย์จากหน้า ' + (pages.indexOf(sel[0]) + 1));
+}
+async function gaSource(fromSel) {
   const useImg = !AI.limits('gen') || !!AI.limits('gen').images;
-  const img = useImg ? await inkBlob(fromSel && S.sel ? S.sel.strokes : null) : null;
-  const ctx = pageText();
-  if (!img && !ctx) { toast('หน้านี้ยังไม่มีเนื้อหาให้สร้างโจทย์'); return; }
-  const B = busyCard('สร้างโจทย์จาก' + (fromSel ? 'ส่วนที่เลือก' : 'หน้านี้'));
+  const pages = (S.nb && S.nb.pages) || [];
+  if (fromSel && S.sel) { const img = useImg ? await inkBlob(S.sel.strokes) : null; return { images: img ? [img.blob] : [], text: pageText(), label: 'the part the teacher selected on the current page' }; }
+  const pids = gaPids(), images = [], texts = [];
+  for (const pid of pids) {
+    const c = await pageContent(pid), n = pages.indexOf(pid) + 1;
+    const pg = pid === S.pid ? S.page : await S.store.get('pages/' + pid).catch(() => null);
+    const tx = ((pg && pg.items) || []).filter((it) => !it.teacher && (!it.type || it.type === 'text') && it.md).map((it) => it.md).join('\n');
+    if (tx) texts.push('[page ' + n + ']\n' + tx.slice(0, 2500));
+    if (useImg && c.strokes.length) { const b = await strokesBlob(c.strokes.map((x) => ({ s: x }))); if (b) images.push(b.blob); }
+  }
+  return { images, text: texts.join('\n\n').slice(0, 6000), label: pids.length > 1 ? pids.length + ' notebook pages (pages ' + pids.map((p) => pages.indexOf(p) + 1).join(', ') + '), one image per page in that order' : 'the current notebook page' };
+}
+async function generate(fromSel, more) {
+  if (!needAI('gen')) return;
+  openAI(); renderAIPages();
+  const src = more && GA.src ? GA.src : await gaSource(fromSel);
+  if (!src.images.length && !src.text) { toast('หน้าที่เลือกยังไม่มีเนื้อหาให้สร้างโจทย์'); return; }
+  if (!more) { GA.src = src; GA.made = []; GA.set = null; }
+  const B = busyCard(more ? 'สร้างโจทย์เพิ่ม' : 'สร้างโจทย์จาก' + (fromSel ? 'ส่วนที่เลือก' : gaPids().length > 1 ? ' ' + gaPids().length + ' หน้า' : 'หน้านี้'));
   const tools = !!(AI.limits('gen') && AI.limits('gen').tools);
   if (tools) { try { await loadLib('math'); } catch (e) { /* run without the calculator */ } }
   const haveCalc = tools && !!window.math;
   const prompt = 'You are helping a Thai physics teacher who is teaching live from handwritten notes.\n'
-    + (img ? 'The attached image is the handwritten content of the current notebook page' + (fromSel ? ' (the part the teacher selected)' : '') + '.\n' : '')
-    + (ctx ? 'Typed blocks on the page:\n' + ctx + '\n' : '')
+    + (src.images.length ? 'The attached image' + (src.images.length > 1 ? 's are' : ' is') + ' the handwritten content of ' + src.label + '.\n' : 'The content is ' + src.label + '.\n')
+    + (src.text ? 'Typed blocks on the page' + (src.images.length > 1 ? 's' : '') + ':\n' + src.text + '\n' : '')
     + 'Target level: ' + levelName(S.level) + ' (Thai school system).\n'
+    + (GA.made.length ? 'Questions already written for this content (write DIFFERENT ones: other unknowns, other variables changed, other misconceptions):\n' + GA.made.map((q, i) => (i + 1) + '. ' + String(q.q).replace(/\s+/g, ' ').slice(0, 160)).join('\n') + '\n' : '')
     + 'Tasks:\n'
-    + '1. Identify the physical scenario on the page and the exact quantities, symbols and values the teacher used. Keep the teacher\'s value of g and notation.\n'
+    + '1. Identify the physical scenario and the exact quantities, symbols and values the teacher used. Keep the teacher\'s value of g and notation.\n'
     + '2. Write exactly 3 new items in Thai that continue THE SAME scenario and stay consistent with it:\n'
     + '   - "example": a worked example that extends the scenario with one new question, with a full step-by-step solution.\n'
     + '   - "drill": a practice problem that changes exactly one variable of the scenario, with the answer and a short solution.\n'
@@ -4869,7 +4930,7 @@ async function generate(fromSel) {
     + '@@ITEM mcq\n@@QUESTION\n...\n@@OPTIONS\nก. ...\nข. ...\nค. ...\nง. ...\n@@ANSWER\n(the key, e.g. ค.)\n@@SOLUTION\n...\n@@NOTES\n(which misconception each distractor targets)';
   let calls = 0;
   const opts = { signal: B.ctl.signal };
-  if (img) opts.images = [img.blob];
+  if (src.images.length) opts.images = src.images.slice(0, 4);
   opts.onText = () => B.status('กำลังเขียนโจทย์');
   if (haveCalc) {
     opts.tools = [{
@@ -4882,7 +4943,8 @@ async function generate(fromSel) {
         return { value: window.math.format(v, { precision: 8 }) };
       }
     }];
-  } else opts.cache = false;
+  }
+  opts.cache = false;
   const run = async (o) => {
     try { return await AI.run('gen', prompt, o); }
     catch (e) {
@@ -4902,33 +4964,58 @@ async function generate(fromSel) {
       if (p.key === 'ITEM') { cur = { kind: (p.arg || 'example').toLowerCase().split(/\s/)[0] }; r.items.push(cur); }
       else if (cur && ['QUESTION', 'OPTIONS', 'ANSWER', 'SOLUTION', 'NOTES'].includes(p.key)) cur[p.key.toLowerCase()] = p.text || p.arg;
     }
-    for (const it of r.items) { if (it.options) it.options = it.options.split('\n').map((s) => s.trim()).filter(Boolean); if (it.notes && /^\(?empty\)?$/i.test(it.notes.trim())) it.notes = ''; }
+    for (const it of r.items) { if (it.options) it.options = it.options.split('\n').map((x) => x.trim()).filter(Boolean); if (it.notes && /^\(?empty\)?$/i.test(it.notes.trim())) it.notes = ''; }
     const items = r.items.filter((it) => it.question).slice(0, 3);
     if (!items.length) throw { code: 'empty_completion', text: res.text };
-    const names = { example: 'ตัวอย่างพร้อมวิธีทำ', drill: 'โจทย์ฝึก', mcq: 'ข้อสอบปรนัย' };
+    const names = { example: 'ตัวอย่าง', drill: 'โจทย์ฝึก', mcq: 'ข้อสอบปรนัย' };
+    const det = detectTopics(), t = det.track, ch = det.chs[0] || 0;
+    /* each item becomes a question the notebook's answer key understands */
+    const qs = items.map((it) => {
+      const kind = names[it.kind] ? it.kind : 'example';
+      const q = { id: 'g' + uid(), t, ch, d: kind === 'mcq' ? 2 : 3, k: kind === 'example' ? 'ex' : '', q: '**' + names[kind] + '** ' + String(it.question).trim(), c: [], a: 0, ans: '', e: '', src: 'assist', kind };
+      const opt = Array.isArray(it.options) ? it.options.map((x) => x.replace(/^\s*[กขคงabcdABCD][.)]\s*/, '').trim()).filter(Boolean) : [];
+      if (kind === 'mcq' && opt.length >= 2) { q.c = opt.slice(0, 4); const m = String(it.answer || '').match(/[กขคง]/); q.a = m ? Math.max(0, 'กขคง'.indexOf(m[0])) : 0; }
+      else q.ans = String(it.answer || '').trim();
+      q.e = [String(it.solution || '').trim(), String(it.notes || '').trim()].filter(Boolean).join('\n\n');
+      return q;
+    });
+    GA.made = GA.made.concat(qs);
     B.d.remove();
-    const head = aiCard('<span class="k">สถานการณ์ที่อ่านได้</span><div class="q">' + mdToHtml(String(r.scenario || '')) + '</div><span class="meta">' + (haveCalc ? (calls ? 'ตัวเลขผ่านเครื่องคำนวณ ' + calls + ' ครั้ง' : 'ยังไม่ได้ใช้เครื่องคำนวณ ตรวจตัวเลขก่อนใช้') : 'มุมมองนี้ไม่มีเครื่องคำนวณ ตรวจตัวเลขก่อนใช้') + '</span>');
+    const head = aiCard('<span class="k">' + (more ? 'โจทย์ชุดเพิ่ม' : 'สถานการณ์ที่อ่านได้') + '</span><div class="q">' + mdToHtml(String(r.scenario || '')) + '</div><span class="meta">' + (haveCalc ? (calls ? 'ตัวเลขผ่านเครื่องคำนวณ ' + calls + ' ครั้ง' : 'ยังไม่ได้ใช้เครื่องคำนวณ ตรวจตัวเลขก่อนใช้') : 'ตรวจตัวเลขก่อนใช้') + ' เฉลยซ่อนไว้ แตะ "ดูเฉลย" เมื่อต้องการ</span>');
     typeset(head);
-    for (const it of items.slice().reverse()) {
-      const q = String(it.question || '');
-      const optsTxt = Array.isArray(it.options) ? it.options.map(String).join('\n') : '';
-      const sol = String(it.solution || '');
-      const ans = String(it.answer || '');
-      const notes = String(it.notes || '');
+    for (const q of qs.slice().reverse()) {
       const card = document.createElement('div'); card.className = 'card';
-      card.innerHTML = '<span class="k">' + esc(names[it.kind] || 'โจทย์') + '</span>'
-        + '<div class="q">' + mdToHtml(q + (optsTxt ? '\n' + optsTxt : '')) + '</div>'
-        + '<div class="sol"><b>คำตอบ</b> ' + mdToHtml(ans) + (sol ? '<br>' + mdToHtml(sol) : '') + '</div>'
-        + (notes ? '<span class="meta">' + mdToHtml(notes) + '</span>' : '')
-        + '<div class="row"><button class="btn solid" data-a="ins">แทรกลงสมุด</button><button class="btn" data-a="qonly">แทรกเฉพาะโจทย์</button></div>';
+      card.innerHTML = '<span class="k">' + esc(names[q.kind]) + '</span>'
+        + '<div class="q">' + mdToHtml(q.q.replace(/^\*\*[^*]+\*\*\s*/, '') + (q.c.length ? '\n' + q.c.map((c, o) => 'กขคง'[o] + '. ' + c).join('\n') : '')) + '</div>'
+        + '<button class="btn sm kbtn" type="button" data-a="key">ดูเฉลย</button>'
+        + '<div class="keyhid" hidden><div class="sol">' + keyLine(q) + (q.e ? '<br>' + mdToHtml(q.e) : '') + '</div></div>'
+        + '<div class="row"><button class="btn solid" data-a="ins">แทรกลงสมุด</button></div>';
       head.after(card);
       typeset(card);
-      const md = '**' + (names[it.kind] || 'โจทย์') + '** ' + q + (optsTxt ? '\n' + optsTxt : '');
-      const mdSol = 'คำตอบ ' + ans + (sol ? '\n' + sol : '') + (notes ? '\n' + notes : '');
-      card.querySelector('[data-a="ins"]').onclick = () => insertGenerated(md, mdSol);
-      card.querySelector('[data-a="qonly"]').onclick = () => insertGenerated(md, null);
+      const kb = card.querySelector('[data-a="key"]'), kh = card.querySelector('.keyhid');
+      kb.onclick = () => { kh.hidden = !kh.hidden; kb.textContent = kh.hidden ? 'ดูเฉลย' : 'ซ่อนเฉลย'; };
+      const ib = card.querySelector('[data-a="ins"]');
+      ib.onclick = async () => { ib.disabled = true; const ok = await gaInsert(q); ib.disabled = false; if (ok) { card.classList.add('ins'); ib.textContent = 'แทรกอีกครั้ง'; } };
     }
+    $('#aiMore').hidden = false;
   } catch (e) { B.d.innerHTML = '<span class="k">สร้างโจทย์</span><div class="note err">' + esc(aiErr(e)) + '</div>' + (e && e.text ? '<span class="meta">' + esc(String(e.text).slice(0, 300)) + '</span>' : ''); }
+}
+/* the question goes on the page; its answer lives in a question set of this notebook, opened by the "เฉลย" key on the box */
+async function gaInsert(q) {
+  try {
+    if (!EX.loaded && typeof exLoad === 'function') await exLoad().catch(() => {});
+    if (!GA.set || !setById(GA.set.id)) {
+      const id = 's' + now().toString(36) + uid().slice(0, 3);
+      GA.set = { id, title: 'โจทย์จากผู้ช่วย ' + ((S.nb && S.nb.title) || '') + ' ' + new Date().toLocaleDateString(LOC, { day: 'numeric', month: 'short' }), at: now(), src: 'assist', nb: S.nid || null, qs: [] };
+      EX.sets = (EX.sets || []).concat([GA.set]);
+    }
+    if (!GA.set.qs.some((x) => x.id === q.id)) GA.set.qs.push({ id: q.id, t: q.t, ch: q.ch, d: q.d, k: q.k, q: q.q, c: q.c, a: q.a, ans: q.ans, e: q.e, src: 'assist' });
+    await S.store.set('exs/' + GA.set.id, Object.assign({}, GA.set, { id: undefined })).catch(() => {});
+    const n = ((S.page && S.page.items) || []).filter((it) => it.qref).length;
+    const r = await placeQuestions([q], [0, contentBottom() + 24], { setId: GA.set.id, numFrom: n + 1, space: 12 });
+    toast((r.pages ? 'แทรกโจทย์ในหน้าใหม่ถัดไปแล้ว' : 'แทรกโจทย์แล้ว') + ' แตะปุ่ม เฉลย ที่มุมกล่องเพื่อดูคำตอบ (เห็นเฉพาะเครื่องนี้)', 3200);
+    return true;
+  } catch (e) { toast('แทรกโจทย์ไม่สำเร็จ', 2000); return false; }
 }
 function contentBottom() {
   let y = 60;
@@ -4936,29 +5023,6 @@ function contentBottom() {
   for (const it of visibleItems()) y = Math.max(y, itemBox(it)[3]);
   return y;
 }
-async function insertGenerated(md, mdSol) {
-  const need = 120 + md.length * 0.9 + (mdSol ? 120 + mdSol.length * 0.9 : 0);
-  let y = contentBottom() + 30;
-  if (y + need > H - 40) {
-    const pid = await addPage(); if (!pid) return;
-    await new Promise((r) => setTimeout(r, 120));
-    y = 70;
-  }
-  const before = clone((S.page && S.page.items) || []);
-  const add = [{ id: 'i' + uid(), by: DEV, type: 'text', x: 60, y: Math.round(y), w: 880, md }];
-  if (mdSol) add.push({ id: 'i' + uid(), by: DEV, type: 'text', teacher: true, x: 80, y: Math.round(y + 90 + md.length * 0.6), w: 840, md: mdSol });
-  setItems(before.concat(add), before);
-  setTimeout(() => {
-    if (!mdSol || !S.page) return;
-    const first = itemsEl.querySelector('[data-id="' + add[0].id + '"]');
-    if (!first) return;
-    const items = clone(S.page.items);
-    const k = items.findIndex((t) => t.id === add[1].id);
-    if (k >= 0) { items[k].y = Math.round(add[0].y + first.offsetHeight + 14); S.page = Object.assign({}, S.page, { items }); savePage(); renderItems(); }
-  }, 900);
-  toast(mdSol ? 'แทรกโจทย์และเฉลยแล้ว' : 'แทรกโจทย์แล้ว');
-}
-
 /* ---------- graphs ---------- */
 const CURVE_COLORS = ['#2F4BB8', '#B42318', '#1D7350', '#C2571A'];
 const RESERVED = new Set(['pi', 'e', 'i', 'PI', 'E', 'Infinity', 'NaN', 'true', 'false', 'deg', 'rad']);
@@ -13699,13 +13763,13 @@ const TOPIC_KW = [
   ['สัมพัทธภาพ', 'ไอน์สไตน์', 'γ', 'การยืดของเวลา', 'การหดของความยาว', 'mc^2', 'mc²'], ['ควอนตัม', 'โฟตอน', 'โฟโตอิเล็กทริก', 'เดอบรอยล์', 'อะตอม', 'ไฮโดรเจน', 'พลังค์', 'hf'], ['การทดลอง', 'ความคลาดเคลื่อน', 'ความไม่แน่นอน', 'กราฟ', 'ความชัน']
 ];
 const IJSO_OF = { 0: 0, 1: 1, 2: 2, 3: 3, 7: 4, 13: 5, 8: 6, 12: 6, 9: 7, 10: 7, 11: 7, 15: 8, 16: 8, 6: 8, 17: 9 };
-function pageText() {
+function pageTopicText() {
   const parts = [(S.nb && S.nb.title) || ''];
   for (const it of (S.page && S.page.items) || []) { if (it.md) parts.push(it.md); if (it.expr) parts.push(it.expr); if (it.kind && SIMS[it.kind]) parts.push(SIMS[it.kind].title); if (it.title) parts.push(it.title); if (it.fn) parts.push(it.fn); }
   return parts.join(' ').toLowerCase().replace(/\s+/g, '');
 }
 function detectTopics() {
-  const tx = pageText(), track = S.nb && ['p', 'mt'].includes(S.nb.level) ? 'ijso' : 'olymp';
+  const tx = pageTopicText(), track = S.nb && ['p', 'mt'].includes(S.nb.level) ? 'ijso' : 'olymp';
   const sc = TOPIC_KW.map((kw, i) => [i, kw.reduce((n, w) => n + (tx.split(w.toLowerCase()).length - 1), 0)]).filter((x) => x[1] > 0).sort((a, b) => b[1] - a[1]).slice(0, 3);
   const chs = sc.map(([i]) => (track === 'ijso' ? (IJSO_OF[i] != null ? IJSO_OF[i] : -1) : i)).filter((c, k, a) => c >= 0 && a.indexOf(c) === k);
   return { track, chs, text: tx };
@@ -16282,7 +16346,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793248499';
+const BUILD = '1793248762';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
@@ -17028,9 +17092,10 @@ $('#tgNavRight').onclick = () => navSide(NAV.side === 'right' ? 'left' : 'right'
 document.querySelectorAll('#flowSeg button').forEach((b) => { b.onclick = () => flowSet(b.dataset.f === '1'); });
 flowSet(FLOW.on);
 $('#tgTV').onclick = () => { S.tv = !S.tv; store_ls.set('tp-tv', S.tv ? '1' : '0'); if (S.tv) { S.finger = true; S.palm = true; } syncToggles(); fit(); };
-$('#bAI').onclick = () => { const el = $('#ai'); el.hidden = !el.hidden; $('#bAI').setAttribute('aria-pressed', el.hidden ? 'false' : 'true'); setTimeout(fit, 0); };
+$('#bAI').onclick = () => { const el = $('#ai'); el.hidden = !el.hidden; if (!el.hidden) renderAIPages(); $('#bAI').setAttribute('aria-pressed', el.hidden ? 'false' : 'true'); setTimeout(fit, 0); };
 $('#bAIClose').onclick = () => { $('#ai').hidden = true; $('#bAI').setAttribute('aria-pressed', 'false'); setTimeout(fit, 0); };
 $('#bGenPage').onclick = () => generate(false);
+$('#bGenMore').onclick = () => generate(false, true);
 $('#sAnim').onclick = openMotionPick; $('#sQuiz').onclick = openQuizMaker; $('#sEq').onclick = eqSelection; $('#sRead').onclick = readSelection; $('#sHand').onclick = openHand; $('#sTidy').onclick = tidySelection; $('#sGen').onclick = () => generate(true);
 $('#sFront').onclick = () => restackSel(true); $('#sBack').onclick = () => restackSel(false);
 $('#sDup').onclick = dupSel;
