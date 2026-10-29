@@ -383,10 +383,16 @@ body.fs-ios .dock { left: 96px; }
 .dock.mini #toolRow { flex: none !important; overflow: visible !important; }
 .dock.mini #dockMin svg { transform: rotate(180deg); }
 /* standing: tools in a column along the side of the page */
-.dock.vert { flex-direction: column; flex-wrap: wrap; align-content: flex-start; max-width: none; max-height: calc(100% - 24px); }
-.dock.vert #toolRow, .dock.vert #recent, .dock.vert #dockWidths, .dock.vert .fonly { flex-direction: column !important; flex-wrap: nowrap !important; overflow: visible !important; max-width: none; }
-.dock.vert .sep { width: 26px; height: 1px; margin: 4px 0; }
-.dock.vert .grip { width: 46px; height: 22px; }
+/* upright tool bar: two neat columns so every button stays on screen even on a short iPad screen */
+.dock.vert { display: grid; grid-template-columns: repeat(2, 46px); justify-items: center; align-items: center; gap: 2px; max-width: none; max-height: none; }
+.dock.vert > .grip, .dock.vert > #toolRow, .dock.vert > #recent, .dock.vert > #dockWidths, .dock.vert > .sep, .dock.vert > .fonly { grid-column: 1 / -1; }
+.dock.vert #toolRow, .dock.vert #recent, .dock.vert #dockWidths, body.focus .dock.vert div.fonly { display: grid !important; grid-template-columns: repeat(2, 46px); justify-items: center; align-items: center; gap: 2px; overflow: visible !important; max-width: none; touch-action: none; }
+.dock.vert #toolRow[hidden] { display: none !important; }
+.dock.vert.mini #toolRow { grid-template-columns: 46px; }
+.dock.vert > #curWidth, .dock.vert > #dockMin { order: 1; }
+.dock.vert.tight > #dockWidths, .dock.vert.tight > #wSep, .dock.vert.tighter > #recent { display: none !important; }
+.dock.vert .sep { width: 80px; height: 1px; margin: 3px 0; }
+.dock.vert .grip { width: 80px; height: 22px; }
 .dock.vert .grip svg { transform: rotate(90deg); }
 .dock.vert #dockVert svg { transform: rotate(90deg); }
 .dock.vert.mini #dockMin svg { transform: rotate(90deg); }
@@ -16208,7 +16214,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793247563';
+const BUILD = '1793248117';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
@@ -16852,12 +16858,19 @@ const PHONE = window.matchMedia('(max-width: 520px)');
 function dockFold(on) { $('#dock').classList.toggle('folded', on); $('#dockFold').setAttribute('aria-pressed', on ? 'true' : 'false'); $('#dockFold').setAttribute('aria-label', on ? 'กางแถบเครื่องมือ' : 'พับแถบเครื่องมือให้เหลือแถวเดียว'); store_ls.set('tp-dockfold', on ? '1' : '0'); }
 $('#dockFold').onclick = () => dockFold(!$('#dock').classList.contains('folded'));
 /* the tool bar can shrink to the tool in use, and can stand upright along the side of the page */
-function dockRefit() { try { const p = JSON.parse(store_ls.get('tp-dock') || 'null'); if (Array.isArray(p)) setDockPos(p[0], p[1]); else placeDock(); } catch (e) { placeDock(); } }
+function dockRefit() { dockTight(); try { const p = JSON.parse(store_ls.get('tp-dock') || 'null'); if (Array.isArray(p)) setDockPos(p[0], p[1]); else placeDock(); } catch (e) { placeDock(); } }
 function dockMin(on) { closePops(); $('#dock').classList.toggle('mini', on); store_ls.set('tp-dockmin', on ? '1' : '0'); $('#dockMin').setAttribute('aria-pressed', on ? 'true' : 'false'); $('#dockMin').setAttribute('aria-label', on ? 'กางแถบเครื่องมือ' : 'ย่อแถบเครื่องมือ'); requestAnimationFrame(dockRefit); }
 /* dragged against the left or right side of the page the tool bar stands upright along it; dragged back toward the middle it lies flat again */
+/* on a short screen the upright bar drops its quick width row, then its quick colours (both still in the pickers) */
+function dockTight() {
+  const d = $('#dock'); d.classList.remove('tight', 'tighter'); if (!d.classList.contains('vert')) return;
+  const room = vp.clientHeight - 12; if (room < 200) return;
+  if (d.offsetHeight > room) d.classList.add('tight');
+  if (d.offsetHeight > room) d.classList.add('tighter');
+}
 function dockVert(on, dragging) {
   const d = $('#dock'); if (d.classList.contains('vert') === !!on) return; if (!dragging) closePops();
-  d.classList.toggle('vert', !!on); store_ls.set('tp-dockvert', on ? '1' : '0');
+  d.classList.toggle('vert', !!on); store_ls.set('tp-dockvert', on ? '1' : '0'); dockTight();
   if (!dragging) requestAnimationFrame(dockRefit);
 }
 $('#dockMin').onclick = () => dockMin(!$('#dock').classList.contains('mini'));
@@ -16904,8 +16917,10 @@ function setDockPos(fx, fy) {
     const v = vp.getBoundingClientRect();
     drag.moved++;
     const px = e.clientX - v.left, py = e.clientY - v.top, vert = d.classList.contains('vert');
-    if (!vert && (px < 40 || px > v.width - 40) && py > 120) { dockVert(true, true); drag.dx = 23; drag.dy = 11; }
-    else if (vert && px > 130 && px < v.width - 130) { dockVert(false, true); drag.dx = 12; drag.dy = 23; }
+    /* lies down flat until the finger nears a side, or keeps pushing past where the flat bar can still follow */
+    const want = px - drag.dx, over = want - (v.width - d.offsetWidth - 6);
+    if (!vert && py > 90 && (px < 90 || px > v.width - 90 || (over > 60 && (d.offsetWidth < v.width - 140 || (v.width > 600 && px > v.width * 0.7))))) { dockVert(true, true); drag.dx = 40; drag.dy = 11; }
+    else if (vert && px > Math.min(200, v.width * 0.3) && px < v.width - Math.min(200, v.width * 0.3)) { dockVert(false, true); drag.dx = 12; drag.dy = 23; }
     setDockPos((e.clientX - v.left - drag.dx) / v.width, (e.clientY - v.top - drag.dy) / v.height);
   });
   const end = () => {
@@ -16922,8 +16937,8 @@ function setDockPos(fx, fy) {
     }
   };
   g.addEventListener('pointerup', end); g.addEventListener('pointercancel', end);
-  window.addEventListener('resize', debounce(() => { try { const p = JSON.parse(store_ls.get('tp-dock') || 'null'); if (Array.isArray(p)) setDockPos(p[0], p[1]); else placeDock(); } catch (e) { placeDock(); } }, 200));
-  try { const p = JSON.parse(store_ls.get('tp-dock') || 'null'); if (Array.isArray(p) && isFinite(p[0]) && isFinite(p[1])) setTimeout(() => setDockPos(p[0], p[1]), 0); } catch (e) {}
+  window.addEventListener('resize', debounce(() => { dockTight(); try { const p = JSON.parse(store_ls.get('tp-dock') || 'null'); if (Array.isArray(p)) setDockPos(p[0], p[1]); else placeDock(); } catch (e) { placeDock(); } }, 200));
+  try { const p = JSON.parse(store_ls.get('tp-dock') || 'null'); if (Array.isArray(p) && isFinite(p[0]) && isFinite(p[1])) setTimeout(() => { dockTight(); setDockPos(p[0], p[1]); }, 0); } catch (e) {}
 })();
 $('#tgFlow').onclick = () => flowSet(!FLOW.on);
 $('#tgNavRight').onclick = () => navSide(NAV.side === 'right' ? 'left' : 'right');
