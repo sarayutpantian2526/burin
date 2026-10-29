@@ -174,7 +174,7 @@ body.flow:not(.flowlast) #bAddBelow { display: none; }
 .shp { width: 64px; height: 56px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-size: 11px; color: var(--fg); padding: 0; }
 .shp svg { width: 26px; height: 22px; }
 .shp[aria-pressed="true"] { border: 2px solid var(--accent); background: var(--accent-soft); }
-.dock { position: absolute; left: 12px; top: 12px; z-index: 7; display: flex; flex-wrap: wrap; max-width: calc(100% - 24px); align-items: center; gap: 2px; padding: 4px; border-radius: 18px; background: var(--surface); box-shadow: var(--shadow); }
+.dock { position: absolute; left: 12px; top: 12px; z-index: 7; display: flex; flex-wrap: nowrap; max-width: calc(100% - 24px); align-items: center; gap: 2px; padding: 4px; border-radius: 18px; background: var(--surface); box-shadow: var(--shadow); }
 .curc { width: 46px; height: 46px; border-radius: 13px; border: 0; background: transparent; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; }
 .curc .dot { width: 22px; height: 22px; border-radius: 999px; }
 .rsw { width: 30px; height: 30px; margin: 0 4px; border-radius: 999px; border: 0; padding: 0; cursor: pointer; flex: none; }
@@ -1003,7 +1003,10 @@ body.present .exmini, body.role-student .exmini { display: none !important; }
 #nbPicker { max-width: calc(100vw - 16px); }
 .sheet .panel { max-width: 100%; }
 
-#toolRow { display: flex; flex-wrap: wrap; align-items: center; gap: 2px; min-width: 0; max-width: 100%; }
+#toolRow { display: flex; flex-wrap: nowrap; align-items: center; gap: 2px; min-width: 0; max-width: 100%; flex: 0 1 auto; overflow-x: auto; scrollbar-width: none; }
+#toolRow::-webkit-scrollbar { display: none; }
+.dock > * { flex-shrink: 0; }
+.dock > #toolRow { flex-shrink: 1; }
 .pagenav { max-width: calc(100% - 16px); }
 .pagenav .num { white-space: nowrap; }
 /* phones */
@@ -1016,8 +1019,11 @@ body.present .exmini, body.role-student .exmini { display: none !important; }
   .tabbtn { padding: 0 10px; }
   /* the tool dock is one slim row that scrolls sideways; its popups float above or below it */
   /* two slim rows: the tools (swipe sideways if they do not fit), then colours and line sizes */
-  .dock { left: 6px; top: 6px; max-width: calc(100% - 12px); padding: 2px 4px; gap: 0; border-radius: 14px; flex-wrap: wrap; }
-  #dockFold { display: flex !important; }
+  .dock { left: 6px; top: 6px; max-width: calc(100% - 12px); padding: 2px 4px; gap: 0; border-radius: 14px; flex-wrap: nowrap; }
+  /* one row on a phone too: the tools scroll sideways, colours and line sizes open from their buttons */
+  #dockFold { display: none !important; }
+  .dock:not(.vert) #recent, .dock:not(.vert) #dockWidths, .dock:not(.vert) #wSep { display: none !important; }
+  .dock:not(.vert) > #toolRow { flex: 1 1 auto; min-width: 0; }
   .dock.folded #dockFold svg { transform: rotate(180deg); }
   .dock.folded #recent, .dock.folded #curTip, .dock.folded #dockWidths, .dock.folded #wSep { display: none !important; }
   .dock.folded #toolRow { flex: 1 1 0; }
@@ -1212,7 +1218,6 @@ body.role-student .scnpill .sbtns button[data-s="back"], body.role-student .scnp
         <button class="tool diarytool" id="tDiary" type="button" aria-pressed="false" aria-label="โหมดสมุดตอบได้" title="โหมดสมุดตอบได้ เขียนถึงสมุด แล้วสมุดเขียนตอบ แตะเพื่อเปิดหรือปิด"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M17 3c-5 .7-9 5-10.4 11.3l-1 4.2 M17 3c.4 4.1-2.6 8.2-7.9 9.3 M5.8 14.8c2 .2 3.7-.4 5-1.7 M3.5 19h8" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
         </span>
         <button class="tool" id="dockFold" type="button" aria-pressed="false" aria-label="พับแถบเครื่องมือให้เหลือแถวเดียว" title="พับหรือกางแถบเครื่องมือ"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 12.5l5-5 5 5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
-        <button class="tool dockctl" id="dockVert" type="button" aria-pressed="false" aria-label="วางแถบเครื่องมือแนวตั้ง" title="สลับแถบเครื่องมือเป็นแนวตั้งหรือแนวนอน"><svg viewBox="0 0 22 22" aria-hidden="true"><rect x="8" y="3" width="6" height="16" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M3 8l-1.5 3L3 14 M19 8l1.5 3L19 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
         <button class="tool dockctl" id="dockMin" type="button" aria-pressed="false" aria-label="ย่อแถบเครื่องมือ" title="ย่อแถบเครื่องมือ เหลือเครื่องมือที่ใช้อยู่ แตะอีกครั้งเพื่อกาง"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M6 9l5 5 5-5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
         <span class="sep fonly"></span>
         <span class="fonly" style="align-items:center;gap:2px">
@@ -3210,7 +3215,17 @@ const P = new Map();
 let G = null;
 function drawTool() { return S.tool === 'pen' || S.tool === 'hl' || S.tool === 'eraser' || S.tool === 'lasso' || S.tool === 'laser' || S.tool === 'text'; }
 function activeLive() { for (const p of P.values()) if (p.mode === 'draw' || p.mode === 'lasso') return true; return false; }
-function pr(e) { return e.pointerType === 'pen' && e.pressure > 0 ? Math.round(e.pressure * 100) : 50; }
+/* pen pressure. A stylus that reports the same pressure all the time (many non-Apple pens) is treated as having none,
+   and the usual pressure of this hand is remembered so the line-size buttons show the width that really gets drawn */
+const PRS = { n: 0, lo: 101, hi: -1, avg: +(store_ls.get('tp-pravg') || 50) || 50, flat: store_ls.get('tp-prflat') === '1' };
+function pr(e) {
+  if (e.pointerType !== 'pen' || !(e.pressure > 0)) return 50;
+  const v = Math.round(e.pressure * 100);
+  if (PRS.n < 400) { PRS.n++; PRS.lo = Math.min(PRS.lo, v); PRS.hi = Math.max(PRS.hi, v); if (PRS.n === 400) { PRS.flat = PRS.hi - PRS.lo < 3; store_ls.set('tp-prflat', PRS.flat ? '1' : '0'); } }
+  if (PRS.flat || PRS.hi - PRS.lo < 3) return 50;
+  PRS.avg += (v - PRS.avg) * 0.002; return v;
+}
+setInterval(() => { const a = Math.round(PRS.flat ? 50 : PRS.avg); if (String(a) !== store_ls.get('tp-pravg')) { store_ls.set('tp-pravg', String(a)); if (typeof renderWidths === 'function') renderWidths(); } }, 20000);
 
 vp.addEventListener('pointerdown', onDown);
 vp.addEventListener('pointermove', onMove);
@@ -6002,7 +6017,7 @@ function renderTips() {
 }
 function curW() { return S.widths[S.width] || WIDTHS[1]; }
 /* on-screen thickness of a pen line at normal pressure, so the buttons look exactly like what gets drawn */
-function screenW(w) { return w * (0.42 + 1.15 * 0.5) * (S.base || 1) * (S.zoom || 1); }
+function screenW(w) { const a = PRS.flat ? 50 : clamp(PRS.avg, 15, 100); return w * (0.42 + 1.15 * a / 100) * (S.base || 1) * (S.zoom || 1); }
 function renderWidths() {
   const show = S.tool === 'pen' || S.tool === 'shape';
   for (const id of ['#widths', '#dockWidths']) {
@@ -12446,7 +12461,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793246028';
+const BUILD = '1793247076';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
@@ -13087,14 +13102,13 @@ $('#dockFold').onclick = () => dockFold(!$('#dock').classList.contains('folded')
 /* the tool bar can shrink to the tool in use, and can stand upright along the side of the page */
 function dockRefit() { try { const p = JSON.parse(store_ls.get('tp-dock') || 'null'); if (Array.isArray(p)) setDockPos(p[0], p[1]); else placeDock(); } catch (e) { placeDock(); } }
 function dockMin(on) { closePops(); $('#dock').classList.toggle('mini', on); store_ls.set('tp-dockmin', on ? '1' : '0'); $('#dockMin').setAttribute('aria-pressed', on ? 'true' : 'false'); $('#dockMin').setAttribute('aria-label', on ? 'กางแถบเครื่องมือ' : 'ย่อแถบเครื่องมือ'); requestAnimationFrame(dockRefit); }
-function dockVert(on) {
-  closePops(); const d = $('#dock'); d.classList.toggle('vert', on); store_ls.set('tp-dockvert', on ? '1' : '0'); $('#dockVert').setAttribute('aria-pressed', on ? 'true' : 'false');
-  $('#dockVert').setAttribute('aria-label', on ? 'วางแถบเครื่องมือแนวนอน' : 'วางแถบเครื่องมือแนวตั้ง');
-  if (on && !store_ls.get('tp-dock')) { const v = vp.getBoundingClientRect(); store_ls.set('tp-dock', JSON.stringify([6 / v.width, 70 / v.height])); }
-  requestAnimationFrame(dockRefit);
+/* dragged against the left or right side of the page the tool bar stands upright along it; dragged back toward the middle it lies flat again */
+function dockVert(on, dragging) {
+  const d = $('#dock'); if (d.classList.contains('vert') === !!on) return; if (!dragging) closePops();
+  d.classList.toggle('vert', !!on); store_ls.set('tp-dockvert', on ? '1' : '0');
+  if (!dragging) requestAnimationFrame(dockRefit);
 }
 $('#dockMin').onclick = () => dockMin(!$('#dock').classList.contains('mini'));
-$('#dockVert').onclick = () => dockVert(!$('#dock').classList.contains('vert'));
 dockMin(store_ls.get('tp-dockmin') === '1'); dockVert(store_ls.get('tp-dockvert') === '1');
 dockFold(store_ls.get('tp-dockfold') === '1');
 function placePhonePop(p) {
@@ -13137,17 +13151,21 @@ function setDockPos(fx, fy) {
     if (!drag) return;
     const v = vp.getBoundingClientRect();
     drag.moved++;
+    const px = e.clientX - v.left, py = e.clientY - v.top, vert = d.classList.contains('vert');
+    if (!vert && (px < 40 || px > v.width - 40) && py > 120) { dockVert(true, true); drag.dx = 23; drag.dy = 11; }
+    else if (vert && px > 130 && px < v.width - 130) { dockVert(false, true); drag.dx = 12; drag.dy = 23; }
     setDockPos((e.clientX - v.left - drag.dx) / v.width, (e.clientY - v.top - drag.dy) / v.height);
   });
   const end = () => {
     if (!drag) return;
     const moved = drag.moved; drag = null;
     if (moved > 2) {
+      if (d.classList.contains('vert')) { /* upright: settle snugly against the nearer side */ const v0 = vp.getBoundingClientRect(), r0 = d.getBoundingClientRect(); const left = r0.left + r0.width / 2 < v0.left + v0.width / 2; setDockPos(left ? 6 / v0.width : (v0.width - r0.width - 6) / v0.width, (r0.top - v0.top) / v0.height); }
       const r = d.getBoundingClientRect(), v = vp.getBoundingClientRect();
       store_ls.set('tp-dock', JSON.stringify([(r.left - v.left) / v.width, (r.top - v.top) / v.height]));
     } else {
       const t = now();
-      if (t - lastTap < 400) { store_ls.set('tp-dock', ''); setDockPos(null); toast('แถบเครื่องมือกลับที่เดิมแล้ว', 1400); }
+      if (t - lastTap < 400) { store_ls.set('tp-dock', ''); dockVert(false); setDockPos(null); toast('แถบเครื่องมือกลับที่เดิมแล้ว', 1400); }
       lastTap = t;
     }
   };
