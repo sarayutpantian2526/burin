@@ -450,6 +450,16 @@ body.tv .grip { height: 68px; width: 32px; }
 #tabMenu.cards > b { white-space: normal; max-width: none; font-size: 15px; padding: 6px 8px 2px; }
 #tabMenu > p.mnote { margin: 0 8px 4px; font-size: 13px; color: var(--muted); line-height: 1.45; }
 #tabMenu button.mopt { display: flex; flex-direction: row; text-align: left; align-items: flex-start; gap: 12px; padding: 12px; border: 1px solid var(--line, rgba(0,0,0,.1)); border-radius: 12px; background: var(--surface); }
+.mpick:empty { display: none; }
+.mpick { margin: 8px 0; }
+.mpick .mph { font-size: 13px; color: var(--muted, #667); margin: 4px 0 6px; }
+.mpick .mpl { display: grid; gap: 6px; }
+.mpick button { display: flex; justify-content: space-between; align-items: center; gap: 10px; text-align: left; padding: 10px 12px; border: 1px solid var(--line, rgba(0,0,0,.12)); border-radius: 12px; background: var(--surface, #fff); color: inherit; font: inherit; cursor: pointer; }
+.mpick button b { display: block; font-size: 15px; }
+.mpick button small { display: block; font-size: 12.5px; color: var(--muted, #667); line-height: 1.4; }
+.mpick button .mpc { font-size: 12px; white-space: nowrap; color: var(--muted, #667); }
+.mpick button.on { border-color: var(--accent, #2f4bbf); box-shadow: 0 0 0 2px var(--accent, #2f4bbf) inset; }
+.mpick button:disabled { opacity: .5; cursor: default; }
 #tabMenu button.mopt:hover { background: var(--surface-2); border-color: var(--accent, #2f4bbf); }
 #tabMenu .mci { flex: none; width: 40px; height: 40px; border-radius: 10px; display: grid; place-items: center; background: var(--surface-2); color: var(--accent, #2f4bbf); }
 #tabMenu .mci svg { width: 24px; height: 24px; }
@@ -1613,6 +1623,7 @@ body.role-student .scnpill .sbtns button[data-s="back"], body.role-student .scnp
       <div class="aibody">
         <label class="field"><span>คีย์ API</span><input id="kKey" type="password" autocomplete="off" spellcheck="false" placeholder="วางคีย์ที่นี่ ระบบเลือกผู้ให้บริการให้เอง"></label>
         <label class="field"><span>ผู้ให้บริการ</span><select id="kVendor"></select></label>
+        <div id="kPick" class="mpick"></div>
         <details class="kadv" id="kAdv"><summary>ตั้งค่าเพิ่มเติม <small id="kAdvNote">ไม่ต้องแก้ก็ได้</small></summary>
         <label class="field" id="kUrlF"><span>ที่อยู่ API</span><input id="kUrl" autocomplete="off" spellcheck="false"></label>
         <label class="field"><span>ชื่อโมเดล</span><span class="mrow"><input id="kModel" list="kModelList" autocomplete="off" spellcheck="false"><button class="btn" type="button" id="kModels">ดึงรายชื่อ</button></span><datalist id="kModelList"></datalist></label>
@@ -4585,7 +4596,7 @@ async function orFinish(code, state) {
     B.step(2); B.stop();
     AI.cfg.key = { vendor: 'openrouter', url: '', model, key: r.key }; AI.cfg.use = { read: 'auto', gen: 'auto', draw: 'auto' }; AI.save();
     renderAISettings(); renderAIAvail();
-    out.innerHTML = '<div class="note ok">เชื่อมต่อ AI แล้ว พร้อมใช้งาน' + (free ? ' บัญชีนี้ยังไม่ได้เติมเงิน จึงใช้โมเดลฟรี' + (model ? ' (' + esc(model) + ')' : '') + ' ได้วันละประมาณ 50 ครั้ง ถ้าเติมเงินในบัญชี OpenRouter ภายหลัง ระบบจะเปลี่ยนไปใช้โมเดลที่เก่งกว่าให้เอง' : (model ? ' ใช้โมเดล ' + esc(model) : '')) + ' เปลี่ยนโมเดลได้ที่เมนู หัวข้อคีย์ API</div>'; qsDone(out);
+    out.innerHTML = '<div class="note ok">เชื่อมต่อ AI แล้ว พร้อมใช้งาน' + (free ? ' บัญชีนี้ยังไม่ได้เติมเงิน จึงใช้โมเดลฟรี' + (model ? ' (' + esc(model) + ')' : '') + ' ได้วันละประมาณ 50 ครั้ง ถ้าเติมเงินในบัญชี OpenRouter ภายหลัง ระบบจะเปลี่ยนไปใช้โมเดลที่เก่งกว่าให้เอง' : (model ? ' ใช้โมเดล ' + esc(model) : '')) + ' เลือกโมเดลอื่น เช่น Claude ได้ด้านล่าง</div>'; const pk = document.createElement('div'); pk.className = 'mpick'; out.appendChild(pk); await renderModelPick(pk); qsDone(out);
   } catch (e) { B.stop(); out.innerHTML = '<div class="note err">เชื่อมต่อไม่สำเร็จ ' + esc(aiErr(e)) + '</div>'; }
 }
 function syncAgree() { document.querySelectorAll('#aiSetup .qneed').forEach((b) => { b.disabled = false; }); }
@@ -4637,6 +4648,55 @@ async function pickModel(vendor, url, key, strict) {
   if (ids[0]) return ids[0];
   throw { code: 'no_model' };
 }
+/* choose the model family yourself: Gemini, Claude, GPT; the newest model of each family is found in the provider's list */
+const MODEL_FAMS = [
+  { label: 'Gemini Flash', desc: 'เร็วและถูกที่สุด อ่านลายมือและรูปได้ดี เหมาะใช้ประจำ', or: /^google\/gemini-[\d.]+-flash$/, gemini: /^gemini-[\d.]+-flash$/ },
+  { label: 'Claude Sonnet', desc: 'อธิบายเป็นขั้นละเอียด ภาษาไทยเป็นธรรมชาติ เหมาะเขียนเฉลยและสไลด์', or: /^anthropic\/claude-(sonnet-[\d.]+|[\d.]+-sonnet)$/, anthropic: /^claude-sonnet-[\d-]+$|^claude-[\d-]+-sonnet/ },
+  { label: 'Claude Opus', desc: 'เก่งที่สุดสำหรับโจทย์ยากและงานยาว ช้ากว่าและแพงที่สุด', or: /^anthropic\/claude-(opus-[\d.]+|[\d.]+-opus)$/, anthropic: /^claude-opus-[\d-]+$|^claude-[\d-]+-opus/ },
+  { label: 'Claude Haiku', desc: 'Claude รุ่นเร็วและประหยัด', or: /^anthropic\/claude-(haiku-[\d.]+|[\d.]+-haiku)$/, anthropic: /^claude-haiku-[\d-]+$|^claude-[\d-]+-haiku/ },
+  { label: 'Gemini Pro', desc: 'คิดลึกกว่า Flash เหมาะโจทย์หลายขั้น', or: /^google\/gemini-[\d.]+-pro$/, gemini: /^gemini-[\d.]+-pro$/ },
+  { label: 'GPT', desc: 'รุ่นหลักของ OpenAI ใช้งานทั่วไปได้ดี', or: /^openai\/gpt-[\d.]+$/, openai: /^gpt-[\d.]+$/ },
+  { label: 'GPT mini', desc: 'รุ่นเล็กของ OpenAI เร็วและประหยัด', or: /^openai\/gpt-[\d.]+-mini$/, openai: /^gpt-[\d.]+-mini$/ }
+];
+const MP = { sig: '', list: null };
+const verCmp = (a, b) => b.localeCompare(a, 'en', { numeric: true });
+async function modelCatalog(K) {
+  const sig = K.vendor + '|' + (K.key || '').slice(-6);
+  if (MP.sig === sig && MP.list) return MP.list;
+  let rows = [];
+  if (K.vendor === 'openrouter') {
+    const r = await aiFetch('https://openrouter.ai/api/v1/models', {});
+    rows = (r.data || []).map((m) => ({ id: m.id, p: +((m.pricing || {}).prompt) || 0, c: +((m.pricing || {}).completion) || 0 }));
+  } else rows = (await listModels(K.url || (KEY_VENDORS[K.vendor] || {}).url, K.key, K.vendor)).map((id) => ({ id }));
+  const key = K.vendor === 'openrouter' ? 'or' : K.vendor;
+  const out = [];
+  for (const f of MODEL_FAMS) {
+    const re = f[key]; if (!re) continue;
+    const m = rows.filter((x) => re.test(x.id) && !/preview|exp|latest/i.test(x.id)).sort((a, b) => verCmp(a.id, b.id))[0]
+      || rows.filter((x) => re.test(x.id)).sort((a, b) => verCmp(a.id, b.id))[0];
+    if (m) out.push(Object.assign({}, f, { id: m.id, p: m.p, c: m.c }));
+  }
+  MP.sig = sig; MP.list = out; return out;
+}
+/* a typical job: one page picture plus instructions in, a worked answer out */
+function callBaht(m) { if (!m.p && !m.c) return ''; const b = (3000 * m.p + 1500 * m.c) * 34; return b < 0.01 ? 'ไม่ถึง 1 สตางค์ต่อครั้ง' : 'ประมาณ ' + (b < 1 ? b.toFixed(2) : b.toFixed(1)) + ' บาทต่อครั้ง'; }
+async function renderModelPick(host) {
+  host = host || $('#kPick'); if (!host) return;
+  const K = AI.cfg.key;
+  if (!K || !K.key || !['openrouter', 'anthropic', 'openai', 'gemini'].includes(K.vendor)) { host.innerHTML = ''; return; }
+  let list = [];
+  try { list = await modelCatalog(K); } catch (e) { host.innerHTML = ''; return; }
+  if (!list.length) { host.innerHTML = ''; return; }
+  const free = /:free$/.test(K.model || '');
+  host.innerHTML = '<div class="mph">เลือกโมเดล AI ที่ใช้' + (free ? ' (บัญชี OpenRouter ยังไม่เติมเงิน ต้องเติมเงินก่อนจึงเลือกโมเดลเหล่านี้ได้)' : ' แตะเพื่อเปลี่ยน มีผลทันทีและใช้กับทุกเครื่องในบัญชี') + '</div><div class="mpl"></div>';
+  const box = host.querySelector('.mpl');
+  for (const m of list) {
+    const b = document.createElement('button'); b.type = 'button'; b.className = m.id === K.model ? 'on' : ''; b.disabled = free;
+    b.innerHTML = '<span><b>' + esc(m.label) + (m.id === K.model ? ' (ใช้อยู่)' : '') + '</b><small>' + esc(m.desc) + '</small></span><span class="mpc">' + esc(callBaht(m)) + '</span>';
+    b.onclick = () => { K.model = m.id; AI.save(); toast('เปลี่ยนไปใช้ ' + m.label + ' (' + m.id + ') แล้ว', 2500); renderAISettings(); renderAIAvail(); if (host.id !== 'kPick') renderModelPick(host); };
+    box.appendChild(b);
+  }
+}
 async function quickSetup() {
   $('#qsAgree').checked = true; AI.cfg.consentAt = AI.cfg.consentAt || Date.now();
   const key = $('#qsKey').value.trim().replace(/^["']|["']$/g, '').replace(/^(Bearer|x-goog-api-key:)\s*/i, ''), out = $('#qsMsg');
@@ -4652,7 +4712,7 @@ async function quickSetup() {
       if (B.cancelled) return; B.step(1); B.stop();
       AI.cfg.key = { vendor, url: '', model, key }; AI.cfg.use = { read: 'auto', gen: 'auto', draw: 'auto' }; AI.save();
       renderAISettings(); renderAIAvail();
-      out.innerHTML = '<div class="note ok">เชื่อมต่อ ' + esc(V.name) + ' แล้ว (โมเดล ' + esc(model) + ') ใช้แปลงลายมือ สร้างสมการ สร้างโจทย์ และวาดรูปใหม่ได้ทันที</div>'; qsDone(out);
+      out.innerHTML = '<div class="note ok">เชื่อมต่อ ' + esc(V.name) + ' แล้ว (โมเดล ' + esc(model) + ') ใช้แปลงลายมือ สร้างสมการ สร้างโจทย์ และวาดรูปใหม่ได้ทันที</div>'; { const pk = document.createElement('div'); pk.className = 'mpick'; out.appendChild(pk); renderModelPick(pk).then(() => qsDone(out)); }
       setTimeout(() => { $('#aiSetup').hidden = true; }, 1800);
       return;
     } catch (e) { lastErr = e; if (B.cancelled) return; }
@@ -6782,6 +6842,7 @@ function renderAISettings() {
   $('#kUrl').value = C.key.url || ''; $('#kUrl').placeholder = V.url || 'https://.../v1';
   $('#kModel').value = C.key.model || ''; $('#kModel').placeholder = V.model ? V.model + ' (ใช้ค่านี้ถ้าเว้นว่าง)' : 'เว้นว่างได้ ระบบเลือกโมเดลที่อ่านภาพได้ให้';
   $('#kKey').value = C.key.key || '';
+  renderModelPick();
 }
 async function listModels(base, key, vendor) {
   const H = {};
@@ -17039,7 +17100,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793255346';
+const BUILD = '1793257242';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
