@@ -152,6 +152,18 @@ body.flow:not(.flowlast) #bAddBelow { display: none; }
 #page > #cSharp { inset: auto; pointer-events: none; }
 #page > #cSharp[hidden] { display: none; }
 #items { position: absolute; left: 0; top: 0; width: 1000px; height: 1414px; transform-origin: 0 0; pointer-events: none; }
+.pleaf { position: absolute; z-index: 4; background: #FFFFFF; border-radius: 4px; overflow: hidden; pointer-events: none; backface-visibility: hidden; box-shadow: 0 10px 34px rgba(20, 26, 34, 0.18); will-change: transform; }
+.pleaf canvas { position: absolute; left: 0; top: 0; width: 100%; height: 100%; }
+.pleaf .pleafitems { position: absolute; left: 0; top: 0; width: 1000px; height: 1414px; transform-origin: 0 0; }
+.pleaf .pleafitems .tgrab, .pleaf .pleafitems .tsize { display: none; }
+.pleaf .pshade { position: absolute; inset: 0; opacity: 0; animation: pshade 0.75s ease-in forwards; }
+.pleaf.fwd { transform-origin: 0 50%; animation: pflipF 0.75s cubic-bezier(0.45, 0.05, 0.35, 1) forwards; }
+.pleaf.back { transform-origin: 100% 50%; animation: pflipB 0.75s cubic-bezier(0.45, 0.05, 0.35, 1) forwards; }
+.pleaf.fwd .pshade { background: linear-gradient(90deg, rgba(0,0,0,0) 30%, rgba(30,30,40,0.45)); }
+.pleaf.back .pshade { background: linear-gradient(270deg, rgba(0,0,0,0) 30%, rgba(30,30,40,0.45)); }
+@keyframes pflipF { 0% { transform: perspective(2600px) rotateY(0deg); } 100% { transform: perspective(2600px) rotateY(-178deg); } }
+@keyframes pflipB { 0% { transform: perspective(2600px) rotateY(0deg); } 100% { transform: perspective(2600px) rotateY(178deg); } }
+@keyframes pshade { 0% { opacity: 0; } 60% { opacity: 1; } 100% { opacity: 1; } }
 #items.editable .item { pointer-events: auto; cursor: text; }
 #sel { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
 
@@ -1598,6 +1610,7 @@ body.role-student .scnpill .sbtns button[data-s="back"], body.role-student .scnp
     <div class="switch"><span><b>ปุ่มเปลี่ยนหน้าอยู่มุมขวา</b><small>ปิดไว้ ปุ่มเลขหน้าอยู่มุมซ้ายล่าง ห่างจากมือขวาที่วางตอนเขียน คนถนัดซ้ายเปิดสวิตช์นี้</small></span><button class="tg" id="tgNavRight" role="switch" aria-checked="false" aria-label="ปุ่มเปลี่ยนหน้าอยู่มุมขวา"><i></i></button></div>
     <div class="switch"><span><b>เลื่อนหน้าต่อเนื่อง</b><small>เห็นท้ายหน้าก่อนและต้นหน้าถัดไปต่อกัน เลื่อนขึ้นลงข้ามหน้าได้เหมือนม้วนกระดาษ ปิดไว้ จะเปลี่ยนทีละหน้า</small></span><button class="tg" id="tgFlow" role="switch" aria-checked="false" aria-label="เลื่อนหน้าต่อเนื่อง"><i></i></button></div>
     <div class="switch"><span><b>นิ้ววาดได้</b><small>ปิดไว้ นิ้วจะใช้เลื่อนและซูม ปากกาเขียนอย่างเดียว ระบบปิดให้เองเมื่อพบปากกา</small></span><button class="tg" id="tgFinger" role="switch" aria-checked="true" aria-label="นิ้ววาดได้"><i></i></button></div>
+    <div class="switch"><span><b>พลิกหน้าแบบหนังสือ</b><small>เปลี่ยนหน้าแล้วกระดาษพลิกเหมือนเปิดหนังสือจริง</small></span><button class="tg" id="tgFlip" role="switch" aria-checked="true" aria-label="พลิกหน้าแบบหนังสือ"><i></i></button></div>
     <div class="switch"><span><b>วางฝ่ามือเพื่อลบ</b><small>สำหรับทีวีทัชสกรีนที่บอกขนาดพื้นที่สัมผัสได้</small></span><button class="tg" id="tgPalm" role="switch" aria-checked="true" aria-label="วางฝ่ามือเพื่อลบ"><i></i></button></div>
     <div class="switch"><span><b>ลากค้างให้เป็นรูปทรง</b><small>ลากเส้นแล้วกดค้างไว้ครู่หนึ่ง จะได้เส้นตรง วงกลม วงรี สามเหลี่ยม หรือสี่เหลี่ยม เส้นตรงลากปรับปลายต่อได้ก่อนยกปากกา</small></span><button class="tg" id="tgShape" role="switch" aria-checked="true" aria-label="ลากค้างให้เป็นรูปทรง"><i></i></button></div>
     <div class="switch"><span><b>ขีดทับเพื่อลบ</b><small>ขีดไปมาทับลายมือหรือกล่องข้อความด้วยปากกา ระบบจะลบส่วนนั้นให้ ภาพสปริงที่วาดบนที่ว่างไม่ถูกลบ</small></span><button class="tg" id="tgScribble" role="switch" aria-checked="true" aria-label="ขีดทับเพื่อลบ"><i></i></button></div>
@@ -4484,9 +4497,30 @@ function openNotebook(nid, pidWanted) {
     }
   });
 }
+/* turning a page like a real book: a copy of the page being left lifts from its edge and turns over the new one */
+const flipOn = () => store_ls.get('tp-flip') !== '0';
+function pageFlip(pid) {
+  try {
+    if (!flipOn() || !S.pid || S.present || FLOW.on || (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches)) return;
+    const pages = (S.nb && S.nb.pages) || [], a = pages.indexOf(S.pid), b = pages.indexOf(pid);
+    if (a < 0 || b < 0) return;
+    const pg = $('#page'), bg = $('#cBg'), ink = $('#cInk'); if (!pg || !bg || !pg.offsetWidth) return;
+    for (const old of document.querySelectorAll('.pleaf')) old.remove();
+    const leaf = document.createElement('div'); leaf.className = 'pleaf ' + (b > a ? 'fwd' : 'back'); leaf.setAttribute('aria-hidden', 'true');
+    leaf.style.left = pg.offsetLeft + 'px'; leaf.style.top = pg.offsetTop + 'px'; leaf.style.width = pg.offsetWidth + 'px'; leaf.style.height = pg.offsetHeight + 'px';
+    const c = document.createElement('canvas'); c.width = bg.width; c.height = bg.height; const x = c.getContext('2d');
+    x.drawImage(bg, 0, 0); if (ink.width) x.drawImage(ink, 0, 0, c.width, c.height);
+    leaf.appendChild(c);
+    const it = $('#items'); if (it) { const k = it.cloneNode(true); k.removeAttribute('id'); k.className = 'pleafitems'; k.style.cssText = it.style.cssText; k.querySelectorAll('[id]').forEach((n) => n.removeAttribute('id')); leaf.appendChild(k); }
+    const sh = document.createElement('i'); sh.className = 'pshade'; leaf.appendChild(sh);
+    pg.after(leaf);
+    setTimeout(() => leaf.remove(), 900);
+  } catch (e) { /* the page still changes, just without the turn */ }
+}
 function openPage(pid) {
   if (LIVE.role === 'teacher') setTimeout(liveSendPage, 400);
   if (pid === S.pid) return;
+  pageFlip(pid);
   saveMine.flush(); savePage.flush();
   if (editing) commitEdit();
   S.pid = pid; store_ls.set('tp-last-page-' + S.nid, pid);
@@ -17216,7 +17250,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793259658';
+const BUILD = '1793259755';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
@@ -17437,6 +17471,7 @@ function syncToggles() {
   const set = (id, v) => $(id).setAttribute('aria-checked', v ? 'true' : 'false');
   set('#tgFinger', S.finger); { const f = $('#fingerTg'); f.setAttribute('aria-pressed', S.finger ? 'true' : 'false'); f.setAttribute('aria-label', S.finger ? 'นิ้ววาดได้อยู่ แตะเพื่อให้นิ้วใช้เลื่อนหน้า' : 'นิ้วใช้เลื่อนหน้าอยู่ แตะเพื่อให้นิ้ววาดได้'); } set('#tgPalm', S.palm); set('#tgTV', S.tv); set('#tgShape', S.shapeSnap); set('#tgScribble', S.scribble);
   document.body.classList.toggle('tv', S.tv);
+  set('#tgFlip', flipOn());
 }
 function hideLoading() { $('#loading').hidden = true; }
 function togglePages(v) { const el = $('#pages'); el.hidden = v === undefined ? !el.hidden : !v; $('#bPages').setAttribute('aria-pressed', el.hidden ? 'false' : 'true'); setTimeout(fit, 0); }
@@ -17841,6 +17876,7 @@ $('#bNewNb').onclick = async () => {
 };
 $('#fingerTg').onclick = () => { S.finger = !S.finger; S.fingerManual = true; store_ls.set('tp-finger', S.finger ? '1' : '0'); syncToggles(); toast(S.finger ? 'นิ้ววาดได้' : 'นิ้วใช้เลื่อนและซูม ปากกาเขียนอย่างเดียว', 1800); };
 $('#tgFinger').onclick = () => { S.finger = !S.finger; S.fingerManual = true; store_ls.set('tp-finger', S.finger ? '1' : '0'); syncToggles(); };
+$('#tgFlip').onclick = () => { store_ls.set('tp-flip', flipOn() ? '0' : '1'); syncToggles(); };
 $('#tgPalm').onclick = () => { S.palm = !S.palm; store_ls.set('tp-palm', S.palm ? '1' : '0'); syncToggles(); };
 $('#tgShape').onclick = () => { S.shapeSnap = !S.shapeSnap; store_ls.set('tp-shape', S.shapeSnap ? '1' : '0'); syncToggles(); };
 $('#tgScribble').onclick = () => { S.scribble = !S.scribble; store_ls.set('tp-scribble', S.scribble ? '1' : '0'); syncToggles(); };
