@@ -281,6 +281,17 @@ body.tv .toast { bottom: 112px; }
 .pthumb { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 0; border: 0; background: transparent; cursor: pointer; color: var(--muted); font-size: 12px; -webkit-touch-callout: none; }
 .pthumb .pc { position: relative; width: 100%; aspect-ratio: 1000 / 1414; border-radius: 6px; background: #FFFFFF; box-shadow: 0 0 0 1px var(--line), 0 1px 3px rgba(16, 24, 40, 0.08); overflow: hidden; }
 .pthumb canvas { width: 100%; height: 100%; display: block; }
+#exportSheet .panel { width: min(760px, calc(100vw - 24px)); }
+.expgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 12px 10px; max-height: min(46vh, 460px); overflow-y: auto; padding: 4px 2px 6px; }
+.expgrid .pthumb { position: relative; }
+.expgrid .pthumb .pc { opacity: 0.45; transition: opacity 0.12s; }
+.expgrid .pthumb[aria-pressed="true"] .pc { opacity: 1; box-shadow: 0 0 0 2.5px var(--accent), 0 2px 6px rgba(47, 75, 184, 0.25); }
+.expgrid .pthumb .tick { position: absolute; top: 6px; right: 6px; width: 24px; height: 24px; border-radius: 50%; background: var(--surface); box-shadow: 0 0 0 1.5px var(--line); display: grid; place-items: center; }
+.expgrid .pthumb[aria-pressed="true"] .tick { background: var(--accent); box-shadow: none; }
+.expgrid .pthumb .tick svg { width: 14px; height: 14px; opacity: 0; }
+.expgrid .pthumb[aria-pressed="true"] .tick svg { opacity: 1; }
+.expgrid .pthumb b { font-size: 13px; color: var(--fg); }
+.exprange input { max-width: 260px; }
 .pthumb[aria-current="true"] .pc { box-shadow: 0 0 0 2.5px var(--accent), 0 2px 6px rgba(47, 75, 184, 0.25); }
 .pthumb[aria-current="true"] { color: var(--accent); font-weight: 700; }
 .pthumb.add .pc { display: flex; align-items: center; justify-content: center; background: transparent; box-shadow: inset 0 0 0 1.5px var(--line); color: var(--muted); }
@@ -472,6 +483,8 @@ body.tv .peek.big { width: 660px; }
 .item.media.loading::after { content: 'กำลังโหลดรูป'; }
 .item.media.missing::after { content: 'โหลดไฟล์นี้ไม่ได้ ตรวจที่เมนู ซิงก์ข้ามเครื่อง'; }
 .item.live { pointer-events: auto; }
+.item.vecfig { cursor: grab; touch-action: none; }
+.item.vecfig:active { cursor: grabbing; }
 .item.graph { padding: 8px 12px 12px; background: #FFFFFF; border: 1px solid #D6DCE4; border-radius: 12px; font-family: var(--ui); font-size: 15px; line-height: 1.4; color: #14181F; box-shadow: 0 2px 8px rgba(20, 26, 34, 0.08); }
 .gh { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-weight: 600; font-size: 15px; margin-bottom: 4px; }
 .gh button { min-height: 40px; padding: 0 12px; border-radius: 10px; border: 1px solid #D6DCE4; background: #FFFFFF; color: #14181F; font: inherit; font-size: 13px; font-weight: 500; cursor: pointer; }
@@ -1360,7 +1373,7 @@ body.role-student .scnpill .sbtns button[data-s="back"], body.role-student .scnp
 
       <div class="selbar no-ink" id="selbar" role="toolbar" aria-label="ส่วนที่เลือก" hidden>
         <span class="count" id="selCount"></span>
-        <span class="sg" id="sgInk"><button id="sJoin"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M3 6h16 M3 11h10 M3 16h7 M14 13.5l3 2.5-3 2.5 M10 16h7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span>ต่อบรรทัด</span></button><button id="sQuiz" class="main"><svg viewBox="0 0 22 22" aria-hidden="true"><rect x="3.5" y="3" width="15" height="16" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M7 8h8 M7 11.5h8 M7 15h5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span>สร้างโจทย์</span></button><button id="sRead" class="main"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M3 15c2-3 3-7 4.5-7s.5 5 2 5 2-6 3.5-6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M13 4.5h6 M16 4.5v8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span>เป็นตัวพิมพ์</span></button><button id="sHand" class="main"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M3 16c2.5-1 3.5-9 6-9 1.6 0 .4 6 2.4 6 1.8 0 2.4-4 4.1-4 1.2 0 1 3 2.5 3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M3 19h16" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg><span>ลายมือสวย</span></button><button id="sEq"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M3.5 8h6 M3.5 12.5h6 M13 6.5l5 7 M18 6.5l-5 7" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg><span>เป็นสมการ</span></button><button id="sGraph"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M4 3.5v14h14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M5.5 14c3-1 4-8 7-8s3 4 5 4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span>สร้างกราฟ</span></button><button id="sAnim"><svg viewBox="0 0 22 22" aria-hidden="true"><circle cx="7" cy="14" r="3.2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M11 14h7 M15.5 11.5L18 14l-2.5 2.5 M7 10.5V4 M4.5 6.5L7 4l2.5 2.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span>ขยับได้</span></button><button id="sTidy"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M4 17l4-1 9-9-3-3-9 9z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M15.5 13.5l1 2 2 1-2 1-1 2-1-2-2-1 2-1z" fill="currentColor"/></svg><span>วาดใหม่</span></button><button id="sGen"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M11 3l1.8 4.6 4.7 1.9-4.7 1.9L11 16l-1.8-4.6L4.5 9.5l4.7-1.9z" fill="currentColor"/></svg><span>สร้างโจทย์</span></button><button id="sMedia"><svg viewBox="0 0 22 22" aria-hidden="true"><rect x="3" y="4.5" width="16" height="13" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M3.5 15l4.5-4.5 3.5 3.5 2-2 5 4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg><span>หาสื่อ</span></button></span>
+        <span class="sg" id="sgInk"><button id="sJoin"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M3 6h16 M3 11h10 M3 16h7 M14 13.5l3 2.5-3 2.5 M10 16h7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span>ต่อบรรทัด</span></button><button id="sQuiz" class="main"><svg viewBox="0 0 22 22" aria-hidden="true"><rect x="3.5" y="3" width="15" height="16" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M7 8h8 M7 11.5h8 M7 15h5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span>สร้างโจทย์</span></button><button id="sRead" class="main"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M3 15c2-3 3-7 4.5-7s.5 5 2 5 2-6 3.5-6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M13 4.5h6 M16 4.5v8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span>เป็นตัวพิมพ์</span></button><button id="sHand" class="main"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M3 16c2.5-1 3.5-9 6-9 1.6 0 .4 6 2.4 6 1.8 0 2.4-4 4.1-4 1.2 0 1 3 2.5 3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M3 19h16" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg><span>ลายมือสวย</span></button><button id="sEq"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M3.5 8h6 M3.5 12.5h6 M13 6.5l5 7 M18 6.5l-5 7" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg><span>เป็นสมการ</span></button><button id="sGraph" title="สร้างรูปจากสมการ: เวกเตอร์ 2 และ 3 มิติ กราฟ เส้นโค้งพาราเมตริกและเชิงขั้ว โครงสร้างโมเลกุล หรือแผนภาพ"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M4 3.5v14h14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M5.5 14c3-1 4-8 7-8s3 4 5 4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span>สร้างรูป</span></button><button id="sAnim"><svg viewBox="0 0 22 22" aria-hidden="true"><circle cx="7" cy="14" r="3.2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M11 14h7 M15.5 11.5L18 14l-2.5 2.5 M7 10.5V4 M4.5 6.5L7 4l2.5 2.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span>ขยับได้</span></button><button id="sTidy"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M4 17l4-1 9-9-3-3-9 9z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M15.5 13.5l1 2 2 1-2 1-1 2-1-2-2-1 2-1z" fill="currentColor"/></svg><span>วาดใหม่</span></button><button id="sGen"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M11 3l1.8 4.6 4.7 1.9-4.7 1.9L11 16l-1.8-4.6L4.5 9.5l4.7-1.9z" fill="currentColor"/></svg><span>สร้างโจทย์</span></button><button id="sMedia"><svg viewBox="0 0 22 22" aria-hidden="true"><rect x="3" y="4.5" width="16" height="13" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M3.5 15l4.5-4.5 3.5 3.5 2-2 5 4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg><span>หาสื่อ</span></button></span>
         <span class="sg" id="sgOrder"><button id="sFront"><svg viewBox="0 0 22 22" aria-hidden="true"><rect x="7" y="7" width="11" height="11" rx="2" fill="currentColor"/><rect x="3.5" y="3.5" width="11" height="11" rx="2" fill="none" stroke="currentColor" stroke-width="1.5" stroke-dasharray="2.5 2"/></svg><span>ขึ้นหน้าสุด</span></button><button id="sBack"><svg viewBox="0 0 22 22" aria-hidden="true"><rect x="3.5" y="3.5" width="11" height="11" rx="2" fill="currentColor"/><rect x="7" y="7" width="11" height="11" rx="2" fill="var(--chrome)" stroke="currentColor" stroke-width="1.5"/></svg><span>ไปหลังสุด</span></button></span>
         <span class="sg"><button id="sKey"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M2.5 11s3-6 8.5-6 8.5 6 8.5 6-3 6-8.5 6-8.5-6-8.5-6z" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="11" cy="11" r="2.6" fill="currentColor"/></svg><span>เฉลย</span></button><button id="sDup"><svg viewBox="0 0 22 22" aria-hidden="true"><rect x="7" y="7" width="11" height="11" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M4 14V5a1 1 0 0 1 1-1h9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span>ทำสำเนา</span></button><button id="sDel" class="danger"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M5 6.5h12 M9 6.5V4.5h4v2 M6.5 6.5l.8 11h7.4l.8-11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span>ลบ</span></button><button id="sClose"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M5 11.5l4 4 8-9" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg><span>เสร็จ</span></button></span>
         <button id="sBig" hidden>ขยาย</button><button id="sSmall" hidden>ย่อ</button>
@@ -1803,7 +1816,9 @@ body.role-student .scnpill .sbtns button[data-s="back"], body.role-student .scnp
   <div class="panel" role="dialog" aria-label="ส่งออก">
     <div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><h2>ส่งออก PDF</h2><button class="btn" id="bExpClose">ปิด</button></div>
     <span class="label">ช่วงหน้า</span>
-    <div class="chips" id="expScope"><button class="chip" data-v="all" aria-pressed="true">ทั้งเล่ม</button><button class="chip" data-v="page" aria-pressed="false">เฉพาะหน้านี้</button></div>
+    <div class="chips" id="expScope"><button class="chip" data-v="all" aria-pressed="true">ทั้งเล่ม</button><button class="chip" data-v="page" aria-pressed="false">เฉพาะหน้านี้</button><button class="chip" data-v="none" aria-pressed="false">ไม่เลือกเลย</button></div>
+    <label class="field exprange"><span>หรือพิมพ์เลขหน้า เช่น 1-3, 5, 8</span><input id="expRange" inputmode="numeric" autocomplete="off" placeholder="1-3, 5"></label>
+    <div class="expgrid" id="expPages" aria-label="แตะหน้าเพื่อเลือกหรือไม่เลือก"></div>
     <button class="btn solid" id="bExpGo">สร้างไฟล์ PDF</button>
     <div id="expMsg"></div>
     <h3>สไลด์นำเสนอ</h3>
@@ -1844,7 +1859,8 @@ const LIBS = {
   pdfjs: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js',
   pdfw: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js',
   jspdf: 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
-  h2c: 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js'
+  h2c: 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js',
+  smiles: 'https://cdn.jsdelivr.net/npm/smiles-drawer@2.1.7/dist/smiles-drawer.min.js'
 };
 
 /* ---------- helpers ---------- */
@@ -3102,7 +3118,7 @@ function buildItemEl(it, forExport) {
   d.style.left = it.x + 'px'; d.style.top = it.y + 'px'; d.style.width = (it.w || 600) + 'px';
   if (it.fs) d.style.fontSize = clamp(+it.fs || 24, 12, 80) + 'px';
   d.dataset.id = it.id;
-  if (it.type === 'svg') { d.innerHTML = cleanSvg(it.svg) || ''; }
+  if (it.type === 'svg') { if (it.vec3) buildVecFig(d, it, forExport); else d.innerHTML = cleanSvg(it.svg) || ''; }
   else if (it.type === 'img') {
     if (okAsset(it.asset) || okRemote(it.url)) { const im = document.createElement('img'); im.alt = 'ภาพที่แทรก'; im.draggable = false; im.decoding = 'async'; d.appendChild(im); if (okAsset(it.asset)) setAssetSrc(im, it.asset); else { im.crossOrigin = 'anonymous'; im.src = it.url; } }
   } else if (it.type === 'video') {
@@ -5242,47 +5258,345 @@ function parseGraphReply(text) {
   }
   return g;
 }
+/* ---------- a figure from an equation: vectors in 2D or 3D, function graphs, parametric and polar curves, molecules, other diagrams.
+   Vectors typed in LaTeX are read right here without AI; numbers are always computed here, never drawn by eye ---------- */
+const FIG_COL = ['#2F4BB8', '#B42318', '#1D7350', '#C2571A', '#6B3FA0', '#0E7490'];
+function figNum(t) {
+  t = String(t == null ? '' : t).replace(/\$/g, '').replace(/\\left|\\right|\\[,;!:]|\\quad/g, '').replace(/[−–]/g, '-').replace(/\s+/g, '');
+  if (t === '' || t === '+') return 1; if (t === '-') return -1;
+  t = t.replace(/\\d?t?frac\{([^{}]+)\}\{([^{}]+)\}/g, '($1)/($2)').replace(/\\sqrt\{([^{}]+)\}/g, 's($1)').replace(/\\sqrt(\d+(?:\.\d+)?)/g, 's($1)').replace(/√\(?(\d+(?:\.\d+)?)\)?/g, 's($1)')
+    .replace(/\\cdot|\\times|×|·/g, '*').replace(/[{}]/g, '').replace(/\*$/, '').replace(/(\d)\(/g, '$1*(').replace(/\)(\d|s)/g, ')*$1').replace(/(\d)s\(/g, '$1*s(');
+  if (!/^[-+0-9.*/()s]+$/.test(t) || /s(?!\()/.test(t)) return NaN;
+  try { const v = Function('s', '"use strict";return (' + t + ')')(Math.sqrt); return typeof v === 'number' && isFinite(v) ? v : NaN; } catch (e) { return NaN; }
+}
+/* split at + or - that are not inside braces or brackets (and not a sign right after another operator) */
+function figTerms(rhs) {
+  const out = []; let d = 0, cur = '';
+  for (let i = 0; i < rhs.length; i++) {
+    const c = rhs[i];
+    if ('{(['.includes(c)) d++; else if ('})]'.includes(c)) d--;
+    if (d === 0 && (c === '+' || c === '-') && cur.trim() && !/[*/^(_]\s*$/.test(cur) && !/\\(?:times|cdot)\s*$/.test(cur)) { out.push(cur); cur = c === '-' ? '-' : ''; continue; }
+    cur += c;
+  }
+  if (cur.trim()) out.push(cur); return out.map((x) => x.trim()).filter(Boolean);
+}
+function figVecName(lhs) {
+  const s = String(lhs).replace(/\$/g, '').trim();
+  let m = s.match(/^\\(?:vec|overrightarrow|mathbf|boldsymbol|overline)\s*\{?\s*([A-Za-z]{1,2})\s*\}?\s*(?:_\s*\{?\s*([\w]{1,4})\s*\}?)?$/);
+  if (!m) m = s.match(/^([A-Za-z])\s*(?:_\s*\{?\s*([\w]{1,4})\s*\}?)?$/);
+  return m ? m[1] + (m[2] ? '_' + m[2] : '') : null;
+}
+function parseVectors(text) {
+  const src = String(text || '').replace(/\\begin\{[pb]matrix\}([\s\S]*?)\\end\{[pb]matrix\}/g, (_, b) => '(' + b.split('\\\\').map((x) => x.trim()).join(',') + ')').replace(/\\langle|⟨/g, '(').replace(/\\rangle|⟩/g, ')');
+  const stm = src.split(/\n|\$|;|\\\\|,\s*(?=\\vec|\\overrightarrow)|\s+และ\s+|\s+and\s+/).map((x) => x.trim()).filter((x) => x.includes('='));
+  const vecs = [], known = {};
+  const unit = /\\hat\s*\{?\s*\\?(i|j|k|imath|jmath|x|y|z)\s*\}?|\\mathbf\s*\{\s*([ijk])\s*\}|\\vec\s*\{\s*([ijk])\s*\}|(?<![A-Za-z\\])([ijk])(?![A-Za-z])|([îĵk̂])/;
+  for (const st of stm) {
+    const eq = st.split('='); if (eq.length < 2) continue;
+    const name = figVecName(eq[0]); if (!name) continue;
+    const rhs = eq[1].replace(/\\,|\;|\\!|\\quad/g, ' ').replace(/\\text\{[^}]*\}|\\mathrm\{[^}]*\}|\b(m|N|m\/s|cm|km)\b\s*$/g, '').trim();
+    let v = null;
+    const tup = rhs.match(/^\(\s*([^()]+?)\s*\)$/) || rhs.match(/^\[\s*([^\[\]]+?)\s*\]$/);
+    if (tup) { const n = tup[1].split(/,|;/).map(figNum); if ((n.length === 2 || n.length === 3) && n.every(isFinite)) v = n.length === 2 ? [n[0], n[1], 0, 2] : [n[0], n[1], n[2], 3]; }
+    if (!v) {
+      const terms = figTerms(rhs); let okAll = terms.length > 0, comp = [0, 0, 0], dim = 2, viaNames = false;
+      for (const t of terms) {
+        const um = t.match(unit);
+        if (um) {
+          const ax = (um[1] || um[2] || um[3] || um[4] || um[5] || '').replace('imath', 'i').replace('jmath', 'j').replace('î', 'i').replace('ĵ', 'j').replace('k̂', 'k');
+          const k = { i: 0, x: 0, j: 1, y: 1, k: 2, z: 2 }[ax]; const c = figNum(t.replace(um[0], '').replace(/\*\s*$/, ''));
+          if (k == null || !isFinite(c)) { okAll = false; break; } comp[k] += c; if (k === 2) dim = 3; continue;
+        }
+        const vm = t.match(/^([+-]?)\s*([^\\A-Za-z]*?)\s*\*?\s*(\\(?:vec|overrightarrow|mathbf)\s*\{?\s*[A-Za-z]{1,2}\s*\}?(?:_\s*\{?\w{1,4}\}?)?)$/);
+        const nm = vm && figVecName(vm[3]);
+        if (nm && known[nm]) { const c = figNum(vm[1] + (vm[2] || '')); if (!isFinite(c)) { okAll = false; break; } const o = known[nm]; comp = comp.map((x, i) => x + c * o[i]); if (o[3] === 3) dim = 3; viaNames = true; continue; }
+        okAll = false; break;
+      }
+      if (okAll) v = [comp[0], comp[1], comp[2], dim, viaNames];
+    }
+    if (v) { known[name] = v; vecs.push({ name, x: v[0], y: v[1], z: v[2], dim: v[3], sum: !!v[4] }); }
+  }
+  return vecs;
+}
+const figR = (v) => Math.round(v * 100) / 100;
+function figFmt(v) { const r = figR(v); return (r < 0 ? '−' : '') + String(Math.abs(r)); }
+/* a name with an arrow over it, drawn the way it is written by hand */
+function figVecLabel(x, y, name, col, size) {
+  size = size || 20; const [b, sub] = name.split('_'), w = b.length * size * 0.56;
+  let s = '<text x="' + x + '" y="' + y + '" font-family="\'Times New Roman\', Sarabun, serif" font-style="italic" font-size="' + size + '" fill="' + col + '">' + esc(b) + (sub ? '<tspan font-size="' + Math.round(size * 0.66) + '" dy="' + Math.round(size * 0.28) + '">' + esc(sub) + '</tspan>' : '') + '</text>';
+  const ay = y - size * 0.86, x0 = x + 1, x1 = x + Math.max(w, size * 0.5) + 2;
+  s += '<path d="M' + x0 + ' ' + ay + 'H' + x1 + ' M' + (x1 - 4) + ' ' + (ay - 3) + 'L' + x1 + ' ' + ay + 'L' + (x1 - 4) + ' ' + (ay + 3) + '" fill="none" stroke="' + col + '" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>';
+  return s;
+}
+function figArrow(p, q, col, wd) {
+  const dx = q[0] - p[0], dy = q[1] - p[1], L = Math.hypot(dx, dy) || 1, ux = dx / L, uy = dy / L, h = Math.min(14, L * 0.4), b = h * 0.45;
+  const bx = q[0] - ux * h, by = q[1] - uy * h;
+  return '<line x1="' + p[0].toFixed(1) + '" y1="' + p[1].toFixed(1) + '" x2="' + bx.toFixed(1) + '" y2="' + by.toFixed(1) + '" stroke="' + col + '" stroke-width="' + (wd || 3) + '" stroke-linecap="round"/>'
+    + '<polygon points="' + q[0].toFixed(1) + ',' + q[1].toFixed(1) + ' ' + (bx - uy * b).toFixed(1) + ',' + (by + ux * b).toFixed(1) + ' ' + (bx + uy * b).toFixed(1) + ',' + (by - ux * b).toFixed(1) + '" fill="' + col + '"/>';
+}
+const figDash = (p, q, col) => '<line x1="' + p[0].toFixed(1) + '" y1="' + p[1].toFixed(1) + '" x2="' + q[0].toFixed(1) + '" y2="' + q[1].toFixed(1) + '" stroke="' + col + '" stroke-width="1.6" stroke-dasharray="5 4" opacity="0.75"/>';
+const figTxt = (x, y, t, o) => '<text x="' + x.toFixed(1) + '" y="' + y.toFixed(1) + '" font-family="Sarabun, sans-serif" font-size="' + ((o && o.size) || 14) + '"' + ((o && o.italic) ? ' font-style="italic"' : '') + ' fill="' + ((o && o.col) || '#535E6C') + '"' + ((o && o.anchor) ? ' text-anchor="' + o.anchor + '"' : '') + '>' + esc(t) + '</text>';
+/* 3D view: x comes toward the viewer at the lower left, y to the right, z up. The camera turns about z (az) and tilts (el) */
+function vecCam(az, el) {
+  const a = az * Math.PI / 180, e = el * Math.PI / 180;
+  const r = [-Math.sin(a), Math.cos(a), 0], u = [-Math.cos(a) * Math.sin(e), -Math.sin(a) * Math.sin(e), Math.cos(e)];
+  return (x, y, z) => [x * r[0] + y * r[1] + z * r[2], -(x * u[0] + y * u[1] + z * u[2])];
+}
+/* the default view: the one in which every vector keeps as much of its true length on screen as possible */
+function vecBestView(vecs) {
+  let best = [30, 20], bs = -1;
+  for (let az = 30; az <= 60; az += 5) for (let el = 15; el <= 30; el += 5) {
+    const P = vecCam(az, el); let sc = Infinity;
+    for (const v of vecs) { const L = Math.hypot(v.x, v.y, v.z); if (L < 1e-9) continue; const q = P(v.x, v.y, v.z); sc = Math.min(sc, Math.hypot(q[0], q[1]) / L); }
+    const ax = P(1, 0, 0); sc += 0.15 * Math.min(1, Math.hypot(ax[0], ax[1]) / 0.45); /* keep the x axis readable */
+    if (sc > bs) { bs = sc; best = [az, el]; }
+  }
+  return { az: best[0], el: best[1] };
+}
+function vectorSvg(vecs, view) {
+  const d3 = vecs.some((v) => v.dim === 3 || Math.abs(v.z) > 1e-9);
+  if (d3 && !view) view = vecBestView(vecs);
+  const mx = (k) => Math.max(1, ...vecs.map((v) => Math.abs(v[k])));
+  const L = { x: Math.ceil(mx('x')) + 1, y: Math.ceil(mx('y')) + 1, z: Math.ceil(mx('z')) + 1 };
+  const neg = { x: vecs.some((v) => v.x < 0), y: vecs.some((v) => v.y < 0), z: vecs.some((v) => v.z < 0) };
+  const P0 = d3 ? vecCam(view.az, view.el) : (x, y) => [x, -y];
+  const pts = [[0, 0, 0], [L.x + 1, 0, 0], [0, L.y + 1, 0], [0, 0, d3 ? L.z + 1 : 0], [neg.x ? -L.x : 0, 0, 0], [0, neg.y ? -L.y : 0, 0], [0, 0, d3 && neg.z ? -L.z : 0]].concat(vecs.map((v) => [v.x, v.y, d3 ? v.z : 0]));
+  const sp = pts.map((p) => P0(...p));
+  let x0 = Math.min(...sp.map((p) => p[0])), x1 = Math.max(...sp.map((p) => p[0])), y0 = Math.min(...sp.map((p) => p[1])), y1 = Math.max(...sp.map((p) => p[1]));
+  const VW = 540, legendH = 30 * vecs.length + 10, VH = 420 + legendH, m = 46;
+  const u = Math.min((VW - 2 * m) / ((x1 - x0) || 1), (420 - 2 * m) / ((y1 - y0) || 1), 90);
+  const ox = VW / 2 - (x0 + x1) / 2 * u, oy = 210 - (y0 + y1) / 2 * u;
+  const P = (x, y, z) => { const q = P0(x, y, z || 0); return [ox + q[0] * u, oy + q[1] * u]; };
+  let s = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + VW + ' ' + VH + '">';
+  const axes = d3 ? [['x', [1, 0, 0]], ['y', [0, 1, 0]], ['z', [0, 0, 1]]] : [['x', [1, 0, 0]], ['y', [0, 1, 0]]];
+  const step = Math.max(1, niceStep(Math.max(L.x, L.y, L.z), 6));
+  const ln = (a, b, col, w) => '<line x1="' + a[0].toFixed(1) + '" y1="' + a[1].toFixed(1) + '" x2="' + b[0].toFixed(1) + '" y2="' + b[1].toFixed(1) + '" stroke="' + col + '" stroke-width="' + w + '"/>';
+  if (!d3) {
+    for (let gx = (neg.x ? -L.x : 0); gx <= L.x; gx += step) s += ln(P(gx, neg.y ? -L.y : 0), P(gx, L.y), '#E3E8EF', 1);
+    for (let gy = (neg.y ? -L.y : 0); gy <= L.y; gy += step) s += ln(P(neg.x ? -L.x : 0, gy), P(L.x, gy), '#E3E8EF', 1);
+  }
+  const O = P(0, 0, 0);
+  for (const [nm, e] of axes) {
+    const len = L[nm], from = neg[nm] ? -len : 0;
+    const a = P(e[0] * from, e[1] * from, e[2] * from), b = P(e[0] * (len + 0.4), e[1] * (len + 0.4), e[2] * (len + 0.4));
+    s += figArrow(a, b, '#14181F', 1.8);
+    const dir = [b[0] - O[0], b[1] - O[1]], dl = Math.hypot(...dir) || 1, ux = dir[0] / dl, uy = dir[1] / dl;
+    s += figTxt(b[0] + ux * 14 - 5, b[1] + uy * 14 + 6, nm, { size: 20, italic: true, col: '#14181F' });
+    /* tick labels sit on the side of the axis away from the other axes */
+    let nx = -uy, ny = ux; if (nm === 'z' || (!d3 && nm === 'y')) { if (nx > 0) { nx = -nx; ny = -ny; } } else if (ny < 0) { nx = -nx; ny = -ny; }
+    for (let t = step; t <= len; t += step) for (const sg of neg[nm] ? [1, -1] : [1]) {
+      const c = P(e[0] * t * sg, e[1] * t * sg, e[2] * t * sg);
+      s += ln([c[0] - nx * 5, c[1] - ny * 5], [c[0] + nx * 5, c[1] + ny * 5], '#14181F', 1.4);
+      s += figTxt(c[0] + nx * 16, c[1] + ny * 16 + 4, figFmt(t * sg), { size: 13, anchor: 'middle' });
+    }
+  }
+  s += figTxt(O[0] - 14, O[1] + 16, 'O', { size: 14, italic: true });
+  vecs.forEach((v, i) => {
+    const col = FIG_COL[i % FIG_COL.length], z = d3 ? v.z : 0, tip = P(v.x, v.y, z);
+    if (d3) {
+      const foot = P(v.x, v.y, 0);
+      if (Math.abs(z) > 1e-9) s += figDash(tip, foot, col);
+      if (Math.abs(v.y) > 1e-9 && Math.abs(v.x) > 1e-9) { s += figDash(foot, P(v.x, 0, 0), col); s += figDash(foot, P(0, v.y, 0), col); }
+      if (Math.abs(z) > 1e-9 && (Math.abs(v.x) > 1e-9 || Math.abs(v.y) > 1e-9)) s += figDash(O, foot, col);
+    } else if (Math.abs(v.y) > 1e-9 && Math.abs(v.x) > 1e-9) { s += figDash(tip, P(v.x, 0), col); s += figDash(tip, P(0, v.y), col); }
+    s += figArrow(O, tip, col, 3.2);
+    const dx = tip[0] - O[0], dy = tip[1] - O[1], dl = Math.hypot(dx, dy) || 1;
+    s += figVecLabel(tip[0] + dx / dl * 12 + (dx >= 0 ? 2 : -22), tip[1] + dy / dl * 12 + (dy > 0 ? 18 : -2), v.name, col, 22);
+  });
+  vecs.forEach((v, i) => {
+    const col = FIG_COL[i % FIG_COL.length], y = 420 + 26 + i * 30, mag = Math.hypot(v.x, v.y, d3 ? v.z : 0);
+    s += figVecLabel(24, y, v.name, col, 20);
+    const comp = d3 ? '(' + figFmt(v.x) + ', ' + figFmt(v.y) + ', ' + figFmt(v.z) + ')' : '(' + figFmt(v.x) + ', ' + figFmt(v.y) + ')';
+    const ang = !d3 ? '   ทำมุม ' + figFmt(Math.atan2(v.y, v.x) * 180 / Math.PI) + '° กับแกน x' : '';
+    s += figTxt(24 + v.name.replace('_', '').length * 12 + 10, y, '= ' + comp + '   ขนาด ' + figFmt(mag) + ang, { size: 16, col: '#14181F' });
+  });
+  if (d3) s += figTxt(VW - 12, VH - 10, 'ลากที่รูปเพื่อหมุนดู', { size: 12, anchor: 'end' });
+  return s + '</svg>';
+}
+/* a 3D vector figure on the page turns when dragged; the view is saved with the page */
+function buildVecFig(d, it, forExport) {
+  const v3 = it.vec3; d.innerHTML = cleanSvg(it.svg) || '';
+  if (forExport || !v3 || !Array.isArray(v3.vecs)) return;
+  d.classList.add('live', 'no-ink', 'vecfig');
+  let drag = null;
+  d.addEventListener('pointerdown', (e) => {
+    if (e.target.closest('.tgrab,.tsize,.x')) return;
+    e.stopPropagation(); e.preventDefault();
+    const live = findItem(it.id) || it; drag = { x: e.clientX, y: e.clientY, az: live.vec3.az, el: live.vec3.el, live };
+    try { d.setPointerCapture(e.pointerId); } catch (er) { /* fine */ }
+  });
+  d.addEventListener('pointermove', (e) => {
+    if (!drag) return; e.stopPropagation();
+    const az = ((drag.az - (e.clientX - drag.x) * 0.5) % 360 + 360) % 360, el = clamp(drag.el + (e.clientY - drag.y) * 0.4, -85, 85);
+    drag.live.vec3.az = az; drag.live.vec3.el = el;
+    const svg = vectorSvg(drag.live.vec3.vecs, { az, el }); drag.svg = svg;
+    const g = d.querySelector('svg'); if (g) g.outerHTML = svg; else d.insertAdjacentHTML('afterbegin', svg);
+  });
+  const end = () => { if (!drag) return; const dr = drag; drag = null; if (dr.svg) { dr.live.svg = dr.svg; savePage(); } };
+  d.addEventListener('pointerup', end); d.addEventListener('pointercancel', end);
+}
+/* parametric x(t), y(t) or polar r(θ), sampled here with math.js and drawn to scale */
+function curveSvg(c) {
+  const N = 400, pts = [];
+  let code;
+  try { code = c.polar ? [compileExpr(cleanExpr(c.r)).code] : [compileExpr(cleanExpr(c.x)).code, compileExpr(cleanExpr(c.y)).code]; } catch (e) { return null; }
+  for (let i = 0; i <= N; i++) {
+    const t = c.t0 + (c.t1 - c.t0) * i / N, sc = {}; sc[c.v] = t;
+    if (c.polar) { const r = evalAt(code[0], sc); pts.push(isFinite(r) ? [r * Math.cos(t), r * Math.sin(t)] : null); }
+    else { const x = evalAt(code[0], sc), y = evalAt(code[1], sc); pts.push(isFinite(x) && isFinite(y) ? [x, y] : null); }
+  }
+  const ok = pts.filter(Boolean); if (ok.length < 10) return null;
+  let x0 = Math.min(0, ...ok.map((p) => p[0])), x1 = Math.max(0, ...ok.map((p) => p[0])), y0 = Math.min(0, ...ok.map((p) => p[1])), y1 = Math.max(0, ...ok.map((p) => p[1]));
+  const pad = 0.08 * Math.max(x1 - x0, y1 - y0, 1e-9); x0 -= pad; x1 += pad; y0 -= pad; y1 += pad;
+  const VW = 540, VH = 420, m = 40, u = Math.min((VW - 2 * m) / (x1 - x0), (VH - 2 * m) / (y1 - y0));
+  const ox = (VW - (x1 - x0) * u) / 2 - x0 * u, oy = (VH + (y1 - y0) * u) / 2 + y0 * u;
+  const P = (x, y) => [ox + x * u, oy - y * u];
+  let s = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + VW + ' ' + (VH + 34) + '">';
+  const st = niceStep(Math.max(x1 - x0, y1 - y0), 8);
+  for (let gx = Math.ceil(x0 / st) * st; gx <= x1; gx += st) { const a = P(gx, y0), b = P(gx, y1); s += '<line x1="' + a[0].toFixed(1) + '" y1="' + a[1].toFixed(1) + '" x2="' + b[0].toFixed(1) + '" y2="' + b[1].toFixed(1) + '" stroke="#E3E8EF"/>'; if (Math.abs(gx) > st / 2) s += figTxt(a[0] - 8, P(0, 0)[1] + 16, fmtNum(gx), { size: 12 }); }
+  for (let gy = Math.ceil(y0 / st) * st; gy <= y1; gy += st) { const a = P(x0, gy), b = P(x1, gy); s += '<line x1="' + a[0].toFixed(1) + '" y1="' + a[1].toFixed(1) + '" x2="' + b[0].toFixed(1) + '" y2="' + b[1].toFixed(1) + '" stroke="#E3E8EF"/>'; if (Math.abs(gy) > st / 2) s += figTxt(P(0, 0)[0] - 6, a[1] + 4, fmtNum(gy), { size: 12, anchor: 'end' }); }
+  s += figArrow(P(x0, 0), P(x1, 0), '#14181F', 1.6) + figArrow(P(0, y0), P(0, y1), '#14181F', 1.6);
+  s += figTxt(P(x1, 0)[0] - 4, P(x1, 0)[1] - 8, 'x', { size: 18, italic: true, col: '#14181F' }) + figTxt(P(0, y1)[0] + 8, P(0, y1)[1] + 6, 'y', { size: 18, italic: true, col: '#14181F' });
+  let d = '', pen = false; for (const p of pts) { if (!p) { pen = false; continue; } const q = P(p[0], p[1]); d += (pen ? 'L' : 'M') + q[0].toFixed(1) + ' ' + q[1].toFixed(1); pen = true; }
+  s += '<path d="' + d + '" fill="none" stroke="#2F4BB8" stroke-width="2.6" stroke-linejoin="round"/>';
+  s += figTxt(16, VH + 22, c.caption || '', { size: 15, col: '#14181F' });
+  return s + '</svg>';
+}
+/* SmilesDrawer styles its drawing with a style sheet, gradients and masks, which the page's SVG cleaner removes: turn them into plain attributes */
+function molFix(el) {
+  const NS = 'http://www.w3.org/2000/svg', grads = {};
+  el.querySelectorAll('linearGradient').forEach((g) => { const st = g.querySelectorAll('stop'); grads[g.id] = st.length ? st[st.length - 1].getAttribute('stop-color') : '#222222'; });
+  el.querySelectorAll('[stroke]').forEach((n) => { const v = n.getAttribute('stroke'); if (/url/.test(v)) { const m = v.match(/#([^'")]+)/); n.setAttribute('stroke', (m && grads[m[1]]) || '#222222'); } });
+  const circles = [...el.querySelectorAll('mask circle')].map((c) => { const k = c.cloneNode(); k.setAttribute('fill', '#FFFFFF'); return k; });
+  el.querySelectorAll('[mask]').forEach((n) => n.removeAttribute('mask'));
+  el.querySelectorAll('mask, defs, style').forEach((n) => n.remove());
+  const tg = [...el.children].find((g) => g.querySelector && g.querySelector('text'));
+  if (circles.length) { const cg = document.createElementNS(NS, 'g'); circles.forEach((c) => cg.appendChild(c)); if (tg) el.insertBefore(cg, tg); else el.appendChild(cg); }
+  el.querySelectorAll('text').forEach((t) => { t.setAttribute('font-size', '14.5'); t.setAttribute('font-family', 'Arial, Helvetica, sans-serif'); });
+  el.querySelectorAll('.sub').forEach((t) => t.setAttribute('font-size', '9'));
+}
+/* molecules from SMILES with SmilesDrawer, side by side; a reaction gets + and an arrow between them */
+async function moleculeSvg(mols) {
+  await loadLib('smiles');
+  const SD = window.SmilesDrawer; if (!SD) return null;
+  const parts = [];
+  for (const m of mols.slice(0, 5)) {
+    const el = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); el.setAttribute('width', '260'); el.setAttribute('height', '220');
+    el.style.position = 'fixed'; el.style.left = '-9999px'; document.body.appendChild(el);
+    const ok = await new Promise((res) => { try { SD.parse(m.smiles, (tree) => { try { new SD.SvgDrawer({ width: 260, height: 220, bondThickness: 1.4, fontSizeLarge: 14, fontSizeSmall: 9, padding: 14 }).draw(tree, el, 'light', null, false); res(true); } catch (e) { res(false); } }, () => res(false)); } catch (e) { res(false); } });
+    if (ok) molFix(el);
+    const inner = ok ? el.innerHTML : ''; const vb = el.getAttribute('viewBox') || '0 0 260 220'; el.remove();
+    if (!inner) continue; parts.push({ m, inner, vb });
+  }
+  if (!parts.length) return null;
+  const cw = 230, gap = 46, VW = parts.length * cw + (parts.length - 1) * gap, VH = 250;
+  let s = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + VW + ' ' + VH + '">', x = 0;
+  parts.forEach((p, i) => {
+    /* small molecules are not blown up to fill the box: one size for every bond */
+    const vb = p.vb.split(/\s+/).map(Number), k = Math.min(cw / (vb[2] || 1), 210 / (vb[3] || 1), 1.7), bw = (vb[2] || 1) * k, bh = (vb[3] || 1) * k;
+    s += '<svg x="' + (x + (cw - bw) / 2).toFixed(1) + '" y="' + ((210 - bh) / 2).toFixed(1) + '" width="' + bw.toFixed(1) + '" height="' + bh.toFixed(1) + '" viewBox="' + p.vb + '">' + p.inner + '</svg>';
+    if (p.m.name) s += figTxt(x + cw / 2, 236, p.m.name, { size: 15, col: '#14181F', anchor: 'middle' });
+    x += cw;
+    if (i < parts.length - 1) {
+      const nxt = parts[i + 1].m, arrow = p.m.role === 'reactant' && nxt.role === 'product';
+      s += arrow ? figArrow([x + 6, 105], [x + gap - 6, 105], '#14181F', 2) : (p.m.role && nxt.role === p.m.role ? figTxt(x + gap / 2, 112, '+', { size: 26, col: '#14181F', anchor: 'middle' }) : '');
+      x += gap;
+    }
+  });
+  return s + '</svg>';
+}
+function figPlace(svg, box, w, note, extra) {
+  const h = w * 0.82, x = box[2] + 20 + w <= W - 10 ? box[2] + 20 : clamp(box[0], 10, W - w - 10);
+  const y = box[2] + 20 + w <= W - 10 ? box[1] : Math.min(box[3] + 12, H - h - 10);
+  addItem(Object.assign({ type: 'svg', x: Math.round(x), y: Math.round(clamp(y, 10, H - 120)), w: Math.round(w), svg }, extra || {}));
+  toast(note || 'สร้างรูปแล้ว ย่อขยายหรือย้ายได้', 2600);
+}
+function placeVecFig(vecs, box, note) {
+  vecs = vecs.slice(0, 6).map((v) => ({ name: v.name, x: figR(v.x), y: figR(v.y), z: figR(v.z || 0), dim: v.dim }));
+  const d3 = vecs.some((v) => v.dim === 3 || v.z);
+  if (!d3) { figPlace(vectorSvg(vecs), box, 420, note); return; }
+  const view = vecBestView(vecs);
+  figPlace(vectorSvg(vecs, view), box, 460, note + ' ลากที่รูปเพื่อหมุนดูสามมิติ', { vec3: { vecs, az: view.az, el: view.el } });
+}
+function placeGraph(g, box) {
+  let ok = 0;
+  try {
+    for (const e of g.exprs) for (const s of exprSymbols(e, g.xvar)) if (!g.params[s]) { g.params[s] = { label: s, v: 1, min: 0, max: 10, step: 0.1 }; g.order.push(s); }
+    const scope = {}; for (const [k, p] of Object.entries(g.params)) scope[k] = p.v;
+    for (const e of g.exprs) { const code = compileExpr(e).code; for (let i = 0; i <= 20; i++) { scope[g.xvar] = g.x0 + (g.x1 - g.x0) * i / 20; if (isFinite(evalAt(code, scope))) ok++; } }
+  } catch (e) { ok = 0; }
+  const w = 560;
+  const x = box[2] + 20 + w <= W - 10 ? box[2] + 20 : clamp(box[0], 10, W - w - 10);
+  const y = box[2] + 20 + w <= W - 10 ? box[1] : Math.min(box[3] + 12, H - 300);
+  if (!ok) {
+    openGraphSheet(null);
+    $('#gExpr').value = g.exprs.map((e) => 'y = ' + e).join('\n'); $('#gX').value = g.xvar; $('#gX0').value = g.x0; $('#gX1').value = g.x1;
+    $('#gXL').value = g.xl; $('#gYL').value = g.yl; $('#gTitle').value = g.title; $('#gY0').value = ''; $('#gY1').value = '';
+    gParamsState = g.params;
+    setTimeout(() => { checkGraph(false); $('#gMsg').innerHTML = '<div class="note warn">AI อ่านสมการได้ แต่ยังคำนวณไม่ได้ ตรวจสมการแล้วกดวางกราฟ</div>'; }, 300);
+  } else { addItem(Object.assign({ x: Math.round(x), y: Math.round(y), w }, g)); toast('สร้างกราฟแล้ว เลื่อนแถบใต้กราฟเพื่อปรับค่า', 3000); }
+}
 async function graphFromSelection() {
-  if (!S.sel || !needAI('read')) return;
+  if (!S.sel) return;
   const refs = S.sel.strokes.slice(), box = S.sel.box.slice();
   const typed = S.sel.items.map(findItem).filter((it) => it && (!it.type || it.type === 'text')).map((it) => it.md).join('\n').slice(0, 3000);
+  /* typed vectors: drawn straight away, no AI needed */
+  const tv = typed ? parseVectors(typed) : [];
+  if (tv.length && !refs.length) { clearSel(); placeVecFig(tv, box, 'สร้างรูปเวกเตอร์ ' + tv.map((v) => v.name.replace('_', '')).join(', ') + ' แล้ว'); return; }
+  if (!needAI('read')) return;
   const img = refs.length ? await inkBlob(refs) : null;
-  if (!img && !typed) { toast('วงสมการที่ต้องการสร้างกราฟ'); return; }
+  if (!img && !typed) { toast('วงสมการที่ต้องการสร้างรูป'); return; }
   clearSel(); S.pending.push(box); drawSelBox();
-  toast('กำลังอ่านสมการเพื่อสร้างกราฟ', 9000);
+  toast('กำลังอ่านสมการเพื่อสร้างรูป', 9000);
   try { await loadLib('math'); } catch (e) { /* checked below */ }
-  const prompt = 'Build an interactive graph from the equation a Thai physics teacher wrote' + (img ? ' (handwriting in the attached image)' : '') + '.' + (typed ? '\nTyped text:\n' + typed : '') + '\n'
-    + 'Rules:\n'
-    + '- Choose the physically natural independent variable for the horizontal axis (for example t for time, x for position).\n'
-    + '- Write the plotted quantity as a math.js expression in that variable. Use * for every multiplication, ^ for powers, sqrt(), sin(), cos(), tan(), exp(), log().\n'
-    + '- Every other symbol becomes a slider parameter with a short ASCII name (v0, th, g, m, k, A, w). Angles given in degrees go into trig functions as th*pi/180.\n'
-    + '- Use the teacher\'s numbers as default values when they appear, and slider ranges that show the physics clearly.\n'
-    + '- If several related equations share the same variable, give up to 3 expressions, one per line.\n'
-    + 'Reply in exactly this format and nothing else:\n'
-    + '@@TITLE short Thai title\n@@XVAR t\n@@EXPR\n(one expression per line, without "y =")\n@@XRANGE min max\n@@YRANGE auto\n@@XLABEL t (s)\n@@YLABEL y (m)\n'
-    + '@@PARAM name | Thai label with unit | default | min | max | step\n(one @@PARAM line per parameter)';
+  const prompt = 'Make the most useful figure for teaching from the equation or expression a Thai teacher wrote' + (img ? ' (handwriting in the attached image)' : '') + '.' + (typed ? '\nTyped text:\n' + typed : '') + '\n'
+    + 'Choose ONE kind:\n'
+    + '- vector: one or more vectors given by components, in 2D or 3D (i, j, k or (x, y, z)), including sums and differences of them and complex numbers drawn as 2D vectors.\n'
+    + '- graph: a quantity as a function of ONE variable, y = f(x) or s(t), v(t), F(x) and so on.\n'
+    + '- curve: a parametric curve x(t), y(t), a polar curve r(θ), or an implicit conic you can write parametrically (circle, ellipse, hyperbola branch).\n'
+    + '- molecule: chemical formulas, structures or a reaction.\n'
+    + '- diagram: anything else: a geometry figure with given lengths or angles, a circuit, a free-body diagram, a ray diagram, an energy-level diagram, field lines, a number line or a set diagram.\n'
+    + 'Reply in exactly this format and nothing else.\n'
+    + '@@KIND one of vector, graph, curve, molecule, diagram\n'
+    + 'For vector, one line per vector, numbers only (compute sums yourself):\n@@VEC name | x | y | z   (leave z empty for 2D)\n'
+    + 'For graph:\n@@TITLE short Thai title\n@@XVAR t\n@@EXPR\n(math.js expression in that variable, * for every multiplication, without "y =")\n@@XRANGE min max\n@@YRANGE auto\n@@XLABEL t (s)\n@@YLABEL y (m)\n@@PARAM name | Thai label with unit | default | min | max | step\n(every symbol other than the variable is a @@PARAM, with the teacher\'s numbers as defaults)\n'
+    + 'For curve (math.js expressions, angles in radians):\n@@CURVE parametric or polar\n@@VAR t | min | max\n@@X expression in t   (parametric)\n@@Y expression in t   (parametric)\n@@R expression in t   (polar, t is the angle)\n'
+    + 'For molecule, one line per molecule in reaction order:\n@@MOL Thai or English name | SMILES | reactant or product or single\n'
+    + 'For diagram: @@SVG then one <svg> with viewBox about 600 wide, true proportions computed from the given numbers, labels as <text> with font-family="Sarabun, sans-serif", symbols italic; vectors drawn as arrows and named with an arrow over the letter; objects stroke #14181F width 2; velocity #2F4BB8; force #C2571A; no <style>, <script>, <image>, <foreignObject>, <use> or markers.\n'
+    + '@@NOTE one short Thai caption for the figure';
   try {
     const res = await AI.run('read', prompt, img ? { images: [img.blob] } : {});
-    const g = parseGraphReply(res.text);
-    if (!g.exprs.length || !window.math) throw { code: 'empty_completion' };
-    let ok = 0;
-    try {
-      for (const e of g.exprs) for (const s of exprSymbols(e, g.xvar)) if (!g.params[s]) { g.params[s] = { label: s, v: 1, min: 0, max: 10, step: 0.1 }; g.order.push(s); }
-      const scope = {}; for (const [k, p] of Object.entries(g.params)) scope[k] = p.v;
-      for (const e of g.exprs) { const code = compileExpr(e).code; for (let i = 0; i <= 20; i++) { scope[g.xvar] = g.x0 + (g.x1 - g.x0) * i / 20; if (isFinite(evalAt(code, scope))) ok++; } }
-    } catch (e) { ok = 0; }
-    const w = 560;
-    const x = box[2] + 20 + w <= W - 10 ? box[2] + 20 : clamp(box[0], 10, W - w - 10);
-    const y = box[2] + 20 + w <= W - 10 ? box[1] : Math.min(box[3] + 12, H - 300);
-    if (!ok) {
-      openGraphSheet(null);
-      $('#gExpr').value = g.exprs.map((e) => 'y = ' + e).join('\n'); $('#gX').value = g.xvar; $('#gX0').value = g.x0; $('#gX1').value = g.x1;
-      $('#gXL').value = g.xl; $('#gYL').value = g.yl; $('#gTitle').value = g.title; $('#gY0').value = ''; $('#gY1').value = '';
-      gParamsState = g.params;
-      setTimeout(() => { checkGraph(false); $('#gMsg').innerHTML = '<div class="note warn">AI อ่านสมการได้ แต่ยังคำนวณไม่ได้ ตรวจสมการแล้วกดวางกราฟ</div>'; }, 300);
+    const parts = sections(res.text), kind = (sec(parts, 'KIND') || '').toLowerCase().split(/\s/)[0], note = sec(parts, 'NOTE');
+    if (kind === 'vector') {
+      const vecs = [];
+      for (const p of parts.filter((q) => q.key === 'VEC')) for (const ln of [p.arg].concat(p.text ? p.text.split('\n') : [])) {
+        const f = ln.replace(/^@@\s*VEC\s*/i, '').split('|').map((x) => x.trim()); if (f.length < 3) continue;
+        const name = (figVecName(f[0]) || f[0].replace(/[^A-Za-z0-9_]/g, '')).slice(0, 6) || 'v', x = figNum(f[1]), y = figNum(f[2]), z = f[3] ? figNum(f[3]) : 0;
+        if (isFinite(x) && isFinite(y) && isFinite(z)) vecs.push({ name, x, y, z, dim: f[3] && f[3] !== '' ? 3 : 2 });
+      }
+      if (!vecs.length) throw { code: 'empty_completion' };
+      placeVecFig(vecs.slice(0, 6), box, note || 'สร้างรูปเวกเตอร์แล้ว');
+    } else if (kind === 'graph') {
+      const g = parseGraphReply(res.text); if (!g.exprs.length || !window.math) throw { code: 'empty_completion' };
+      placeGraph(g, box);
+    } else if (kind === 'curve') {
+      const vv = (sec(parts, 'VAR') || 't | 0 | 6.2832').split('|').map((x) => x.trim());
+      const c = { polar: /polar/i.test(sec(parts, 'CURVE')), v: /^[A-Za-z]\w*$/.test(vv[0]) ? vv[0] : 't', t0: +vv[1], t1: +vv[2], x: sec(parts, 'X'), y: sec(parts, 'Y'), r: sec(parts, 'R'), caption: note };
+      if (!isFinite(c.t0) || !isFinite(c.t1) || c.t1 <= c.t0) { c.t0 = 0; c.t1 = 2 * Math.PI; }
+      const svg = window.math && curveSvg(c); if (!svg) throw { code: 'empty_completion' };
+      figPlace(svg, box, 440, note || 'สร้างเส้นโค้งแล้ว');
+    } else if (kind === 'molecule') {
+      const mols = [];
+      for (const p of parts.filter((q) => q.key === 'MOL')) for (const ln of [p.arg].concat(p.text ? p.text.split('\n') : [])) {
+        const f = ln.replace(/^@@\s*MOL\s*/i, '').split('|').map((x) => x.trim()); if (f.length < 2 || !f[1] || /\s/.test(f[1])) continue;
+        mols.push({ name: f[0].slice(0, 40), smiles: f[1].slice(0, 300), role: /react/i.test(f[2] || '') ? 'reactant' : /prod/i.test(f[2] || '') ? 'product' : '' });
+      }
+      const svg = mols.length ? await moleculeSvg(mols) : null; if (!svg) throw { code: 'empty_completion' };
+      figPlace(svg, box, Math.min(W - 40, 240 * Math.min(mols.length, 4)), note || 'วาดโครงสร้างโมเลกุลแล้ว');
     } else {
-      addItem(Object.assign({ x: Math.round(x), y: Math.round(y), w }, g));
-      toast('สร้างกราฟแล้ว เลื่อนแถบใต้กราฟเพื่อปรับค่า', 3000);
+      const mm = String(res.text || '').match(/<svg[\s\S]*<\/svg>/i), svg = cleanSvg(mm ? mm[0] : '');
+      if (!svg) throw { code: 'empty_completion' };
+      figPlace(svg, box, 460, (note ? note + ' ' : '') + '(รูปจาก AI ตรวจสัดส่วนก่อนใช้สอน)');
     }
   } catch (e) { toast(aiErr(e), 4500); }
   finally { S.pending = S.pending.filter((b) => b !== box); drawSelBox(); }
@@ -5372,6 +5686,38 @@ async function insertVideo(file) {
 
 /* ---------- export ---------- */
 let expScope = 'all';
+/* pages to export: picked on real miniatures of the pages, by preset, or by typing page numbers */
+const EXP = { sel: new Set() };
+function expSync() {
+  const pages = (S.nb && S.nb.pages) || [];
+  document.querySelectorAll('#expPages .pthumb').forEach((b) => b.setAttribute('aria-pressed', EXP.sel.has(b.dataset.pid) ? 'true' : 'false'));
+  const n = pages.filter((p) => EXP.sel.has(p)).length;
+  $('#bExpGo').textContent = n ? 'สร้างไฟล์ PDF ' + n + ' หน้า' : 'เลือกหน้าที่จะส่งออกก่อน'; $('#bExpGo').disabled = !n;
+  const all = n === pages.length, one = n === 1 && EXP.sel.has(S.pid);
+  $('#expScope').querySelectorAll('.chip').forEach((x) => x.setAttribute('aria-pressed', (x.dataset.v === 'all' && all) || (x.dataset.v === 'page' && one && !all) || (x.dataset.v === 'none' && !n) ? 'true' : 'false'));
+}
+function expRangeText() {
+  const pages = (S.nb && S.nb.pages) || [], idx = pages.map((p, i) => (EXP.sel.has(p) ? i + 1 : 0)).filter(Boolean), out = [];
+  for (let i = 0; i < idx.length; i++) { let j = i; while (j + 1 < idx.length && idx[j + 1] === idx[j] + 1) j++; out.push(j > i ? idx[i] + '-' + idx[j] : String(idx[i])); i = j; }
+  return out.join(', ');
+}
+function openExport() {
+  $('#expMsg').innerHTML = ''; $('#exportSheet').hidden = false;
+  const pages = (S.nb && S.nb.pages) || [], g = $('#expPages'); g.innerHTML = '';
+  EXP.sel = new Set(expScope === 'page' ? [S.pid] : pages);
+  const tick = '<span class="tick"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 10.5l3.2 3.2L15 7" fill="none" stroke="#FFFFFF" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span>';
+  const cvs = [];
+  pages.forEach((pid, i) => {
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'pthumb'; b.dataset.pid = pid;
+    b.innerHTML = '<span class="pc"><canvas></canvas></span>' + tick + '<b>หน้า ' + (i + 1) + (pid === S.pid ? ' (หน้านี้)' : '') + '</b>';
+    b.onclick = () => { if (EXP.sel.has(pid)) EXP.sel.delete(pid); else EXP.sel.add(pid); $('#expRange').value = expRangeText(); expSync(); };
+    g.appendChild(b); cvs.push([pid, b.querySelector('canvas')]);
+  });
+  $('#expRange').value = expRangeText(); expSync();
+  /* miniatures drawn one after another, the ones in view first */
+  (async () => { for (const [pid, cv] of cvs) { if ($('#exportSheet').hidden) return; try { await drawThumb(pid, cv); } catch (e) { /* leave blank */ } await new Promise((r) => setTimeout(r, 0)); } })();
+  const cur = g.querySelector('[data-pid="' + S.pid + '"]'); if (cur) setTimeout(() => cur.scrollIntoView({ block: 'nearest' }), 50);
+}
 async function exportPdf() {
   const msg = $('#expMsg');
   const say = (t, cls) => { msg.innerHTML = '<div class="note ' + (cls || '') + '">' + esc(t) + '</div>'; };
@@ -5381,7 +5727,8 @@ async function exportPdf() {
     say('กำลังเตรียมเครื่องมือสร้าง PDF');
     await Promise.all([loadLib('jspdf'), loadLib('h2c'), loadLib('math').catch(() => {})]);
     saveMine.flush(); savePage.flush();
-    const pids = expScope === 'all' ? (S.nb.pages || []) : [S.pid];
+    const pids = (S.nb.pages || []).filter((p) => EXP.sel.has(p));
+    if (!pids.length) { say('เลือกหน้าที่จะส่งออกก่อน', 'err'); return; }
     const pdf = new window.jspdf.jsPDF({ unit: 'mm', format: 'a4', compress: true, orientation: 'p' }); let pdfFirst = true;
     const host = document.createElement('div');
     host.style.cssText = 'position:fixed;left:-30000px;top:0;width:1000px;height:1414px;pointer-events:none';
@@ -16346,7 +16693,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793248762';
+const BUILD = '1793249415';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
@@ -17121,12 +17468,19 @@ document.addEventListener('keydown', (e) => { if ($('#deckView').hidden || DK.ed
 $('#dkWrap').addEventListener('click', (e) => { if (DK.edit || !$('#deckView').classList.contains('full')) return; const r = $('#dkWrap').getBoundingClientRect(); showDeck(e.clientX - r.left > r.width / 3 ? DK.i + 1 : DK.i - 1); });
 window.addEventListener('resize', () => { if (!$('#deckView').hidden) fitDeck(); });
 $('#sDel').onclick = deleteSel; $('#sClose').onclick = clearSel;
-$('#bExport').onclick = () => { $('#expMsg').innerHTML = ''; $('#exportSheet').hidden = false; };
+$('#bExport').onclick = openExport;
+$('#expRange').addEventListener('input', () => {
+  const pages = (S.nb && S.nb.pages) || [], v = $('#expRange').value, sel = new Set();
+  for (const part of v.split(/[,\s]+/).filter(Boolean)) { const m = part.match(/^(\d+)(?:-(\d+))?$/); if (!m) continue; let a = +m[1], z = m[2] ? +m[2] : a; if (z < a) [a, z] = [z, a]; for (let k = Math.max(1, a); k <= Math.min(pages.length, z); k++) sel.add(pages[k - 1]); }
+  EXP.sel = sel; expSync();
+});
 $('#bExpClose').onclick = closeSheets;
 $('#bExpGo').onclick = exportPdf;
-for (const [gid, setter] of [['#expScope', (v) => { expScope = v; }]]) {
-  $(gid).querySelectorAll('.chip').forEach((b) => { b.onclick = () => { setter(b.dataset.v); $(gid).querySelectorAll('.chip').forEach((x) => x.setAttribute('aria-pressed', x === b ? 'true' : 'false')); }; });
-}
+$('#expScope').querySelectorAll('.chip').forEach((b) => { b.onclick = () => {
+  const pages = (S.nb && S.nb.pages) || [], v = b.dataset.v;
+  if (v !== 'none') expScope = v;
+  EXP.sel = new Set(v === 'all' ? pages : v === 'page' ? [S.pid] : []); $('#expRange').value = expRangeText(); expSync();
+}; });
 vp.addEventListener('wheel', (e) => {
   e.preventDefault();
   if (e.ctrlKey || e.metaKey) {
