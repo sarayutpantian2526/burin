@@ -138,7 +138,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 /* stage */
 #stage { flex: 1; min-height: 0; display: flex; gap: 8px; position: relative; }
 #viewport { flex: 1; min-width: 0; position: relative; overflow: hidden; border-radius: var(--r); background: var(--desk); touch-action: none; }
-#wrap { position: absolute; left: 0; top: 0; transform-origin: 0 0; will-change: transform; }
+#wrap { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
 .fpeek { position: absolute; left: 0; background: #FFFFFF; box-shadow: 0 10px 34px rgba(20, 26, 34, 0.12); border-radius: 4px; overflow: hidden; }
 .fpeek > canvas { position: absolute; left: 0; top: 0; width: 100%; height: 100%; }
 .fpeek .fitems { position: absolute; left: 0; top: 0; transform-origin: 0 0; pointer-events: none; }
@@ -2868,7 +2868,7 @@ function flowSet(on) {
   document.querySelectorAll('#flowSeg button').forEach((b) => b.setAttribute('aria-pressed', (b.dataset.f === '1') === !!on ? 'true' : 'false'));
   renderPeeks().catch(() => {}); if (!on) { clampT(); applyT(); }
 }
-function applyT() { if (FLOW.on) flowCheckLater(); const zn = document.getElementById('zNum'); if (zn) { const pc = Math.round(S.zoom * 100); zn.classList.toggle('off', Math.abs(pc - 100) > 1); zn.title = pc === 100 ? 'พอดีหน้า' : 'ตอนนี้ ' + pc + '% แตะเพื่อกลับมาพอดีหน้า'; zn.setAttribute('aria-label', zn.title); } widthsLater(); wrapEl.style.transform = 'translate(' + S.tx + 'px,' + (S.ty + rubber(S.pull || 0)) + 'px) scale(' + S.zoom + ')'; if (S.watchers && !S.present) viewLater(); sharpLater(); }
+function applyT() { if (FLOW.on) flowCheckLater(); const zn = document.getElementById('zNum'); if (zn) { const pc = Math.round(S.zoom * 100); zn.classList.toggle('off', Math.abs(pc - 100) > 1); zn.title = pc === 100 ? 'พอดีหน้า' : 'ตอนนี้ ' + pc + '% แตะเพื่อกลับมาพอดีหน้า'; zn.setAttribute('aria-label', zn.title); } wrapEl.style.willChange = 'transform'; wrapEl.style.transform = 'translate(' + S.tx + 'px,' + (S.ty + rubber(S.pull || 0)) + 'px) scale(' + S.zoom + ')'; if (S.watchers && !S.present) viewLater(); sharpLater(); }
 function topY() { return S.tv ? 12 : 72; }
 function bounds() {
   const vw = vp.clientWidth, vh = vp.clientHeight;
@@ -3013,7 +3013,7 @@ function drawSharp() {
   cSharp.hidden = false;
 }
 function redrawLiveBoxes() { try { if (typeof SCN !== 'undefined') for (const [id, r] of SCN) { const it = findItem(id); if (it && r.cv && r.cv.isConnected) scRender(it, r); } for (const el of itemsEl.querySelectorAll('.item.sim')) { const it = findItem(el.dataset.id), cv = el.querySelector('canvas.simcv:not(.scncv)'); if (it && it.type === 'sim' && cv) simRender(it, cv, el.querySelector('.sro')); } } catch (e) { /* not ready yet */ } }
-function sharpLater() { clearTimeout(sharpT); sharpT = setTimeout(() => { drawSharp(); redrawLiveBoxes(); }, 160); }
+function sharpLater() { clearTimeout(sharpT); sharpT = setTimeout(() => { if (!P.size) wrapEl.style.willChange = 'auto'; drawSharp(); redrawLiveBoxes(); }, 160); }
 function drawBg() {
   if (!cSharp.hidden) sharpLater();
   const c = cBg.getContext('2d');
@@ -3379,6 +3379,7 @@ function diaryStroke(s) {
 }
 function diaryPenDown() { if (DIARY.pending.length) clearTimeout(DIARY.t); }
 function diaryPenUp() { if (DIARY.pending.length && !DIARY.busy) { clearTimeout(DIARY.t); DIARY.t = setTimeout(diaryAsk, 2600); } }
+for (const ev of ['pointerup', 'pointercancel']) window.addEventListener(ev, () => setTimeout(diaryPenUp, 0), true);
 async function diaryAsk() {
   if (DIARY.busy || !DIARY.pending.length || !diaryOn() || activeLive()) return;
   const refs = DIARY.pending.map((id) => ({ layer: DEV, id })).filter((r) => findStroke(r)); DIARY.pending = [];
@@ -6889,7 +6890,7 @@ function renderTips() {
 }
 function curW() { return S.widths[S.width] || WIDTHS[1]; }
 /* on-screen thickness of a pen line at normal pressure, so the buttons look exactly like what gets drawn */
-function screenW(w) { const a = PRS.flat ? 50 : clamp(PRS.avg, 15, 100); return w * (0.42 + 1.15 * a / 100) * (S.base || 1) * (S.zoom || 1); }
+function screenW(w) { const a = PRS.flat ? 50 : clamp(PRS.avg, 15, 100); return w * (0.42 + 1.15 * a / 100) * (S.base || 1); }
 function renderWidths() {
   const show = S.tool === 'pen' || S.tool === 'shape';
   for (const id of ['#widths', '#dockWidths']) {
@@ -6899,7 +6900,7 @@ function renderWidths() {
       const b = document.createElement('button'); b.className = 'wd'; b.type = 'button';
       b.setAttribute('aria-label', ['เส้นบาง', 'เส้นกลาง', 'เส้นหนา'][i] + ' ' + fmtW(w));
       b.setAttribute('aria-pressed', i === S.width ? 'true' : 'false');
-      const px = Math.max(1, screenW(w));
+      const px = clamp(screenW(w), 1, 14);
       b.innerHTML = '<span style="height:' + px.toFixed(1) + 'px;background:' + (okHex(S.color) ? S.color : '') + '"></span>';
       b.onclick = () => {
         if (id === '#dockWidths' && i === S.width) { openWidthPop(); return; }
@@ -17272,7 +17273,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793260594';
+const BUILD = '1793260797';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
