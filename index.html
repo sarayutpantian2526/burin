@@ -138,6 +138,14 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 #stage { flex: 1; min-height: 0; display: flex; gap: 8px; position: relative; }
 #viewport { flex: 1; min-width: 0; position: relative; overflow: hidden; border-radius: var(--r); background: var(--desk); touch-action: none; }
 #wrap { position: absolute; left: 0; top: 0; transform-origin: 0 0; will-change: transform; }
+.fpeek { position: absolute; left: 0; background: #FFFFFF; box-shadow: 0 10px 34px rgba(20, 26, 34, 0.12); border-radius: 4px; overflow: hidden; }
+.fpeek > canvas { position: absolute; left: 0; top: 0; width: 100%; height: 100%; }
+.fpeek .fitems { position: absolute; left: 0; top: 0; transform-origin: 0 0; pointer-events: none; }
+.fpeek .fitems .item { pointer-events: none; }
+.fpeek .plabel { position: absolute; right: 10px; top: 8px; padding: 2px 10px; border-radius: 999px; background: rgba(20,26,34,0.06); color: #4A5260; font: 600 12px var(--ui); }
+body.flow:not(.flowlast) #bAddBelow { display: none; }
+.flowseg { display: flex; gap: 4px; margin: 6px 0 2px; }
+.flowseg button { flex: 1 1 0; font-size: 12.5px; }
 #page { position: relative; background: #FFFFFF; box-shadow: 0 10px 34px rgba(20, 26, 34, 0.16); border-radius: 4px; }
 #page > canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 #page > #cSharp { inset: auto; pointer-events: none; }
@@ -1122,6 +1130,7 @@ body.role-student .scnpill .sbtns button[data-s="back"], body.role-student .scnp
   <div id="stage">
     <aside class="drawer" id="pages" hidden aria-label="หน้าในสมุด">
       <header><span class="ph"><b>หน้า</b><small id="pageCount"></small></span><button class="btn icon" id="bAddPage" aria-label="เพิ่มหน้าต่อจากหน้านี้" title="เพิ่มหน้าต่อจากหน้านี้"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 4v12 M4 10h12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button></header>
+      <div class="seg flowseg" id="flowSeg" role="group" aria-label="วิธีเปลี่ยนหน้า"><button type="button" data-f="0">เปลี่ยนทีละหน้า</button><button type="button" data-f="1">เลื่อนต่อเนื่อง</button></div>
       <div class="body pbody">
         <div id="pageList" class="pgrid" role="list"></div>
       </div>
@@ -1138,6 +1147,7 @@ body.role-student .scnpill .sbtns button[data-s="back"], body.role-student .scnp
     <div class="diarybar no-ink" id="diaryBar" hidden role="status"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M15.5 2.8c-4.6.6-8.3 4.6-9.6 10.4l-.9 3.9 M15.5 2.8c.4 3.8-2.4 7.6-7.3 8.6 M5.3 13.6c1.8.2 3.4-.4 4.6-1.6 M3.5 17.2h7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><b>โหมดสมุดตอบได้</b><span>เขียนถึงสมุด แล้ววางปากกาสักครู่ สมุดจะเขียนตอบ</span><button type="button" id="bDiaryOff">ปิดโหมด</button></div>
     <div id="viewport">
       <div id="wrap">
+        <div class="fpeek" id="peekPrev" hidden aria-hidden="true"></div>
         <div id="page">
           <canvas id="cBg" aria-hidden="true"></canvas>
           <canvas id="cInk" role="img" aria-label="ลายมือในหน้านี้"></canvas>
@@ -1146,6 +1156,7 @@ body.role-student .scnpill .sbtns button[data-s="back"], body.role-student .scnp
           <div id="items"></div>
           <svg id="sel" viewBox="0 0 1000 1414" preserveAspectRatio="none" aria-hidden="true"></svg>
         </div>
+        <div class="fpeek" id="peekNext" hidden aria-hidden="true"></div>
         <button class="addpage no-ink" id="bAddBelow"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 4v12 M4 10h12" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>เพิ่มหน้าต่อจากหน้านี้</button>
       </div>
 
@@ -1345,6 +1356,7 @@ body.role-student .scnpill .sbtns button[data-s="back"], body.role-student .scnp
     <div class="note">ใช้ตอนแชร์หน้าจอหรือฉายขึ้นทีวี ผู้ชมจะเห็นเฉพาะกระดาษและสิ่งที่อยู่บนกระดาษ ไม่เห็นแถบเครื่องมือ จอผู้ชมจะเปลี่ยนหน้าและเลื่อนตามเครื่องที่เขียน เห็นลายมือและเลเซอร์ทันที<br><br>เปิดแอปนี้อีกหน้าต่างหนึ่งหรือบนอีกเครื่อง แล้วกดปุ่มด้านล่าง จากนั้นแชร์เฉพาะหน้าต่างนั้นในโปรแกรมประชุม ออกจากจอผู้ชมได้ด้วยการแตะจอสามครั้งติดกัน</div>
     <button class="btn" id="bPresent">ใช้หน้าต่างนี้เป็นจอผู้ชม</button>
     <h3>การเขียนและจอ</h3>
+    <div class="switch"><span><b>เลื่อนหน้าต่อเนื่อง</b><small>เห็นท้ายหน้าก่อนและต้นหน้าถัดไปต่อกัน เลื่อนขึ้นลงข้ามหน้าได้เหมือนม้วนกระดาษ ปิดไว้ จะเปลี่ยนทีละหน้า</small></span><button class="tg" id="tgFlow" role="switch" aria-checked="false" aria-label="เลื่อนหน้าต่อเนื่อง"></button></div>
     <div class="switch"><span><b>นิ้ววาดได้</b><small>ปิดไว้ นิ้วจะใช้เลื่อนและซูม ปากกาเขียนอย่างเดียว ระบบปิดให้เองเมื่อพบปากกา</small></span><button class="tg" id="tgFinger" role="switch" aria-checked="true" aria-label="นิ้ววาดได้"><i></i></button></div>
     <div class="switch"><span><b>วางฝ่ามือเพื่อลบ</b><small>สำหรับทีวีทัชสกรีนที่บอกขนาดพื้นที่สัมผัสได้</small></span><button class="tg" id="tgPalm" role="switch" aria-checked="true" aria-label="วางฝ่ามือเพื่อลบ"><i></i></button></div>
     <div class="switch"><span><b>ลากค้างให้เป็นรูปทรง</b><small>ลากเส้นแล้วกดค้างไว้ครู่หนึ่ง จะได้เส้นตรง วงกลม วงรี สามเหลี่ยม หรือสี่เหลี่ยม เส้นตรงลากปรับปลายต่อได้ก่อนยกปากกา</small></span><button class="tg" id="tgShape" role="switch" aria-checked="true" aria-label="ลากค้างให้เป็นรูปทรง"><i></i></button></div>
@@ -2498,7 +2510,65 @@ function setSync(s) {
 /* ---------- geometry ---------- */
 function rubber(p) { return Math.sign(p) * Math.min(110, Math.abs(p) * 0.4); }
 const widthsLater = debounce(() => { if (typeof renderWidths === 'function') renderWidths(); }, 200);
-function applyT() { const zn = document.getElementById('zNum'); if (zn) zn.textContent = Math.round(S.zoom * 100) + '%'; widthsLater(); wrapEl.style.transform = 'translate(' + S.tx + 'px,' + (S.ty + rubber(S.pull || 0)) + 'px) scale(' + S.zoom + ')'; if (S.watchers && !S.present) viewLater(); sharpLater(); }
+/* ----- continuous pages: the page before and after are shown above and below, scrolling past the edge of a page
+   simply carries on into the next one, and that page becomes the one you write on ----- */
+const FLOW = { gap: 28, on: store_ls.get('tp-flow') === '1', ver: 0, dims: { prev: null, next: null }, busy: false };
+function flowNb() { const pages = (S.nb && S.nb.pages) || [], i = pages.indexOf(S.pid); return { prev: i > 0 ? pages[i - 1] : null, next: i >= 0 && i < pages.length - 1 ? pages[i + 1] : null }; }
+async function renderPeeks() {
+  const P1 = $('#peekPrev'), P2 = $('#peekNext'); if (!P1) return; const v = ++FLOW.ver;
+  const off = !FLOW.on || S.present || !S.nb;
+  document.body.classList.toggle('flow', !off);
+  if (off) { P1.hidden = P2.hidden = true; P1.innerHTML = P2.innerHTML = ''; FLOW.dims = { prev: null, next: null }; return; }
+  const nb = flowNb(); document.body.classList.toggle('flowlast', !nb.next);
+  for (const [el, pid, which] of [[P1, nb.prev, 'prev'], [P2, nb.next, 'next']]) {
+    if (!pid) { el.hidden = true; el.innerHTML = ''; el.dataset.pid = ''; FLOW.dims[which] = null; continue; }
+    const { page, strokes } = await pageData(pid); if (v !== FLOW.ver) return;
+    const [pw, ph] = pageDims(page); FLOW.dims[which] = [pw, ph];
+    el.dataset.pid = pid; el.style.width = pw * S.base + 'px'; el.style.height = ph * S.base + 'px';
+    el.style.top = (which === 'prev' ? -(ph * S.base + FLOW.gap) : H * S.base + FLOW.gap) + 'px';
+    el.innerHTML = '';
+    const cv = document.createElement('canvas'), dpr = Math.min(2, window.devicePixelRatio || 1), k = Math.min(pw * S.base * dpr * clamp(S.zoom, 1, 1.6), 2000) / pw;
+    cv.width = Math.round(pw * k); cv.height = Math.round(ph * k);
+    const c = cv.getContext('2d'); c.setTransform(k, 0, 0, k, 0, 0); const keep = [W, H]; W = pw; H = ph; c.fillStyle = '#FFFFFF'; c.fillRect(0, 0, W, H); try { paper(c, (page && page.paper) || 'grid'); } catch (e) { /* plain */ } [W, H] = keep;
+    drawInto(c, strokes, null); el.appendChild(cv);
+    const lay = document.createElement('div'); lay.className = 'fitems'; lay.style.width = pw + 'px'; lay.style.height = ph + 'px'; lay.style.transform = 'scale(' + S.base + ')';
+    for (const it of (page && page.items) || []) { if (it.teacher && isStudentSide()) continue; try { lay.appendChild(buildItemEl(it, true)); } catch (e) { /* skip */ } }
+    el.appendChild(lay); lay.querySelectorAll('.item').forEach((x) => { try { typeset(x); } catch (e) { /* plain */ } });
+    const lb = document.createElement('div'); lb.className = 'plabel'; lb.textContent = 'หน้า ' + ((S.nb.pages || []).indexOf(pid) + 1); el.appendChild(lb);
+    el.hidden = false;
+  }
+  clampT(); applyT();
+}
+const renderPeeksLater = debounce(() => { renderPeeks().catch(() => {}); }, 120);
+/* move onto the neighbouring page without the view jumping: its position on screen stays where it was */
+function flowGo(d) {
+  const nb = flowNb(), pid = d < 0 ? nb.prev : nb.next; if (!pid || FLOW.busy) return false;
+  const dimPrev = FLOW.dims.prev, cur = [W, H];
+  if (d < 0 && !dimPrev) return false;
+  FLOW.busy = true;
+  S.ty += d < 0 ? -(dimPrev[1] * S.base + FLOW.gap) * S.zoom : (cur[1] * S.base + FLOW.gap) * S.zoom;
+  FLOW.dims = d < 0 ? { prev: null, next: cur } : { prev: cur, next: null };
+  openPage(pid); applyT();
+  renderPeeks().catch(() => {}).finally(() => { FLOW.busy = false; });
+  return true;
+}
+function flowCheck() {
+  if (!FLOW.on || S.present || FLOW.busy || !S.nb) return;
+  for (const p of P.values()) if (p.mode && p.mode !== 'pan') return;
+  /* after writing moved onto a page, stay on it until the page is actually scrolled */
+  if (FLOW.lockTy != null) { if (Math.abs(S.ty - FLOW.lockTy) < 60) return; FLOW.lockTy = null; }
+  const cy = (vp.clientHeight / 2 - S.ty) / S.zoom, nb = flowNb();
+  if (nb.prev && FLOW.dims.prev && cy < -FLOW.gap / 2) flowGo(-1);
+  else if (nb.next && FLOW.dims.next && cy > H * S.base + FLOW.gap / 2) flowGo(1);
+}
+const flowCheckLater = debounce(flowCheck, 60);
+function flowSet(on) {
+  FLOW.on = !!on; store_ls.set('tp-flow', on ? '1' : '0');
+  const t = $('#tgFlow'); if (t) t.setAttribute('aria-checked', on ? 'true' : 'false');
+  document.querySelectorAll('#flowSeg button').forEach((b) => b.setAttribute('aria-pressed', (b.dataset.f === '1') === !!on ? 'true' : 'false'));
+  renderPeeks().catch(() => {}); if (!on) { clampT(); applyT(); }
+}
+function applyT() { if (FLOW.on) flowCheckLater(); const zn = document.getElementById('zNum'); if (zn) zn.textContent = Math.round(S.zoom * 100) + '%'; widthsLater(); wrapEl.style.transform = 'translate(' + S.tx + 'px,' + (S.ty + rubber(S.pull || 0)) + 'px) scale(' + S.zoom + ')'; if (S.watchers && !S.present) viewLater(); sharpLater(); }
 function topY() { return S.tv ? 12 : 72; }
 function bounds() {
   const vw = vp.clientWidth, vh = vp.clientHeight;
@@ -2506,7 +2576,8 @@ function bounds() {
   const mx = Math.min(80, vw / 3);
   return {
     x0: pw < vw ? mx - pw * 0.5 : vw - pw - mx, x1: pw < vw ? vw - mx - pw * 0.5 : mx,
-    y0: Math.min(vh - ph - 16, topY()), y1: topY()
+    y0: Math.min(vh - ph - 16, topY()) - (FLOW.on && FLOW.dims.next ? (FLOW.dims.next[1] * S.base + FLOW.gap) * S.zoom : 0),
+    y1: topY() + (FLOW.on && FLOW.dims.prev ? (FLOW.dims.prev[1] * S.base + FLOW.gap) * S.zoom : 0)
   };
 }
 function clampT() { const b = bounds(); S.tx = clamp(S.tx, b.x0, b.x1); S.ty = clamp(S.ty, b.y0, b.y1); }
@@ -2564,6 +2635,7 @@ function fit() {
   S.ty = topY(); S.pull = 0;
   applyT();
   resizeCanvases(true);
+  if (FLOW.on) renderPeeksLater();
 }
 function resizeCanvases(force) {
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -3104,6 +3176,8 @@ vp.addEventListener('contextmenu', (e) => e.preventDefault());
 
 function onDown(e) {
   if (DIARY.pending.length) diaryPenDown();
+  /* writing on the page shown above or below moves onto that page first */
+  if (FLOW.on && !S.present && drawTool() && (e.pointerType !== 'touch' || S.finger) && !e.target.closest('button,input,select,textarea,.item.live')) { const [, ly] = toLogical(e.clientX, e.clientY); if ((ly < -4 && flowGo(-1)) || (ly > H + 4 && flowGo(1))) FLOW.lockTy = S.ty; }
   /* the grab bar of a video, and the title bar of a graph or simulation, pick the item up with any tool */
   if (!S.present && e.target.closest('.item .tsize')) {
     const el = e.target.closest('.item'), it = el && findItem(el.dataset.id);
@@ -4060,7 +4134,7 @@ function openPage(pid) {
   S.undo = []; S.redo = []; updUndo(); clearSel();
   if (S.unsub.page) S.unsub.page();
   if (S.unsub.layers) S.unsub.layers();
-  drawBg(); drawInk(); renderItems(); renderTitle(); renderPageList();
+  drawBg(); drawInk(); renderItems(); renderTitle(); renderPageList(); if (FLOW.on && !FLOW.busy) renderPeeksLater();
   S.unsub.page = S.store.watchDoc('pages/' + pid, (doc, meta) => {
     if (pid !== S.pid || !doc) return;
     if (savePage.pending() || (meta && meta.hasPendingWrites)) return;
@@ -4076,7 +4150,8 @@ function openPage(pid) {
     for (const d of list) {
       if (d.id === DEV) {
         const rev = d.rev || 0;
-        if (!S.ownLoaded || (!saveMine.pending() && !S.saving && rev > S.myRev)) { S.mine = clone(d.strokes || []); S.myRev = rev; }
+        if (!S.ownLoaded && S.mine.length) { /* written on this page before its saved lines arrived (just moved onto it): keep both */ const have = new Set((d.strokes || []).map((x) => x.id)); S.mine = clone(d.strokes || []).concat(S.mine.filter((x) => !have.has(x.id))); S.myRev = rev; saveMine(); }
+        else if (!S.ownLoaded || (!saveMine.pending() && !S.saving && rev > S.myRev)) { S.mine = clone(d.strokes || []); S.myRev = rev; }
       } else others[d.id] = clone(d.strokes || []);
     }
     S.ownLoaded = true;
@@ -12248,7 +12323,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793240960';
+const BUILD = '1793241622';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
@@ -12921,6 +12996,9 @@ function setDockPos(fx, fy) {
   window.addEventListener('resize', debounce(() => { try { const p = JSON.parse(store_ls.get('tp-dock') || 'null'); if (Array.isArray(p)) setDockPos(p[0], p[1]); else placeDock(); } catch (e) { placeDock(); } }, 200));
   try { const p = JSON.parse(store_ls.get('tp-dock') || 'null'); if (Array.isArray(p) && isFinite(p[0]) && isFinite(p[1])) setTimeout(() => setDockPos(p[0], p[1]), 0); } catch (e) {}
 })();
+$('#tgFlow').onclick = () => flowSet(!FLOW.on);
+document.querySelectorAll('#flowSeg button').forEach((b) => { b.onclick = () => flowSet(b.dataset.f === '1'); });
+flowSet(FLOW.on);
 $('#tgTV').onclick = () => { S.tv = !S.tv; store_ls.set('tp-tv', S.tv ? '1' : '0'); if (S.tv) { S.finger = true; S.palm = true; } syncToggles(); fit(); };
 $('#bAI').onclick = () => { const el = $('#ai'); el.hidden = !el.hidden; $('#bAI').setAttribute('aria-pressed', el.hidden ? 'false' : 'true'); setTimeout(fit, 0); };
 $('#bAIClose').onclick = () => { $('#ai').hidden = true; $('#bAI').setAttribute('aria-pressed', 'false'); setTimeout(fit, 0); };
