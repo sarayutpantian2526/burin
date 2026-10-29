@@ -173,6 +173,7 @@ body.flow:not(.flowlast) #bAddBelow { display: none; }
 .item.teacher::before { content: "เฉลย"; display: block; font-family: var(--ui); font-size: 13px; font-weight: 700; color: #8A4A0C; }
 .item.svg { padding: 0; }
 .item.svg svg { width: 100%; height: auto; display: block; }
+.item.diary { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
 .item.editing { -webkit-user-select: text; user-select: text; -webkit-touch-callout: default; cursor: text; outline: 2px dashed #2F4BB8; background: rgba(229, 234, 250, 0.6); white-space: pre-wrap; font-family: var(--doc); }
 .item mjx-container { display: inline-block; }
 .item { overflow-wrap: break-word; word-break: normal; line-break: auto; hyphens: manual; }
@@ -3263,7 +3264,7 @@ const okAsset = (id) => /^[A-Za-z0-9_-]{8,80}$/.test(String(id || ''));
 function buildItemEl(it, forExport) {
   const d = document.createElement('div');
   const media = it.type === 'img' || it.type === 'video';
-  d.className = 'item' + (it.lock ? ' locked' : '') + (it.teacher ? ' teacher' : '') + (it.type === 'svg' ? ' svg' : '') + (media ? ' media' : '')
+  d.className = 'item' + (it.diary ? ' diary' : '') + (it.lock ? ' locked' : '') + (it.teacher ? ' teacher' : '') + (it.type === 'svg' ? ' svg' : '') + (media ? ' media' : '')
     + (it.type === 'graph' || it.type === 'sim' || it.type === 'lab' || it.type === 'scene' ? ' graph' : '') + (it.type === 'sim' || it.type === 'scene' ? ' sim' : '') + ((it.type === 'graph' || it.type === 'video' || it.type === 'sim' || it.type === 'lab' || it.type === 'scene') && !forExport ? ' live no-ink' : '');
   d.style.left = it.x + 'px'; d.style.top = it.y + 'px'; d.style.width = (it.w || 600) + 'px';
   if (it.fs) d.style.fontSize = clamp(+it.fs || 24, 12, 80) + 'px';
@@ -3655,9 +3656,10 @@ function beginTool(pt, e) {
     pt.live = null;
     addPoint(pt, x, y, pr(e));
     armHold(pt, x, y);
-    /* press and hold on a picture, graph or text box (without moving) to pick it up */
-    const hit = itemAt(x, y);
-    const shp = hit ? null : (() => { const r = strokeAt(x, y); return r && r.length && (findStroke(r[0]) || {}).g ? r : null; })();
+    /* press and hold on a picture, graph or text box (without moving) to pick it up;
+       the notebook's own replies are written on, not picked up: they move only by their handle */
+    const hit0 = itemAt(x, y), hit = hit0 && !hit0.diary ? hit0 : null;
+    const shp = hit0 ? null : (() => { const r = strokeAt(x, y); return r && r.length && (findStroke(r[0]) || {}).g ? r : null; })();
     if (hit || shp) pt.itemT = setTimeout(() => {
       if (P.get(pt.id) !== pt || pt.mode !== 'draw' || pt.moved > 10) return;
       clearTimeout(pt.holdT); clearLive();
@@ -17292,7 +17294,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793262334';
+const BUILD = '1793263017';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
