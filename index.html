@@ -3406,8 +3406,10 @@ async function diaryAsk() {
     /* a full-width note across the page, placed where there is no writing yet */
     /* write back at the size they wrote: the typical height of their strokes sets the letter size */
     const hs = refs.map((r) => { const st = findStroke(r), bb = st && sbox(st); return bb ? bb[3] - bb[1] : 0; }).filter((v) => v > 4).sort((a, b) => a - b);
-    const hMid = hs.length ? hs[Math.floor(hs.length / 2)] : 26;
-    const fs = Math.round(clamp(hMid * 1.15, 14, 80)), w = Math.round(clamp(W - 80, 320, 1100));
+    /* small strokes are vowel and tone marks: leave them out, the letter bodies set the size; a Thai letter body is about 0.6 of the font size */
+    const p75 = hs.length ? hs[Math.floor(hs.length * 0.75)] : 0, body = hs.filter((v) => v >= p75 * 0.45);
+    const hMid = body.length ? body[Math.floor(body.length / 2)] : 16;
+    const fs = Math.round(clamp(hMid / 0.6, 14, 140)), w = Math.round(clamp(W - 80, 320, 1100));
     const h = estTextH(text, w, fs) * 1.25 + 10;
     let at = [Math.round((W - w) / 2), box[3] + 16];
     const hit = (x, y) => occupiedBoxes().some((b) => x < b[2] + 10 && x + w > b[0] - 10 && y < b[3] + 10 && y + h > b[1] - 10);
@@ -3452,18 +3454,19 @@ function diaryWriteIn(id) {
     if (!el.isConnected) return;
     if (i >= marks.length) { setTimeout(() => { svg.remove(); el.classList.remove('writing'); }, 900); return; }
     const g = marks[i++], c = g.textContent, t = place(g);
-    const dur = t ? 260 + Math.random() * 160 + (c.length > 1 ? 120 : 0) : 0;
+    const dur = t ? 520 + Math.random() * 260 + (c.length > 1 ? 220 : 0) : 0;
     if (t) {
       /* the outline is traced first, then the ink fills in, then the real letter takes over */
       t.animate([{ strokeDashoffset: L, fillOpacity: 0, strokeOpacity: 1 }, { strokeDashoffset: 0, fillOpacity: 0, strokeOpacity: 1, offset: 0.7 }, { strokeDashoffset: 0, fillOpacity: 1, strokeOpacity: 0 }], { duration: dur, easing: 'ease-in-out', fill: 'forwards' })
         .finished.then(() => { g.classList.add('on'); t.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 300, fill: 'forwards' }); }).catch(() => { g.classList.add('on'); });
     } else g.classList.add('on');
     /* the next letter starts before this one is quite finished, the way a hand moves on; longer breaths between words and sentences */
-    let ms = dur * 0.6 + Math.random() * 40;
-    if (c === ' ') ms = 140 + Math.random() * 120;
-    else if (/[,;:]/.test(c)) ms += 220;
-    else if (/[.!?ฯ]/.test(c)) ms += 480 + Math.random() * 240;
-    if (Math.random() < 0.05) ms += 200;
+    /* an everyday writing pace: about two letters a second */
+    let ms = dur * 0.8 + Math.random() * 80;
+    if (c === ' ') ms = 320 + Math.random() * 260;
+    else if (/[,;:]/.test(c)) ms += 450;
+    else if (/[.!?ฯ]/.test(c)) ms += 900 + Math.random() * 400;
+    if (Math.random() < 0.06) ms += 350;
     setTimeout(step, ms);
   };
   setTimeout(step, 250);
@@ -17269,7 +17272,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793260234';
+const BUILD = '1793260594';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
