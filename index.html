@@ -504,6 +504,9 @@ body.tv .peek.big { width: 660px; }
 .item.locked, .item.locked img { border-radius: 0; box-shadow: none; }
 .item.locked img { background: #FFFFFF; }
 .item.media img, .item.media video { width: 100%; height: auto; display: block; border-radius: 6px; background: #EEF1F5; }
+/* a picture with its background cut out sits straight on the paper */
+.item.media img[src] { background: transparent; }
+.item.media video { background: #EEF1F5; }
 .item .vbar { display: flex; align-items: center; gap: 6px; height: 34px; padding: 0 10px; margin-bottom: 4px; border-radius: 8px; background: #2A313C; color: #DCE2EA; font-family: var(--ui); font-size: 12px; cursor: grab; touch-action: none; }
 .item .vbar svg { width: 16px; height: 16px; flex: none; }
 .item.graph .gh { cursor: grab; touch-action: none; }
@@ -1311,6 +1314,35 @@ body.tv .livepill { bottom: 14px; }
 .item .tsize svg { width: 58%; height: 58%; }
 body.present .item .tsize, body.role-student .item .tsize { display: none; }
 .item.sim .scncv { height: auto !important; aspect-ratio: 16 / 10; }
+.cutsheet .panel { width: min(980px, 96vw); display: flex; flex-direction: column; gap: 10px; }
+.cutsheet .cuth { display: flex; justify-content: space-between; align-items: center; }
+.cutsheet .cutbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.cutsheet .seg button[aria-pressed="true"] { background: var(--accent, #2F4BB8); color: #fff; }
+.cutsheet .cutsl { display: flex; flex-wrap: wrap; gap: 14px; font-size: 13px; }
+.cutsheet .cutsl label { display: flex; gap: 8px; align-items: center; }
+.cutsheet .cutview { display: flex; justify-content: center; align-items: center; min-height: 200px; max-height: 62vh; border-radius: 12px; overflow: hidden;
+  background-color: #FFFFFF; background-image: linear-gradient(45deg, #E3E7EE 25%, transparent 25%), linear-gradient(-45deg, #E3E7EE 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #E3E7EE 75%), linear-gradient(-45deg, transparent 75%, #E3E7EE 75%); background-size: 20px 20px; background-position: 0 0, 0 10px, 10px -10px, -10px 0; }
+.cutsheet .cutview canvas { max-width: 100%; max-height: 62vh; touch-action: none; cursor: crosshair; display: block; }
+.cutsheet .cutfoot { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+.cutsheet .cutfoot small { color: var(--muted, #667); }
+.solvep { position: fixed; z-index: 45; right: 16px; top: 90px; width: min(440px, calc(100vw - 32px)); max-height: calc(100vh - 120px); overflow-y: auto; box-sizing: border-box; padding: 14px; border-radius: 16px; background: var(--surface, #fff); color: var(--fg); box-shadow: var(--shadow); display: grid; gap: 10px; }
+.solvep[hidden] { display: none; }
+.solvep .sph { display: flex; justify-content: space-between; align-items: center; }
+.solvep .spin { display: grid; gap: 4px; font-size: 12.5px; color: var(--muted, #667); }
+.solvep .spin input { font: 15px ui-monospace, Menlo, monospace; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--line, rgba(0,0,0,.15)); background: var(--surface); color: var(--fg); }
+.solvep .spk { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 13px; }
+.solvep .spres { display: grid; gap: 6px; font-size: 19px; padding: 8px 4px; }
+.solvep .spa { color: var(--muted, #667); font-size: 16px; }
+.solvep .spsteps { font-size: 15px; line-height: 1.7; }
+/* a graph sits on the paper itself: no card, no border, the page shows through; its title and edit button stay small and quiet */
+.item.graph.gplain { background: transparent; border: 0; box-shadow: none; padding: 2px 4px 4px; }
+.item.graph.gplain .gh { font-size: 13px; font-weight: 600; color: #5A6474; margin-bottom: 0; }
+.item.graph.gplain .gh button { min-height: 28px; padding: 0 10px; font-size: 12px; background: rgba(255,255,255,0.7); border-color: rgba(0,0,0,0.1); opacity: 0.55; }
+.item.graph.gplain .gh button:hover, .item.graph.gplain.sel .gh button { opacity: 1; }
+.item.graph.gplain .gsl { font-size: 13px; }
+.item.graph.gplain .gplot rect[stroke="#C9D2DE"] { stroke: none; }
+.item.graph.gplain .gsl input[type="range"] { height: 26px; }
+.page-dark .item.graph.gplain .gh, .darkpaper .item.graph.gplain .gh { color: #C9D2E3; }
 .item.graph.bare { background: none; border: 0; box-shadow: none; padding: 0; pointer-events: none; }
 .item.sim.bare .scncv { height: var(--bh) !important; aspect-ratio: auto; border-radius: 0; pointer-events: none; }
 .item.bare .tgrab, .item.bare .tsize { display: none; }
@@ -1510,7 +1542,7 @@ body.role-student .scnpill .sbtns button[data-s="back"], body.role-student .scnp
 
       <div class="selbar no-ink" id="selbar" role="toolbar" aria-label="ส่วนที่เลือก" hidden>
         <span class="count" id="selCount"></span>
-        <span class="sg" id="sgInk"><button id="sJoin"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M3 6h16 M3 11h10 M3 16h7 M14 13.5l3 2.5-3 2.5 M10 16h7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span>ต่อบรรทัด</span></button><button id="sQuiz" class="main"><svg viewBox="0 0 22 22" aria-hidden="true"><rect x="3.5" y="3" width="15" height="16" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M7 8h8 M7 11.5h8 M7 15h5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span>สร้างโจทย์</span></button><button id="sRead" class="main"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M3 15c2-3 3-7 4.5-7s.5 5 2 5 2-6 3.5-6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M13 4.5h6 M16 4.5v8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span>เป็นตัวพิมพ์</span></button><button id="sHand" class="main"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M3 16c2.5-1 3.5-9 6-9 1.6 0 .4 6 2.4 6 1.8 0 2.4-4 4.1-4 1.2 0 1 3 2.5 3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M3 19h16" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg><span>ลายมือสวย</span></button><button id="sEq"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M3.5 8h6 M3.5 12.5h6 M13 6.5l5 7 M18 6.5l-5 7" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg><span>เป็นสมการ</span></button><button id="sGraph" title="สร้างรูปจากสมการ: เวกเตอร์ 2 และ 3 มิติ กราฟ เส้นโค้งพาราเมตริกและเชิงขั้ว โครงสร้างโมเลกุล หรือแผนภาพ"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M4 3.5v14h14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M5.5 14c3-1 4-8 7-8s3 4 5 4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span>สร้างรูป</span></button><button id="sAnim"><svg viewBox="0 0 22 22" aria-hidden="true"><circle cx="7" cy="14" r="3.2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M11 14h7 M15.5 11.5L18 14l-2.5 2.5 M7 10.5V4 M4.5 6.5L7 4l2.5 2.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span>ขยับได้</span></button><button id="sTidy"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M4 17l4-1 9-9-3-3-9 9z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M15.5 13.5l1 2 2 1-2 1-1 2-1-2-2-1 2-1z" fill="currentColor"/></svg><span>วาดใหม่</span></button><button id="sGen"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M11 3l1.8 4.6 4.7 1.9-4.7 1.9L11 16l-1.8-4.6L4.5 9.5l4.7-1.9z" fill="currentColor"/></svg><span>สร้างโจทย์</span></button><button id="sMedia"><svg viewBox="0 0 22 22" aria-hidden="true"><rect x="3" y="4.5" width="16" height="13" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M3.5 15l4.5-4.5 3.5 3.5 2-2 5 4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg><span>หาสื่อ</span></button></span>
+        <span class="sg" id="sgInk"><button id="sJoin"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M3 6h16 M3 11h10 M3 16h7 M14 13.5l3 2.5-3 2.5 M10 16h7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span>ต่อบรรทัด</span></button><button id="sQuiz" class="main"><svg viewBox="0 0 22 22" aria-hidden="true"><rect x="3.5" y="3" width="15" height="16" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M7 8h8 M7 11.5h8 M7 15h5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span>สร้างโจทย์</span></button><button id="sRead" class="main"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M3 15c2-3 3-7 4.5-7s.5 5 2 5 2-6 3.5-6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M13 4.5h6 M16 4.5v8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span>เป็นตัวพิมพ์</span></button><button id="sHand" class="main"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M3 16c2.5-1 3.5-9 6-9 1.6 0 .4 6 2.4 6 1.8 0 2.4-4 4.1-4 1.2 0 1 3 2.5 3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M3 19h16" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg><span>ลายมือสวย</span></button><button id="sEq"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M3.5 8h6 M3.5 12.5h6 M13 6.5l5 7 M18 6.5l-5 7" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg><span>เป็นสมการ</span></button><button id="sGraph" title="สร้างรูปจากสมการ: เวกเตอร์ 2 และ 3 มิติ กราฟ เส้นโค้งพาราเมตริกและเชิงขั้ว โครงสร้างโมเลกุล หรือแผนภาพ"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M4 3.5v14h14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M5.5 14c3-1 4-8 7-8s3 4 5 4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span>สร้างรูป</span></button><button id="sCut" title="ตัดพื้นหลังของรูป"><svg viewBox="0 0 22 22" aria-hidden="true"><circle cx="6" cy="6" r="2.6" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="6" cy="16" r="2.6" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M8.2 7.4L18 15 M8.2 14.6L18 7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span>ตัดพื้นหลัง</span></button><button id="sSolve" title="แก้สมการ ระบบสมการ อนุพันธ์ อินทิเกรต ลิมิต แยกตัวประกอบ"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M4 8h6 M4 12h6 M13 6l5 6 M18 6l-5 6 M13 16h5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span>แก้สมการ</span></button><button id="sAnim"><svg viewBox="0 0 22 22" aria-hidden="true"><circle cx="7" cy="14" r="3.2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M11 14h7 M15.5 11.5L18 14l-2.5 2.5 M7 10.5V4 M4.5 6.5L7 4l2.5 2.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span>ขยับได้</span></button><button id="sTidy"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M4 17l4-1 9-9-3-3-9 9z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M15.5 13.5l1 2 2 1-2 1-1 2-1-2-2-1 2-1z" fill="currentColor"/></svg><span>วาดใหม่</span></button><button id="sGen"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M11 3l1.8 4.6 4.7 1.9-4.7 1.9L11 16l-1.8-4.6L4.5 9.5l4.7-1.9z" fill="currentColor"/></svg><span>สร้างโจทย์</span></button><button id="sMedia"><svg viewBox="0 0 22 22" aria-hidden="true"><rect x="3" y="4.5" width="16" height="13" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M3.5 15l4.5-4.5 3.5 3.5 2-2 5 4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg><span>หาสื่อ</span></button></span>
         <span class="sg" id="sgOrder"><button id="sFront"><svg viewBox="0 0 22 22" aria-hidden="true"><rect x="7" y="7" width="11" height="11" rx="2" fill="currentColor"/><rect x="3.5" y="3.5" width="11" height="11" rx="2" fill="none" stroke="currentColor" stroke-width="1.5" stroke-dasharray="2.5 2"/></svg><span>ขึ้นหน้าสุด</span></button><button id="sBack"><svg viewBox="0 0 22 22" aria-hidden="true"><rect x="3.5" y="3.5" width="11" height="11" rx="2" fill="currentColor"/><rect x="7" y="7" width="11" height="11" rx="2" fill="var(--chrome)" stroke="currentColor" stroke-width="1.5"/></svg><span>ไปหลังสุด</span></button></span>
         <span class="sg"><button id="sKey"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M2.5 11s3-6 8.5-6 8.5 6 8.5 6-3 6-8.5 6-8.5-6-8.5-6z" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="11" cy="11" r="2.6" fill="currentColor"/></svg><span>เฉลย</span></button><button id="sDup"><svg viewBox="0 0 22 22" aria-hidden="true"><rect x="7" y="7" width="11" height="11" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M4 14V5a1 1 0 0 1 1-1h9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span>ทำสำเนา</span></button><button id="sDel" class="danger"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M5 6.5h12 M9 6.5V4.5h4v2 M6.5 6.5l.8 11h7.4l.8-11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span>ลบ</span></button><button id="sClose"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M5 11.5l4 4 8-9" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg><span>เสร็จ</span></button></span>
         <button id="sBig" hidden>ขยาย</button><button id="sSmall" hidden>ย่อ</button>
@@ -1543,9 +1575,9 @@ body.role-student .scnpill .sbtns button[data-s="back"], body.role-student .scnp
     </div>
 
     <aside class="drawer wide" id="calc" hidden aria-label="เครื่องคิดเลขฟิสิกส์">
-      <header><span>เครื่องคิดเลขฟิสิกส์</span><button class="btn icon" id="bCalcClose" aria-label="ปิด"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 5l10 10 M15 5L5 15" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button></header>
+      <header><span>เครื่องคิดเลขและแก้สมการ</span><button class="btn icon" id="bCalcClose" aria-label="ปิด"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 5l10 10 M15 5L5 15" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button></header>
       <div class="body">
-        <div class="note">พิมพ์ทีละบรรทัด ใส่หน่วยได้ ตั้งตัวแปรได้ เช่น<br><code>v0 = 20 m/s</code><br><code>t = 2 * v0 * sin(30 deg) / g</code><br><code>v0 to km/h</code></div>
+        <div class="note">พิมพ์ทีละบรรทัด ใส่หน่วยได้ ตั้งตัวแปรได้ เช่น<br><code>v0 = 20 m/s</code><br><code>t = 2 * v0 * sin(30 deg) / g</code><br><code>v0 to km/h</code><br>แก้สมการได้ด้วย เช่น<br><code>แก้ x^2 - 5x + 6 = 0</code><br><code>แก้ v^2 = u^2 + 2 a s หา v</code> (ใส่ค่า u a s ไว้ก่อนจะได้ตัวเลขพร้อมหน่วย)<br><code>แก้ 2x + y = 5; x - y = 1</code><br><code>อนุพันธ์ sin(x)^2</code> <code>อินทิเกรต x e^x</code> <code>แยกตัวประกอบ x^3 - 1</code></div>
         <textarea id="cIn" class="cin" spellcheck="false" autocapitalize="off" autocorrect="off" rows="5" aria-label="สิ่งที่จะคำนวณ"></textarea>
         <div class="row2"><button class="btn solid" id="cGo">คำนวณ</button><button class="btn" id="cClear">ล้าง</button></div>
         <div id="cOut" class="cout"></div>
@@ -1999,7 +2031,8 @@ const LIBS = {
   pdfw: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js',
   jspdf: 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
   h2c: 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js',
-  smiles: 'https://cdn.jsdelivr.net/npm/smiles-drawer@2.1.7/dist/smiles-drawer.min.js'
+  smiles: 'https://cdn.jsdelivr.net/npm/smiles-drawer@2.1.7/dist/smiles-drawer.min.js',
+  cas: 'https://cdn.jsdelivr.net/npm/nerdamer-prime@1.5.0/all.min.js'
 };
 
 /* ---------- helpers ---------- */
@@ -3264,7 +3297,7 @@ const okAsset = (id) => /^[A-Za-z0-9_-]{8,80}$/.test(String(id || ''));
 function buildItemEl(it, forExport) {
   const d = document.createElement('div');
   const media = it.type === 'img' || it.type === 'video';
-  d.className = 'item' + (it.diary ? ' diary' : '') + (it.lock ? ' locked' : '') + (it.teacher ? ' teacher' : '') + (it.type === 'svg' ? ' svg' : '') + (media ? ' media' : '')
+  d.className = 'item' + (it.diary ? ' diary' : '') + (it.type === 'graph' ? ' gplain' : '') + (it.lock ? ' locked' : '') + (it.teacher ? ' teacher' : '') + (it.type === 'svg' ? ' svg' : '') + (media ? ' media' : '')
     + (it.type === 'graph' || it.type === 'sim' || it.type === 'lab' || it.type === 'scene' ? ' graph' : '') + (it.type === 'sim' || it.type === 'scene' ? ' sim' : '') + ((it.type === 'graph' || it.type === 'video' || it.type === 'sim' || it.type === 'lab' || it.type === 'scene') && !forExport ? ' live no-ink' : '');
   d.style.left = it.x + 'px'; d.style.top = it.y + 'px'; d.style.width = (it.w || 600) + 'px';
   if (it.fs) d.style.fontSize = clamp(+it.fs || 24, 12, 80) + 'px';
@@ -4420,6 +4453,8 @@ function showSelbar() {
   const textSel = S.sel.items.some((id) => { const it = (S.page.items || []).find((t) => t.id === id); return it && (!it.type || it.type === 'text'); });
   $('#sHand').hidden = !(n || textSel);
   $('#sGraph').hidden = !(n || textSel);
+  $('#sSolve').hidden = !(n || textSel);
+  { const one = m === 1 && !n ? findItem(S.sel.items[0]) : null; $('#sCut').hidden = !(one && one.type === 'img' && !isStudentSide()); }
   $('#sQuiz').hidden = !(n || textSel);
   { const one = m === 1 && !n ? findItem(S.sel.items[0]) : null; $('#sKey').hidden = !(one && one.qref && !isStudentSide()); }
   $('#sJoin').hidden = !(textSel && !n);
@@ -9752,6 +9787,379 @@ function animSync() {
 /* the button follows what is really moving, also when a single picture is played or stopped by its own button */
 setInterval(() => { if (!document.hidden) animSync(); }, 700);
 
+
+/* ---------- solving equations: an exact algebra engine (nerdamer) does the algebra, numbers with units come from math.js,
+   a numeric search finds roots the algebra cannot write down, and AI only reads handwriting or explains the steps ---------- */
+const CAS_FUNCS = ['sin', 'cos', 'tan', 'sec', 'csc', 'cot', 'asin', 'acos', 'atan', 'sinh', 'cosh', 'tanh', 'sqrt', 'log', 'log10', 'exp', 'abs',
+  'diff', 'integrate', 'defint', 'limit', 'sum', 'product', 'factor', 'expand', 'simplify', 'partfrac', 'matrix', 'determinant', 'invert', 'transpose', 'dot', 'cross', 'vector', 'laplace', 'ilt', 'mean', 'median'];
+const CAS_GREEK = ['alpha', 'beta', 'gamma', 'delta', 'Delta', 'epsilon', 'varepsilon', 'zeta', 'eta', 'theta', 'vartheta', 'iota', 'kappa', 'lambda', 'Lambda', 'mu', 'nu', 'xi', 'rho', 'sigma', 'Sigma', 'tau', 'phi', 'varphi', 'Phi', 'chi', 'psi', 'Psi', 'omega', 'Omega', 'pi'];
+const CAS_KEEP = new Set(CAS_FUNCS.concat(CAS_GREEK, ['Infinity', 'e', 'i']));
+/* LaTeX or typed math into the plain form the algebra engine reads */
+function texToCas(src) {
+  let t = String(src || '');
+  t = t.replace(/\$+/g, ' ').replace(/\\\(|\\\)|\\\[|\\\]/g, ' ');
+  t = t.replace(/[×·∙]/g, '*').replace(/÷/g, '/').replace(/[−–]/g, '-').replace(/²/g, '^2').replace(/³/g, '^3').replace(/π/g, ' pi ').replace(/θ/g, ' theta ').replace(/ω/g, ' omega ').replace(/Δ/g, ' Delta ').replace(/λ/g, ' lambda ').replace(/μ/g, ' mu ').replace(/α/g, ' alpha ').replace(/β/g, ' beta ').replace(/√/g, 'sqrt');
+  t = t.replace(/\\overset\{\\rightharpoonup\}\{([^{}]*)\}/g, '$1');
+  t = t.replace(/\\left(?![a-zA-Z])|\\right(?![a-zA-Z])|\\displaystyle|\\limits/g, '').replace(/\\[,;:! ]/g, ' ').replace(/\\quad|\\qquad/g, ' ');
+  /* sin squared x: \sin^{2} x is (sin x)^2 */
+  t = t.replace(/\\(sin|cos|tan|sec|csc|cot|sinh|cosh|tanh)\^\{?(\d+)\}?\s*(\\?[A-Za-z0-9_]+|\([^()]*\))/g, (m, f, n, a) => '(' + f + '(' + a.replace(/^\\/, '') + '))^' + n);
+  t = t.replace(/\\(?:vec|overrightarrow|hat|bar|mathbf|boldsymbol|mathit|mathrm|text|operatorname)\{([^{}]*)\}/g, '$1');
+  /* calculus written the usual way */
+  t = t.replace(/\\int_\{?([^{}\s^]+)\}?\^\{?([^{}\s]+)\}?\s*(.+?)\s*\\?,?\s*d([a-zA-Z])\b/g, 'defint($3,$1,$2,$4)');
+  t = t.replace(/\\int\s*(.+?)\s*\\?,?\s*d([a-zA-Z])\b/g, 'integrate($1,$2)');
+  t = t.replace(/\\frac\{d\}\{d([a-zA-Z])\}\s*(.+)$/g, (m, v, f) => 'diff(' + f + ',' + v + ')');
+  t = t.replace(/\\lim_\{?\s*([a-zA-Z])\s*\\to\s*([^{}]+?)\}?\s+(.+)$/g, 'limit($3,$1,$2)');
+  t = t.replace(/\\sum_\{?\s*([a-zA-Z])\s*=\s*([^{}]+?)\}?\^\{?([^{}\s]+)\}?\s*(.+)$/g, 'sum($4,$1,$2,$3)');
+  let prev;
+  do { prev = t;
+    t = t.replace(/\\[dt]?frac\s*\{([^{}]*)\}\s*\{([^{}]*)\}/g, '(($1)/($2))');
+    t = t.replace(/\\sqrt\s*\[([^\]]*)\]\s*\{([^{}]*)\}/g, '(($2)^(1/($1)))');
+    t = t.replace(/\\sqrt\s*\{([^{}]*)\}/g, 'sqrt($1)');
+    t = t.replace(/_\{([^{}]*)\}/g, (m, a) => '_' + a.replace(/[^A-Za-z0-9]/g, ''));
+    t = t.replace(/\^\{([^{}]*)\}/g, '^($1)');
+  } while (t !== prev);
+  t = t.replace(/\\(?:cdot|times|ast)/g, '*').replace(/\\div/g, '/').replace(/\\infty/g, 'Infinity').replace(/\\ln\b/g, 'log').replace(/\\log\b/g, 'log10');
+  t = t.replace(/\\([A-Za-z]+)/g, ' $1 ');
+  t = t.replace(new RegExp('\\b(' + CAS_FUNCS.join('|') + ')\\s+\\(', 'g'), '$1(');
+  t = t.replace(/[{}]/g, (c) => (c === '{' ? '(' : ')'));
+  /* subscripts join the name: v_0 is one variable v0, v_max is v_max */
+  t = t.replace(/([A-Za-z])_([A-Za-z0-9]+)/g, (m, a, b) => (/^\d+$/.test(b) ? a + b : a + '_' + b));
+  /* a function written without brackets: sin x becomes sin(x) */
+  t = t.replace(new RegExp('\\b(' + CAS_FUNCS.slice(0, 17).join('|') + ')\\s*([A-Za-z0-9_.]+)(?!\\s*\\()', 'g'), '$1($2)');
+  /* letters written next to each other multiply (at is a times t) unless the name is a function, a Greek letter or has a subscript */
+  t = t.replace(/[A-Za-z][A-Za-z0-9_]*/g, (w) => {
+    if (CAS_KEEP.has(w) || /_/.test(w) || /^[A-Za-z]\d+$/.test(w) || w.length === 1) return w;
+    const m = w.match(/^([A-Za-z]+)(\d*)$/); if (!m) return w;
+    const letters = m[1].split(''); if (m[2]) letters[letters.length - 1] += m[2];
+    return letters.join('*');
+  });
+  t = t.replace(/(\d)\s*\(/g, '$1*(').replace(/\)\s*\(/g, ')*(').replace(/\)\s*([A-Za-z0-9])/g, ')*$1');
+  t = t.replace(/([A-Za-z0-9_)])\s+(?=[A-Za-z0-9_(])/g, '$1*');
+  t = t.replace(/\s+/g, '').replace(/≠/g, '!=').replace(/[≈≅]/g, '=');
+  return t;
+}
+/* the engine's answer back to LaTeX for the page; v0 is written v with a subscript 0 */
+function casTex(x) {
+  let s; try { s = nerdamer(String(x)).toTeX(); } catch (e) { s = String(x); }
+  return s.replace(/\\mathrm\{(sin|cos|tan|sec|csc|cot|arcsin|arccos|arctan|sinh|cosh|tanh|exp)\}/g, '\\$1').replace(/\\mathrm\{log\}/g, '\\ln').replace(/\\mathrm\{(asin|acos|atan)\}/g, (m, f) => '\\arc' + f.slice(1)).replace(/\b([A-Za-z])(\d+)\b/g, '$1_{$2}').replace(/\\cdot\s*/g, '\\,');
+}
+function casNum(x) {
+  try { const v = nerdamer(String(x)).evaluate().text('decimals'); const n = Number(v); if (isFinite(n)) return n; } catch (e) { /* not a plain number */ }
+  return null;
+}
+const casFmt = (n) => { if (n == null) return ''; const a = Math.abs(n); if (a !== 0 && (a < 1e-4 || a >= 1e7)) return n.toExponential(4).replace(/e\+?(-?)(\d+)/, ' \\times 10^{$1$2}'); return String(Number(n.toPrecision(6))); };
+/* exact answers with a number beside them when the exact one is not already a plain number */
+function casShow(x) {
+  const tex = casTex(x), n = casNum(x);
+  if (n == null || String(x).replace(/\s/g, '') === String(Number(n.toPrecision(6)))) return { tex, approx: '' };
+  return { tex, approx: casFmt(n) };
+}
+const CAS_PREF = ['x', 'y', 't', 'z', 'n', 'v', 'a', 's', 'm', 'r', 'theta', 'k'];
+function casVars(expr) { try { return nerdamer(expr).variables(); } catch (e) { return []; } }
+/* roots by search when the algebra cannot give them (sin x = x/2, x^5 - x - 1 = 0): sign changes between sample points, then halving */
+function casRootsNumeric(lhs, rhs, v) {
+  let f; try { f = nerdamer('(' + lhs + ')-(' + rhs + ')').buildFunction([v]); } catch (e) { return []; }
+  const trig = /\b(sin|cos|tan|sec|csc|cot)\(/.test(lhs + rhs), a = trig ? 0 : -100, b = trig ? 2 * Math.PI - 1e-9 : 100, N = 4000, out = [];
+  const val = (x) => { try { const y = f(x); return typeof y === 'number' ? y : NaN; } catch (e) { return NaN; } };
+  let x0 = a, y0 = val(x0);
+  for (let i = 1; i <= N; i++) {
+    const x1 = a + (b - a) * i / N, y1 = val(x1);
+    if (isFinite(y0) && isFinite(y1)) {
+      if (y0 === 0) out.push(x0);
+      else if (y0 * y1 < 0) { let lo = x0, hi = x1, fl = y0; for (let k = 0; k < 60; k++) { const m = (lo + hi) / 2, fm = val(m); if (!isFinite(fm)) break; if (fl * fm <= 0) hi = m; else { lo = m; fl = fm; } } const r = (lo + hi) / 2; if (Math.abs(val(r)) < 1e-6 * Math.max(1, Math.abs(val(x0)) + Math.abs(val(x1)))) out.push(r); }
+    }
+    x0 = x1; y0 = y1;
+  }
+  const uniq = []; for (const r of out) if (!uniq.some((q) => Math.abs(q - r) < 1e-7 * Math.max(1, Math.abs(r)))) uniq.push(Math.abs(r) < 1e-12 ? 0 : r);
+  return uniq.slice(0, 12);
+}
+/* answers the engine gives as huge fractions are its own numeric guesses: those are replaced by the search above */
+const casMessy = (s) => /\d{6,}\s*\/\s*\d{6,}/.test(String(s));
+async function casReady() { if (!window.nerdamer) await loadLib('cas'); if (!window.nerdamer) throw new Error('cas'); }
+/* the main entry: equations (one or several), or an expression with an operation. Returns what to show. */
+async function casRun(input, opt) {
+  opt = opt || {}; await casReady();
+  const raw = String(input || '').trim();
+  const parts = raw.split(/\s*(?:;|\n|\\\\)\s*/).map((p) => p.trim()).filter(Boolean);
+  const eqs = parts.filter((p) => /[^<>!=]=[^=]/.test(p) && !/^(diff|integrate|defint|limit|sum|product|factor|expand|simplify|partfrac)\(/.test(p));
+  const res = { input: parts, kind: '', unknowns: [], vars: [], rows: [], note: '' };
+  if (eqs.length >= 2) {
+    const vars = [...new Set(eqs.flatMap((e) => casVars(e.replace('=', '-(') + ')')))];
+    let unk = (opt.vars && opt.vars.length ? opt.vars : CAS_PREF.filter((v) => vars.includes(v)).concat(vars.filter((v) => !CAS_PREF.includes(v)))).slice(0, eqs.length);
+    res.kind = 'system'; res.vars = vars; res.unknowns = unk;
+    const sol = nerdamer.solveEquations(eqs, unk);
+    const pairs = Array.isArray(sol) ? sol.map((p) => (Array.isArray(p) ? p : String(p).split(','))) : [];
+    if (!pairs.length) { res.note = 'ระบบสมการนี้ไม่มีคำตอบ หรือหาคำตอบแบบตรง ๆ ไม่ได้'; return res; }
+    for (const [v, val] of pairs) { const sh = casShow(val); res.rows.push({ lhs: casTex(v), tex: sh.tex, approx: sh.approx, v: String(v), val: String(val) }); }
+    return res;
+  }
+  if (eqs.length === 1) {
+    const eq = eqs[0], i = eq.indexOf('='), lhs = eq.slice(0, i), rhs = eq.slice(i + 1);
+    const vars = casVars('(' + lhs + ')-(' + rhs + ')');
+    const v = opt.v && vars.includes(opt.v) ? opt.v : (CAS_PREF.find((x) => vars.includes(x)) || vars[0]);
+    res.kind = 'solve'; res.vars = vars; res.unknowns = v ? [v] : [];
+    if (!v) { const a = casNum(lhs), b = casNum(rhs); res.kind = 'check'; res.note = a != null && b != null ? (Math.abs(a - b) < 1e-9 * Math.max(1, Math.abs(a)) ? 'สมการนี้เป็นจริง' : 'สมการนี้ไม่เป็นจริง ด้านซ้ายได้ ' + casFmt(a) + ' ด้านขวาได้ ' + casFmt(b)) : 'ไม่มีตัวแปรให้หา'; return res; }
+    let list = [];
+    try { const s = nerdamer.solve(eq, v); list = (s.symbol && s.symbol.elements ? s.symbol.elements : []).map(String); } catch (e) { list = []; }
+    if (!list.length || list.some(casMessy)) {
+      if (vars.length === 1) {
+        const roots = casRootsNumeric(lhs, rhs, v);
+        if (roots.length) {
+          const trig = /\b(sin|cos|tan)\(/.test(eq);
+          for (const r of roots) res.rows.push({ lhs: casTex(v), tex: casFmt(r), approx: trig ? casFmt(r * 180 / Math.PI) + '^{\\circ}' : '', v, val: String(r) });
+          res.note = trig ? 'คำตอบจากการคำนวณเชิงตัวเลข ในช่วง 0 ถึง 2π (ตัวเลขหลังเป็นองศา) คำตอบอื่นได้จากการบวกคาบของฟังก์ชัน' : 'คำตอบจากการคำนวณเชิงตัวเลข ค้นในช่วง -100 ถึง 100';
+          return res;
+        }
+      }
+      if (!list.length || list.every(casMessy)) { res.note = 'หาคำตอบไม่ได้ สมการอาจไม่มีคำตอบจริง หรือต้องใช้วิธีเชิงตัวเลขที่มีหลายตัวแปร'; return res; }
+      list = list.filter((s) => !casMessy(s));
+    }
+    for (const s of list) { const sh = casShow(s); res.rows.push({ lhs: casTex(v), tex: sh.tex, approx: sh.approx, v, val: s }); }
+    return res;
+  }
+  /* no equals sign: work out the expression */
+  const expr = parts.join('*');
+  const vars = casVars(expr), v = opt.v && vars.includes(opt.v) ? opt.v : (CAS_PREF.find((x) => vars.includes(x)) || vars[0] || 'x');
+  res.vars = vars; res.unknowns = [v];
+  const op = opt.op || (/^(diff|integrate|defint|limit|sum|product|factor|expand|simplify|partfrac|determinant|invert|transpose|dot|cross|laplace|ilt)\(/.test(expr) ? 'raw' : 'simplify');
+  res.kind = op;
+  const call = { raw: expr, simplify: 'simplify(' + expr + ')', factor: 'factor(' + expr + ')', expand: 'expand(' + expr + ')', diff: 'diff(' + expr + ',' + v + ')', diff2: 'diff(' + expr + ',' + v + ',2)', integrate: 'integrate(' + expr + ',' + v + ')', partfrac: 'partfrac(' + expr + ',' + v + ')' }[op] || expr;
+  const out = String(nerdamer(call));
+  const sh = casShow(out);
+  res.rows.push({ lhs: { simplify: '', factor: '', expand: '', diff: '\\frac{d}{d' + v + '}', diff2: '\\frac{d^2}{d' + v + '^2}', integrate: '\\int', partfrac: '' }[op] || '', tex: sh.tex + (op === 'integrate' ? ' + C' : ''), approx: sh.approx, v, val: out, of: casTex(expr) });
+  return res;
+}
+/* physics in the calculator: solve with letters, then put in the known values with their units */
+function casWithUnits(val, scope) {
+  if (!window.math) return null;
+  try { const r = math.evaluate(String(val).replace(/\*\*/g, '^'), Object.assign({}, scope)); return typeof r === 'function' ? null : r; } catch (e) { return null; }
+}
+
+/* ----- the solve panel: opened from a selection (handwriting or a typed equation) ----- */
+const SOLVE = { src: '', opt: {}, box: null, res: null };
+async function solveSelection() {
+  if (!S.sel) return;
+  const box = S.sel.box.slice(), refs = S.sel.strokes.slice();
+  const texts = S.sel.items.map(findItem).filter((it) => it && (!it.type || it.type === 'text')).map((it) => it.md || '');
+  let src = '';
+  if (texts.length) { const m = texts.join('\n').match(/\$\$?([^$]+)\$\$?/g); src = m ? m.map((x) => x.replace(/\$/g, '')).join('\n') : texts.join('\n'); }
+  if (!src && refs.length) {
+    if (!needAI('read')) return;
+    const img = await inkBlob(refs); if (!img) return;
+    const P = solvePanel(); P.body.innerHTML = '<div class="note">กำลังอ่านลายมือ</div>';
+    try {
+      const r = await AI.run('read', 'The image is handwritten math from a teacher\'s notebook: one equation, several equations (a system), or an expression to work out (derivative, integral, limit, factor and so on). Transcribe it exactly as written, do not solve it. Reply with LaTeX only, one equation per line, no $ signs and no words.', { images: [img.blob], maxTokens: 400 });
+      src = String(r.text || '').replace(/```[a-z]*|```/g, '').trim();
+    } catch (e) { P.body.innerHTML = '<div class="note err">อ่านลายมือไม่สำเร็จ ' + esc(aiErr(e)) + '</div>'; return; }
+  }
+  if (!src) { toast('เลือกสมการที่เขียนหรือพิมพ์ไว้ก่อน', 2200); return; }
+  SOLVE.src = src.split('\n').map(texToCas).filter(Boolean).join('; '); SOLVE.opt = {}; SOLVE.box = box;
+  clearSel(); solveShow();
+}
+function solvePanel() {
+  let p = $('#solvePanel');
+  if (!p) {
+    p = document.createElement('div'); p.id = 'solvePanel'; p.className = 'solvep no-ink'; p.setAttribute('role', 'dialog'); p.setAttribute('aria-label', 'แก้สมการ');
+    p.innerHTML = '<div class="sph"><b>แก้สมการ</b><button type="button" class="btn" data-a="x">ปิด</button></div><label class="spin"><span>สมการ (แก้ได้ถ้าอ่านผิด คั่นหลายสมการด้วย ;)</span><input type="text" spellcheck="false" autocapitalize="off" autocomplete="off"></label><div class="spbody"></div>';
+    document.body.appendChild(p);
+    p.querySelector('[data-a="x"]').onclick = () => { p.hidden = true; };
+    const inp = p.querySelector('input');
+    inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') { SOLVE.src = inp.value; SOLVE.opt = {}; solveShow(); } });
+    inp.addEventListener('change', () => { SOLVE.src = inp.value; SOLVE.opt = {}; solveShow(); });
+  }
+  p.hidden = false;
+  return { p, body: p.querySelector('.spbody'), inp: p.querySelector('input') };
+}
+async function solveShow() {
+  const P = solvePanel(); P.inp.value = SOLVE.src;
+  P.body.innerHTML = '<div class="note">กำลังคำนวณ</div>';
+  let r;
+  try { r = await casRun(SOLVE.src, SOLVE.opt); }
+  catch (e) { P.body.innerHTML = '<div class="note err">' + (e && e.message === 'cas' || /load/.test(String(e && e.message)) ? 'โหลดตัวแก้สมการไม่สำเร็จ ตรวจอินเทอร์เน็ต' : 'อ่านสมการนี้ไม่ได้ ตรวจรูปแบบในช่องด้านบน') + '</div>'; return; }
+  SOLVE.res = r;
+  let h = '';
+  if (r.kind === 'solve' && r.vars.length > 1) h += '<div class="spk"><span>หาค่า</span>' + r.vars.map((v) => '<button type="button" class="chip" data-v="' + esc(v) + '" aria-pressed="' + (v === r.unknowns[0]) + '">' + esc(v) + '</button>').join('') + '</div>';
+  if (!['solve', 'system', 'check', 'raw'].includes(r.kind)) h += '<div class="spk"><span>ทำอะไร</span>' + [['simplify', 'ทำให้ง่าย'], ['factor', 'แยกตัวประกอบ'], ['expand', 'กระจาย'], ['diff', 'อนุพันธ์'], ['diff2', 'อนุพันธ์อันดับสอง'], ['integrate', 'อินทิเกรต'], ['partfrac', 'เศษส่วนย่อย']].map(([k, n]) => '<button type="button" class="chip" data-op="' + k + '" aria-pressed="' + (k === r.kind) + '">' + n + '</button>').join('') + '</div>';
+  if (r.rows.length) {
+    h += '<div class="spres">' + r.rows.map((x) => '<div>$' + (x.of != null ? (x.lhs ? x.lhs + '\\left(' + x.of + '\\right)' : x.of) + ' = ' : (x.lhs ? x.lhs + ' = ' : '')) + x.tex + '$' + (x.approx ? ' <span class="spa">$\\approx ' + x.approx + '$</span>' : '') + '</div>').join('') + '</div>';
+  }
+  if (r.note) h += '<div class="note">' + esc(r.note) + '</div>';
+  h += '<div class="row2">' + (r.rows.length ? '<button type="button" class="btn solid" data-a="put">วางคำตอบลงหน้า</button>' : '') + (solveGraphable(r) ? '<button type="button" class="btn" data-a="graph">วาดกราฟ</button>' : '') + (r.rows.length && AI.ready('gen') ? '<button type="button" class="btn" data-a="why">ให้ AI อธิบายวิธีทำ</button>' : '') + '</div><div class="spwhy"></div>';
+  P.body.innerHTML = h;
+  typeset(P.body);
+  P.body.querySelectorAll('[data-v]').forEach((b) => { b.onclick = () => { SOLVE.opt.v = b.dataset.v; solveShow(); }; });
+  P.body.querySelectorAll('[data-op]').forEach((b) => { b.onclick = () => { SOLVE.opt.op = b.dataset.op; solveShow(); }; });
+  const put = P.body.querySelector('[data-a="put"]'); if (put) put.onclick = () => solvePut(r);
+  const gr = P.body.querySelector('[data-a="graph"]'); if (gr) gr.onclick = () => solveGraph(r);
+  const why = P.body.querySelector('[data-a="why"]'); if (why) why.onclick = () => solveWhy(r, P.body.querySelector('.spwhy'));
+}
+const casRowTex = (x) => (x.of != null ? (x.lhs ? x.lhs + '\\left(' + x.of + '\\right)' : x.of) + ' = ' : (x.lhs ? x.lhs + ' = ' : '')) + x.tex;
+function solveLines(r) {
+  return r.rows.map((x) => '$' + casRowTex(x) + (x.approx ? ' \\approx ' + x.approx : '') + '$');
+}
+function solvePut(r) {
+  const lines = solveLines(r), w = 520, fs = 26, h = lines.length * fs * 1.8 + 16, b = SOLVE.box || viewSpot(w, h).concat([0, 0]);
+  let at = [clamp(b[0], 10, W - w - 10), (b[3] || b[1]) + 14];
+  const f = typeof freeSpot === 'function' ? freeSpot(w, h, at) : null; if (f) at = f;
+  addItem({ type: 'text', x: Math.round(at[0]), y: Math.round(at[1]), w, fs, md: lines.join('\n\n') });
+  toast('วางคำตอบลงหน้าแล้ว', 1500);
+}
+/* a graph straight from the expression: y = f(x), or the expression itself, with any other letters as sliders */
+function solveGraphable(r) {
+  const p = r.input; if (!p || p.length !== 1) return false;
+  const s = p[0], m = s.match(/^([a-zA-Z])\s*=\s*(.+)$/);
+  const e = m ? m[2] : (/=/.test(s) ? '' : s);
+  if (!e || /diff|integrate|defint|limit|sum\(|matrix/.test(e)) return false;
+  return casVars(e).length >= 1;
+}
+function solveGraph(r) {
+  const s = r.input[0], m = s.match(/^([a-zA-Z])\s*=\s*(.+)$/), e = m ? m[2] : s;
+  const vars = casVars(e), xv = vars.includes('x') ? 'x' : vars.includes('t') ? 't' : vars[0];
+  const toMath = (q) => q.replace(/\blog10\(/g, 'log10(').replace(/\bpi\b/g, 'pi');
+  const g = { type: 'graph', title: '', xvar: xv, exprs: [toMath(e)], params: {}, order: [], xl: xv, yl: m ? m[1] : 'y', x0: -10, x1: 10 };
+  if (/\b(sin|cos|tan)\(/.test(e)) { g.x0 = -2 * Math.PI; g.x1 = 2 * Math.PI; }
+  if (xv === 't') g.x0 = 0;
+  loadLib('math').then(() => placeGraph(g, SOLVE.box || [W / 2 - 280, 200, W / 2 + 280, 260])).catch(() => toast('โหลดตัววาดกราฟไม่สำเร็จ', 2500));
+}
+async function solveWhy(r, out) {
+  out.innerHTML = '<div class="note">AI กำลังเขียนวิธีทำ</div>';
+  try {
+    const ans = solveLines(r).join('  ');
+    const res = await AI.run('gen', 'A teacher wants the worked steps for this problem: ' + r.input.join('; ') + '\nThe correct final answer, already checked by a computer algebra system, is: ' + ans + '\nWrite the steps in Thai, short and clear, the way a teacher writes them on the board, one step per line, math as LaTeX between $ signs. End with the same final answer. No headings.', { maxTokens: 900 });
+    out.innerHTML = '<div class="spsteps">' + mdToHtml(String(res.text || '').trim()) + '</div><div class="row2"><button type="button" class="btn" data-a="putw">วางวิธีทำลงหน้า</button></div>';
+    typeset(out);
+    out.querySelector('[data-a="putw"]').onclick = () => { const w = 620, b = SOLVE.box || [40, 200, 40, 200]; let at = [clamp(b[0], 10, W - w - 10), b[3] + 14]; const f = freeSpot(w, 300, at); if (f) at = f; addItem({ type: 'text', x: Math.round(at[0]), y: Math.round(at[1]), w, fs: 22, md: String(res.text || '').trim() }); toast('วางวิธีทำลงหน้าแล้ว', 1500); };
+  } catch (e) { out.innerHTML = '<div class="note err">' + esc(aiErr(e)) + '</div>'; }
+}
+
+
+/* ---------- cutting out the background of a picture: automatic from the edges, tap a region to remove it or bring it back,
+   or brush by hand; the result is a PNG with a see-through background and is trimmed to what is left ---------- */
+const CUT = { it: null, cv: null, ctx: null, orig: null, cur: null, w: 0, h: 0, mode: 'tap', tol: 28, brush: 18, undo: [] };
+const cutDist = (d, i, r, g, b) => { const dr = d[i] - r, dg = d[i + 1] - g, db = d[i + 2] - b; return Math.sqrt(dr * dr * 0.3 + dg * dg * 0.59 + db * db * 0.11) / 2.55; };
+async function cutLoad(it) {
+  let blob = null;
+  if (okAsset(it.asset)) { try { blob = await getAssetBlob(it.asset); } catch (e) { blob = null; } if (!blob && it.asset[0] !== 'L' && it.asset[0] !== 'S') { try { const r = await fetch('/_blob/' + it.asset); if (r.ok) blob = await r.blob(); } catch (e) { /* none */ } } }
+  if (!blob) return null;
+  const u = URL.createObjectURL(blob);
+  try { return await new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = u; }); }
+  finally { setTimeout(() => URL.revokeObjectURL(u), 2000); }
+}
+async function openBgCut() {
+  const it = S.sel && S.sel.items.length === 1 && findItem(S.sel.items[0]);
+  if (!it || it.type !== 'img') { toast('เลือกรูปหนึ่งรูปก่อน', 2000); return; }
+  const im = await cutLoad(it); if (!im) { toast('เปิดรูปนี้มาแก้ไม่ได้ รูปจากลิงก์ภายนอกตัดพื้นหลังไม่ได้', 3500); return; }
+  const k = Math.min(1, 1600 / Math.max(im.naturalWidth, im.naturalHeight));
+  const w = Math.max(1, Math.round(im.naturalWidth * k)), h = Math.max(1, Math.round(im.naturalHeight * k));
+  const cv = document.createElement('canvas'); cv.width = w; cv.height = h; const c = cv.getContext('2d', { willReadFrequently: true }); c.drawImage(im, 0, 0, w, h);
+  CUT.it = it.id; CUT.cv = cv; CUT.ctx = c; CUT.w = w; CUT.h = h; CUT.orig = c.getImageData(0, 0, w, h); CUT.cur = c.getImageData(0, 0, w, h); CUT.undo = [];
+  clearSel(); cutSheet();
+}
+function cutSheet() {
+  let p = $('#cutSheet');
+  if (!p) {
+    p = document.createElement('div'); p.id = 'cutSheet'; p.className = 'sheet cutsheet no-ink';
+    p.innerHTML = '<div class="panel wide" role="dialog" aria-label="ตัดพื้นหลังรูป"><div class="cuth"><h2>ตัดพื้นหลัง</h2><button type="button" class="btn" data-a="close">ยกเลิก</button></div>'
+      + '<div class="cutbar"><button type="button" class="btn solid" data-a="auto">ลบพื้นหลังอัตโนมัติ</button><span class="seg" role="group" aria-label="วิธีแก้"><button type="button" data-m="tap">แตะส่วนที่จะลบ</button><button type="button" data-m="keep">แตะส่วนที่จะเก็บคืน</button><button type="button" data-m="erase">ยางลบ</button><button type="button" data-m="restore">แปรงคืน</button></span></div>'
+      + '<div class="cutsl"><label><span>ความไวในการเลือกสี</span><input type="range" min="4" max="80" step="1" data-r="tol"></label><label><span>ขนาดแปรง</span><input type="range" min="4" max="80" step="1" data-r="brush"></label></div>'
+      + '<div class="cutview"><canvas></canvas></div>'
+      + '<div class="cutfoot"><small>พื้นลายตารางคือส่วนที่โปร่งใส ใช้ยางลบหรือแปรงคืนเก็บรายละเอียดตรงขอบ</small><span class="row2"><button type="button" class="btn" data-a="undo">ย้อนกลับ</button><button type="button" class="btn" data-a="reset">เริ่มใหม่</button><button type="button" class="btn solid" data-a="save">ใช้รูปนี้</button></span></div></div>';
+    document.body.appendChild(p);
+    p.querySelector('[data-a="close"]').onclick = () => { p.hidden = true; };
+    p.querySelector('[data-a="auto"]').onclick = () => { cutPush(); cutAuto(); cutDraw(); };
+    p.querySelector('[data-a="undo"]').onclick = () => { if (CUT.undo.length) { CUT.cur = CUT.undo.pop(); cutDraw(); } };
+    p.querySelector('[data-a="reset"]').onclick = () => { cutPush(); CUT.cur = new ImageData(new Uint8ClampedArray(CUT.orig.data), CUT.w, CUT.h); cutDraw(); };
+    p.querySelector('[data-a="save"]').onclick = cutSave;
+    p.querySelectorAll('[data-m]').forEach((b) => { b.onclick = () => { CUT.mode = b.dataset.m; cutModes(); }; });
+    p.querySelectorAll('[data-r]').forEach((r) => { r.oninput = () => { CUT[r.dataset.r] = +r.value; }; });
+    const view = p.querySelector('canvas');
+    let drag = null;
+    const at = (e) => { const r = view.getBoundingClientRect(); return [Math.floor((e.clientX - r.left) / r.width * CUT.w), Math.floor((e.clientY - r.top) / r.height * CUT.h), CUT.w / r.width]; };
+    view.addEventListener('pointerdown', (e) => {
+      e.preventDefault(); const [x, y, k] = at(e); if (x < 0 || y < 0 || x >= CUT.w || y >= CUT.h) return;
+      cutPush();
+      if (CUT.mode === 'tap' || CUT.mode === 'keep') { cutFill(x, y, CUT.mode === 'keep'); cutDraw(); return; }
+      drag = { k }; try { view.setPointerCapture(e.pointerId); } catch (er) { /* ignore */ } cutBrush(x, y, k); cutDraw();
+    });
+    view.addEventListener('pointermove', (e) => { if (!drag) return; const [x, y] = at(e); cutBrush(x, y, drag.k); cutDraw(); });
+    view.addEventListener('pointerup', () => { drag = null; }); view.addEventListener('pointercancel', () => { drag = null; });
+  }
+  p.querySelector('[data-r="tol"]').value = CUT.tol; p.querySelector('[data-r="brush"]').value = CUT.brush;
+  const view = p.querySelector('canvas'); view.width = CUT.w; view.height = CUT.h;
+  p.hidden = false; cutModes(); cutDraw();
+}
+function cutModes() { const p = $('#cutSheet'); if (!p) return; p.querySelectorAll('[data-m]').forEach((b) => b.setAttribute('aria-pressed', b.dataset.m === CUT.mode ? 'true' : 'false')); }
+function cutPush() { CUT.undo.push(new ImageData(new Uint8ClampedArray(CUT.cur.data), CUT.w, CUT.h)); if (CUT.undo.length > 20) CUT.undo.shift(); }
+function cutDraw() { const v = $('#cutSheet canvas'); if (!v) return; v.getContext('2d').putImageData(CUT.cur, 0, 0); }
+/* remove (or bring back) the connected region around a tapped point whose colour is close to the tapped colour */
+function cutFill(x0, y0, keep) {
+  const W0 = CUT.w, H0 = CUT.h, O = CUT.orig.data, D = CUT.cur.data, tol = CUT.tol, i0 = (y0 * W0 + x0) * 4;
+  const r = O[i0], g = O[i0 + 1], b = O[i0 + 2], seen = new Uint8Array(W0 * H0), st = [x0 + y0 * W0];
+  seen[x0 + y0 * W0] = 1;
+  while (st.length) {
+    const p = st.pop(), x = p % W0, y = (p - x) / W0, i = p * 4, d = cutDist(O, i, r, g, b);
+    if (d > tol * 1.35) continue;
+    const a = d <= tol ? 1 : 1 - (d - tol) / (tol * 0.35);
+    if (keep) D[i + 3] = Math.max(D[i + 3], Math.round(O[i + 3] * a)); else D[i + 3] = Math.min(D[i + 3], Math.round(255 * (1 - a)));
+    if (d > tol) continue;
+    if (x > 0 && !seen[p - 1]) { seen[p - 1] = 1; st.push(p - 1); }
+    if (x < W0 - 1 && !seen[p + 1]) { seen[p + 1] = 1; st.push(p + 1); }
+    if (y > 0 && !seen[p - W0]) { seen[p - W0] = 1; st.push(p - W0); }
+    if (y < H0 - 1 && !seen[p + W0]) { seen[p + W0] = 1; st.push(p + W0); }
+  }
+}
+/* automatic: the colours along the border are taken as background, and everything connected to the border in those colours goes */
+function cutAuto() {
+  const W0 = CUT.w, H0 = CUT.h, O = CUT.orig.data, D = CUT.cur.data, tol = CUT.tol;
+  const buckets = new Map(), edge = [];
+  for (let x = 0; x < W0; x++) edge.push(x, x + (H0 - 1) * W0);
+  for (let y = 0; y < H0; y++) edge.push(y * W0, y * W0 + W0 - 1);
+  for (const p of edge) { const i = p * 4; if (O[i + 3] < 20) continue; const key = (O[i] >> 4) + '|' + (O[i + 1] >> 4) + '|' + (O[i + 2] >> 4); const bk = buckets.get(key) || { n: 0, r: 0, g: 0, b: 0 }; bk.n++; bk.r += O[i]; bk.g += O[i + 1]; bk.b += O[i + 2]; buckets.set(key, bk); }
+  const refs = [...buckets.values()].sort((a, b) => b.n - a.n).filter((bk, k, arr) => k < 4 && bk.n >= edge.length * 0.04).map((bk) => [bk.r / bk.n, bk.g / bk.n, bk.b / bk.n]);
+  if (!refs.length) { toast('ขอบรูปมีหลายสีเกินไป ใช้แตะส่วนที่จะลบแทน', 3000); return; }
+  const near = (i) => { let m = 1e9; for (const c of refs) { const d = cutDist(O, i, c[0], c[1], c[2]); if (d < m) m = d; } return m; };
+  const seen = new Uint8Array(W0 * H0), st = [];
+  for (const p of edge) if (!seen[p]) { seen[p] = 1; st.push(p); }
+  while (st.length) {
+    const p = st.pop(), x = p % W0, y = (p - x) / W0, i = p * 4, d = O[i + 3] < 20 ? 0 : near(i);
+    if (d > tol * 1.35) continue;
+    const a = d <= tol ? 1 : 1 - (d - tol) / (tol * 0.35);
+    D[i + 3] = Math.min(D[i + 3], Math.round(255 * (1 - a)));
+    if (d > tol) continue;
+    if (x > 0 && !seen[p - 1]) { seen[p - 1] = 1; st.push(p - 1); }
+    if (x < W0 - 1 && !seen[p + 1]) { seen[p + 1] = 1; st.push(p + 1); }
+    if (y > 0 && !seen[p - W0]) { seen[p - W0] = 1; st.push(p - W0); }
+    if (y < H0 - 1 && !seen[p + W0]) { seen[p + W0] = 1; st.push(p + W0); }
+  }
+}
+function cutBrush(x, y, k) {
+  const R = Math.max(1, CUT.brush * k), D = CUT.cur.data, O = CUT.orig.data, W0 = CUT.w, H0 = CUT.h;
+  for (let yy = Math.max(0, Math.floor(y - R)); yy <= Math.min(H0 - 1, Math.ceil(y + R)); yy++) for (let xx = Math.max(0, Math.floor(x - R)); xx <= Math.min(W0 - 1, Math.ceil(x + R)); xx++) {
+    const dd = Math.hypot(xx - x, yy - y); if (dd > R) continue; const i = (yy * W0 + xx) * 4, soft = clamp((R - dd) / Math.max(1, R * 0.25), 0, 1);
+    if (CUT.mode === 'erase') D[i + 3] = Math.min(D[i + 3], Math.round(D[i + 3] * (1 - soft))); else D[i + 3] = Math.max(D[i + 3], Math.round(O[i + 3] * soft));
+  }
+}
+/* save as PNG, trimmed to what is left, and put it in place of the old picture (undo brings the old one back) */
+async function cutSave() {
+  const A = await getAssets(); if (!A) { toast('มุมมองนี้บันทึกรูปไม่ได้', 3000); return; }
+  const it = findItem(CUT.it); if (!it) { $('#cutSheet').hidden = true; return; }
+  const W0 = CUT.w, H0 = CUT.h, D = CUT.cur.data; let x0 = W0, y0 = H0, x1 = -1, y1 = -1;
+  for (let y = 0; y < H0; y++) for (let x = 0; x < W0; x++) if (D[(y * W0 + x) * 4 + 3] > 8) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+  if (x1 < 0) { toast('ลบออกหมดทั้งรูปแล้ว แตะเริ่มใหม่หรือย้อนกลับ', 3000); return; }
+  const cw = x1 - x0 + 1, ch = y1 - y0 + 1, out = document.createElement('canvas'); out.width = cw; out.height = ch;
+  const full = document.createElement('canvas'); full.width = W0; full.height = H0; full.getContext('2d').putImageData(CUT.cur, 0, 0);
+  out.getContext('2d').drawImage(full, x0, y0, cw, ch, 0, 0, cw, ch);
+  const blob = await new Promise((res) => out.toBlob(res, 'image/png')); if (!blob) { toast('บันทึกรูปไม่สำเร็จ', 3000); return; }
+  toast('กำลังบันทึกรูป', 8000);
+  try {
+    const r = await A.upload(blob, { type: 'image/png' });
+    const sc = (it.w || 480) / W0, before = clone(S.page.items || []);
+    const items = before.map((t) => (t.id === it.id ? Object.assign({}, t, { asset: r.id, x: Math.round(t.x + x0 * sc), y: Math.round(t.y + y0 * sc), w: Math.max(20, Math.round(cw * sc)), ar: Math.round(ch / cw * 1000) / 1000, cut: 1 }) : t));
+    setItems(items, before);
+    $('#cutSheet').hidden = true; toast('ตัดพื้นหลังแล้ว กดย้อนกลับบนหน้าได้ถ้าต้องการรูปเดิม', 3000);
+  } catch (e) { toast(assetErr(e), 4500); }
+}
+
 function insertSim(kind) {
   if (!S.page || !SIMS[kind]) return;
   const w = 560; const [x, y] = viewSpot(w, 520);
@@ -9959,6 +10367,40 @@ function fmtCalc(v) {
     return m.format(v, { precision: 6, lowerExp: -4, upperExp: 7 });
   } catch (e) { return String(v); }
 }
+/* lines for the algebra engine: "แก้ x^2 - 5x + 6 = 0", "แก้ v^2 = u^2 + 2 a s หา v" (known values with units are put in),
+   "แก้ 2x + y = 5; x - y = 1", "อนุพันธ์ sin(x)^2", "อินทิเกรต x e^x", "แยกตัวประกอบ x^3 - 1", or any line with an equals sign that is not a plain assignment */
+const CALC_OPS = { 'อนุพันธ์': 'diff', diff: 'diff', 'อินทิเกรต': 'integrate', integrate: 'integrate', 'แยกตัวประกอบ': 'factor', factor: 'factor', 'กระจาย': 'expand', expand: 'expand', 'ทำให้ง่าย': 'simplify', simplify: 'simplify' };
+async function calcCas(line, row, m) {
+  let mm = line.match(/^(แก้|solve)\s+(.+?)(?:\s+(?:หา|for)\s+([A-Za-z_][A-Za-z0-9_]*))?$/i), op = null, body = null, want = null;
+  if (mm) { body = mm[2]; want = mm[3] || null; }
+  else if ((mm = line.match(/^(อนุพันธ์|diff|อินทิเกรต|integrate|แยกตัวประกอบ|factor|กระจาย|expand|ทำให้ง่าย|simplify)\s+(.+)$/i))) { op = CALC_OPS[mm[1].toLowerCase()] || CALC_OPS[mm[1]]; body = mm[2]; }
+  else if (/^[^=]*[^<>!=]=[^=][^=]*$/.test(line) && !/^\s*[A-Za-z_][A-Za-z0-9_]*\s*=/.test(line)) body = line;
+  else return false;
+  const plain = body.split(/\s*;\s*/).map(texToCas).join('; ');
+  const known = new Set(Object.keys(calcScope || {}));
+  const opt = {}; if (op) opt.op = op;
+  try { await casReady(); } catch (e) { row.classList.add('err'); row.innerHTML = '<span class="ce"><code></code><b>โหลดตัวแก้สมการไม่สำเร็จ ตรวจอินเทอร์เน็ต</b></span>'; row.querySelector('code').textContent = line; return true; }
+  if (want) opt.v = want;
+  else if (!op) { const vs = [...new Set(plain.split(';').flatMap((q) => casVars(q.replace('=', '-(') + ')')))], unk = vs.filter((v) => !known.has(v)); if (unk.length) { if (/;/.test(plain)) opt.vars = unk; else opt.v = unk[0]; } }
+  let r; try { r = await casRun(plain, opt); } catch (e) { r = null; }
+  row.innerHTML = '<span class="ce"><code></code><b></b></span><button type="button">แทรกลงหน้า</button>';
+  row.querySelector('code').textContent = line;
+  if (!r || (!r.rows.length && !r.note)) { row.classList.add('err'); row.querySelector('b').textContent = 'อ่านสมการไม่ได้ ตรวจเครื่องหมายและวงเล็บ'; row.querySelector('button').remove(); return true; }
+  /* known values with units go into each answer */
+  const shown = r.rows.map((x) => {
+    let num = ''; const q = casWithUnits(x.val, calcScope);
+    if (q != null && known.size && casVars(x.val).some((v) => known.has(v))) { const t = fmtCalc(q); if (t && !/function/.test(t)) num = t; }
+    if (num && x.v && !op) { try { calcScope[x.v] = q; } catch (e) { /* keep going */ } }
+    return { tex: casRowTex(x) + (x.approx ? ' \\approx ' + x.approx : ''), num, v: x.v };
+  });
+  const b = row.querySelector('b');
+  b.innerHTML = shown.map((x) => '$' + x.tex + '$' + (x.num ? ' <span class="cnum">= ' + esc(x.num) + '</span>' : '')).join('<br>') + (r.note ? '<br><small>' + esc(r.note) + '</small>' : '');
+  typeset(b);
+  const ins = row.querySelector('button');
+  if (!shown.length) ins.remove();
+  else ins.onclick = () => { const md = shown.map((x) => '$' + x.tex + (x.num ? ' = ' + x.num.replace(/ /g, '\\,') : '') + '$').join('\n\n'); const w = 560; const [x, y] = viewSpot(w, 60 * shown.length); addItem({ type: 'text', md, x, y, w, fs: 26 }); toast('แทรกผลลงหน้าแล้ว', 1400); };
+  return true;
+}
 async function runCalc() {
   const out = $('#cOut');
   try { await loadLib('math'); } catch (e) { out.innerHTML = '<div class="note err">โหลดเครื่องคำนวณไม่สำเร็จ ตรวจอินเทอร์เน็ต</div>'; return; }
@@ -9968,6 +10410,7 @@ async function runCalc() {
   const lines = $('#cIn').value.split('\n').map((l) => l.trim()).filter(Boolean).slice(0, 40);
   for (const line of lines) {
     const row = document.createElement('div'); row.className = 'crow';
+    if (await calcCas(line, row, m)) { out.appendChild(row); continue; }
     try {
       const node = m.parse(line.replace(/×/g, '*').replace(/÷/g, '/').replace(/π/g, 'pi').replace(/°/g, ' deg'));
       const res = node.evaluate(calcScope);
@@ -17360,7 +17803,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793272575';
+const BUILD = '1793286223';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
@@ -17718,6 +18161,8 @@ $('#bGClose').onclick = () => { $('#graphSheet').hidden = true; };
 $('#bGCheck').onclick = () => { if (!window.math) { loadLib('math').then(() => checkGraph(true)).catch(() => {}); return; } checkGraph(true); };
 $('#bGSave').onclick = () => { if (!window.math) { loadLib('math').then(saveGraph).catch(() => {}); return; } saveGraph(); };
 $('#sGraph').onclick = graphFromSelection;
+$('#sSolve').onclick = solveSelection;
+$('#sCut').onclick = openBgCut;
 /* join lines that only broke because the handwriting reached the edge; keep real breaks (new item, equation, list, heading) */
 function joinLines(md) {
   const L = String(md || '').split('\n'), out = [];
