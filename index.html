@@ -331,6 +331,25 @@ body.tv #pages { width: 300px; }
 .switch { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 56px; border-bottom: 1px solid var(--line); }
 .switch span { display: flex; flex-direction: column; }
 .switch small { color: var(--muted); font-size: 12px; line-height: 1.45; }
+kbd { display: inline-block; min-width: 1.6em; padding: 0 5px; margin: 0 2px; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 6px; font: 600 12px var(--ui); text-align: center; background: var(--surface); }
+.gest .keys { grid-column: 1 / -1; line-height: 2; }
+.wpad { position: relative; margin: 8px 0; border: 1.5px dashed var(--line); border-radius: 14px; background: #FFFFFF repeating-linear-gradient(to bottom, transparent 0 39px, #EEF1F5 39px 40px); overflow: hidden; }
+.wpadcv { display: block; width: 100%; height: clamp(260px, 42vh, 460px); touch-action: none; cursor: crosshair; }
+.wpadhint { position: absolute; left: 0; right: 0; top: 45%; text-align: center; color: #9AA4B2; font-size: 14px; pointer-events: none; }
+.wpadtools { margin-bottom: 8px; }
+.wsum { display: flex; align-items: baseline; gap: 12px; margin: 10px 0 6px; }
+.wsum b { font-size: 30px; color: var(--accent); }
+.wsum b small { font-size: 14px; color: var(--muted); }
+.wsteps { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.wsteps li { border: 1px solid var(--line); border-left-width: 5px; border-radius: 10px; padding: 8px 10px; }
+.wsteps li > div { display: flex; justify-content: space-between; gap: 8px; }
+.wsteps li em { font-style: normal; font-size: 12px; font-weight: 700; padding: 1px 8px; border-radius: 999px; }
+.wsteps li > span { display: block; margin-top: 3px; font-size: 13.5px; }
+.wsteps li.ok { border-left-color: #1D7350; } .wsteps li.ok em { background: #E3F2EA; color: #1D7350; }
+.wsteps li.part { border-left-color: #C98A14; } .wsteps li.part em { background: #FBF0D9; color: #8A5A0C; }
+.wsteps li.miss { border-left-color: #9AA4B2; } .wsteps li.miss em { background: #EEF1F5; color: #4A5260; }
+.wsteps li.bad { border-left-color: #B3261E; } .wsteps li.bad em { background: #FBE4E2; color: #B3261E; }
+.wread { margin-top: 8px; font-size: 13px; color: var(--muted); }
 .tg { width: 54px; height: 32px; flex: none; border-radius: 999px; border: 0; padding: 3px; cursor: pointer; background: var(--line); display: flex; }
 .tg i { width: 26px; height: 26px; border-radius: 999px; background: #FFFFFF; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25); }
 .tg[aria-checked="true"] { background: var(--accent); justify-content: flex-end; }
@@ -533,7 +552,7 @@ body.present .updbar { display: none !important; }
 .livepill button { min-height: 32px; padding: 0 12px; border-radius: 999px; border: 0; background: rgba(255,255,255,0.14); color: inherit; font: inherit; cursor: pointer; }
 .livepill button[aria-pressed="true"] { background: var(--ok); color: #FFFFFF; }
 .sqq { display: flex; flex-direction: column; gap: 8px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
-body.student #bLive, body.student #bPresent { display: none; }
+body.student #bLive, body.student #bPresent, body.student #bViewer { display: none; }
 #qmBody textarea { min-height: 70px; }
 .pagenav .zsep { width: 1px; align-self: stretch; margin: 6px 2px; background: var(--line); }
 body.writing .pagenav, body.writing .diarybar { pointer-events: none; opacity: 0.35; transition: opacity 0.15s; }
@@ -1163,6 +1182,7 @@ body.role-student .scnpill .sbtns button[data-s="back"], body.role-student .scnp
     <button class="btn sonly" id="bJoin" aria-label="เข้าห้องเรียน" title="เข้าห้องเรียน"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M8 4H4.5v12H8 M11 6.5L14.5 10 11 13.5 M14.5 10H7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="lbl">เข้าห้องเรียน</span></button>
     <button class="btn" id="bTray" aria-pressed="false" aria-label="ชุดโจทย์" title="ชุดโจทย์"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="3" y="3" width="14" height="14" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M6.5 7h7 M6.5 10h7 M6.5 13h4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span class="lbl">ชุดโจทย์</span></button>
     <button class="btn" id="bLive" aria-label="ห้องเรียนสด" title="ห้องเรียนสด"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="2.5" y="4" width="15" height="9.5" rx="1.6" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M6 17h8 M10 13.5V17" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="8.7" r="1.9" fill="currentColor"/></svg><span class="lbl">ห้องสด</span><i id="bLiveN"></i></button>
+    <button class="btn" id="bViewer" aria-label="จอผู้ชม" title="จอผู้ชม: ฉายหน้ากระดาษขึ้นทีวีหรือแชร์จอ โดยไม่เห็นแถบเครื่องมือ"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="2.5" y="3.5" width="15" height="10" rx="1.4" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M7 17h6 M10 13.5V17" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M8.5 6.5v4l3.5-2z" fill="currentColor"/></svg><span class="lbl">จอผู้ชม</span></button>
     <button class="btn" id="bExam" aria-label="ฝึกโจทย์แข่งขัน" title="ฝึกโจทย์แข่งขัน"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6 3.5h8v3.5a4 4 0 0 1-8 0z M6 5H3.5v1a3 3 0 0 0 3 3 M14 5h2.5v1a3 3 0 0 1-3 3 M10 11v3 M7 16.5h6 M8 14h4v2.5H8z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/></svg><span class="lbl">ฝึกแข่งขัน</span></button>
     <span class="tsep" aria-hidden="true"></span>
     <button class="btn" id="bExport" aria-label="ส่งออก PDF" title="ส่งออก PDF"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3v9 M6.5 8.5L10 12l3.5-3.5 M4 14.5V17h12v-2.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="lbl">ส่งออก</span></button>
@@ -1414,7 +1434,7 @@ body.role-student .scnpill .sbtns button[data-s="back"], body.role-student .scnp
     <div class="gest">
       <span><b>ถ่างสองนิ้ว</b> ซูมเข้าออก</span><span><b>ลากสองนิ้ว</b> เลื่อนหน้ากระดาษ</span>
       <span><b>แตะสองนิ้ว</b> ย้อนกลับ</span><span><b>แตะสามนิ้ว</b> ทำซ้ำ</span>
-      <span><b>บ่วงเลือกแล้วลาก</b> ย้ายลายมือ</span><span><b>คีย์ P H E L T K</b> เปลี่ยนเครื่องมือ</span>
+      <span><b>บ่วงเลือกแล้วลาก</b> ย้ายลายมือ</span><span class="keys"><b>แป้นลัดบนคีย์บอร์ด</b> <kbd>P</kbd> ปากกา <kbd>H</kbd> ไฮไลต์ <kbd>E</kbd> ยางลบ <kbd>L</kbd> บ่วงเลือก <kbd>S</kbd> รูปทรง <kbd>T</kbd> ข้อความ <kbd>K</kbd> เลเซอร์</span>
     </div>
     </div>
     <div data-mp="acc" hidden>
@@ -2653,7 +2673,7 @@ function releasePull() {
 const wheelRelease = debounce(releasePull, 220);
 /* the top bar stays on one line: when it runs out of room, buttons show icons only */
 /* the main bar never runs off the screen: first labels go, then the least used buttons move into a "more" menu */
-const TOP_OVERFLOW = ['bDiary', 'bExport', 'bExam', 'bLive', 'bTray', 'bScan', 'bJoin', 'bConvert', 'bInsert', 'bAI', 'bPages', 'bFull', 'bRedo'];
+const TOP_OVERFLOW = ['bViewer', 'bDiary', 'bExport', 'bExam', 'bLive', 'bTray', 'bScan', 'bJoin', 'bConvert', 'bInsert', 'bAI', 'bPages', 'bFull', 'bRedo'];
 function fitTop() {
   const t = document.querySelector('.top'); if (!t) return;
   t.classList.remove('compact'); t.querySelectorAll('.ovf').forEach((x) => x.classList.remove('ovf'));
@@ -9457,6 +9477,7 @@ function exStartWeak() {
 async function exFinish() {
   const R = EX.run; if (!R || R.done) return;
   R.done = true; clearInterval(EX.tick);
+  for (const x of R.items) if (x.pick < 0 && x.work && x.work.res && x.work.res.final === 'correct') x.pick = x.key;
   const items = R.items.map((x) => [x.q.id, x.q.t + ':' + x.q.ch, x.pick === x.key ? 1 : 0, Math.round(x.sec), x.pick >= 0 ? x.order[x.pick] : -1]);
   const rec = { who: EX.who, at: now(), setId: R.setId || null, title: R.title, mode: R.mode, n: items.length, ok: items.filter((x) => x[2]).length, sec: Math.round((now() - R.t0) / 1000), items };
   EX.att.push(rec);
@@ -9466,6 +9487,7 @@ async function exFinish() {
 function exAnswer(i) {
   const R = EX.run, x = R.items[R.i]; if (R.done) return;
   if (R.mode === 'practice' && x.pick >= 0) return;
+  if (R.mode === 'work' && x.work && x.work.res) return;
   x.pick = i; x.sec += (now() - x.t0) / 1000; x.t0 = now();
   exRender();
 }
@@ -9558,7 +9580,8 @@ function exRenderSetup(body) {
   body.appendChild(exEl('span', 'label', 'จำนวนข้อ'));
   exChips(body, [[5, '5 ข้อ'], [10, '10 ข้อ'], [20, '20 ข้อ'], [40, '40 ข้อ']], (v) => v === EX.n, (v) => { EX.n = v; exRender(); });
   body.appendChild(exEl('span', 'label', 'รูปแบบ'));
-  exChips(body, [['practice', 'ฝึก เฉลยทันทีทีละข้อ'], ['exam', 'สอบ จับเวลา 2 นาทีต่อข้อ เฉลยตอนจบ']], (v) => v === EX.mode, (v) => { EX.mode = v; exRender(); });
+  exChips(body, [['practice', 'ฝึก เฉลยทันทีทีละข้อ'], ['work', 'แสดงวิธีทำ เขียนแล้วให้ AI ตรวจลายมือตาม 5 ขั้น'], ['exam', 'สอบ จับเวลา 2 นาทีต่อข้อ เฉลยตอนจบ']], (v) => v === EX.mode, (v) => { EX.mode = v; exRender(); });
+  if (EX.mode === 'work') body.appendChild(exEl('div', 'note small', 'แต่ละข้อมีที่ให้เขียนวิธีทำด้วยปากกาหรือนิ้ว กดตรวจจากลายมือ แล้ว AI จะอ่านวิธีทำและบอกว่าแต่ละขั้นทำได้ดีแค่ไหน: ' + SOL_STEPS.map((x, i) => (i + 1) + ' ' + x).join(' ') + (AI.anyReady() ? '' : ' ต้องเชื่อมต่อ AI ก่อน')));
   const row = exEl('div', 'row2');
   const go = exEl('button', 'btn solid', 'เริ่มทำ'); go.onclick = exStartFromSetup; row.appendChild(go);
   const wk = exEl('button', 'btn', 'ฝึกจุดอ่อนของ ' + esc(EX.who)); wk.onclick = exStartWeak; row.appendChild(wk);
@@ -9579,8 +9602,9 @@ function exRenderRun(body) {
   body.appendChild(exEl('div', 'exch', esc(exTrackName(x.q.t) + ' : ' + exChName(x.q.t, x.q.ch)) + ' ' + '<span>' + ['', 'พื้นฐาน', 'กลาง', 'ท้าทาย'][x.q.d || 1] + '</span>'));
   if (x.q.fig) body.appendChild(exEl('div', '', figHtml(x.q, 360)));
   const qd = exEl('div', 'exq', mdToHtml(x.q.q)); body.appendChild(qd);
+  if (R.mode === 'work') { workPad(body, x); body.appendChild(exEl('span', 'label', 'คำตอบสุดท้าย (เลือกหรือไม่เลือกก็ได้)')); }
   const opts = exEl('div', 'exopts');
-  const reveal = R.mode === 'practice' && x.pick >= 0;
+  const reveal = (R.mode === 'practice' && x.pick >= 0) || (R.mode === 'work' && !!(x.work && x.work.res));
   x.order.forEach((o, k) => {
     const b = exEl('button', 'exopt', '<b>' + L[k] + '</b><span>' + mdToHtml(x.q.c[o]) + '</span>'); b.type = 'button';
     if (x.pick === k) b.classList.add('pick');
@@ -9595,7 +9619,7 @@ function exRenderRun(body) {
   const mk = (t, cls, f) => { const b = exEl('button', 'btn ' + cls, t); b.type = 'button'; b.onclick = f; nav.appendChild(b); return b; };
   if (R.i > 0) mk('ข้อก่อนหน้า', '', () => exGo(-1));
   const last = R.i === R.items.length - 1;
-  if (R.mode === 'practice') {
+  if (R.mode === 'practice' || R.mode === 'work') {
     if (reveal) mk(last ? 'ดูผล' : 'ข้อต่อไป', 'solid', () => (last ? exFinish() : exGo(1)));
     else mk(last ? 'ดูผล' : 'ข้ามไปข้อต่อไป', '', () => (last ? exFinish() : exGo(1)));
   }
@@ -9611,6 +9635,77 @@ function exRenderRun(body) {
   };
   clearInterval(EX.tick); upd(); EX.tick = setInterval(() => { if ($('#examSheet').hidden || !EX.run || EX.run.done) return; upd(); }, 1000);
   typeset(body);
+}
+
+/* ---------- show your work: the student writes the solution by hand, AI reads it and checks it against the five steps ---------- */
+function workPad(host, x) {
+  const W0 = x.work || (x.work = { strokes: [], res: null });
+  const wrap = exEl('div', 'wpad'); host.appendChild(wrap);
+  const cv = document.createElement('canvas'); cv.className = 'wpadcv'; cv.setAttribute('aria-label', 'ที่เขียนวิธีทำ'); wrap.appendChild(cv);
+  const hint = exEl('div', 'wpadhint', 'เขียนวิธีทำตรงนี้ด้วยปากกาหรือนิ้ว'); wrap.appendChild(hint);
+  const tools = exEl('div', 'row2 wpadtools'); host.appendChild(tools);
+  const draw = () => {
+    const r = cv.getBoundingClientRect(), dpr = Math.min(2, window.devicePixelRatio || 1);
+    if (cv.width !== Math.round(r.width * dpr)) { cv.width = Math.round(r.width * dpr); cv.height = Math.round(r.height * dpr); }
+    const c = cv.getContext('2d'); c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, cv.width, cv.height); c.setTransform(dpr * r.width / 1000, 0, 0, dpr * r.width / 1000, 0, 0);
+    for (const s of W0.strokes) drawStroke(c, s);
+    hint.hidden = W0.strokes.length > 0;
+  };
+  /* drawing on the pad: coordinates are kept in a 1000-wide space so the pad can change size */
+  let cur = null;
+  const at = (e) => { const r = cv.getBoundingClientRect(), k = 1000 / r.width; return [(e.clientX - r.left) * k, (e.clientY - r.top) * k]; };
+  cv.addEventListener('pointerdown', (e) => { if (W0.res) return; e.preventDefault(); e.stopPropagation(); try { cv.setPointerCapture(e.pointerId); } catch (er) { /* fine */ } const [a, b] = at(e); cur = { id: 's' + uid(), k: 'p', c: '#14181F', w: 3.2, p: [Math.round(a * 10), Math.round(b * 10), pr(e)] }; W0.strokes.push(cur); draw(); });
+  cv.addEventListener('pointermove', (e) => { if (!cur) return; e.preventDefault(); for (const ev of (e.getCoalescedEvents ? e.getCoalescedEvents() : [e])) { const [a, b] = at(ev); cur.p.push(Math.round(a * 10), Math.round(b * 10), pr(ev)); } draw(); });
+  const up = () => { cur = null; };
+  cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
+  cv.style.touchAction = 'none';
+  const btn = (t, cls, f) => { const b = exEl('button', 'btn' + (cls ? ' ' + cls : ''), t); b.type = 'button'; b.onclick = f; tools.appendChild(b); return b; };
+  if (!W0.res) {
+    btn('ย้อนเส้น', '', () => { W0.strokes.pop(); draw(); });
+    btn('ล้าง', '', () => { W0.strokes = []; draw(); });
+    btn('ตรวจจากลายมือ', 'solid', () => workCheck(x, host));
+  }
+  const out = exEl('div', 'wres'); host.appendChild(out); if (W0.res) workShow(out, W0.res);
+  requestAnimationFrame(draw);
+  setTimeout(draw, 300);
+}
+async function workCheck(x, host) {
+  const W0 = x.work; if (!W0.strokes.length) { toast('เขียนวิธีทำก่อน แล้วค่อยกดตรวจ', 2200); return; }
+  if (!needAI('read')) return;
+  /* a picture of the handwriting, cropped to what was written */
+  let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+  for (const s of W0.strokes) for (let i = 0; i < s.p.length; i += 3) { x0 = Math.min(x0, s.p[i] / 10); y0 = Math.min(y0, s.p[i + 1] / 10); x1 = Math.max(x1, s.p[i] / 10); y1 = Math.max(y1, s.p[i + 1] / 10); }
+  const pad = 20, w = x1 - x0 + 2 * pad, h = y1 - y0 + 2 * pad, k = clamp(1400 / Math.max(w, h), 0.6, 2.5);
+  const cv = document.createElement('canvas'); cv.width = Math.round(w * k); cv.height = Math.round(h * k);
+  const c = cv.getContext('2d'); c.fillStyle = '#FFFFFF'; c.fillRect(0, 0, cv.width, cv.height); c.setTransform(k, 0, 0, k, (pad - x0) * k, (pad - y0) * k);
+  for (const s of W0.strokes) drawStroke(c, Object.assign({}, s, { w: 3.6 }));
+  const blob = await new Promise((r) => cv.toBlob(r, 'image/png'));
+  const out = host.querySelector('.wres'); const B = waitCard(out, 'AI กำลังอ่านวิธีทำและตรวจทีละขั้น', ['อ่านลายมือ', 'เทียบกับ 5 ขั้น', 'สรุปคำแนะนำ']);
+  const q = x.q, L = 'กขคง', subj = exTrackName(q.t) || '';
+  const steps = SOL_STEPS.map((t, i) => (i + 1) + ') ' + (i === 4 && !/phys|ฟิสิกส์|olymp|mp/i.test(q.t + subj) ? 'สรุปคำตอบตามหลักวิชา' : t)).join('\n');
+  const prompt = 'You are a kind, precise Thai teacher checking a student\'s handwritten working for one practice question (' + subj + ').\n'
+    + 'Question:\n' + q.q + '\nChoices: ' + x.order.map((o, i) => L[i] + ') ' + q.c[o]).join('  ') + '\nCorrect answer: ' + L[x.key] + ') ' + q.c[q.a || 0] + '\nReference explanation: ' + (q.e || '') + '\n'
+    + (x.pick >= 0 ? 'The student also chose: ' + L[x.pick] + '\n' : '')
+    + 'The image is the student\'s handwritten working. First read it exactly. Then judge it against these five steps of a good solution:\n' + steps + '\n'
+    + 'For each step say ok (done well), partial (started but incomplete or with a small slip), missing (not shown), or wrong (a real error), with one short Thai sentence saying what is good or what exactly to fix. Be fair: a short but correct working can be ok. Do not invent work that is not in the image.\n'
+    + 'Reply in exactly this format, Thai text, no markdown tables, no emoji:\n@@READ\n(what the student wrote)\n@@STEP 1 ok|partial|missing|wrong\n(one sentence)\n@@STEP 2 ...\n@@STEP 3 ...\n@@STEP 4 ...\n@@STEP 5 ...\n@@FINAL correct|wrong|none\n(the student\'s final answer as written)\n@@SCORE 0-10\n@@NEXT\n(one or two sentences: the single most useful thing to practise next)';
+  try {
+    B.step(1); const r = await AI.run('read', prompt, { images: [blob], maxTokens: 2500, cache: false }); B.step(2); B.stop();
+    const S2 = sections(r.text), st = [];
+    for (let i = 1; i <= 5; i++) { const s0 = S2.find((z) => z.key === 'STEP' && parseInt(z.arg, 10) === i) || {}; const m = String(s0.arg || '').toLowerCase().match(/ok|partial|missing|wrong/); st.push([m ? m[0] : 'missing', String(s0.text || '').replace(/[*_#`]/g, '').trim().slice(0, 300)]); }
+    const fin = S2.find((z) => z.key === 'FINAL') || {}, fm = String(fin.arg || '').toLowerCase().match(/correct|wrong|none/);
+    const sc = S2.find((z) => z.key === 'SCORE'); const score = sc ? clamp(parseInt(String(sc.arg || sc.text).match(/\d+/) || 0, 10) || 0, 0, 10) : null;
+    W0.res = { s5: /phys|olymp|^mp$/.test(q.t) ? '' : 'สรุปคำตอบตามหลักวิชา', read: sec(S2, 'READ').slice(0, 800), steps: st, final: fm ? fm[0] : 'none', finalText: String(fin.text || '').slice(0, 200), score, next: sec(S2, 'NEXT').replace(/[*_#`]/g, '').slice(0, 400) };
+    if (x.pick < 0 && W0.res.final === 'correct') x.pick = x.key;
+    exRender();
+  } catch (e) { B.stop(); out.innerHTML = '<div class="note err">ตรวจไม่สำเร็จ ' + esc(aiErr(e)) + '</div>'; }
+}
+function workShow(out, R) {
+  const tag = { ok: ['ok', 'ทำได้ดี'], partial: ['part', 'เกือบครบ'], missing: ['miss', 'ยังไม่ได้แสดง'], wrong: ['bad', 'ต้องแก้'] };
+  let h = '<div class="wsum"><b>' + (R.score == null ? '' : R.score + '<small>/10</small>') + '</b><span>' + (R.final === 'correct' ? 'คำตอบสุดท้ายถูกต้อง' : R.final === 'wrong' ? 'คำตอบสุดท้ายยังไม่ถูก' : 'ยังไม่ได้เขียนคำตอบสุดท้าย') + (R.finalText ? ' (' + esc(R.finalText) + ')' : '') + '</span></div><ol class="wsteps">';
+  R.steps.forEach((s, i) => { const t = tag[s[0]] || tag.missing; h += '<li class="' + t[0] + '"><div><b>' + esc(i === 4 && R.s5 ? R.s5 : SOL_STEPS[i]) + '</b><em>' + t[1] + '</em></div><span>' + esc(s[1]) + '</span></li>'; });
+  h += '</ol>' + (R.next ? '<div class="note advice"><b>ฝึกต่อ</b> ' + esc(R.next) + '</div>' : '') + (R.read ? '<details class="wread"><summary>AI อ่านลายมือได้ว่า</summary><div>' + esc(R.read).replace(/\n/g, '<br>') + '</div></details>' : '');
+  out.innerHTML = h;
 }
 
 /* ---------- instant feedback while practising: what to work on next ---------- */
@@ -12461,7 +12556,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793247076';
+const BUILD = '1793247288';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
@@ -12992,6 +13087,11 @@ function presentTap() {
 }
 $('#presentExit').onclick = exitPresent;
 $('#bPresent').onclick = () => { store_ls.set('tp-present', '1'); enterPresent(); };
+/* audience screen from the main bar: open it in a new window (drag that window to the TV or share it), or turn this window into it */
+$('#bViewer').onclick = (e) => popMenu(e.currentTarget, 'จอผู้ชม เห็นแต่กระดาษ ลายมือ และเลเซอร์ ไม่เห็นแถบเครื่องมือ', [
+  ['เปิดจอผู้ชมในหน้าต่างใหม่ แล้วลากไปจอทีวีหรือแชร์หน้าต่างนั้น', () => { const w = window.open(location.origin + location.pathname + '#present', 'burin-present', 'popup,width=1280,height=760'); if (!w) toast('เบราว์เซอร์กันหน้าต่างใหม่ไว้ ใช้ตัวเลือกล่างแทน', 3500); }],
+  ['ใช้หน้าต่างนี้เป็นจอผู้ชม (แตะจอสามครั้งติดกันเพื่อออก)', () => { store_ls.set('tp-present', '1'); enterPresent(); }]
+]);
 window.addEventListener('resize', debounce(() => { if (S.present) presentFit(); }, 160));
 document.addEventListener('keydown', (e) => { if (S.present && e.key === 'Escape') exitPresent(); });
 window.addEventListener('hashchange', () => { const h = (location.hash || '').replace('#', ''); if (h === 'present' && !S.present) enterPresent(); else if (h !== 'present' && S.present && store_ls.get('tp-present') !== '1') exitPresent(); });
