@@ -3409,7 +3409,7 @@ function onDown(e) {
 function writingOn() { document.body.classList.add('writing'); clearTimeout(writingOn.t); }
 function writingOff() { clearTimeout(writingOn.t); writingOn.t = setTimeout(() => document.body.classList.remove('writing'), 900); }
 function beginTool(pt, e) {
-  if (e.pointerType === 'pen' || e.pointerType === 'mouse' || S.finger) writingOn();
+  if (e.pointerType === 'pen' || (e.pointerType === 'touch' && S.finger)) writingOn();
   const [x, y] = toLogical(e.clientX, e.clientY);
   if ((S.tool === 'pen' || S.tool === 'hl') && S.sel && S.sel.box && nearHandle(S.sel.box, x, y) >= 0) { startScale(pt, nearHandle(S.sel.box, x, y)); return; }
   if ((S.tool === 'pen' || S.tool === 'hl') && S.sel && S.sel.box && inBox(S.sel.box, x, y)) {
@@ -9267,25 +9267,44 @@ async function lifeAuto(sp) {
   return 'wiggle';
 }
 
-/* ----- all moving pictures on the page play by themselves; one button stops or plays them all (remembered on this device) ----- */
+/* ----- one button plays or stops every moving thing on the page at once: drawings brought to life, scenes and simulations.
+   Each one keeps its own play button too. Drawings brought to life play by themselves when the page opens unless the teacher stopped them all last time ----- */
 const animOn = () => store_ls.get('tp-anim') !== 'off';
+const ANIM_TYPES = ['life', 'scene', 'sim'];
+function animOnPage() { return ((S.page && S.page.items) || []).filter((it) => ANIM_TYPES.includes(it.type)); }
+function animAny() {
+  for (const it of animOnPage()) {
+    const r = it.type === 'life' ? LIFE.get(it.id) : it.type === 'scene' ? SCN.get(it.id) : SIMRT.get(it.id);
+    if (r && r.playing) return true;
+  }
+  return false;
+}
 function animSet(on, quiet) {
   store_ls.set('tp-anim', on ? 'on' : 'off');
+  for (const it of animOnPage()) {
+    const el = itemsEl.querySelector('.item[data-id="' + it.id + '"]'), pb = el && el.querySelector('[data-s="play"]');
+    if (it.type === 'life') { const rt = LIFE.get(it.id); if (rt) rt.playing = on; }
+    else if (it.type === 'scene') { const r = SCN.get(it.id); if (!r) continue; if (on && r.ended) scReset(it, r); r.playing = on; if (pb) pb.textContent = on ? 'หยุด' : 'เล่น'; }
+    else if (it.type === 'sim' && SIMS[it.kind]) { const R = simRuntime(it); if (on && R.ended) { const cam = R.st.cam; R.st = SIMS[it.kind].init(simParams(it)); if (cam) R.st.cam = cam; R.ended = false; } R.playing = on; if (pb) pb.textContent = on ? 'หยุด' : 'เล่น'; }
+  }
   for (const rt of LIFE.values()) rt.playing = on;
   if (on && !lifeRaf && LIFE.size) lifeRaf = requestAnimationFrame(lifeTick);
-  for (const [id, r] of SCN) { const it = findItem(id); if (!it || !it.spec || !it.spec.bare) continue; if (on && r.ended) scReset(it, r); r.playing = on; const pb = itemsEl.querySelector('.item[data-id="' + id + '"] [data-s="play"]'); if (pb) pb.textContent = on ? 'หยุด' : 'เล่น'; }
-  if (on && !scnRaf) scnRaf = requestAnimationFrame(scTick);
-  animSync(); if (!quiet) toast(on ? 'ภาพเคลื่อนไหวทั้งหน้าเล่นแล้ว' : 'หยุดภาพเคลื่อนไหวทั้งหมดแล้ว กดอีกครั้งเพื่อเล่น', 2200);
+  if (on && !scnRaf && SCN.size) scnRaf = requestAnimationFrame(scTick);
+  if (on && !simRaf && SIMRT.size) simRaf = requestAnimationFrame(simTick);
+  animSync(); if (!quiet) toast(on ? 'ภาพเคลื่อนไหวทั้งหน้าเล่นแล้ว' : 'หยุดภาพเคลื่อนไหวทั้งหน้าแล้ว แต่ละภาพยังกดเล่นเองได้', 2200);
 }
 function animSync() {
   const b = $('#bAnimAll'); if (!b) return;
-  const has = ((S.page && S.page.items) || []).some((it) => it.type === 'life' || (it.type === 'scene' && it.spec && it.spec.bare));
+  const has = animOnPage().length > 0;
   b.hidden = !has; const sep = $('#animSep'); if (sep) sep.hidden = !has; if (!has) return;
-  const on = animOn(); b.setAttribute('aria-pressed', on ? 'true' : 'false'); b.classList.toggle('on', on);
-  b.title = on ? 'หยุดภาพเคลื่อนไหวทั้งหมด' : 'เล่นภาพเคลื่อนไหวทั้งหมด'; b.setAttribute('aria-label', b.title);
+  const on = animAny(); if (b.dataset.on === String(on)) return; b.dataset.on = String(on);
+  b.setAttribute('aria-pressed', on ? 'true' : 'false'); b.classList.toggle('on', on);
+  b.title = on ? 'หยุดภาพเคลื่อนไหวทั้งหน้า' : 'เล่นภาพเคลื่อนไหวทั้งหน้า'; b.setAttribute('aria-label', b.title);
   b.querySelector('svg').innerHTML = on ? '<rect x="5" y="4" width="3.4" height="12" rx="1" fill="currentColor"/><rect x="11.6" y="4" width="3.4" height="12" rx="1" fill="currentColor"/>' : '<path d="M6 4l10 6-10 6z" fill="currentColor"/>';
   b.querySelector('span').textContent = on ? 'หยุดภาพ' : 'เล่นภาพ';
 }
+/* the button follows what is really moving, also when a single picture is played or stopped by its own button */
+setInterval(() => { if (!document.hidden) animSync(); }, 700);
 
 function insertSim(kind) {
   if (!S.page || !SIMS[kind]) return;
@@ -16713,7 +16732,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793252163';
+const BUILD = '1793252670';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
@@ -16881,7 +16900,7 @@ function openAcct() {
   if (on) box.appendChild(exEl('div', 'note small', 'ก่อนสลับ ระบบบันทึกงานขึ้นคลาวด์ให้ก่อน งานของบัญชีเดิมไม่ปนกับบัญชีใหม่ และคีย์ AI ของบัญชีเดิมไม่ติดไปกับบัญชีใหม่'));
   $('#acctSheet').hidden = false;
 }
-$('#bAcct').onclick = acctPop; $('#bAnimAll').onclick = () => animSet(!animOn()); $('#bAcctX').onclick = () => { $('#acctSheet').hidden = true; };
+$('#bAcct').onclick = acctPop; $('#bAnimAll').onclick = (e) => { e.stopPropagation(); animSet(!animAny()); }; $('#bAcctX').onclick = () => { $('#acctSheet').hidden = true; };
 function renderCloud() {
   const box = $('#cloudBox');
   const inClaude = !!(window.claude && window.claude.use);
@@ -17000,7 +17019,7 @@ $('#zOut').onclick = () => zoomTo(S.zoom / 1.4);
 $('#zNum').onclick = () => { zoomTo(1); const z = $('#zNum'); z.classList.add('said'); clearTimeout(z._t); z._t = setTimeout(() => z.classList.remove('said'), 1200); };
 /* a hand resting on the corner while the pen writes (or a palm) does not press the page and zoom buttons */
 { const nav = document.querySelector('.pagenav'); let block = 0;
-  nav.addEventListener('pointerdown', (e) => { if (e.pointerType === 'touch' && (S.penDown > 0 || now() - (S.lastPen || 0) < 1500 || (e.width || 0) > 40 || (e.height || 0) > 40)) { block = now(); e.preventDefault(); e.stopPropagation(); } }, true);
+  nav.addEventListener('pointerdown', (e) => { if (e.pointerType === 'touch' && (S.penDown > 0 || now() - (S.lastPen || 0) < 1500 || (e.width || 0) > 70 || (e.height || 0) > 70)) { block = now(); e.preventDefault(); e.stopPropagation(); } }, true);
   nav.addEventListener('click', (e) => { if (now() - block < 800) { e.preventDefault(); e.stopPropagation(); } }, true); }
 $('#qmClose').onclick = () => { $('#qmSheet').hidden = true; };
 $('#liveClose').onclick = () => { $('#liveSheet').hidden = true; };
