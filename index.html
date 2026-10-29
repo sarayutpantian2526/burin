@@ -986,6 +986,7 @@ body.present .exmini, body.role-student .exmini { display: none !important; }
 .nbfind { flex: 1 1 180px; min-height: 44px; border-radius: 12px; border: 1px solid var(--line); padding: 0 12px; font: inherit; background: var(--surface); color: var(--fg); }
 .nbnew { border: 1px solid var(--line); border-radius: 16px; padding: 12px; margin-bottom: 14px; background: var(--surface); }
 .top .title span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+body.hastabs .top .title > * { display: none; }
 .tabs { flex: 1 1 auto !important; overflow-x: auto !important; scrollbar-width: none; }
 .tabs::-webkit-scrollbar { display: none; }
 .tabchip { flex: none; max-width: 160px; }
@@ -6002,8 +6003,11 @@ function holdable(el, onTap, onHold) {
   el.addEventListener('contextmenu', (e) => { e.preventDefault(); clearTimeout(t); if (!held) { held = true; onHold(e); } });
   el.addEventListener('click', (e) => { if (held) { e.preventDefault(); held = false; return; } onTap(e); });
 }
+/* the open notebook already has its name on its tab: the top bar then keeps the space instead of repeating it */
+window.addEventListener('resize', () => setTimeout(titleDup, 50));
+function titleDup() { const t = $('#tabs'); document.body.classList.toggle('hastabs', !!(t && t.querySelector('[aria-current="true"], .on, .cur') && t.offsetParent)); }
 function renderTabs() {
-  setTimeout(fitTop, 0);
+  setTimeout(fitTop, 0); setTimeout(titleDup, 0);
   const el = $('#tabs'); el.innerHTML = '';
   /* the notebook being written in is shown too, highlighted, so every colour on the bar matches its cover */
   const ids = S.tabs.slice(); if (S.nid && !ids.includes(S.nid)) ids.unshift(S.nid);
@@ -6014,9 +6018,9 @@ function renderTabs() {
     const tabOpts = { items: () => [...el.querySelectorAll('.tabchip')], onMove: (from, to) => { const ids = [...el.querySelectorAll('.tabchip')].map((x) => x.dataset.nb); S.tabs = moveIn(ids, from, to); saveTabs(); renderTabs(); } };
     b.innerHTML = '<i></i><span></span><s class="tx" role="button" aria-label="ปิดแถบ" title="ปิดแถบ"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6 6l8 8M14 6l-8 8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></s>';
     b.querySelector('i').style.background = coverColor(nb); b.querySelector('span').textContent = nb.title || 'สมุด';
-    b.title = (nb.title || 'สมุด') + (nid === S.nid ? ' (เล่มที่เขียนอยู่)' : '') + ' ลากเพื่อย้ายตำแหน่ง แตะค้างเพื่อดูคู่กัน';
+    b.title = (nb.title || 'สมุด') + (nid === S.nid ? ' (เล่มที่เขียนอยู่ แตะเพื่อแก้ชื่อและปก)' : '') + ' ลากเพื่อย้ายตำแหน่ง แตะค้างเพื่อดูคู่กัน';
     if (nid === S.nid) b.setAttribute('aria-current', 'true'); else b.setAttribute('aria-label', 'สลับไปสมุด ' + (nb.title || ''));
-    dragItem(b, Object.assign(tabOpts, { onTap: (e) => { if (e.target.closest('.tx')) { closeTab(nid); return; } if (nid !== S.nid) openNotebook(nid); }, onHold: () => showTabMenu(nid, b) }));
+    dragItem(b, Object.assign(tabOpts, { onTap: (e) => { if (e.target.closest('.tx')) { closeTab(nid); return; } if (nid !== S.nid) openNotebook(nid); else $('#tTitle').click(); }, onHold: () => showTabMenu(nid, b) }));
     el.appendChild(b);
   }
   const cur = el.querySelector('.tabchip.cur'); if (cur) setTimeout(() => cur.scrollIntoView({ block: 'nearest', inline: 'nearest' }), 0);
@@ -16709,7 +16713,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793249863';
+const BUILD = '1793250238';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
