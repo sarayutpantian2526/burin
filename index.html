@@ -350,6 +350,9 @@ kbd { display: inline-block; min-width: 1.6em; padding: 0 5px; margin: 0 2px; bo
 .wsteps li.miss { border-left-color: #9AA4B2; } .wsteps li.miss em { background: #EEF1F5; color: #4A5260; }
 .wsteps li.bad { border-left-color: #B3261E; } .wsteps li.bad em { background: #FBE4E2; color: #B3261E; }
 .wread { margin-top: 8px; font-size: 13px; color: var(--muted); }
+.aibank { margin: 10px 0 14px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface-2); }
+.aibank h3 { margin-top: 0; }
+.aimore { margin: 10px 0; } .aimore > summary { cursor: pointer; font-weight: 700; padding: 6px 0; }
 .tg { width: 54px; height: 32px; flex: none; border-radius: 999px; border: 0; padding: 3px; cursor: pointer; background: var(--line); display: flex; }
 .tg i { width: 26px; height: 26px; border-radius: 999px; background: #FFFFFF; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25); }
 .tg[aria-checked="true"] { background: var(--accent); justify-content: flex-end; }
@@ -9399,7 +9402,6 @@ const BANK_META = /*BANK_META*/{"olymp":{"th":"สอวน. ฟิสิกส�
 const BLOOM = [['R', 'จำ'], ['U', 'เข้าใจ'], ['Ap', 'ประยุกต์ใช้'], ['An', 'วิเคราะห์'], ['E', 'ประเมินค่า']];
 const bloomName = (b) => (BLOOM.find((x) => x[0] === b) || ['', ''])[1];
 const BANKS = {}, BANK_LOADING = {};
-const trackSubj = (t) => (BANK_META[t] ? BANK_META[t].subject : 'phys');
 for (const [t, m] of Object.entries(BANK_META)) if (!CURRIC[t]) CURRIC[t] = [m.th, m.chapters.map((c) => [c.th, c.subs || []])];
 function objOf(t, ch, o) { const m = BANK_META[t]; const c = m && m.chapters[ch]; const x = c && (c.objectives || []).find((y) => y.id === o); return x ? x.th : ''; }
 function bankFiles() { return Object.keys(BANK_META).filter((t) => BANK_META[t].file); }
@@ -9414,9 +9416,16 @@ function bankQs() {
   return out;
 }
 /* tracks for the notebook's subject (physics keeps its olympiad tracks) */
+/* subject of a track: from the bank, from the extra subject curricula, or a curriculum AI made for a subject typed by the teacher */
+const TRACK_SUBJ = {};
+/* chapter lists for the subjects that have no built-in bank yet (statistics, computing, engineering, health sciences, business, law) */
+const CURRIC_EXTRA = /*CURRIC_EXTRA*/{};
+for (const [k, v] of Object.entries(CURRIC_EXTRA)) { if (!CURRIC[k]) { CURRIC[k] = v; TRACK_SUBJ[k] = k; } }
+function trackSubj(k) { return BANK_META[k] ? BANK_META[k].subject : TRACK_SUBJ[k] || 'phys'; }
 function subjTracks() {
-  const sj = curSubj()[0];
-  const t = Object.keys(CURRIC).filter((k) => (BANK_META[k] ? BANK_META[k].subject === sj : sj === 'phys'));
+  const S0 = curSubj(), sj = S0[0];
+  if (sj === 'other') { const want = 'other:' + String(S0[1] || '').trim(); return Object.keys(CURRIC).filter((k) => TRACK_SUBJ[k] === want); }
+  const t = Object.keys(CURRIC).filter((k) => trackSubj(k) === sj);
   return sj === 'sci' ? ['scip', 'sci'].filter((k) => CURRIC[k]).concat(t.filter((k) => k !== 'scip' && k !== 'sci')) : t;
 }
 /* the track that matches the notebook's subject and level */
@@ -9608,7 +9617,11 @@ function exRenderSetup(body) {
   if (EX.otherSubj) { const extra = Object.keys(BANK_META).filter((t) => BANK_META[t].file && !BANKS[t]); if (extra.length) { body.appendChild(exEl('div', 'note', 'กำลังเปิดคลังวิชาอื่น')); bankEnsure(extra).then(() => { if (!$('#examSheet').hidden) exRender(); }); return; } }
   const tracks = EX.otherSubj ? st.filter((t) => allT.includes(t)).concat(allT.filter((t) => !st.includes(t))) : st.filter((t) => all.some((q) => q.t === t));
   { const k = S.nid + ':' + ((S.nb && S.nb.level) || ''); if (EX.trackKey !== k) { EX.trackKey = k; const d = defaultTrack(S.nb); if (tracks.includes(d)) { EX.track = d; EX.chs.clear(); } } }
-  if (!tracks.length) { body.appendChild(exEl('div', 'note', 'ยังไม่มีโจทย์ในคลังของวิชา' + esc(subjName(curSubj()[0], S.nb)) + ' ไปที่หมวดชุดโจทย์ แท็บคลังโจทย์ เพื่อเพิ่มโจทย์เองหรือให้ AI ร่าง')); return; }
+  if (!tracks.length) {
+    body.appendChild(exEl('div', 'note', 'วิชา' + esc(subjName(curSubj()[0], S.nb)) + ' ยังไม่มีโจทย์ในคลัง สร้างคลังโจทย์ของวิชานี้ได้ด้านล่าง'));
+    if (st.length) aiBankPanel(body, st); else aiCurricPanel(body);
+    return;
+  }
   if (!tracks.includes(EX.track)) EX.track = tracks[0];
   body.appendChild(exEl('span', 'label', 'สนามสอบ'));
   exChips(body, tracks.map((t) => [t, exTrackName(t)]), (v) => v === EX.track, (v) => { EX.track = v; EX.chs.clear(); store_ls.set('tp-extrack', v); exRender(); });
@@ -9628,6 +9641,7 @@ function exRenderSetup(body) {
   const go = exEl('button', 'btn solid', 'เริ่มทำ'); go.onclick = exStartFromSetup; row.appendChild(go);
   const wk = exEl('button', 'btn', 'ฝึกจุดอ่อนของ ' + esc(EX.who)); wk.onclick = exStartWeak; row.appendChild(wk);
   body.appendChild(row);
+  if (!isStudentSide() || AI.anyReady()) { const more = document.createElement('details'); more.className = 'aimore'; more.innerHTML = '<summary>สร้างโจทย์เพิ่มด้วย AI</summary>'; more.ontoggle = () => { if (more.open && !more.querySelector('.aibank')) aiBankPanel(more, st.filter((t) => CURRIC[t])); }; body.appendChild(more); }
   body.appendChild(exEl('div', 'note', 'ระบบเลือกข้อที่เคยทำผิดและข้อที่ยังไม่เคยทำก่อน คะแนนทุกชุดเก็บแยกตามผู้ฝึกและซิงก์ข้ามเครื่อง บทที่มีกรอบสีส้มคือบทที่ยังเป็นจุดอ่อน'));
 }
 function exRenderRun(body) {
@@ -9964,6 +9978,94 @@ function exRenderOwnList() {
     d.appendChild(b); d.appendChild(keyToggle(q)); ol.appendChild(d);
   }
   typeset(ol);
+}
+/* ---------- a question bank for any subject, written by AI chapter by chapter and checked by a second AI pass ---------- */
+async function aiBankChapter(t, ch, n, d, sj) {
+  const subs = (CURRIC[t][1][ch][1] || []).map((x) => x[0]).join(', ');
+  const level = { 1: 'basic', 2: 'intermediate', 3: 'challenging' }[d] || 'mixed basic to challenging';
+  const prompt = 'Write ' + n + ' original multiple-choice questions in Thai for ' + (sj[2] || sj[1]) + ' learners at the level of "' + exTrackName(t) + '", chapter "' + exChName(t, ch) + '" (subtopics: ' + subs + '). Difficulty: ' + level + '. ' + (sj[3] || '') + '\n'
+    + 'Mix thinking levels: remember, understand, apply and analyse; prefer real situations. Each question has exactly 4 choices and one correct answer. Work out the correct answer carefully first. Each wrong choice must come from a real, common misconception or mistake, and you state that misconception. Use $...$ for maths.\n'
+    + 'Reply in exactly this format and nothing else, repeated ' + n + ' times:\n@@Q\n(question)\n@@RIGHT\n(correct choice)\n@@WRONG\n(wrong choice 1)\n(wrong choice 2)\n(wrong choice 3)\n@@MIS\n(the misconception behind wrong choice 1)\n(behind wrong choice 2)\n(behind wrong choice 3)\n@@WHY\n(short explanation in Thai)\n@@LEVEL R|U|A|N  1|2|3';
+  const res = await AI.run('gen', prompt, { cache: false, maxTokens: 9000 });
+  const out = []; let cur = null;
+  for (const p of sections(res.text)) {
+    const tx = (p.text || p.arg || '').trim(), lines = tx.split('\n').map((x) => x.replace(/^[-*\d.)\s]+(?=\S)/, '').trim()).filter(Boolean);
+    if (p.key === 'Q') { cur = { t, ch, d: d || 2, q: tx, c: [], w: [], a: 0, e: '', src: 'ai', at: now() }; out.push(cur); }
+    else if (cur && p.key === 'RIGHT') cur.c.unshift(tx);
+    else if (cur && p.key === 'WRONG') cur.c.push(...lines.slice(0, 3));
+    else if (cur && p.key === 'MIS') cur.w = lines.slice(0, 3);
+    else if (cur && p.key === 'WHY') cur.e = tx;
+    else if (cur && p.key === 'LEVEL') { const m = (p.arg + ' ' + tx).match(/\b([RUAN])\b/); const k = (p.arg + ' ' + tx).match(/\b([123])\b/); if (m) cur.b = m[1]; if (k && !d) cur.d = +k[1]; }
+  }
+  const good = out.filter((q) => q.q && q.c.length === 4 && q.c.every((x) => x && x.length < 400));
+  if (!good.length) return [];
+  /* second pass: another reading answers each question without seeing the key; keep only the ones it agrees with */
+  const L = 'ABCD', orders = good.map(() => [0, 1, 2, 3].sort(() => Math.random() - 0.5));
+  const chk = 'Answer each multiple-choice question. Think carefully, then reply with one line per question in the form "number: letter" and nothing else.\n' + good.map((q, i) => (i + 1) + ') ' + q.q + '\n' + orders[i].map((o, j) => L[j] + ') ' + q.c[o]).join('\n')).join('\n\n');
+  let keep = good;
+  try {
+    const r2 = await AI.run('gen', chk, { cache: false, maxTokens: 4000, lang: 'th' }); const ans = {};
+    for (const m of String(r2.text || '').matchAll(/(\d+)\s*[:.)]\s*([ABCD])/g)) ans[+m[1]] = L.indexOf(m[2]);
+    if (Object.keys(ans).length >= good.length / 2) keep = good.filter((q, i) => ans[i + 1] == null || orders[i][ans[i + 1]] === 0);
+  } catch (e) { /* no check this time: keep, the teacher can still review */ }
+  return keep;
+}
+/* a subject the teacher typed in: AI lays out its chapters first, kept in the account */
+function curricLoadCustom() {
+  try { const m = JSON.parse(store_ls.get('tp-curric-x') || '{}'); for (const [k, v] of Object.entries(m)) { if (Array.isArray(v.c) && !CURRIC[k]) { CURRIC[k] = v.c; TRACK_SUBJ[k] = 'other:' + v.name; } } } catch (e) { /* none */ }
+}
+function aiCurricPanel(body) {
+  const S0 = curSubj(), name = String(S0[1] || '').trim();
+  const box = exEl('div', 'aibank'); body.appendChild(box);
+  box.innerHTML = '<h3>จัดบทเรียนของวิชา' + esc(name || 'นี้') + '</h3><div class="note small">วิชาที่พิมพ์ชื่อเอง ให้ AI จัดรายชื่อบทและหัวข้อย่อยก่อน แล้วจึงสร้างโจทย์ทีละบท แก้ชื่อวิชาได้ที่การแต่งปกสมุด</div>';
+  const go = exEl('button', 'btn solid', 'ให้ AI จัดบทเรียน'); go.type = 'button'; box.appendChild(go); const msg = exEl('div', ''); box.appendChild(msg);
+  go.onclick = async () => {
+    if (!name) { toast('ตั้งชื่อวิชาก่อน ที่การแต่งปกสมุด', 2600); return; }
+    if (!needAI('gen')) return; go.disabled = true;
+    const B = waitCard(msg, 'AI กำลังจัดบทเรียน', ['รายชื่อบท', 'หัวข้อย่อย']);
+    try {
+      const lv = levelName((S.nb && S.nb.level) || 'u') || '';
+      const r = await AI.run('gen', 'List the chapters for teaching "' + name + '" at the level ' + lv + ' in a Thai school or university, in a sensible teaching order: 8 to 12 chapters, each with 3 to 5 subtopics. Thai names (with common English terms in brackets where usual). Reply in exactly this format, repeated for each chapter:\n@@CH\n(chapter name)\n(subtopic 1)\n(subtopic 2)\n(subtopic 3)', { cache: false, maxTokens: 4000 });
+      const chs = sections(r.text).filter((p) => p.key === 'CH').map((p) => { const ls = (p.arg + '\n' + p.text).split('\n').map((x) => x.replace(/^[-*\d.)\s]+(?=\S)/, '').trim()).filter(Boolean); return [ls[0], ls.slice(1, 6).map((x) => [x, x])]; }).filter((c) => c[0]);
+      if (chs.length < 3) throw { code: 'empty_completion' };
+      const key = 'x_' + uid().slice(0, 8); CURRIC[key] = [name + (lv ? ' ' + lv : ''), chs]; TRACK_SUBJ[key] = 'other:' + name;
+      let m = {}; try { m = JSON.parse(store_ls.get('tp-curric-x') || '{}'); } catch (e) { m = {}; } m[key] = { name, c: CURRIC[key] }; store_ls.set('tp-curric-x', JSON.stringify(m));
+      if (S.store) Promise.resolve(S.store.set('settings/curric-x', { m, at: now() })).catch(() => {});
+      B.stop(); exRender();
+    } catch (e) { B.stop(); msg.innerHTML = '<div class="note err">' + esc(aiErr(e)) + '</div>'; go.disabled = false; }
+  };
+}
+function aiBankPanel(body, tracks) {
+  const sj = curSubj(), box = exEl('div', 'aibank'); body.appendChild(box);
+  const T = { t: tracks.includes(EX.track) ? EX.track : tracks[0], chs: new Set(), n: 10, d: 0 };
+  const paint = () => {
+    box.innerHTML = '<h3>สร้างคลังโจทย์ของวิชานี้ด้วย AI</h3><div class="note small">AI เขียนโจทย์ปรนัยพร้อมเฉลย เหตุผล และความเข้าใจคลาดเคลื่อนของตัวเลือกผิดทีละบท แล้วให้ AI อีกรอบลองทำโดยไม่เห็นเฉลย เก็บเฉพาะข้อที่คำตอบตรงกัน โจทย์เก็บในบัญชีของคุณ ใช้ฝึก สั่งการบ้าน และห้องเรียนสดได้เหมือนคลังหลัก ควรตรวจก่อนใช้สอบจริง</div>';
+    if (tracks.length > 1) { box.appendChild(exEl('span', 'label', 'ระดับหรือสนาม')); exChips(box, tracks.map((t) => [t, exTrackName(t)]), (v) => v === T.t, (v) => { T.t = v; T.chs.clear(); paint(); }); }
+    const own = exAllQs().filter((q) => q.t === T.t);
+    box.appendChild(exEl('span', 'label', 'บทที่จะสร้าง แตะเลือกได้หลายบท'));
+    exChips(box, CURRIC[T.t][1].map((c, i) => [i, c[0] + ' (' + own.filter((q) => q.ch === i).length + ')']), (v) => T.chs.has(v), (v) => { if (T.chs.has(v)) T.chs.delete(v); else T.chs.add(v); paint(); });
+    box.appendChild(exEl('span', 'label', 'จำนวนต่อบท'));
+    exChips(box, [[5, '5 ข้อ'], [10, '10 ข้อ'], [20, '20 ข้อ']], (v) => v === T.n, (v) => { T.n = v; paint(); });
+    box.appendChild(exEl('span', 'label', 'ความยาก'));
+    exChips(box, [[0, 'คละ'], [1, 'ง่าย'], [2, 'กลาง'], [3, 'ยาก']], (v) => v === T.d, (v) => { T.d = v; paint(); });
+    const row = exEl('div', 'row2'); const go = exEl('button', 'btn solid', T.chs.size ? 'สร้าง ' + (T.chs.size * T.n) + ' ข้อ' : 'เลือกบทก่อน'); go.type = 'button'; go.disabled = !T.chs.size;
+    const all = exEl('button', 'btn', 'เลือกทุกบท'); all.type = 'button'; all.onclick = () => { CURRIC[T.t][1].forEach((_, i) => T.chs.add(i)); paint(); };
+    row.append(go, all); box.appendChild(row); const msg = exEl('div', ''); box.appendChild(msg);
+    go.onclick = async () => {
+      if (!needAI('gen')) return;
+      const list = [...T.chs].sort((a, b) => a - b); go.disabled = true; let made = 0;
+      const B = waitCard(msg, 'AI กำลังเขียนและตรวจโจทย์ ' + list.length + ' บท', list.map((ch) => exChName(T.t, ch)));
+      try {
+        for (let k = 0; k < list.length; k++) {
+          const ch = list[k]; let got = [];
+          for (let left = T.n; left > 0; left -= 10) got = got.concat(await aiBankChapter(T.t, ch, Math.min(10, left), T.d, sj));
+          await exAddOwn(got); made += got.length; B.step(k + 1);
+        }
+        B.stop(); toast('ได้โจทย์ที่ผ่านการตรวจ ' + made + ' ข้อ เก็บในคลังโจทย์ของฉันแล้ว', 3500); EX.track = T.t; exRender();
+      } catch (e) { B.stop(); msg.innerHTML = '<div class="note err">สร้างไม่สำเร็จ ' + esc(aiErr(e)) + (made ? ' (เก็บไว้แล้ว ' + made + ' ข้อ)' : '') + '</div>'; go.disabled = false; }
+    };
+  };
+  paint();
 }
 async function exAIDraft(t, ch, d) {
   if (!needAI('gen')) return;
@@ -12598,7 +12700,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793247393';
+const BUILD = '1793247511';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
@@ -13435,6 +13537,8 @@ async function boot() {
   if (S.student) { S.creatingFirst = true; document.body.classList.add('student'); }
   watchNotebooks();
   if (!S.student) { watchLiveDoc(); aiCloudWatch(); devSeen(); }
+  curricLoadCustom();
+  if (S.store && S.store.kind === 'cloud') Promise.resolve(S.store.get('settings/curric-x')).then((d) => { if (d && d.m) { let m = {}; try { m = JSON.parse(store_ls.get('tp-curric-x') || '{}'); } catch (e) { m = {}; } store_ls.set('tp-curric-x', JSON.stringify(Object.assign(m, d.m))); curricLoadCustom(); } }).catch(() => {});
   if (!S.student && CLOUD.state === 'on' && store_ls.get('tp-live-on') === '1' && store_ls.get('tp-class') && S.role !== 'student') { LIVE.clsId = store_ls.get('tp-live-cls') || null; LIVE.code = store_ls.get('tp-class'); setTimeout(() => { liveOpen().then(() => toast('ห้องเรียนสด ' + LIVE.code + ' ยังเปิดอยู่ ผู้เรียนเชื่อมต่อได้ตามเดิม', 3000)).catch(() => {}); }, 800); }
   renderAcct();
   if (store_ls.get('tp-auth-next') != null && CLOUD.state === 'signedout') { const em = store_ls.get('tp-auth-next'); store_ls.del('tp-auth-next'); setTimeout(() => { openAuth(); if (em) { $('#aEmail').value = em; setTimeout(() => $('#aPass').focus({ preventScroll: true }), 80); } }, 300); }
