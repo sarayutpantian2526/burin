@@ -578,6 +578,7 @@ body.present #aiFloat { display: none; }
 .qsintro { margin: 6px 0 10px; font-size: 14px; }
 .qsmain { border-color: var(--accent) !important; }
 .qsmain #qsOR { margin-top: 8px; font-size: 16px; padding: 12px 18px; }
+#aiSetup .panel > div:first-child { position: sticky; top: -1px; z-index: 2; background: var(--surface); padding: 6px 0; margin-top: -6px; }
 .qssafe ul { margin: 8px 0 0; padding-left: 20px; display: grid; gap: 6px; font-size: 13.5px; }
 .qsopt { display: flex; flex-direction: column; gap: 8px; padding: 12px; border: 1px solid var(--line); border-radius: 14px; }
 .qsopt > span { font-size: 13px; color: var(--muted); line-height: 1.5; }
@@ -1589,7 +1590,7 @@ body.role-student .scnpill .sbtns button[data-s="back"], body.role-student .scnp
 
 <div class="sheet" id="aiSetup" hidden>
   <div class="panel" role="dialog" aria-label="ตั้งค่าผู้ช่วย AI">
-    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><h2>เชื่อมต่อ AI ของคุณ</h2><button class="btn" id="qsClose">ไว้ทีหลัง</button></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><h2>เชื่อมต่อ AI ของคุณ</h2><button class="btn" id="qsClose" type="button" aria-label="ปิดหน้าเชื่อมต่อ AI">ปิด</button></div>
     <div class="qsintro"><b>ทำไมต้องเชื่อมต่อ</b> Burin ไม่มี AI ของตัวเอง งานที่ใช้ AI เช่น อ่านลายมือ สร้างโจทย์ เฉลยละเอียด และสมุดที่ตอบได้ จะใช้บัญชี AI ของคุณ ใช้ได้ทั้งแบบฟรีและแบบเสียเงิน</div>
     <input type="checkbox" id="qsAgree" hidden>
     <div class="qsopt qsmain"><b>ทางที่ง่ายที่สุด ไม่ต้องคัดลอกอะไร</b>
@@ -4190,10 +4191,12 @@ async function orFinish(code, state) {
     B.step(2); B.stop();
     AI.cfg.key = { vendor: 'openrouter', url: '', model, key: r.key }; AI.cfg.use = { read: 'auto', gen: 'auto', draw: 'auto' }; AI.save();
     renderAISettings(); renderAIAvail();
-    out.innerHTML = '<div class="note ok">เชื่อมต่อ AI แล้ว พร้อมใช้งาน' + (free ? ' บัญชีนี้ยังไม่ได้เติมเงิน จึงใช้โมเดลฟรี' + (model ? ' (' + esc(model) + ')' : '') + ' ได้วันละประมาณ 50 ครั้ง ถ้าเติมเงินในบัญชี OpenRouter ภายหลัง ระบบจะเปลี่ยนไปใช้โมเดลที่เก่งกว่าให้เอง' : (model ? ' ใช้โมเดล ' + esc(model) : '')) + ' เปลี่ยนโมเดลได้ที่เมนู หัวข้อคีย์ API</div>';
+    out.innerHTML = '<div class="note ok">เชื่อมต่อ AI แล้ว พร้อมใช้งาน' + (free ? ' บัญชีนี้ยังไม่ได้เติมเงิน จึงใช้โมเดลฟรี' + (model ? ' (' + esc(model) + ')' : '') + ' ได้วันละประมาณ 50 ครั้ง ถ้าเติมเงินในบัญชี OpenRouter ภายหลัง ระบบจะเปลี่ยนไปใช้โมเดลที่เก่งกว่าให้เอง' : (model ? ' ใช้โมเดล ' + esc(model) : '')) + ' เปลี่ยนโมเดลได้ที่เมนู หัวข้อคีย์ API</div>'; qsDone(out);
   } catch (e) { B.stop(); out.innerHTML = '<div class="note err">เชื่อมต่อไม่สำเร็จ ' + esc(aiErr(e)) + '</div>'; }
 }
 function syncAgree() { document.querySelectorAll('#aiSetup .qneed').forEach((b) => { b.disabled = false; }); }
+/* after connecting, a clear button to close this page and start using AI */
+function qsDone(out) { const b = document.createElement('button'); b.type = 'button'; b.className = 'btn solid'; b.style.width = '100%'; b.style.marginTop = '8px'; b.textContent = 'เสร็จแล้ว เริ่มใช้งาน'; b.onclick = () => { $('#aiSetup').hidden = true; }; out.appendChild(b); try { b.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); b.focus({ preventScroll: true }); } catch (e) { /* fine */ } }
 function openAISetup() { closeSheets(); $('#qsMsg').innerHTML = '';
   if (CLOUD.ready() && CLOUD.state !== 'on') { const n = document.createElement('div'); n.className = 'note'; n.innerHTML = 'ถ้าเคยเชื่อมต่อ AI บนเครื่องอื่นแล้ว ไม่ต้องเชื่อมใหม่ แค่เข้าระบบด้วยบัญชีเดียวกัน AI จะใช้ได้ทันที <button class="btn" type="button">เข้าระบบ</button>'; n.querySelector('button').onclick = () => { $('#aiSetup').hidden = true; openAuth(); }; $('#qsMsg').appendChild(n); } $('#qsKey').value = ''; $('#qsORPaste').hidden = true; $('#qsAgree').checked = !!AI.cfg.consentAt; syncAgree(); $('#aiSetup').hidden = false; }
 /* busy servers (503, 500, overloaded): wait and try again, then try a sister model; keep the one that worked */
@@ -4255,7 +4258,7 @@ async function quickSetup() {
       if (B.cancelled) return; B.step(1); B.stop();
       AI.cfg.key = { vendor, url: '', model, key }; AI.cfg.use = { read: 'auto', gen: 'auto', draw: 'auto' }; AI.save();
       renderAISettings(); renderAIAvail();
-      out.innerHTML = '<div class="note ok">เชื่อมต่อ ' + esc(V.name) + ' แล้ว (โมเดล ' + esc(model) + ') ใช้แปลงลายมือ สร้างสมการ สร้างโจทย์ และวาดรูปใหม่ได้ทันที</div>';
+      out.innerHTML = '<div class="note ok">เชื่อมต่อ ' + esc(V.name) + ' แล้ว (โมเดล ' + esc(model) + ') ใช้แปลงลายมือ สร้างสมการ สร้างโจทย์ และวาดรูปใหม่ได้ทันที</div>'; qsDone(out);
       setTimeout(() => { $('#aiSetup').hidden = true; }, 1800);
       return;
     } catch (e) { lastErr = e; if (B.cancelled) return; }
@@ -12161,7 +12164,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793236520';
+const BUILD = '1793236633';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
