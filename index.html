@@ -412,6 +412,8 @@ body.focus #viewport { border-radius: 0; }
 body.fs-ios .dock { left: 96px; }
 .exitfull { position: absolute; right: 12px; top: 12px; z-index: 6; width: 44px; height: 44px; border-radius: 12px; border: 0; background: var(--surface); color: var(--fg); box-shadow: var(--shadow); cursor: pointer; display: flex; align-items: center; justify-content: center; opacity: 0.85; }
 .exitfull svg { width: 20px; height: 20px; }
+/* on touch screens the hand (finger draws or moves the page) sits right after the pen, so it is never scrolled out of sight */
+@media (pointer: coarse) { #toolRow > [data-tool="pen"] { order: -2; } #toolRow > #fingerTg { order: -1; } }
 #fingerTg .fx { display: none; }
 #fingerTg[aria-pressed="false"] .fx { display: inline; }
 #fingerTg[aria-pressed="true"] { background: var(--chrome); color: var(--chrome-fg); }
@@ -1331,7 +1333,9 @@ body.present .item .tsize, body.role-student .item .tsize { display: none; }
 .solvep .spin { display: grid; gap: 4px; font-size: 12.5px; color: var(--muted, #667); }
 .solvep .spin input { font: 15px ui-monospace, Menlo, monospace; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--line, rgba(0,0,0,.15)); background: var(--surface); color: var(--fg); }
 .solvep .spk { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 13px; }
-.solvep .spres { display: grid; gap: 6px; font-size: 19px; padding: 8px 4px; }
+.solvep .spres { display: grid; gap: 6px; font-size: 19px; padding: 8px 4px; overflow-x: auto; }
+.solvep .spsvg svg, .crow .csvg svg { width: 100%; height: auto; display: block; }
+.crow .csvg { margin-top: 6px; }
 .solvep .spa { color: var(--muted, #667); font-size: 16px; }
 .solvep .spsteps { font-size: 15px; line-height: 1.7; }
 /* a graph sits on the paper itself: no card, no border, the page shows through; its title and edit button stay small and quiet */
@@ -9791,7 +9795,7 @@ setInterval(() => { if (!document.hidden) animSync(); }, 700);
 /* ---------- solving equations: an exact algebra engine (nerdamer) does the algebra, numbers with units come from math.js,
    a numeric search finds roots the algebra cannot write down, and AI only reads handwriting or explains the steps ---------- */
 const CAS_FUNCS = ['sin', 'cos', 'tan', 'sec', 'csc', 'cot', 'asin', 'acos', 'atan', 'sinh', 'cosh', 'tanh', 'sqrt', 'log', 'log10', 'exp', 'abs',
-  'diff', 'integrate', 'defint', 'limit', 'sum', 'product', 'factor', 'expand', 'simplify', 'partfrac', 'matrix', 'determinant', 'invert', 'transpose', 'dot', 'cross', 'vector', 'laplace', 'ilt', 'mean', 'median'];
+  'diff', 'integrate', 'defint', 'limit', 'sum', 'product', 'factor', 'expand', 'simplify', 'partfrac', 'matrix', 'determinant', 'invert', 'transpose', 'dot', 'cross', 'vector', 'laplace', 'ilt', 'mean', 'median', 'det', 'inv', 'rank', 'rref', 'eig', 'taylor', 'gcd', 'lcm', 'ode'];
 const CAS_GREEK = ['alpha', 'beta', 'gamma', 'delta', 'Delta', 'epsilon', 'varepsilon', 'zeta', 'eta', 'theta', 'vartheta', 'iota', 'kappa', 'lambda', 'Lambda', 'mu', 'nu', 'xi', 'rho', 'sigma', 'Sigma', 'tau', 'phi', 'varphi', 'Phi', 'chi', 'psi', 'Psi', 'omega', 'Omega', 'pi'];
 const CAS_KEEP = new Set(CAS_FUNCS.concat(CAS_GREEK, ['Infinity', 'e', 'i']));
 /* LaTeX or typed math into the plain form the algebra engine reads */
@@ -9799,6 +9803,13 @@ function texToCas(src) {
   let t = String(src || '');
   t = t.replace(/\$+/g, ' ').replace(/\\\(|\\\)|\\\[|\\\]/g, ' ');
   t = t.replace(/[×·∙]/g, '*').replace(/÷/g, '/').replace(/[−–]/g, '-').replace(/²/g, '^2').replace(/³/g, '^3').replace(/π/g, ' pi ').replace(/θ/g, ' theta ').replace(/ω/g, ' omega ').replace(/Δ/g, ' Delta ').replace(/λ/g, ' lambda ').replace(/μ/g, ' mu ').replace(/α/g, ' alpha ').replace(/β/g, ' beta ').replace(/√/g, 'sqrt');
+  /* matrices: \begin{pmatrix} 1 & 2 \\ 3 & 4 \end{pmatrix} becomes [[1,2],[3,4]] */
+  t = t.replace(/\\begin\{[pbvBV]?matrix\}([\s\S]*?)\\end\{[pbvBV]?matrix\}/g, (m, body) => '[' + body.split(/\\\\|\\cr/).map((r) => r.trim()).filter(Boolean).map((r) => '[' + r.split('&').map((c) => c.trim()).join(',') + ']').join(',') + ']');
+  /* derivatives in time and space: dy/dt, d^2y/dt^2, the dot over a letter, all become primes */
+  t = t.replace(/\\frac\{d\^\{?(\d)\}?\s*([A-Za-z])\}\{d\s*[A-Za-z]\^\{?\d\}?\}/g, (m, n, v) => v + "'".repeat(+n));
+  t = t.replace(/\\frac\{d\s*([A-Za-z])\}\{d\s*[A-Za-z]\}/g, "$1'");
+  t = t.replace(/\\ddot\{?([A-Za-z])\}?/g, "$1''").replace(/\\dot\{?([A-Za-z])\}?/g, "$1'");
+  t = t.replace(/\\(?:leq?|leqslant)\b/g, '<=').replace(/\\(?:geq?|geqslant)\b/g, '>=').replace(/≤/g, '<=').replace(/≥/g, '>=').replace(/\\(?:lt)\b/g, '<').replace(/\\(?:gt)\b/g, '>');
   t = t.replace(/\\overset\{\\rightharpoonup\}\{([^{}]*)\}/g, '$1');
   t = t.replace(/\\left(?![a-zA-Z])|\\right(?![a-zA-Z])|\\displaystyle|\\limits/g, '').replace(/\\[,;:! ]/g, ' ').replace(/\\quad|\\qquad/g, ' ');
   /* sin squared x: \sin^{2} x is (sin x)^2 */
@@ -9841,6 +9852,7 @@ function texToCas(src) {
 /* the engine's answer back to LaTeX for the page; v0 is written v with a subscript 0 */
 function casTex(x) {
   let s; try { s = nerdamer(String(x)).toTeX(); } catch (e) { s = String(x); }
+  s = s.replace(/\\begin\{vmatrix\}/g, '\\begin{pmatrix}').replace(/\\end\{vmatrix\}/g, '\\end{pmatrix}').replace(/\\cr\b/g, '\\\\');
   return s.replace(/\\mathrm\{(sin|cos|tan|sec|csc|cot|arcsin|arccos|arctan|sinh|cosh|tanh|exp)\}/g, '\\$1').replace(/\\mathrm\{log\}/g, '\\ln').replace(/\\mathrm\{(asin|acos|atan)\}/g, (m, f) => '\\arc' + f.slice(1)).replace(/\b([A-Za-z])(\d+)\b/g, '$1_{$2}').replace(/\\cdot\s*/g, '\\,');
 }
 function casNum(x) {
@@ -9883,13 +9895,26 @@ async function casRun(input, opt) {
   const parts = raw.split(/\s*(?:;|\n|\\\\)\s*/).map((p) => p.trim()).filter(Boolean);
   const eqs = parts.filter((p) => /[^<>!=]=[^=]/.test(p) && !/^(diff|integrate|defint|limit|sum|product|factor|expand|simplify|partfrac)\(/.test(p));
   const res = { input: parts, kind: '', unknowns: [], vars: [], rows: [], note: '' };
+  /* the other kinds of problem go to their own solvers */
+  if (parts.some((p) => /[A-Za-z]'/.test(p))) return casOde(parts, opt, res);
+  if (/\[\s*\[|\bmatrix\(|^(det|inv|rank|rref|eig|transpose)\(/.test(raw)) return casMatrix(raw, opt, res);
+  if (parts.length === 1 && /<|>/.test(parts[0]) && !/=>/.test(parts[0])) return casIneq(parts[0], opt, res);
+  { const mm = raw.match(/^taylor\((.+),\s*([A-Za-z]),\s*([^,]+),\s*(\d+)\)$/); if (mm) return casTaylor(mm[1], mm[2], mm[3], +mm[4], res); }
+  if (/^(gcd|lcm)\(/.test(raw) || /^factor\(\s*\d+\s*\)$/.test(raw) || (opt.op === 'factor' && /^\d+$/.test(raw))) return casInt(raw, opt, res);
   if (eqs.length >= 2) {
     const vars = [...new Set(eqs.flatMap((e) => casVars(e.replace('=', '-(') + ')')))];
     let unk = (opt.vars && opt.vars.length ? opt.vars : CAS_PREF.filter((v) => vars.includes(v)).concat(vars.filter((v) => !CAS_PREF.includes(v)))).slice(0, eqs.length);
     res.kind = 'system'; res.vars = vars; res.unknowns = unk;
-    const sol = nerdamer.solveEquations(eqs, unk);
+    let sol = null; try { sol = nerdamer.solveEquations(eqs, unk); } catch (e) { sol = null; }
     const pairs = Array.isArray(sol) ? sol.map((p) => (Array.isArray(p) ? p : String(p).split(','))) : [];
-    if (!pairs.length) { res.note = 'ระบบสมการนี้ไม่มีคำตอบ หรือหาคำตอบแบบตรง ๆ ไม่ได้'; return res; }
+    /* not linear, or the engine only guessed: search numerically from many starting points */
+    if (!pairs.length || pairs.some((p) => p.length !== 2 || casMessy(p[1]))) {
+      if (unk.length === eqs.length && vars.every((v) => unk.includes(v))) {
+        const sols = casNewton(eqs, unk);
+        if (sols.length) { for (const s0 of sols) res.rows.push({ lhs: '', tex: unk.map((v, k) => casTex(v) + ' = ' + casFmt(s0[k])).join(',\\quad '), approx: '', v: '', val: '' }); res.note = 'ระบบสมการไม่เชิงเส้น คำตอบจากการคำนวณเชิงตัวเลข (พบ ' + sols.length + ' ชุด)'; return res; }
+      }
+      res.note = 'ระบบสมการนี้ไม่มีคำตอบจริง หรือหาคำตอบไม่ได้'; return res;
+    }
     for (const [v, val] of pairs) { const sh = casShow(val); res.rows.push({ lhs: casTex(v), tex: sh.tex, approx: sh.approx, v: String(v), val: String(val) }); }
     return res;
   }
@@ -9979,10 +10004,13 @@ async function solveShow() {
   SOLVE.res = r;
   let h = '';
   if (r.kind === 'solve' && r.vars.length > 1) h += '<div class="spk"><span>หาค่า</span>' + r.vars.map((v) => '<button type="button" class="chip" data-v="' + esc(v) + '" aria-pressed="' + (v === r.unknowns[0]) + '">' + esc(v) + '</button>').join('') + '</div>';
-  if (!['solve', 'system', 'check', 'raw'].includes(r.kind)) h += '<div class="spk"><span>ทำอะไร</span>' + [['simplify', 'ทำให้ง่าย'], ['factor', 'แยกตัวประกอบ'], ['expand', 'กระจาย'], ['diff', 'อนุพันธ์'], ['diff2', 'อนุพันธ์อันดับสอง'], ['integrate', 'อินทิเกรต'], ['partfrac', 'เศษส่วนย่อย']].map(([k, n]) => '<button type="button" class="chip" data-op="' + k + '" aria-pressed="' + (k === r.kind) + '">' + n + '</button>').join('') + '</div>';
+  if (r.kind === 'matrix' && r.mats === 1) h += '<div class="spk"><span>ทำอะไร</span>' + [['det', 'ดีเทอร์มิแนนต์'], ['inv', 'อินเวอร์ส'], ['transpose', 'ทรานสโพส'], ['rank', 'แรงก์'], ['rref', 'ขั้นบันไดลดรูป'], ['eig', 'ค่าเฉพาะ']].map(([k, n]) => '<button type="button" class="chip" data-op="' + k + '" aria-pressed="' + (k === r.mop) + '">' + n + '</button>').join('') + '</div>';
+  if (['diff', 'diff2', 'integrate', 'simplify', 'factor', 'expand', 'partfrac', 'ineq'].includes(r.kind) && r.vars.length > 1) h += '<div class="spk"><span>เทียบกับ</span>' + r.vars.map((v) => '<button type="button" class="chip" data-v="' + esc(v) + '" aria-pressed="' + (v === r.unknowns[0]) + '">' + esc(v) + '</button>').join('') + '</div>';
+  if (!['solve', 'system', 'check', 'raw', 'matrix', 'ode', 'ineq', 'taylor', 'int'].includes(r.kind)) h += '<div class="spk"><span>ทำอะไร</span>' + [['simplify', 'ทำให้ง่าย'], ['factor', 'แยกตัวประกอบ'], ['expand', 'กระจาย'], ['diff', 'อนุพันธ์'], ['diff2', 'อนุพันธ์อันดับสอง'], ['integrate', 'อินทิเกรต'], ['partfrac', 'เศษส่วนย่อย']].map(([k, n]) => '<button type="button" class="chip" data-op="' + k + '" aria-pressed="' + (k === r.kind) + '">' + n + '</button>').join('') + '</div>';
   if (r.rows.length) {
     h += '<div class="spres">' + r.rows.map((x) => '<div>$' + (x.of != null ? (x.lhs ? x.lhs + '\\left(' + x.of + '\\right)' : x.of) + ' = ' : (x.lhs ? x.lhs + ' = ' : '')) + x.tex + '$' + (x.approx ? ' <span class="spa">$\\approx ' + x.approx + '$</span>' : '') + '</div>').join('') + '</div>';
   }
+  if (r.svg) h += '<div class="spsvg">' + r.svg + '</div>';
   if (r.note) h += '<div class="note">' + esc(r.note) + '</div>';
   h += '<div class="row2">' + (r.rows.length ? '<button type="button" class="btn solid" data-a="put">วางคำตอบลงหน้า</button>' : '') + (solveGraphable(r) ? '<button type="button" class="btn" data-a="graph">วาดกราฟ</button>' : '') + (r.rows.length && AI.ready('gen') ? '<button type="button" class="btn" data-a="why">ให้ AI อธิบายวิธีทำ</button>' : '') + '</div><div class="spwhy"></div>';
   P.body.innerHTML = h;
@@ -10002,6 +10030,7 @@ function solvePut(r) {
   let at = [clamp(b[0], 10, W - w - 10), (b[3] || b[1]) + 14];
   const f = typeof freeSpot === 'function' ? freeSpot(w, h, at) : null; if (f) at = f;
   addItem({ type: 'text', x: Math.round(at[0]), y: Math.round(at[1]), w, fs, md: lines.join('\n\n') });
+  if (r.svg) { const gw = 520, gh = Math.round(gw * 340 / 560); let g = [at[0], at[1] + h + 10]; const f2 = freeSpot(gw, gh, g); if (f2) g = f2; addItem({ type: 'svg', x: Math.round(g[0]), y: Math.round(g[1]), w: gw, svg: r.svg }); }
   toast('วางคำตอบลงหน้าแล้ว', 1500);
 }
 /* a graph straight from the expression: y = f(x), or the expression itself, with any other letters as sliders */
@@ -10030,6 +10059,229 @@ async function solveWhy(r, out) {
     typeset(out);
     out.querySelector('[data-a="putw"]').onclick = () => { const w = 620, b = SOLVE.box || [40, 200, 40, 200]; let at = [clamp(b[0], 10, W - w - 10), b[3] + 14]; const f = freeSpot(w, 300, at); if (f) at = f; addItem({ type: 'text', x: Math.round(at[0]), y: Math.round(at[1]), w, fs: 22, md: String(res.text || '').trim() }); toast('วางวิธีทำลงหน้าแล้ว', 1500); };
   } catch (e) { out.innerHTML = '<div class="note err">' + esc(aiErr(e)) + '</div>'; }
+}
+
+/* ----- systems that are not linear: Newton's method from many starting points, keeping each different answer ----- */
+function casNewton(eqs, vars) {
+  const n = vars.length; let fs;
+  try { fs = eqs.map((e) => { const i = e.indexOf('='); return nerdamer('(' + e.slice(0, i) + ')-(' + e.slice(i + 1) + ')').buildFunction(vars); }); } catch (e) { return []; }
+  const F = (x) => fs.map((f) => { try { const y = f(...x); return typeof y === 'number' ? y : NaN; } catch (e) { return NaN; } });
+  const solveLin = (A, b) => { const M = A.map((r, i) => r.concat([b[i]])); for (let c = 0; c < n; c++) { let p = c; for (let r = c + 1; r < n; r++) if (Math.abs(M[r][c]) > Math.abs(M[p][c])) p = r; if (Math.abs(M[p][c]) < 1e-14) return null; [M[c], M[p]] = [M[p], M[c]]; for (let r = 0; r < n; r++) if (r !== c) { const k = M[r][c] / M[c][c]; for (let q = c; q <= n; q++) M[r][q] -= k * M[c][q]; } } return M.map((r, i) => r[n] / r[i]); };
+  const out = [], seeds = [];
+  let rnd = 12345; const R = () => { rnd = (rnd * 16807) % 2147483647; return rnd / 2147483647; };
+  for (let k = 0; k < 120; k++) seeds.push(vars.map(() => (k < 20 ? (R() - 0.5) * 4 : (R() - 0.5) * 40)));
+  for (const x0 of seeds) {
+    let x = x0.slice(), ok = false;
+    for (let it = 0; it < 60; it++) {
+      const f = F(x); if (f.some((v) => !isFinite(v))) break;
+      const nf = Math.hypot(...f); if (nf < 1e-11) { ok = true; break; }
+      const J = []; for (let i = 0; i < n; i++) J.push(new Array(n).fill(0));
+      for (let j = 0; j < n; j++) { const h = 1e-7 * Math.max(1, Math.abs(x[j])), xp = x.slice(); xp[j] += h; const fp = F(xp); for (let i = 0; i < n; i++) J[i][j] = (fp[i] - f[i]) / h; }
+      const d = solveLin(J, f.map((v) => -v)); if (!d) break;
+      let lam = 1; for (let k = 0; k < 20; k++) { const xn = x.map((v, i) => v + lam * d[i]), fn = F(xn); if (fn.every(isFinite) && Math.hypot(...fn) < nf) { x = xn; break; } lam /= 2; if (k === 19) x = xn; }
+    }
+    if (ok && !out.some((s) => s.every((v, i) => Math.abs(v - x[i]) < 1e-6 * Math.max(1, Math.abs(v))))) out.push(x.map((v) => (Math.abs(v) < 1e-12 ? 0 : v)));
+    if (out.length >= 12) break;
+  }
+  return out.sort((a, b) => a[0] - b[0]);
+}
+
+/* ----- inequalities in one unknown: find where the two sides meet or the expression breaks, then test each interval ----- */
+function casIneq(p, opt, res) {
+  const m = p.match(/^(.*?)(<=|>=|<|>)(.*)$/); if (!m) { res.note = 'อ่านอสมการไม่ได้'; return res; }
+  const [, L, op, Rr] = m, expr = '(' + L + ')-(' + Rr + ')', vars = casVars(expr), v = opt.v && vars.includes(opt.v) ? opt.v : (CAS_PREF.find((x) => vars.includes(x)) || vars[0]);
+  res.kind = 'ineq'; res.vars = vars; res.unknowns = [v];
+  if (!v || vars.length > 1) { res.note = 'แก้อสมการได้เมื่อมีตัวแปรเดียว'; return res; }
+  let f; try { f = nerdamer(expr).buildFunction([v]); } catch (e) { res.note = 'อ่านอสมการไม่ได้'; return res; }
+  const val = (x) => { try { const y = f(x); return typeof y === 'number' ? y : NaN; } catch (e) { return NaN; } };
+  const pts = new Set();
+  const addRoots = (q) => { try { const s = nerdamer.solve(q + '=0', v); for (const e of (s.symbol && s.symbol.elements) || []) { const n = casNum(e); if (n != null && !casMessy(e)) pts.add(n); } } catch (e) { /* none */ } };
+  let num = expr, den = '1'; try { const E = nerdamer(expr); num = String(E.numerator()); den = String(E.denominator()); } catch (e) { /* keep */ }
+  addRoots(num); if (den !== '1') addRoots(den);
+  for (const r of casRootsNumeric(num, '0', v)) pts.add(r);
+  const P = [...pts].filter(isFinite).sort((a, b) => a - b).filter((x, i, a) => !i || Math.abs(x - a[i - 1]) > 1e-9);
+  const test = (y) => (op === '<' ? y < 0 : op === '>' ? y > 0 : op === '<=' ? y <= 1e-12 : y >= -1e-12);
+  const edges = [-Infinity].concat(P, [Infinity]), segs = [];
+  for (let i = 0; i < edges.length - 1; i++) {
+    const a = edges[i], b = edges[i + 1], mid = !isFinite(a) ? (isFinite(b) ? b - 1 : 0) : !isFinite(b) ? a + 1 : (a + b) / 2, y = val(mid);
+    if (isFinite(y) && test(y)) segs.push([a, b]);
+  }
+  const closed = (x) => op.length === 2 && isFinite(val(x)) && Math.abs(val(x)) < 1e-9;
+  /* join touching pieces and write them as intervals */
+  const parts = []; for (const [a, b] of segs) { const last = parts[parts.length - 1]; if (last && last[1] === a && closed(a)) last[1] = b; else parts.push([a, b]); }
+  const fx = (x) => (x === -Infinity ? '-\\infty' : x === Infinity ? '\\infty' : casTex(casExact(x)));
+  let tex = parts.map(([a, b]) => (isFinite(a) && closed(a) ? '[' : '(') + fx(a) + ', ' + fx(b) + (isFinite(b) && closed(b) ? ']' : ')')).join(' \\cup ');
+  const lone = op.length === 2 ? P.filter((x) => closed(x) && !parts.some(([a, b]) => x >= a && x <= b)) : [];
+  if (lone.length) tex += (tex ? ' \\cup ' : '') + '\\{' + lone.map(fx).join(', ') + '\\}';
+  res.rows.push({ lhs: casTex(v) + ' \\in', tex: tex || '\\varnothing', approx: '', v, val: '' });
+  if (!tex) res.note = 'ไม่มีจำนวนจริงที่ทำให้อสมการนี้เป็นจริง';
+  return res;
+}
+/* a number back as a neat exact value when it is a simple fraction or square root */
+function casExact(x) {
+  for (let d = 1; d <= 12; d++) { const n = Math.round(x * d); if (Math.abs(n / d - x) < 1e-9) return d === 1 ? String(n) : n + '/' + d; }
+  for (let d = 1; d <= 6; d++) { const q = x * d, s = Math.round(q * q); if (Math.abs(Math.sqrt(s) - Math.abs(q)) < 1e-9 && s < 1000) return (x < 0 ? '-' : '') + 'sqrt(' + s + ')' + (d > 1 ? '/' + d : ''); }
+  return String(Number(x.toPrecision(6)));
+}
+
+/* ----- Taylor series: derivatives at the point ----- */
+function casTaylor(f, v, a, n, res) {
+  res.kind = 'taylor'; res.vars = [v]; res.unknowns = [v];
+  let sum = '0', d = f, fact = 1;
+  for (let k = 0; k <= Math.min(n, 12); k++) {
+    if (k) { d = String(nerdamer('diff(' + d + ',' + v + ')')); fact *= k; }
+    const c = String(nerdamer(d, { [v]: a }));
+    if (c !== '0') sum += '+(' + c + ')/' + fact + '*(' + v + '-(' + a + '))^' + k;
+  }
+  const out = String(nerdamer('expand(' + sum + ')'));
+  res.rows.push({ lhs: '', tex: casTex(f) + ' \\approx ' + casTex(out), approx: '', v, val: out });
+  res.note = 'อนุกรมเทย์เลอร์รอบ ' + v + ' = ' + a + ' ถึงพจน์กำลัง ' + n;
+  return res;
+}
+
+/* ----- whole numbers: prime factors, gcd and lcm ----- */
+function casInt(raw, opt, res) {
+  res.kind = 'int';
+  const m = raw.match(/^(gcd|lcm)\((.+)\)$/);
+  if (m) { const ns = m[2].split(',').map((x) => Math.round(+x)); const g = (a, b) => (b ? g(b, a % b) : Math.abs(a)); let r = ns[0]; for (const x of ns.slice(1)) r = m[1] === 'gcd' ? g(r, x) : Math.abs(r * x) / g(r, x); res.rows.push({ lhs: (m[1] === 'gcd' ? '\\text{ห.ร.ม.}' : '\\text{ค.ร.น.}') + '(' + ns.join(', ') + ')', tex: String(r), approx: '', v: '', val: String(r) }); return res; }
+  let n = Math.round(+String(raw).replace(/^factor\(|\)$/g, '')); const fs = []; for (let p = 2; p * p <= n; p++) while (n % p === 0) { fs.push(p); n /= p; } if (n > 1) fs.push(n);
+  const grp = {}; for (const p of fs) grp[p] = (grp[p] || 0) + 1;
+  res.rows.push({ lhs: '', tex: String(raw).replace(/^factor\(|\)$/g, '') + ' = ' + Object.entries(grp).map(([p, k]) => p + (k > 1 ? '^{' + k + '}' : '')).join(' \\times '), approx: '', v: '', val: '' });
+  return res;
+}
+
+/* ----- matrices: exact work (determinant, inverse, transpose, rank, row echelon form) with fractions; eigenvalues by numbers ----- */
+const casMat = (s) => 'matrix(' + String(s).trim().replace(/^\[\s*\[/, '[').replace(/\]\s*\]$/, ']') + ')';
+function casMatrixOf(raw) {
+  const t = String(raw).replace(/\s+/g, '');
+  const m = t.match(/\[\[[^\]]*\](?:,\[[^\]]*\])*\]/g) || [];
+  return m;
+}
+function casMatrix(raw, opt, res) {
+  res.kind = 'matrix';
+  const mats = casMatrixOf(raw), op0 = (raw.match(/^(det|inv|rank|rref|eig|transpose)\(/) || [])[1];
+  const op = opt.op || op0 || (mats.length === 1 && raw.replace(/\s/g, '') === mats[0] ? 'det' : 'calc');
+  res.mop = op; res.mats = mats.length;
+  const N = (x) => nerdamer(x);
+  try {
+    if (op === 'calc') {
+      /* products, sums and powers of matrices written out: [[1,2],[3,4]]*[[5],[6]] */
+      let e = raw; for (const m of mats) e = e.split(m).join(casMat(m)); e = e.replace(/\s+/g, '');
+      const out = String(N(e)); res.rows.push({ lhs: '', tex: casTex(e) + ' = ' + casTex(out), approx: '', v: '', val: out }); return res;
+    }
+    const A = casMat(mats[0]);
+    const rows = mats[0].replace(/^\[\[|\]\]$/g, '').split('],[').map((r) => r.split(',').map((c) => c.trim()));
+    const numeric = rows.every((r) => r.every((c) => /^-?\d+(\.\d+)?(\/\d+)?$/.test(c)));
+    const Atex = casTex(A);
+    if (op === 'det') { const d = String(N('expand(determinant(' + A + '))')); res.rows.push({ lhs: '\\det', tex: Atex + ' = ' + casTex(d), approx: '', v: '', val: d }); }
+    else if (op === 'inv') { const d = String(N('expand(determinant(' + A + '))')); if (d === '0') { res.note = 'ดีเทอร์มิแนนต์เป็น 0 จึงไม่มีอินเวอร์ส'; return res; } const r = String(N('invert(' + A + ')')); res.rows.push({ lhs: '', tex: Atex + '^{-1} = ' + casTex(r), approx: '', v: '', val: r }); }
+    else if (op === 'transpose') { const r = String(N('transpose(' + A + ')')); res.rows.push({ lhs: '', tex: Atex + '^{T} = ' + casTex(r), approx: '', v: '', val: r }); }
+    else if (op === 'rref' || op === 'rank') {
+      if (!numeric || !window.math) { res.note = 'รูปแบบขั้นบันไดและแรงก์ทำได้เมื่อสมาชิกเป็นตัวเลข'; return res; }
+      const M = rows.map((r) => r.map((c) => math.fraction(c))); let lead = 0, rank = 0; const R = M.length, C = M[0].length;
+      for (let r = 0; r < R && lead < C; r++) {
+        let i = r; while (math.equal(M[i][lead], 0)) { i++; if (i === R) { i = r; lead++; if (lead === C) break; } } if (lead === C) break;
+        [M[i], M[r]] = [M[r], M[i]]; const lv = M[r][lead]; M[r] = M[r].map((x) => math.divide(x, lv));
+        for (let k = 0; k < R; k++) if (k !== r) { const f = M[k][lead]; M[k] = M[k].map((x, j) => math.subtract(x, math.multiply(f, M[r][j]))); }
+        lead++; rank++;
+      }
+      const tex = '\\begin{pmatrix}' + M.map((r) => r.map((x) => { const f = math.fraction(x); return (f.s < 0 && f.n ? '-' : '') + (f.d === 1 ? f.n : '\\frac{' + f.n + '}{' + f.d + '}'); }).join(' & ')).join(' \\\\ ') + '\\end{pmatrix}';
+      res.rows.push(op === 'rank' ? { lhs: '\\operatorname{rank}', tex: Atex + ' = ' + rank, approx: '', v: '', val: String(rank) } : { lhs: '', tex: Atex + ' \\sim ' + tex, approx: '', v: '', val: '' });
+      if (op === 'rref') res.note = 'รูปแบบขั้นบันไดลดรูป แรงก์ = ' + rank;
+    }
+    else if (op === 'eig') {
+      if (!numeric || !window.math) { res.note = 'ค่าเฉพาะคำนวณได้เมื่อสมาชิกเป็นตัวเลข'; return res; }
+      /* the characteristic equation gives exact values when it can; vectors come from the null space of A - lambda I */
+      const n = rows.length; const cp = String(N('expand(determinant(' + casMat('[' + rows.map((r, i) => '[' + r.map((c, j) => (i === j ? '(' + c + '-L)' : c)).join(',') + ']').join(',') + ']') + '))'));
+      let ls = []; try { ls = (nerdamer.solve(cp + '=0', 'L').symbol.elements || []).map(String); } catch (e) { ls = []; }
+      if (!ls.length || ls.some(casMessy)) { try { const E = math.eigs(rows.map((r) => r.map((c) => math.evaluate(c)))); ls = (E.values.toArray ? E.values.toArray() : E.values).map((x) => String(typeof x === 'number' ? x : math.format(x, 6))); } catch (e) { ls = []; } }
+      res.rows.push({ lhs: '', tex: '\\det(A - \\lambda I) = ' + casTex(cp.replace(/\bL\b/g, 'lambda')) + ' = 0', approx: '', v: '', val: '' });
+      ls.forEach((l, k) => { const sh = casShow(l); res.rows.push({ lhs: '\\lambda_{' + (k + 1) + '}', tex: sh.tex, approx: sh.approx, v: '', val: l }); });
+      if (!ls.length) res.note = 'หาค่าเฉพาะไม่ได้';
+    }
+  } catch (e) { res.note = 'คำนวณเมทริกซ์นี้ไม่ได้ ตรวจขนาดและรูปแบบ เช่น [[1,2],[3,4]]'; }
+  return res;
+}
+
+/* ----- differential equations (straight or curved, one or several): solved step by step with numbers (Runge-Kutta),
+   from the starting values, and drawn as a graph ----- */
+function casOde(parts, opt, res) {
+  res.kind = 'ode';
+  let iv = null, t0 = 0, t1 = 10; const ics = {}, eqs = [];
+  for (const p of parts) {
+    const r = p.match(/^([A-Za-z])=(-?[\d.]+(?:e-?\d+)?)(?:\.\.|to|ถึง|,)(-?[\d.]+(?:e-?\d+)?)$/);
+    if (r) { iv = r[1]; t0 = +r[2]; t1 = +r[3]; continue; }
+    const c = p.match(/^([A-Za-z][A-Za-z0-9_]*)('*)\((-?[\d.]+)\)=(.+)$/);
+    if (c) { ics[c[1] + c[2]] = casNum(c[4]); if (iv == null) t0 = +c[3]; continue; }
+    if (/=/.test(p)) eqs.push(p);
+  }
+  if (!eqs.length) { res.note = 'ไม่พบสมการเชิงอนุพันธ์'; return res; }
+  /* the unknown functions and their highest derivative */
+  const order = {}; for (const e of eqs) for (const m of e.matchAll(/([A-Za-z][A-Za-z0-9_]*)('+)/g)) order[m[1]] = Math.max(order[m[1]] || 0, m[2].length);
+  const deps = Object.keys(order);
+  if (!iv) { const others = new Set(eqs.flatMap((e) => casVars(e.replace(/'+/g, '').replace('=', '-(') + ')'))); iv = others.has('t') || !others.has('x') || deps.includes('x') ? 't' : 'x'; }
+  const nm = (v, k) => (k ? v + '_d' + k : v);
+  const conv = (e) => e.replace(/([A-Za-z][A-Za-z0-9_]*)('+)/g, (m, v, p) => nm(v, p.length));
+  const state = []; for (const v of deps) for (let k = 0; k < order[v]; k++) state.push(nm(v, k));
+  /* each equation is solved for the highest derivative it holds */
+  const rhs = {}; const used = new Set();
+  for (const e of eqs) {
+    const ce = conv(e), cand = deps.filter((v) => !used.has(v) && new RegExp('\\b' + nm(v, order[v]) + '\\b').test(ce));
+    const v = cand[0]; if (!v) continue; used.add(v);
+    let sol; try { sol = nerdamer.solve(ce, nm(v, order[v])); } catch (er) { sol = null; }
+    const el = (sol && sol.symbol && sol.symbol.elements || []).map(String).filter((x) => !casMessy(x));
+    if (!el.length) { res.note = 'แยกอนุพันธ์อันดับสูงสุดของ ' + v + ' ออกมาไม่ได้'; return res; }
+    rhs[v] = el[0]; if (el.length > 1) res.note = 'สมการนี้ให้ ' + nm(v, order[v]) + ' ได้หลายค่า ใช้ค่าแรก';
+  }
+  if (deps.some((v) => !rhs[v])) { res.note = 'จำนวนสมการน้อยกว่าจำนวนฟังก์ชันที่ไม่รู้'; return res; }
+  /* first-order form: state' = F(t, state) */
+  const args = [iv].concat(state), fns = {};
+  try { for (const v of deps) fns[v] = nerdamer(rhs[v]).buildFunction(args); } catch (e) { res.note = 'สมการมีตัวแปรที่ไม่รู้ค่า ใส่ค่าตัวเลขให้ครบ เช่น k = 2'; return res; }
+  const extra = [...new Set(deps.flatMap((v) => casVars(rhs[v])))].filter((x) => !args.includes(x));
+  if (extra.length) { res.note = 'ใส่ค่าตัวเลขของ ' + extra.join(', ') + ' ก่อน แล้วลองใหม่'; return res; }
+  const idx = {}; state.forEach((s, i) => { idx[s] = i; });
+  const missing = state.filter((s) => { const k = s.match(/_d(\d)$/), key = k ? s.replace(/_d\d$/, '') + "'".repeat(+k[1]) : s; return ics[key] == null; });
+  const y0 = state.map((s) => { const k = s.match(/_d(\d)$/), key = k ? s.replace(/_d\d$/, '') + "'".repeat(+k[1]) : s; return ics[key] == null ? 0 : ics[key]; });
+  const F = (t, y) => {
+    const out = new Array(state.length).fill(0);
+    for (const v of deps) { const n = order[v]; for (let k = 0; k < n - 1; k++) out[idx[nm(v, k)]] = y[idx[nm(v, k + 1)]]; out[idx[nm(v, n - 1)]] = fns[v](t, ...y); }
+    return out; };
+  /* classical fourth-order Runge-Kutta, small steps, a few hundred points kept for the graph */
+  const N = 4000, h = (t1 - t0) / N, keep = Math.max(1, Math.floor(N / 400)), pts = [[t0, y0.slice()]];
+  let y = y0.slice(), t = t0, blow = false;
+  for (let i = 1; i <= N; i++) {
+    const k1 = F(t, y), k2 = F(t + h / 2, y.map((v, j) => v + h / 2 * k1[j])), k3 = F(t + h / 2, y.map((v, j) => v + h / 2 * k2[j])), k4 = F(t + h, y.map((v, j) => v + h * k3[j]));
+    y = y.map((v, j) => v + h / 6 * (k1[j] + 2 * k2[j] + 2 * k3[j] + k4[j])); t = t0 + i * h;
+    if (y.some((v) => !isFinite(v) || Math.abs(v) > 1e12)) { blow = true; break; }
+    if (i % keep === 0) pts.push([t, y.slice()]);
+  }
+  const series = deps.map((v) => ({ name: v, pts: pts.map(([tt, yy]) => [tt, yy[idx[v]]]) }));
+  res.svg = casPlotSvg(series, iv);
+  res.ode = { iv, deps, t0, t1 };
+  const last = pts[pts.length - 1];
+  for (const v of deps) res.rows.push({ lhs: casTex(v) + '(' + casFmt(last[0]) + ')', tex: casFmt(last[1][idx[v]]), approx: '', v, val: String(last[1][idx[v]]) });
+  const shown = deps.map((v) => casTex(nm(v, order[v]).replace(/_d(\d)/, (m, k) => "'".repeat(+k))) + ' = ' + casTex(rhs[v]));
+  res.rows.unshift({ lhs: '', tex: shown.join(',\\quad '), approx: '', v: '', val: '' });
+  res.note = (blow ? 'ค่าพุ่งเป็นอนันต์ก่อนถึงปลายช่วง จึงหยุดคำนวณ ' : '') + 'แก้เชิงตัวเลขด้วยวิธีรุงเง-คุตตา ช่วง ' + iv + ' = ' + t0 + ' ถึง ' + t1 + (missing.length ? ' ไม่ได้ให้ค่าเริ่มต้นของ ' + missing.map((s) => s.replace(/_d(\d)/, (m, k) => "'".repeat(+k))).join(', ') + ' จึงใช้ 0' : '') + ' เปลี่ยนช่วงได้ด้วย เช่น ' + iv + '=0..20';
+  return res;
+}
+/* a plain graph from numbers, drawn straight on the paper: no box, no background */
+function casPlotSvg(series, xl) {
+  const VW = 560, VH = 340, L = 52, Rm = 16, T = 16, B = 40, pw = VW - L - Rm, ph = VH - T - B, COL = ['#2F4BB8', '#B5432F', '#1F7A55', '#8A5A0C'];
+  let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+  for (const s of series) for (const [x, y] of s.pts) { if (!isFinite(y)) continue; x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); }
+  if (!isFinite(y0)) return '';
+  if (y1 - y0 < 1e-9) { y0 -= 1; y1 += 1; } const pad = (y1 - y0) * 0.06; y0 -= pad; y1 += pad;
+  const X = (x) => L + (x - x0) / (x1 - x0) * pw, Y = (y) => T + (1 - (y - y0) / (y1 - y0)) * ph;
+  const nice = (a, b) => { const r = b - a, st = Math.pow(10, Math.floor(Math.log10(r / 5))), m = r / st / 5, step = st * (m >= 5 ? 10 : m >= 2 ? 5 : m >= 1 ? 2 : 1), out = []; for (let v = Math.ceil(a / step) * step; v <= b + 1e-9; v += step) out.push(+v.toPrecision(10)); return out; };
+  let s = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + VW + ' ' + VH + '" font-family="Sarabun, sans-serif" font-size="13">';
+  for (const v of nice(y0, y1)) s += '<line x1="' + L + '" x2="' + (L + pw) + '" y1="' + Y(v).toFixed(1) + '" y2="' + Y(v).toFixed(1) + '" stroke="#DDE3EA" stroke-width="1"/><text x="' + (L - 6) + '" y="' + (Y(v) + 4).toFixed(1) + '" text-anchor="end" fill="#535E6C">' + v + '</text>';
+  for (const v of nice(x0, x1)) s += '<text x="' + X(v).toFixed(1) + '" y="' + (T + ph + 18) + '" text-anchor="middle" fill="#535E6C">' + v + '</text>';
+  if (y0 < 0 && y1 > 0) s += '<line x1="' + L + '" x2="' + (L + pw) + '" y1="' + Y(0).toFixed(1) + '" y2="' + Y(0).toFixed(1) + '" stroke="#6B7686" stroke-width="1.2"/>';
+  s += '<line x1="' + L + '" x2="' + L + '" y1="' + T + '" y2="' + (T + ph) + '" stroke="#6B7686" stroke-width="1.2"/>';
+  series.forEach((se, k) => { const d = se.pts.filter((p) => isFinite(p[1])).map((p, i) => (i ? 'L' : 'M') + X(p[0]).toFixed(1) + ' ' + Y(p[1]).toFixed(1)).join(''); s += '<path d="' + d + '" fill="none" stroke="' + COL[k % 4] + '" stroke-width="2.4" stroke-linejoin="round"/>'; s += '<text x="' + (L + pw - 4) + '" y="' + (T + 14 + k * 16) + '" text-anchor="end" fill="' + COL[k % 4] + '" font-style="italic" font-size="15">' + esc(se.name) + '</text>'; });
+  s += '<text x="' + (L + pw) + '" y="' + (VH - 4) + '" text-anchor="end" fill="#535E6C" font-style="italic" font-size="15">' + esc(xl) + '</text></svg>';
+  return s;
 }
 
 
@@ -10355,7 +10607,7 @@ const CONSTS = [
   ['mu0', '1.2566e-6 N/A^2', 'μ₀ (mu0)'], ['NA', '6.022e23 1/mol', 'เลขอาโวกาโดร (NA)'], ['kB', '1.381e-23 J/K', 'ค่าคงที่โบลต์ซมันน์ (kB)'], ['Rg', '8.314 J/(mol K)', 'ค่าคงที่แก๊ส R (Rg)']
 ];
 const UNITS = ['m', 'cm', 'km', 's', 'min', 'h', 'kg', 'g', 'N', 'J', 'W', 'Pa', 'Hz', 'C', 'V', 'A', 'ohm', 'T', 'K', 'deg', 'm/s', 'km/h', 'm/s^2', 'eV'];
-let calcScope = null;
+let calcScope = null, calcClash = new Set();
 function calcInsertText(t) {
   const ta = $('#cIn'), a = ta.selectionStart || ta.value.length, b = ta.selectionEnd || a;
   ta.value = ta.value.slice(0, a) + t + ta.value.slice(b); ta.focus({ preventScroll: true }); ta.selectionStart = ta.selectionEnd = a + t.length;
@@ -10369,57 +10621,99 @@ function fmtCalc(v) {
 }
 /* lines for the algebra engine: "แก้ x^2 - 5x + 6 = 0", "แก้ v^2 = u^2 + 2 a s หา v" (known values with units are put in),
    "แก้ 2x + y = 5; x - y = 1", "อนุพันธ์ sin(x)^2", "อินทิเกรต x e^x", "แยกตัวประกอบ x^3 - 1", or any line with an equals sign that is not a plain assignment */
-const CALC_OPS = { 'อนุพันธ์': 'diff', diff: 'diff', 'อินทิเกรต': 'integrate', integrate: 'integrate', 'แยกตัวประกอบ': 'factor', factor: 'factor', 'กระจาย': 'expand', expand: 'expand', 'ทำให้ง่าย': 'simplify', simplify: 'simplify' };
+const CALC_OPS = { 'อนุพันธ์': 'diff', diff: 'diff', 'อินทิเกรต': 'integrate', integrate: 'integrate', 'แยกตัวประกอบ': 'factor', factor: 'factor', 'กระจาย': 'expand', expand: 'expand', 'ทำให้ง่าย': 'simplify', simplify: 'simplify',
+  'ดีเทอร์มิแนนต์': 'det', 'อินเวอร์ส': 'inv', 'ทรานสโพส': 'transpose', 'แรงก์': 'rank', 'ขั้นบันได': 'rref', rref: 'rref', 'ค่าเฉพาะ': 'eig', eig: 'eig', rank: 'rank' };
+const CALC_MAT_OPS = ['det', 'inv', 'transpose', 'rank', 'rref', 'eig'];
 async function calcCas(line, row, m) {
   let mm = line.match(/^(แก้|solve)\s+(.+?)(?:\s+(?:หา|for)\s+([A-Za-z_][A-Za-z0-9_]*))?$/i), op = null, body = null, want = null;
   if (mm) { body = mm[2]; want = mm[3] || null; }
-  else if ((mm = line.match(/^(อนุพันธ์|diff|อินทิเกรต|integrate|แยกตัวประกอบ|factor|กระจาย|expand|ทำให้ง่าย|simplify)\s+(.+)$/i))) { op = CALC_OPS[mm[1].toLowerCase()] || CALC_OPS[mm[1]]; body = mm[2]; }
+  else if ((mm = line.match(/^(อนุพันธ์|diff|อินทิเกรต|integrate|แยกตัวประกอบ|factor|กระจาย|expand|ทำให้ง่าย|simplify|ดีเทอร์มิแนนต์|อินเวอร์ส|ทรานสโพส|แรงก์|rank|ขั้นบันได|rref|ค่าเฉพาะ|eig)\s+(.+)$/i))) { op = CALC_OPS[mm[1].toLowerCase()] || CALC_OPS[mm[1]]; body = mm[2]; }
+  else if ((mm = line.match(/^(?:ode|สมการเชิงอนุพันธ์)\s+(.+)$/i))) body = mm[1];
+  else if ((mm = line.match(/^เทย์เลอร์\s+(.+?)\s+รอบ\s+([A-Za-z])\s*=\s*(-?[\d.]+)(?:\s+ถึงกำลัง\s+(\d+))?$/))) body = 'taylor(' + mm[1] + ',' + mm[2] + ',' + mm[3] + ',' + (mm[4] || 5) + ')';
+  else if ((mm = line.match(/^(?:ห\.ร\.ม\.|หรม|gcd)\s+(.+)$/i))) body = 'gcd(' + mm[1].replace(/\s+/g, ',').replace(/,+/g, ',') + ')';
+  else if ((mm = line.match(/^(?:ค\.ร\.น\.|ครน|lcm)\s+(.+)$/i))) body = 'lcm(' + mm[1].replace(/\s+/g, ',').replace(/,+/g, ',') + ')';
+  else if (/[A-Za-z]'/.test(line) && /=/.test(line)) body = line;
+  else if (/[<>≤≥]/.test(line) && !/=>/.test(line) && !/^\s*[A-Za-z_][A-Za-z0-9_]*\s*=[^=<>]/.test(line)) body = line;
   else if (/^[^=]*[^<>!=]=[^=][^=]*$/.test(line) && !/^\s*[A-Za-z_][A-Za-z0-9_]*\s*=/.test(line)) body = line;
   else return false;
-  const plain = body.split(/\s*;\s*/).map(texToCas).join('; ');
-  const known = new Set(Object.keys(calcScope || {}));
+  /* a matrix kept in a variable (A = [1, 2; 3, 4]) is written out for the matrix work */
+  if (op && CALC_MAT_OPS.includes(op)) {
+    const v = body.trim(), val = calcScope && (calcScope[v] || calcScope[calcPriv(v)]);
+    if (val && val.toArray) body = JSON.stringify(val.toArray().map((r) => (Array.isArray(r) ? r : [r])).map((r) => r.map((c) => (typeof c === 'number' ? c : String(c))))).replace(/"/g, '');
+    else if (/^\[[^\[]/.test(v)) body = '[' + v.slice(1, -1).split(';').map((r) => '[' + r.trim().split(/\s*,\s*|\s+/).join(',') + ']').join(',') + ']';
+  }
+  const plain = op && CALC_MAT_OPS.includes(op) ? body.replace(/\s+/g, '') : body.split(/\s*;\s*/).map(texToCas).join('; ');
+  const known = new Set(Object.keys(calcScope || {}).map((k) => k.replace(/__v$/, '')));
   const opt = {}; if (op) opt.op = op;
   try { await casReady(); } catch (e) { row.classList.add('err'); row.innerHTML = '<span class="ce"><code></code><b>โหลดตัวแก้สมการไม่สำเร็จ ตรวจอินเทอร์เน็ต</b></span>'; row.querySelector('code').textContent = line; return true; }
   if (want) opt.v = want;
-  else if (!op) { const vs = [...new Set(plain.split(';').flatMap((q) => casVars(q.replace('=', '-(') + ')')))], unk = vs.filter((v) => !known.has(v)); if (unk.length) { if (/;/.test(plain)) opt.vars = unk; else opt.v = unk[0]; } }
+  else if (!op && !/[A-Za-z]'/.test(plain)) { const vs = [...new Set(plain.split(';').flatMap((q) => casVars(q.replace('=', '-(') + ')')))], unk = vs.filter((v) => !known.has(v)); if (unk.length) { if (/;/.test(plain)) opt.vars = unk; else opt.v = unk[0]; } }
   let r; try { r = await casRun(plain, opt); } catch (e) { r = null; }
   row.innerHTML = '<span class="ce"><code></code><b></b></span><button type="button">แทรกลงหน้า</button>';
   row.querySelector('code').textContent = line;
   if (!r || (!r.rows.length && !r.note)) { row.classList.add('err'); row.querySelector('b').textContent = 'อ่านสมการไม่ได้ ตรวจเครื่องหมายและวงเล็บ'; row.querySelector('button').remove(); return true; }
   /* known values with units go into each answer */
   const shown = r.rows.map((x) => {
-    let num = ''; const q = casWithUnits(x.val, calcScope);
+    let num = ''; const q = casWithUnits(calcRewrite(String(x.val), calcClash), calcScope);
     if (q != null && known.size && casVars(x.val).some((v) => known.has(v))) { const t = fmtCalc(q); if (t && !/function/.test(t)) num = t; }
-    if (num && x.v && !op) { try { calcScope[x.v] = q; } catch (e) { /* keep going */ } }
+    if (num && x.v && !op) { try { if (calcIsUnit(x.v)) { calcClash.add(x.v); calcScope[calcPriv(x.v)] = q; } else calcScope[x.v] = q; } catch (e) { /* keep going */ } }
     return { tex: casRowTex(x) + (x.approx ? ' \\approx ' + x.approx : ''), num, v: x.v };
   });
   const b = row.querySelector('b');
-  b.innerHTML = shown.map((x) => '$' + x.tex + '$' + (x.num ? ' <span class="cnum">= ' + esc(x.num) + '</span>' : '')).join('<br>') + (r.note ? '<br><small>' + esc(r.note) + '</small>' : '');
+  b.innerHTML = shown.map((x) => '$' + x.tex + '$' + (x.num ? ' <span class="cnum">= ' + esc(x.num) + '</span>' : '')).join('<br>') + (r.note ? '<br><small>' + esc(r.note) + '</small>' : '') + (r.svg ? '<div class="csvg">' + r.svg + '</div>' : '');
   typeset(b);
   const ins = row.querySelector('button');
   if (!shown.length) ins.remove();
-  else ins.onclick = () => { const md = shown.map((x) => '$' + x.tex + (x.num ? ' = ' + x.num.replace(/ /g, '\\,') : '') + '$').join('\n\n'); const w = 560; const [x, y] = viewSpot(w, 60 * shown.length); addItem({ type: 'text', md, x, y, w, fs: 26 }); toast('แทรกผลลงหน้าแล้ว', 1400); };
+  else ins.onclick = () => { const md = shown.map((x) => '$' + x.tex + (x.num ? ' = ' + x.num.replace(/ /g, '\\,') : '') + '$').join('\n\n'); const w = 560; const [x, y] = viewSpot(w, 60 * shown.length); addItem({ type: 'text', md, x, y, w, fs: 26 }); if (r.svg) addItem({ type: 'svg', svg: r.svg, x, y: y + 60 * shown.length + 10, w: 520 }); toast('แทรกผลลงหน้าแล้ว', 1400); };
   return true;
+}
+/* a letter written right after a number is a unit (5 m is five metres, 3 g is three grams) even when a variable has the same name;
+   anywhere else it is the variable (m = 2 kg, then m g h). Such variables are kept under a private name inside the calculator. */
+const calcIsUnit = (n) => { try { return !!(window.math && math.Unit.isValuelessUnit(n)); } catch (e) { return false; } };
+const calcPriv = (n) => n + '__v';
+function calcRewrite(line, clash) {
+  const toks = line.match(/\d+(?:\.\d+)?(?:[eE][-+]?\d+)?|[A-Za-z_][A-Za-z0-9_]*|\s+|./g) || [];
+  let out = '', unitChain = false, lastSig = '';
+  for (let i = 0; i < toks.length; i++) {
+    const t = toks[i];
+    if (/^\s+$/.test(t)) { out += t; continue; }
+    if (/^\d/.test(t)) { out += t; unitChain = true; lastSig = 'num'; continue; }
+    if (/^[A-Za-z_]/.test(t)) {
+      const nxt = (toks.slice(i + 1).find((x) => !/^\s+$/.test(x)) || '');
+      const isUnitPos = (lastSig === 'num' || (unitChain && /^[*/]$/.test(lastSig))) && calcIsUnit(t) && nxt !== '(';
+      out += !isUnitPos && clash.has(t) ? calcPriv(t) : t;
+      unitChain = isUnitPos || (unitChain && lastSig === 'num' && calcIsUnit(t)); lastSig = 'id'; continue;
+    }
+    if (t === '^' && unitChain) { out += t; lastSig = '^'; continue; }
+    if (/^[*/]$/.test(t) && unitChain && lastSig === 'id') { out += t; lastSig = t; continue; }
+    if (lastSig === '^' && /^[-\d]/.test(t)) { out += t; continue; }
+    out += t; unitChain = false; lastSig = t;
+  }
+  return out;
 }
 async function runCalc() {
   const out = $('#cOut');
   try { await loadLib('math'); } catch (e) { out.innerHTML = '<div class="note err">โหลดเครื่องคำนวณไม่สำเร็จ ตรวจอินเทอร์เน็ต</div>'; return; }
-  const m = window.math; calcScope = {};
-  for (const [k, v] of CONSTS) { try { calcScope[k] = m.evaluate(v); } catch (e) { /* skip */ } }
+  const m = window.math; calcScope = {}; calcClash = new Set();
+  for (const [k, v] of CONSTS) { try { const val = m.evaluate(v); if (calcIsUnit(k)) { calcClash.add(k); calcScope[calcPriv(k)] = val; } else calcScope[k] = val; } catch (e) { /* skip */ } }
   out.innerHTML = '';
   const lines = $('#cIn').value.split('\n').map((l) => l.trim()).filter(Boolean).slice(0, 40);
   for (const line of lines) {
     const row = document.createElement('div'); row.className = 'crow';
     if (await calcCas(line, row, m)) { out.appendChild(row); continue; }
     try {
-      const node = m.parse(line.replace(/×/g, '*').replace(/÷/g, '/').replace(/π/g, 'pi').replace(/°/g, ' deg'));
+      const src = line.replace(/×/g, '*').replace(/÷/g, '/').replace(/π/g, 'pi').replace(/°/g, ' deg');
+      const lhs = (src.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=(?!=)/) || [])[1];
+      if (lhs && calcIsUnit(lhs)) calcClash.add(lhs);
+      const node = m.parse(calcRewrite(src, calcClash));
+      const shownNode = m.parse(src);
       const res = node.evaluate(calcScope);
       if (typeof res === 'function' || res === undefined) throw new Error('ยังไม่ได้ผลเป็นตัวเลข');
       const txt = fmtCalc(res);
       row.innerHTML = '<span class="ce"><code></code><b></b></span><button type="button">แทรกลงหน้า</button>';
       row.querySelector('code').textContent = line; row.querySelector('b').textContent = txt;
       row.querySelector('button').onclick = () => {
-        let tex = ''; try { tex = node.toTex({ parenthesis: 'auto', implicit: 'hide' }).replace(/:=/g, '='); } catch (e) { tex = line; }
+        let tex = ''; try { tex = shownNode.toTex({ parenthesis: 'auto', implicit: 'hide' }).replace(/:=/g, '='); } catch (e) { tex = line; }
         let rtex = txt; try { rtex = m.parse(txt).toTex(); } catch (e) { /* keep plain */ }
         const md = node.type === 'AssignmentNode' ? '$' + tex + '$' + (node.value && node.value.type !== 'ConstantNode' ? ' $= ' + rtex + '$' : '') : '$' + tex + ' = ' + rtex + '$';
         const w = 520; const [x, y] = viewSpot(w, 60);
@@ -17803,7 +18097,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793286223';
+const BUILD = '1793287104';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
