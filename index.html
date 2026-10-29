@@ -527,6 +527,14 @@ body.writing .pagenav, body.writing .diarybar { pointer-events: none; opacity: 0
 .pagenav .zsep[hidden], .pagenav .animall[hidden] { display: none; }
 @media (max-width: 600px) { .pagenav .animall span { display: none; } .pagenav .animall { padding: 0; } }
 .scnhandle { z-index: 3; }
+/* folded by default: only the page number shows, small, so a writing hand does not hit it; tap it to open the controls */
+.pagenav.mini { padding: 2px; gap: 0; opacity: 0.85; }
+.pagenav.mini > *:not(#pgNum):not(#bAnimAll) { display: none !important; }
+.pagenav.mini #pgNum { min-width: 52px; height: 34px; font-size: 13px; }
+.pagenav.left { right: auto; left: 12px; }
+body.navleft .diarybar { left: auto; right: 12px; }
+@media (max-width: 600px) { .pagenav.left { left: 6px; } body.navleft .diarybar { right: 8px; } }
+body.tv .pagenav.left { left: 14px; }
 .pagenav #zNum { min-width: 56px; font-variant-numeric: tabular-nums; }
 .busy { display: flex; flex-direction: column; gap: 8px; padding: 12px 14px; border-radius: 14px; background: var(--accent-soft); border: 1px solid var(--line); }
 .busy .bh { display: flex; align-items: center; gap: 10px; }
@@ -1255,7 +1263,7 @@ body.role-student .scnpill .sbtns button[data-s="back"], body.role-student .scnp
       <div class="pwait no-ink" id="presentWait" hidden>จอผู้ชมพร้อมแล้ว<br>เปิดสมุดบนเครื่องที่ใช้เขียน แล้วหน้านั้นจะขึ้นที่นี่</div>
       <button class="exitfull no-ink" id="bExitFull" hidden aria-label="ออกจากเต็มหน้าจอ"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7.5 3v4.5H3 M17 7.5h-4.5V3 M12.5 17v-4.5H17 M3 12.5h4.5V17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
       <div class="exmini no-ink" id="exMini" role="group" aria-label="ชุดโจทย์ที่ย่อไว้" hidden><button id="emPrev" aria-label="ข้อก่อนหน้า">ก่อนหน้า</button><button id="emOpen" class="main"></button><button id="emNext" aria-label="ข้อต่อไป">ต่อไป</button><button id="emPlace">วางข้อนี้ลงหน้า</button></div>
-      <div class="pagenav no-ink" role="group" aria-label="เปลี่ยนหน้า">
+      <div class="pagenav no-ink mini" role="group" aria-label="เปลี่ยนหน้า">
         <button id="bAnimAll" class="animall" type="button" hidden aria-pressed="true"><svg viewBox="0 0 20 20" aria-hidden="true"></svg><span></span></button><span class="zsep" id="animSep" hidden></span>
         <button id="pgPrev" aria-label="หน้าก่อน"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M12.5 4.5L7 10l5.5 5.5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
         <button class="num" id="pgNum" aria-label="ดูทุกหน้า">1 / 1</button>
@@ -1365,6 +1373,7 @@ body.role-student .scnpill .sbtns button[data-s="back"], body.role-student .scnp
     <div class="note">ใช้ตอนแชร์หน้าจอหรือฉายขึ้นทีวี ผู้ชมจะเห็นเฉพาะกระดาษและสิ่งที่อยู่บนกระดาษ ไม่เห็นแถบเครื่องมือ จอผู้ชมจะเปลี่ยนหน้าและเลื่อนตามเครื่องที่เขียน เห็นลายมือและเลเซอร์ทันที<br><br>เปิดแอปนี้อีกหน้าต่างหนึ่งหรือบนอีกเครื่อง แล้วกดปุ่มด้านล่าง จากนั้นแชร์เฉพาะหน้าต่างนั้นในโปรแกรมประชุม ออกจากจอผู้ชมได้ด้วยการแตะจอสามครั้งติดกัน</div>
     <button class="btn" id="bPresent">ใช้หน้าต่างนี้เป็นจอผู้ชม</button>
     <h3>การเขียนและจอ</h3>
+    <div class="switch"><span><b>ปุ่มเปลี่ยนหน้าอยู่มุม</b><small>ปุ่มเลขหน้ามุมล่าง ย้ายไปฝั่งที่มือไม่วางตอนเขียน ถนัดขวาเลือกซ้าย ถนัดซ้ายเลือกขวา</small></span><span class="seg" id="navSideSeg" role="group" aria-label="ฝั่งของปุ่มเปลี่ยนหน้า"><button type="button" data-s="left">ซ้าย</button><button type="button" data-s="right">ขวา</button></span></div>
     <div class="switch"><span><b>เลื่อนหน้าต่อเนื่อง</b><small>เห็นท้ายหน้าก่อนและต้นหน้าถัดไปต่อกัน เลื่อนขึ้นลงข้ามหน้าได้เหมือนม้วนกระดาษ ปิดไว้ จะเปลี่ยนทีละหน้า</small></span><button class="tg" id="tgFlow" role="switch" aria-checked="false" aria-label="เลื่อนหน้าต่อเนื่อง"></button></div>
     <div class="switch"><span><b>นิ้ววาดได้</b><small>ปิดไว้ นิ้วจะใช้เลื่อนและซูม ปากกาเขียนอย่างเดียว ระบบปิดให้เองเมื่อพบปากกา</small></span><button class="tg" id="tgFinger" role="switch" aria-checked="true" aria-label="นิ้ววาดได้"><i></i></button></div>
     <div class="switch"><span><b>วางฝ่ามือเพื่อลบ</b><small>สำหรับทีวีทัชสกรีนที่บอกขนาดพื้นที่สัมผัสได้</small></span><button class="tg" id="tgPalm" role="switch" aria-checked="true" aria-label="วางฝ่ามือเพื่อลบ"><i></i></button></div>
@@ -12412,7 +12421,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793245391';
+const BUILD = '1793245618';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
@@ -12663,7 +12672,13 @@ $('#customColor').addEventListener('change', (e) => {
 });
 $('#pgPrev').onclick = () => stepPage(-1);
 $('#pgNext').onclick = () => { const [i, n] = pageIndex(); if (i >= n - 1) addPage(); else stepPage(1); };
-$('#pgNum').onclick = () => togglePages();
+/* page controls: folded to the page number; tap to open, folds again by itself */
+const NAV = { side: store_ls.get('tp-navside') === 'right' ? 'right' : 'left', t: 0 };
+function navFold(on) { const n = document.querySelector('.pagenav'); n.classList.toggle('mini', on); clearTimeout(NAV.t); if (!on) NAV.t = setTimeout(() => navFold(true), 5000); }
+function navSide(side) { NAV.side = side === 'right' ? 'right' : 'left'; store_ls.set('tp-navside', NAV.side); document.querySelector('.pagenav').classList.toggle('left', NAV.side === 'left'); document.body.classList.toggle('navleft', NAV.side === 'left'); document.querySelectorAll('#navSideSeg button').forEach((b) => b.setAttribute('aria-pressed', b.dataset.s === NAV.side ? 'true' : 'false')); }
+navSide(NAV.side);
+document.querySelector('.pagenav').addEventListener('click', (e) => { if (!document.querySelector('.pagenav').classList.contains('mini') && e.target.closest('button')) navFold(false); });
+$('#pgNum').onclick = (e) => { const n = document.querySelector('.pagenav'); if (n.classList.contains('mini')) { e.stopPropagation(); navFold(false); return; } togglePages(); };
 $('#bAddBelow').onclick = () => addPage();
 $('#bConvert').onclick = () => { if (!S.convMode && !needAI('read')) return; setConvMode(!S.convMode); };
 $('#cEq').onclick = () => { S.convEq = !S.convEq; $('#cEq').setAttribute('aria-pressed', S.convEq ? 'true' : 'false'); $('#convHint').textContent = S.convEq ? 'แตะที่สมการที่เขียนเพื่อแปลงเป็นสมการตัวพิมพ์' : 'แตะที่ลายมือเพื่อแปลงเป็นตัวพิมพ์'; };
@@ -13104,6 +13119,7 @@ function setDockPos(fx, fy) {
   try { const p = JSON.parse(store_ls.get('tp-dock') || 'null'); if (Array.isArray(p) && isFinite(p[0]) && isFinite(p[1])) setTimeout(() => setDockPos(p[0], p[1]), 0); } catch (e) {}
 })();
 $('#tgFlow').onclick = () => flowSet(!FLOW.on);
+document.querySelectorAll('#navSideSeg button').forEach((b) => { b.onclick = () => navSide(b.dataset.s); });
 document.querySelectorAll('#flowSeg button').forEach((b) => { b.onclick = () => flowSet(b.dataset.f === '1'); });
 flowSet(FLOW.on);
 $('#tgTV').onclick = () => { S.tv = !S.tv; store_ls.set('tp-tv', S.tv ? '1' : '0'); if (S.tv) { S.finger = true; S.palm = true; } syncToggles(); fit(); };
