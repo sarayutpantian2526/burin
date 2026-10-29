@@ -3244,6 +3244,7 @@ function renderItems() {
   for (const el of old.values()) el.remove();
   while (itemsEl.children.length > i) itemsEl.lastChild.remove();
   for (const el of fresh) typeset(el);
+  try { for (const id of Object.keys(DIARY.anim)) { const el = itemsEl.querySelector('.item[data-id="' + id + '"]'); if (el && !el._writing) diaryWriteIn(id, DIARY.anim[id]); else if (!el) delete DIARY.anim[id]; } } catch (e) { /* not ready yet at start */ }
   if (typeof animSync === 'function') animSync();
   if (needMath) loadLib('math').then(() => { if (!window.math) return; for (const el of itemsEl.querySelectorAll('.item.graph')) el._sig = null; renderItems(); }).catch(() => {});
 }
@@ -3334,7 +3335,7 @@ const savePage = debounce(() => {
 }, 300);
 /* ---------- the notebook that writes back: write by hand, pause, and the page answers in handwriting, letter by letter.
    Your own writing stays on the page. ---------- */
-const DIARY = { on: false, pending: [], t: null, busy: false, log: {} };
+const DIARY = { on: false, pending: [], t: null, busy: false, log: {}, anim: {} };
 /* the answering notebook is a mode: one switch in the tool bar, and a bar on the page that says it is on with a button to turn it off */
 function diarySync() {
   const on = diaryOn();
@@ -3428,8 +3429,10 @@ async function diaryAsk() {
 }
 const DIARY_HAND = () => (HAND_IDS.includes(S.handDefault) ? S.handDefault : 'pen');
 /* the reply appears as if an invisible pen were writing it: one letter at a time, ink soaking in */
-function diaryWriteIn(id) {
+function diaryWriteIn(id, from) {
   const el = itemsEl.querySelector('.item[data-id="' + id + '"]'); if (!el) return;
+  /* the page may be drawn again while the note is being written (a save coming back from the cloud): the writing then carries on from the same letter */
+  from = from || 0; DIARY.anim[id] = from; el._writing = true;
   const seg = (t) => (typeof Intl !== 'undefined' && Intl.Segmenter ? [...new Intl.Segmenter('th', { granularity: 'grapheme' }).segment(t)].map((x) => x.segment) : Array.from(t));
   /* only the words are rewritten letter by letter: the move and resize buttons on the note stay as they are */
   const nodes = [], tw = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, { acceptNode: (n) => (n.parentElement.closest('button') ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT) });
@@ -3454,10 +3457,11 @@ function diaryWriteIn(id) {
     t.style.stroke = ink; t.style.strokeWidth = Math.max(0.6, fsz * 0.03) + 'px'; t.style.fill = ink; t.style.strokeDasharray = L; t.style.strokeDashoffset = L;
     svg.appendChild(t); return t;
   };
-  let i = 0;
+  let i = from; for (let k = 0; k < from && k < marks.length; k++) marks[k].classList.add('on');
   const step = () => {
     if (!el.isConnected) return;
-    if (i >= marks.length) { setTimeout(() => { svg.remove(); el.classList.remove('writing'); }, 900); return; }
+    if (i >= marks.length) { delete DIARY.anim[id]; setTimeout(() => { svg.remove(); el.classList.remove('writing'); }, 900); return; }
+    DIARY.anim[id] = i;
     const g = marks[i++], c = g.textContent, t = place(g);
     const dur = t ? 520 + Math.random() * 260 + (c.length > 1 ? 220 : 0) : 0;
     if (t) {
@@ -3474,7 +3478,7 @@ function diaryWriteIn(id) {
     if (Math.random() < 0.06) ms += 350;
     setTimeout(step, ms);
   };
-  setTimeout(step, 250);
+  if (from) step(); else setTimeout(step, 250);
 }
 function addItem(it) {
   const before = clone((S.page && S.page.items) || []);
@@ -17277,7 +17281,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793261912';
+const BUILD = '1793262019';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
