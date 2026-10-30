@@ -15296,6 +15296,8 @@ function subjTracks() {
 /* how hard each track is, on the same scale as the notebook levels, so the practice opens at the notebook's level */
 const LEVEL_RANK = { p: 0, mt: 1, mp: 2, olymp: 2.6, u: 3, grad: 4, pro: 3 };
 const TRACK_RANK = { p: 0, scip: 0, mt: 1, sci: 1, ijso: 1.6, mpb: 1.9, mp: 2, math: 2, mathx: 2.1, earth: 2, chem: 2.3, bio: 2.3, olymp: 2.6, u: 3, mathu: 3 };
+const EXAM_NAME = { normal: 'ปกติ (สอบในโรงเรียนและ TCAS)', posn: 'สอวน.', ijso: 'IJSO' };
+function trackExam(t) { const m = BANK_META[t]; if (m && m.exam) return m.exam; return t === 'olymp' || /^posn/.test(t) ? 'posn' : /^ijso/.test(t) ? 'ijso' : 'normal'; }
 function trackRank(t) { if (TRACK_RANK[t] != null) return TRACK_RANK[t]; const m = BANK_META[t] || {}; return LEVEL_RANK[m.level] != null ? LEVEL_RANK[m.level] : 2; }
 function nbRank(nb) { const lv = (nb && nb.level) || 'mp'; return LEVEL_RANK[lv] != null ? LEVEL_RANK[lv] : 2; }
 /* closest first; at equal distance the harder track wins for olympiad and university notebooks, the easier one otherwise */
@@ -15489,7 +15491,12 @@ function exRenderSetup(body) {
   if (st.some((t) => BANK_META[t] && BANK_META[t].file && !BANKS[t])) { body.appendChild(exEl('div', 'note', 'กำลังเปิดคลังโจทย์')); bankEnsure(st).then(() => { if (!$('#examSheet').hidden) exRender(); }); return; }
   const allT = Object.keys(CURRIC).filter((t) => all.some((q) => q.t === t));
   if (EX.otherSubj) { const extra = Object.keys(BANK_META).filter((t) => BANK_META[t].file && !BANKS[t]); if (extra.length) { body.appendChild(exEl('div', 'note', 'กำลังเปิดคลังวิชาอื่น')); bankEnsure(extra).then(() => { if (!$('#examSheet').hidden) exRender(); }); return; } }
-  const tracks = EX.otherSubj ? st.filter((t) => allT.includes(t)).concat(allT.filter((t) => !st.includes(t))) : st.filter((t) => all.some((q) => q.t === t));
+  const tracks0 = EX.otherSubj ? st.filter((t) => allT.includes(t)).concat(allT.filter((t) => !st.includes(t))) : st.filter((t) => all.some((q) => q.t === t));
+  /* school levels split by kind of exam: ordinary school and TCAS tests, the POSN olympiad camps, IJSO */
+  const school = ['mt', 'mp', 'olymp'].includes((S.nb && S.nb.level) || 'mp');
+  const exams = school ? [...new Set(tracks0.map(trackExam))] : ['normal'];
+  { const k = S.nid + ':' + ((S.nb && S.nb.level) || '') + ':' + curSubj().join('/'); if (EX.examKey !== k || !exams.includes(EX.exam)) { EX.examKey = k; const lv = (S.nb && S.nb.level) || 'mp'; const want = lv === 'olymp' ? (exams.includes('posn') ? 'posn' : 'ijso') : 'normal'; EX.exam = exams.includes(want) ? want : exams[0]; } }
+  const tracks = exams.length > 1 ? tracks0.filter((t) => trackExam(t) === EX.exam) : tracks0;
   { const k = S.nid + ':' + ((S.nb && S.nb.level) || '') + ':' + curSubj().join('/'); if (EX.trackKey !== k) { EX.trackKey = k; const d = defaultTrack(S.nb); EX.track = tracks.includes(d) ? d : (byLevel(tracks.filter((t) => st.includes(t)), S.nb)[0] || byLevel(tracks, S.nb)[0]); EX.chs.clear(); EX.want = tracks.includes(d) ? null : d; } }
   /* the notebook's own level first, then the nearest ones */
   { const own = byLevel(tracks.filter((t) => st.includes(t)), S.nb); tracks.splice(0, tracks.length, ...own.concat(tracks.filter((t) => !st.includes(t)))); }
@@ -15500,7 +15507,11 @@ function exRenderSetup(body) {
   }
   if (!tracks.includes(EX.track)) EX.track = tracks[0];
   if (EX.want && CURRIC[EX.want] && EX.track !== EX.want) { const lvn = (LEVELS.find((x) => x[0] === ((S.nb && S.nb.level) || 'mp')) || [0, ''])[1]; const n = exEl('div', 'note small', 'สมุดนี้ตั้งระดับ' + esc(lvn) + ' แต่คลังในแอปยังไม่มีโจทย์' + esc(exTrackName(EX.want)) + ' จึงเปิดระดับที่ใกล้ที่สุดให้ก่อน เลือกระดับอื่นได้ด้านล่าง หรือสร้างโจทย์ระดับนี้ด้วย AI ที่แท็บคลังโจทย์'); body.appendChild(n); }
-  body.appendChild(exEl('span', 'label', 'สนามสอบ'));
+  if (exams.length > 1) {
+    body.appendChild(exEl('span', 'label', 'ประเภทการสอบ'));
+    exChips(body, ['normal', 'posn', 'ijso'].filter((e) => exams.includes(e)).map((e) => [e, EXAM_NAME[e]]), (v) => v === EX.exam, (v) => { EX.exam = v; const f = tracks0.filter((t) => trackExam(t) === v); EX.track = byLevel(f.filter((t) => st.includes(t)), S.nb)[0] || f[0]; EX.chs.clear(); EX.want = null; exRender(); });
+  }
+  body.appendChild(exEl('span', 'label', exams.length > 1 ? 'ระดับ' : 'สนามสอบ'));
   exChips(body, tracks.map((t) => [t, exTrackName(t)]), (v) => v === EX.track, (v) => { EX.track = v; EX.chs.clear(); store_ls.set('tp-extrack', v); exRender(); });
   { const ob = exEl('button', 'chip', EX.otherSubj ? 'แสดงเฉพาะวิชาของสมุดนี้' : 'วิชาอื่น ๆ'); ob.type = 'button'; ob.onclick = () => { EX.otherSubj = !EX.otherSubj; exRender(); }; const row = exEl('div', 'chips'); row.appendChild(ob); body.appendChild(row); }
   const { by } = exStats(EX.who);
@@ -18844,7 +18855,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793324290';
+const BUILD = '1793324874';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
