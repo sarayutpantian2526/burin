@@ -9083,6 +9083,8 @@ function motionTargeted(text, pieces) {
       ? [{ t: 0, dx: 0, dy: 0 }, { t: T * 0.35, dx: dx * 0.45, dy: dy * 0.2 + up * 0.4 }, { t: T * 0.75, dx: dx * 0.88, dy: dy - (b[3] - b[1]) * 0.55 }, { t: T, dx: dx, dy: dy - (b[3] - b[1]) * 0.75 }, { t: T * 1.3, dx: dx * 1.12 + Math.sign(dx || 1) * 60, dy: dy * 0.3 + up }, { t: T * 1.9, dx: dx * 0.6, dy: up * 1.4 }, { t: T * 2.5, dx: 0, dy: 0 }]
       : [{ t: 0, dx: 0, dy: 0 }, { t: T, dx: dx - Math.sign(dx || 1) * ((a[2] - a[0]) / 2 + (b[2] - b[0]) / 2 + 6), dy: 0 }, { t: T + 0.8, dx: dx - Math.sign(dx || 1) * ((a[2] - a[0]) / 2 + (b[2] - b[0]) / 2 + 6), dy: 0 }, { t: 2 * T + 0.8, dx: 0, dy: 0 }];
     Object.assign(me, { k: 'path', path: { loop: true, keys }, sub, face: Math.sign(dx) || 1 });
+    /* the one being swooped at or chased comes alive too, standing and breathing, so it can duck and flinch away */
+    const tq = plan.find((q) => q.n === target.n); if (tq) Object.assign(tq, { k: 'breathe' });
   } else Object.assign(me, w.k ? w : { k: sub || 'auto' });
   return plan;
 }
@@ -10060,9 +10062,25 @@ function lifeReact(it, rt, k, hard) {
   if (k === 'drive') { rt.recoil = -rt.dir * Math.min(14, bw * 0.08); rt.v = 0; rt.state = 'rest'; rt.st0 = rt.t; rt.restFor = 0.5; rt.turnAfter = true; return; } /* a car bumps, stops, reverses */
   rt.v *= 0.3; rt.state = 'turn'; rt.tp = 0; rt.flipped = false;
 }
+
+/* something coming at a standing drawing makes it flinch: it ducks, leans and steps away from that side, then recovers */
+function lifeThreat(it, rt, dt) {
+  if (rt.flinch) rt.flinch = Math.max(0, rt.flinch - dt * 1.4);
+  const b = it.beh; if ((b.move && b.edge !== 'stay') || !lifeTouch(b)) return;
+  const me = lifeBox(it, rt), cx = (me[0] + me[2]) / 2, cy = (me[1] + me[3]) / 2, sz = Math.max(me[2] - me[0], me[3] - me[1]);
+  for (const [id2, r2] of LIFE) {
+    if (id2 === it.id) continue; const o = findItem(id2); if (!o || !o.beh || !o.B) continue;
+    const q = lifeBox(o, r2), ox = (q[0] + q[2]) / 2, oy = (q[1] + q[3]) / 2, d = Math.hypot(ox - cx, oy - cy) - (sz + Math.max(q[2] - q[0], q[3] - q[1])) / 2;
+    const seen = rt.seen || (rt.seen = {}), prev = seen[id2]; seen[id2] = [ox, oy];
+    if (d > sz * 0.7 || !prev) continue;
+    const closing = Math.hypot(prev[0] - cx, prev[1] - cy) - Math.hypot(ox - cx, oy - cy);
+    if (closing > 0.3 || d < 0) { rt.flinch = 1; rt.flinchDir = ox > cx ? -1 : 1; rt.flinchUp = oy < cy; }
+  }
+}
 function lifeMove(it, rt, dt) {
   if (it.beh.k === 'phys') { lifePhys(it, rt, dt); return; }
   if (it.beh.k === 'path') { const q = lifePathAt(it, rt.t); rt.px = q.dx; rt.py = q.dy; rt.dx = 0; return; }
+  lifeThreat(it, rt, dt);
   const b = it.beh, k = b.k, B = it.B, bw = B[2] - B[0], base = (LIFE_SPEED[k] || 60) * (b.sp || 1);
   if (rt.seed == null) rt.seed = Math.random() * 50;
   if (rt.hp == null) { rt.hp = 0; rt.gp = 0; rt.v = 0; rt.alt = 0; rt.rest = 6 + Math.random() * 8; }
@@ -10138,6 +10156,7 @@ function lifeDraw(it, rt) {
   const flip = isPath ? (pathDir !== 0 && pathDir !== face) : (moving && k !== 'spin' && k !== 'roll' && k !== 'phys' && rt.dir !== face);
   const peekLean = rt.state === 'peek' ? Math.sin((T0 - rt.st0) * 2.4) * 0.1 + 0.06 : 0;
   c.save();
+  if (rt.flinch) { const f = Math.sin(Math.min(1, rt.flinch) * Math.PI / 2), fd = rt.flinchDir || 1; c.translate(cx + fd * bw * 0.14 * f, B[3]); c.rotate(fd * 0.2 * f); c.scale(1 + 0.05 * f, 1 - (rt.flinchUp ? 0.22 : 0.08) * f); c.translate(-cx, -B[3]); }
   c.translate(px + ox, py + oy); c.scale(flip ? -tsx : tsx, 1); c.rotate(rot + peekLean * face); c.scale(sx, sy); c.translate(-px, -py);
   const gust = 0.65 + 0.35 * lifeNoise(t * 0.8, 4);
   /* shape deformation per point */
@@ -19256,7 +19275,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793341262';
+const BUILD = '1793341367';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
