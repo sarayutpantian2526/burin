@@ -18738,7 +18738,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793322924';
+const BUILD = '1793323383';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
@@ -18763,7 +18763,7 @@ function authErr(e) {
   if (/already registered|already exists/i.test(m)) return 'อีเมลนี้มีบัญชีแล้ว กดเข้าสู่ระบบได้เลย';
   if (/signups? not allowed|disabled/i.test(m)) return 'ระบบปิดการสมัครใหม่ไว้ ใช้บัญชีที่มีอยู่แล้วเข้าสู่ระบบ';
   if (/password/i.test(m)) return 'รหัสผ่านต้องยาวอย่างน้อย 8 ตัว';
-  if (/fetch|network/i.test(m)) return 'ติดต่อ Supabase ไม่ได้ ตรวจอินเทอร์เน็ตและ Project URL';
+  if (/fetch|network|load failed|internet|offline|timed? ?out/i.test(m)) return 'ส่งคำขอไปถึงระบบบัญชีไม่ได้ อาจเพราะโปรเจกต์ Supabase ถูกพักไว้ (เข้า supabase.com แล้วกด Restore) หรือเครือข่ายนี้บล็อก supabase.co (ลองสลับไปใช้เน็ตมือถือ) บัญชีและสมุดไม่ได้หายไปไหน';
   return 'เข้าสู่ระบบไม่สำเร็จ (' + m.slice(0, 90) + ')';
 }
 async function doAuth(signup) {
