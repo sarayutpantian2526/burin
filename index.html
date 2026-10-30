@@ -8770,6 +8770,7 @@ function scTick(ts) {
     if (sp.domain === 'phys') { if (r.turning != null) { r.turning += dtw / 0.4; if (r.turning >= 0.5 && !r.turned) { ipTurn(it, r); r.turned = true; } if (r.turning >= 1) { r.turning = null; r.turned = false; } scRender(it, r); continue; } if (r.peek) { r.peek -= dtw; if (r.peek <= 0) { r.peek = 0; r.turning = 0; r.turned = false; } scRender(it, r); continue; } const sim = dtw * (sp.speed || 1) * (r.slow ? 0.25 : 1), n = Math.max(1, Math.ceil(sim / 0.004)); for (let i = 0; i < n; i++) phStep(sp, r.st, sim / n); for (const b of r.st.bodies) { b.trail.push([b.x, b.y]); if (b.trail.length > 400) b.trail.shift(); }
       const pick = sp.show.graph; if (pick !== 'none') { r.st.hist.push([r.st.t].concat(r.st.bodies.filter((b) => !b.fixed).map((b) => pick === 'x' ? b.x : pick === 'y' ? b.y : pick === 'vx' ? b.vx : pick === 'vy' ? b.vy : pick === 'grf' ? (b.F.N ? b.F.N[1] : 0) : Math.hypot(b.vx, b.vy)))); if (r.st.hist.length > 600) r.st.hist.shift(); }
       const [x0, y0, x1, y1] = phBounds(sp, r.st), far = sp.bare ? 0.3 : Math.max(x1 - x0, y1 - y0) * 3; const edge = sp.bare && it.rig && it.rig.edge;
+      if (sp.bare && it.rig && it.rig.kind === 'person') ipSense(it, r);
       if (edge && edge !== 'stay') ipEdge(it, r, x0, x1);
       else if (sp.bare && r.st.bodies.some((b) => b.shape === 'person' && (b.x < x0 - 0.5 || b.x > x1 + 0.5))) { r.playing = false; r.ended = true; } if (!r.st.bodies.some((b) => b.shape === 'person') && r.st.bodies.every((b) => b.fixed || b.x < x0 - far || b.x > x1 + far || b.y < y0 - far || b.y > y1 + far)) { r.playing = false; r.ended = true; } }
     else if (sp.domain === 'math') { r.st.t += dtw * sp.t.speed * (r.slow ? 0.25 : 1); if (r.st.t > sp.t.max) { if (sp.t.loop) { r.st.t = sp.t.min; r.traces = {}; } else { r.st.t = sp.t.max; r.playing = false; r.ended = true; } } }
@@ -9301,6 +9302,34 @@ function ipEdge(it, r, x0, x1) {
   if (e === 'wrap') { if (goingRight && disp - half > x1) ipShift(r, b, -(span + 2 * half) * m.s); else if (!goingRight && disp + half < x0) ipShift(r, b, (span + 2 * half) * m.s); }
   else if (e === 'bounce') { if ((goingRight && disp + half > x1) || (!goingRight && disp - half < x0)) { if (b.shape === 'person') { r.turning = 0; r.turned = false; } else ipTurn(it, r); } }
   else if (e === 'peek') { if ((goingRight && disp - half * 0.15 > x1) || (!goingRight && disp + half * 0.15 < x0)) r.peek = 2.4; }
+}
+
+/* a drawn person walking on the page cannot walk through writing, pictures, boxes or other moving drawings:
+   it stops short, startles for a moment, then turns back. The ground line it walks on is not in the way */
+function ipSense(it, r) {
+  const b = r.st.bodies.find((q) => q.shape === 'person'); if (!b || r.turning != null || r.peek) return;
+  const K = W / Math.max(1e-6, it.spec.world.w || 1), m = r.mir || { s: 1, O: 0 };
+  if (!r.inkB) { r.inkB = ipBox(it.ink || [], []); r.cx0 = b.x * K; }
+  const B = r.inkB, bw = B[2] - B[0], bh = B[3] - B[1], cx = m.s * b.x * K + m.O, dx = cx - r.cx0;
+  const box = [B[0] + dx, B[1], B[2] + dx, B[3]];
+  const mv = r.pcx == null ? 0 : cx - r.pcx; r.pcx = cx; if (Math.abs(mv) > 0.01) r.pdir = Math.sign(mv); const dir = r.pdir || 0; if (!dir) return;
+  const reach = Math.max(8, bw * 0.25), f0 = dir > 0 ? box[2] : box[0], za = Math.min(f0, f0 + dir * reach), zb = Math.max(f0, f0 + dir * reach);
+  const yTop = box[1] + bh * 0.05, feet = box[3];
+  let hit = false;
+  for (const rr of allStrokes()) {
+    const q = sbox(rr.s), w = q[2] - q[0], h = q[3] - q[1], ground = (w > 2.5 * h && w > 60) || w > 260;
+    const yb = ground ? feet - bh * 0.35 : feet - 3;
+    if (q[2] < za || q[0] > zb || q[3] < yTop || q[1] > yb) continue;
+    if (typeof lifeTopIn === 'function' && lifeTopIn(rr.s, za, zb, yTop, yb) == null) continue;
+    hit = true; break;
+  }
+  if (!hit) for (const o of (S.page && S.page.items) || []) {
+    if (o.id === it.id || o.lock) continue; const q = o.type === 'life' && o.B && typeof LIFE !== 'undefined' && LIFE.get(o.id) ? lifeBox(o, LIFE.get(o.id)) : (o.spec && o.spec.bare) ? null : itemBox(o);
+    if (!q || q[2] - q[0] < 4) continue; if (q[2] < za || q[0] > zb || q[3] < yTop || q[1] > feet - 3) continue; hit = true; break;
+  }
+  if (!hit) return;
+  /* stop, a short startled pause, then turn round (the pause leads into the turn) */
+  r.peek = 0.45;
 }
 function ipShift(r, b, dx) { if (b.shape === 'person') b.x0 += dx; b.x += dx; }
 function ipTurn(it, r) {
@@ -9937,7 +9966,7 @@ const LIFE_GROUND = ['walk4', 'drive', 'roll', 'hop', 'wiggle'];
 let lifeWorld = { t: 0, strokes: [], boxes: [] };
 function lifeWorldNow() {
   const now = performance.now(); if (now - lifeWorld.t < 400) return lifeWorld;
-  const strokes = []; for (const r of allStrokes()) { const b = sbox(r.s); strokes.push({ b, s: r.s }); }
+  const strokes = []; for (const r of allStrokes()) { const b = sbox(r.s), w = b[2] - b[0], h = b[3] - b[1]; strokes.push({ b, s: r.s, ground: (w > 2.5 * h && w > 60) || w > 260 }); }
   const boxes = []; for (const it of (S.page && S.page.items) || []) { if (it.type === 'life' || it.lock || (it.spec && it.spec.bare)) continue; const b = itemBox(it); if (b[2] - b[0] > 4 && b[3] - b[1] > 4) boxes.push(b); }
   lifeWorld = { t: now, strokes, boxes }; return lifeWorld;
 }
@@ -9960,7 +9989,7 @@ function lifeSense(it, rt, dt) {
   /* ground: the top of any ink just under the feet, so it climbs a drawn hill or walks along a drawn floor */
   if (LIFE_GROUND.includes(k)) {
     const g0 = rt.gy || 0, up = Math.max(bh * 2, 120), xa = box[0] + bw * 0.25, xb = box[2] - bw * 0.25, ya = Math.max(B[3] - up, B[3] + g0 - bh * 0.6), yb = Math.min(B[3] + bh * 0.25, B[3] + g0 + bh * 0.25); let top = null;
-    for (const o of Wd.strokes) { const q = o.b; if (q[2] < xa || q[0] > xb || q[3] < ya || q[1] > yb) continue; const y = lifeTopIn(o.s, xa, xb, ya, yb); if (y != null && (top == null || y < top)) top = y; }
+    for (const o of Wd.strokes) { if (!o.ground) continue; const q = o.b; if (q[2] < xa || q[0] > xb || q[3] < ya || q[1] > yb) continue; const y = lifeTopIn(o.s, xa, xb, ya, yb); if (y != null && (top == null || y < top)) top = y; }
     /* with no line under it, it settles back down to where it was drawn */
     const tgt = top == null ? (g0 < 0 ? Math.min(0, g0 + bh * 0.25) : 0) : top - B[3];
     rt.gy = (rt.gy || 0) + (tgt - (rt.gy || 0)) * Math.min(1, dt * 8);
@@ -9974,8 +10003,8 @@ function lifeSense(it, rt, dt) {
   let hit = false;
   /* for pen lines look only a short way ahead, so a gentle slope is climbed while a steep line or a wall turns it back */
   const sr = Math.max(6, Math.min(reach, bh * 0.5)), sa = dir > 0 ? f0 : f0 - sr, sb = dir > 0 ? f0 + sr : f0;
-  for (const o of Wd.strokes) { const q = o.b; if (q[2] < sa || q[0] > sb || q[3] < yTop || q[1] > yBot) continue;
-    const topY = lifeTopIn(o.s, sa, sb, yTop, yBot);
+  for (const o of Wd.strokes) { const yb2 = o.ground ? yBot : feet - 3; const q = o.b; if (q[2] < sa || q[0] > sb || q[3] < yTop || q[1] > yb2) continue;
+    const topY = lifeTopIn(o.s, sa, sb, yTop, yb2);
     if (topY != null && tall(topY)) { hit = true; break; } }
   if (!hit) for (const q of Wd.boxes) { if (q[2] < za || q[0] > zb || q[3] < yTop || q[1] > yBot) continue; if (dir > 0 ? q[0] < box[2] - 4 : q[2] > box[0] + 4) continue; if (tall(q[1])) { hit = true; break; } }
   if (!hit) for (const [id2, r2] of LIFE) { if (id2 === it.id) continue; const o = findItem(id2); if (!o || !o.beh || !o.B) continue; const q = lifeBox(o, r2);
@@ -19194,7 +19223,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793340737';
+const BUILD = '1793341044';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
