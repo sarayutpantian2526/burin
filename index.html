@@ -691,7 +691,15 @@ body.writing .pagenav, body.writing .diarybar { pointer-events: none; opacity: 0
 .scnhandle { z-index: 3; }
 /* folded by default: only the page number shows, small, so a writing hand does not hit it; tap it to open the controls */
 .pagenav.mini { padding: 2px; gap: 0; opacity: 0.85; }
-.pagenav.mini > *:not(#pgNum):not(#bAnimAll):not(#zNum):not(#zIn):not(#zOut) { display: none !important; }
+.pagenav.mini > *:not(#pgNum):not(#bAnimAll):not(#bLifeCtl):not(#zNum):not(#zIn):not(#zOut) { display: none !important; }
+/* the little star buttons on moving drawings can be hidden for a clean view; the drawings keep moving */
+.pagenav #bLifeCtl { color: #6A4FB8; }
+.pagenav #bLifeCtl .x { display: none; }
+.pagenav #bLifeCtl[aria-pressed="true"] .x { display: inline; }
+.pagenav #bLifeCtl[hidden] { display: none !important; }
+body.noctl .lifedot, body.noctl .lifepanel, body.noctl .item.bare .scnpill, body.present .lifedot, body.present .lifepanel { display: none !important; }
+/* the live-class badge sits in the bottom corner the page number bar is not using */
+body:has(.pagenav.left) .livepill { left: auto; right: 10px; }
 .pagenav.mini #zIn, .pagenav.mini #zOut { display: none; }
 .pagenav.mini #zNum { min-width: 40px; height: 34px; }
 @media (max-width: 600px) { .pagenav.mini #zNum { display: flex !important; } }
@@ -1622,7 +1630,7 @@ body.role-student .scnpill .sbtns button[data-s="back"], body.role-student .scnp
       <button class="exitfull no-ink" id="bExitFull" hidden aria-label="ออกจากเต็มหน้าจอ"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7.5 3v4.5H3 M17 7.5h-4.5V3 M12.5 17v-4.5H17 M3 12.5h4.5V17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
       <div class="exmini no-ink" id="exMini" role="group" aria-label="ชุดโจทย์ที่ย่อไว้" hidden><button id="emPrev" aria-label="ข้อก่อนหน้า">ก่อนหน้า</button><button id="emOpen" class="main"></button><button id="emNext" aria-label="ข้อต่อไป">ต่อไป</button><button id="emPlace">วางข้อนี้ลงหน้า</button></div>
       <div class="pagenav no-ink mini" role="group" aria-label="เปลี่ยนหน้า">
-        <button id="bAnimAll" class="animall" type="button" hidden aria-pressed="true"><svg viewBox="0 0 20 20" aria-hidden="true"></svg><span></span></button><span class="zsep" id="animSep" hidden></span>
+        <button id="bAnimAll" class="animall" type="button" hidden aria-pressed="true"><svg viewBox="0 0 20 20" aria-hidden="true"></svg><span></span></button><button id="bLifeCtl" class="lifectl" type="button" hidden aria-pressed="false" title="ซ่อนปุ่มดาวที่ใช้ปรับภาพเคลื่อนไหว" aria-label="ซ่อนปุ่มดาวที่ใช้ปรับภาพเคลื่อนไหว"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3l1.6 4.4L16 9l-4.4 1.6L10 15l-1.6-4.4L4 9l4.4-1.6z" fill="currentColor"/><path class="x" d="M3.5 16.5L16.5 3.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button><span class="zsep" id="animSep" hidden></span>
         <button id="pgPrev" aria-label="หน้าก่อน"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M12.5 4.5L7 10l5.5 5.5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
         <button class="num" id="pgNum" aria-label="ดูทุกหน้า">1 / 1</button>
         <button id="pgNext" aria-label="หน้าถัดไป"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7.5 4.5L13 10l-5.5 5.5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
@@ -19307,7 +19315,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793341608';
+const BUILD = '1793342317';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
@@ -19711,6 +19719,15 @@ function putAns() {
   S.page = Object.assign({}, S.page, { items: before.map((x) => (x.id === it.id ? Object.assign({}, x, { md: nd }) : x)) });
   pushUndo({ t: 'items', before, after: clone(S.page.items) }); savePage(); renderItems(); $('#sAns').hidden = true;
 }
+/* hide or show the star buttons of moving drawings, remembered on this device; works the same for teacher and student */
+function lifeCtlSync() {
+  const b = $('#bLifeCtl'); if (!b) return; const on = store_ls.get('tp-noctl') === '1';
+  document.body.classList.toggle('noctl', on); b.setAttribute('aria-pressed', on ? 'true' : 'false');
+  const t = on ? 'แสดงปุ่มดาวที่ใช้ปรับภาพเคลื่อนไหว' : 'ซ่อนปุ่มดาวที่ใช้ปรับภาพเคลื่อนไหว'; b.title = t; b.setAttribute('aria-label', t);
+  const a = $('#bAnimAll'); b.hidden = !a || a.hidden;
+}
+$('#bLifeCtl').onclick = () => { store_ls.set('tp-noctl', store_ls.get('tp-noctl') === '1' ? '0' : '1'); lifeCtlSync(); toast(store_ls.get('tp-noctl') === '1' ? 'ซ่อนปุ่มดาวแล้ว ภาพยังเคลื่อนไหวตามปกติ แตะปุ่มเดิมเพื่อแสดงอีกครั้ง' : 'แสดงปุ่มดาวแล้ว', 2200); };
+setInterval(() => { if (!document.hidden) lifeCtlSync(); }, 800); lifeCtlSync();
 $("#sOrig").onclick = restoreConvInk;
 $('#sAns').onclick = putAns;
 
