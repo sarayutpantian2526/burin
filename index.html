@@ -325,6 +325,16 @@ body.tv .toast { bottom: 112px; }
 .lsnmd { font-size: 15.5px; line-height: 1.75; margin-top: 6px; }
 .lsnmd .mh { display: block; font-weight: 700; margin: 8px 0 2px; }
 .lsnmd table.mdt { margin: 6px 0; }
+.jrecent { display: flex; flex-direction: column; gap: 6px; }
+.jrhead { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.jrhead small { font-weight: 400; color: var(--muted); }
+.jrfind { flex: 1 1 180px; min-height: 36px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); color: var(--fg); font: inherit; font-size: 14px; padding: 0 10px; }
+.jrlist { display: flex; flex-direction: column; gap: 4px; max-height: 210px; overflow-y: auto; padding: 2px; }
+.jrrow { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px; min-height: 44px; padding: 6px 12px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); color: var(--fg); font: inherit; text-align: left; cursor: pointer; }
+.jrrow b { font-family: ui-monospace, Menlo, monospace; letter-spacing: 1.5px; font-size: 15px; }
+.jrrow .jrt { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; }
+.jrrow small { color: var(--muted); font-size: 12px; white-space: nowrap; }
+.jrrow[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft, rgba(47,75,184,0.08)); }
 .pfoot { border-top: 1px solid var(--line); padding: 6px 10px 8px; display: flex; flex-direction: column; gap: 8px; }
 .pfhead { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 40px; padding: 4px 6px; border: 0; border-radius: 10px; background: transparent; color: var(--fg); cursor: pointer; font: inherit; text-align: left; }
 .pfhead:hover { background: var(--hover, rgba(16,24,40,0.05)); }
@@ -1969,7 +1979,7 @@ body.role-student .scnpill .sbtns button[data-s="back"], body.role-student .scnp
     <h2>เข้าห้องเรียน <span id="jCode"></span></h2>
     <div class="note">ใส่ชื่อที่ผู้สอนจะเห็นและใช้บันทึกคะแนน หน้าที่ผู้สอนเขียนจะขึ้นในสมุดบนเครื่องนี้ และจดทับเองได้</div>
     <label class="field" id="jCodeF"><span>รหัสห้อง 6 ตัว จากผู้สอน</span><input id="jCodeIn" maxlength="6" autocomplete="off" spellcheck="false" style="text-transform:uppercase;letter-spacing:4px;font-size:22px"></label>
-    <div class="chips" id="jRecent"></div>
+    <div id="jRecent" class="jrecent"></div>
     <label class="field"><span>ชื่อ หรือ ชื่อเล่นกับเลขที่</span><input id="jName" maxlength="40" autocomplete="name"></label>
     <div class="row2"><button class="btn solid" id="jGo">เข้าห้อง</button><button class="btn" id="jScan" type="button">สแกน QR แทน</button><button class="btn" id="jCancel">ยกเลิก</button></div>
   </div>
@@ -16741,11 +16751,49 @@ function openJoin(code) {
   closeSheets();
   $('#jCode').textContent = code || ''; $('#jCodeF').hidden = !!code; $('#jCodeIn').value = code || '';
   $('#jName').value = LIVE.name || ''; $('#joinSheet').hidden = false;
-  const rec = (S.nbsAll || []).filter((n) => /^class-/.test(n.from || '')).slice(0, 4);
-  $('#jRecent').innerHTML = rec.length ? '<span class="label">ห้องที่เคยเข้า</span>' : '';
-  for (const n of rec) { const b = document.createElement('button'); b.className = 'chip'; b.type = 'button'; b.textContent = n.from.slice(6) + ' ' + (n.title || ''); b.onclick = () => { $('#jCodeIn').value = n.from.slice(6); }; $('#jRecent').appendChild(b); }
+  joinRecent();
   setTimeout(() => (code ? $('#jName') : $('#jCodeIn')).focus({ preventScroll: true }), 60);
 }
+/* rooms joined before: one row per room code (a room can hold several of the teacher's notebooks), newest first,
+   with the notebooks' names and the last time; a search box appears when the list grows long */
+function joinRooms() {
+  const rooms = new Map();
+  for (const n of S.nbsAll || []) {
+    const m = /^class-([A-Za-z2-9]{6})/.exec(n.from || ''); if (!m) continue;
+    const code = m[1].toUpperCase(), r = rooms.get(code) || { code, titles: [], t: 0, n: 0 };
+    const tt = String(n.title || '').replace(/\s*\(ห้อง\s*[A-Z2-9]{6}\)\s*$/i, '').replace(new RegExp('^ห้องเรียน\\s*' + code + '\\s*', 'i'), '').trim();
+    if (tt && !r.titles.includes(tt)) r.titles.push(tt);
+    r.t = Math.max(r.t, n.updatedAt || n.createdAt || 0); r.n++; rooms.set(code, r);
+  }
+  return [...rooms.values()].sort((a, b) => b.t - a.t);
+}
+function joinRecent() {
+  const box = $('#jRecent'); box.innerHTML = '';
+  const all = joinRooms(); if (!all.length) return;
+  const head = document.createElement('div'); head.className = 'jrhead'; head.innerHTML = '<span class="label">ห้องที่เคยเข้า <small>' + all.length + ' ห้อง</small></span>';
+  box.appendChild(head);
+  let q = '';
+  if (all.length > 4) { const f = document.createElement('input'); f.className = 'jrfind'; f.type = 'search'; f.placeholder = 'ค้นหารหัสห้องหรือชื่อวิชา'; f.oninput = () => { q = f.value.trim().toLowerCase(); paint(); }; head.appendChild(f); }
+  const list = document.createElement('div'); list.className = 'jrlist'; box.appendChild(list);
+  const fmt = (t) => { if (!t) return ''; const d = new Date(t), now = new Date(); const same = d.toDateString() === now.toDateString(); return same ? 'วันนี้ ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0') : d.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: d.getFullYear() === now.getFullYear() ? undefined : '2-digit' }); };
+  const paint = () => {
+    list.innerHTML = '';
+    const rows = all.filter((r) => !q || r.code.toLowerCase().includes(q) || r.titles.some((t) => t.toLowerCase().includes(q)));
+    if (!rows.length) { list.appendChild(exEl('div', 'note small', 'ไม่พบห้องที่ตรงกับคำค้น')); return; }
+    for (const r of rows) {
+      const b = document.createElement('button'); b.type = 'button'; b.className = 'jrrow';
+      b.innerHTML = '<b></b><span class="jrt"></span><small></small>';
+      b.querySelector('b').textContent = r.code;
+      b.querySelector('.jrt').textContent = r.titles.length ? r.titles.join(', ') : 'ห้องเรียน';
+      b.querySelector('small').textContent = fmt(r.t) + (r.n > 1 ? ' · ' + r.n + ' สมุด' : '');
+      b.onclick = () => { $('#jCodeIn').value = r.code; list.querySelectorAll('.jrrow').forEach((x) => x.setAttribute('aria-pressed', x === b ? 'true' : 'false')); $('#jName').focus({ preventScroll: true }); };
+      list.appendChild(b);
+    }
+  };
+  paint();
+}
+/* only the 6-letter room code goes in the box, even when something longer is pasted */
+$('#jCodeIn').addEventListener('input', () => { const v = $('#jCodeIn').value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6); if (v !== $('#jCodeIn').value) $('#jCodeIn').value = v; });
 function leaveClass() {
   if (LIVE.ch && LIVE.role === 'student') { try { CLOUD.client.removeChannel(LIVE.ch); } catch (e) { /* closed */ } }
   LIVE.ch = null; LIVE.ready = false; if (LIVE.role === 'student') LIVE.role = null; $('#livePill').hidden = true;
@@ -19315,7 +19363,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793342317';
+const BUILD = '1793342516';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
@@ -19608,7 +19656,7 @@ $('#zNum').onclick = () => { zoomTo(1); const z = $('#zNum'); z.classList.add('s
 $('#qmClose').onclick = () => { $('#qmSheet').hidden = true; };
 $('#liveClose').onclick = () => { $('#liveSheet').hidden = true; };
 $('#jGo').onclick = () => {
-  const code = ($('#jCodeIn').value || LIVE.code || '').trim().toUpperCase();
+  const code = (($('#jCodeIn').value || LIVE.code || '').trim().toUpperCase().match(/[A-Z2-9]{6}/) || [''])[0];
   if (!/^[A-Z2-9]{6}$/.test(code)) { toast('ใส่รหัสห้อง 6 ตัวให้ถูกต้อง', 2200); $('#jCodeIn').focus(); return; }
   const n = $('#jName').value.trim(); if (!n) { $('#jName').focus(); return; }
   LIVE.name = n; store_ls.set('tp-sname', n);
