@@ -9057,6 +9057,35 @@ function motionWords(t) {
   if (/ชน|โต้ตอบ|หลบ|บนเส้น|บนพื้น|ข้าม/.test(t)) o.touch = 1;
   return o;
 }
+
+/* without AI: "นกบินโฉบมาที่คน" names who moves (the first thing named) and where it goes (the thing after ที่ หา ใส่ ...).
+   A stick figure is recognised by its shape, so with two drawings the other one is the bird, the car, the ball ... */
+const MV_NOUNS = [['person', /คน|ผู้ชาย|ผู้หญิง|เด็ก|นักเรียน|ครู|ชาย|หญิง/], ['flyer', /นก|ผีเสื้อ|ค้างคาว|เครื่องบิน|แมลง|ผึ้ง/], ['fish', /ปลา/], ['car', /รถ/], ['animal', /หมา|แมว|ม้า|ช้าง|วัว|กระต่าย|กบ|สุนัข/], ['ball', /ลูกบอล|บอล|ก้อน|วงกลม|ลูก/]];
+function motionTargeted(text, pieces) {
+  if (pieces.length < 2) return null;
+  const found = []; for (const [kind, re] of MV_NOUNS) { const m = re.exec(text); if (m) found.push([kind, m.index]); }
+  if (!found.length) return null; found.sort((a, b) => a[1] - b[1]);
+  const isPerson = (p) => { try { const st = p.refs.map(findStroke).filter(Boolean); if (st.length < 4) return false; const rg = ipRig(st); return !!(rg.headC && rg.legs.filter(Boolean).length === 2); } catch (e) { return false; } };
+  const people = pieces.filter(isPerson), others = pieces.filter((p) => !people.includes(p));
+  const pick = (kind, not) => { const pool = (kind === 'person' ? people : others).filter((p) => p !== not); if (pool.length) return pool[0]; const rest = pieces.filter((p) => p !== not); return rest.length === 1 ? rest[0] : null; };
+  const subj = pick(found[0][0]); if (!subj) return null;
+  const tm = /(?:ที่|หา|ใส่|ไปยัง|เข้าหา|ถึง|ไล่|ตาม)\s*(?:ตัว)?\s*([^\s]+)/.exec(text.slice(found[0][1] + 1));
+  let target = null; if (tm) { const nk = MV_NOUNS.find(([, re]) => re.test(tm[1])); if (nk) target = pick(nk[0], subj); }
+  if (!target && found[1]) target = pick(found[1][0], subj);
+  const w = motionWords(text), flyer = found[0][0] === 'flyer' || w.k === 'flap', sub = flyer ? 'flap' : found[0][0] === 'fish' ? 'swim' : found[0][0] === 'animal' ? 'walk4' : found[0][0] === 'person' ? undefined : w.k;
+  const plan = pieces.map((p) => ({ n: p.n, group: p.n, k: 'none' }));
+  const me = plan.find((q) => q.n === subj.n);
+  if (target && /โฉบ|ไปหา|เข้าหา|มาหา|พุ่ง|ไปที่|มาที่|บินไป|บินมา|วิ่งไป|วิ่งมา|ไล่|จิก|ชน|ตาม/.test(text)) {
+    const a = subj.box, b = target.box, ax = (a[0] + a[2]) / 2, ay = (a[1] + a[3]) / 2, bx = (b[0] + b[2]) / 2, by = (b[1] + b[3]) / 2, dx = bx - ax, dy = by - ay;
+    const sp = clamp(w.sp || 1, 0.3, 3), T = (Math.hypot(dx, dy) / 260 + 0.8) / sp, up = -Math.max(60, (a[3] - a[1]) * 1.5);
+    /* a swoop: dive in an arc to just above the target, pull up and away, circle back to where it started */
+    const keys = flyer || /โฉบ/.test(text)
+      ? [{ t: 0, dx: 0, dy: 0 }, { t: T * 0.35, dx: dx * 0.45, dy: dy * 0.2 + up * 0.4 }, { t: T * 0.75, dx: dx * 0.88, dy: dy - (b[3] - b[1]) * 0.55 }, { t: T, dx: dx, dy: dy - (b[3] - b[1]) * 0.75 }, { t: T * 1.3, dx: dx * 1.12 + Math.sign(dx || 1) * 60, dy: dy * 0.3 + up }, { t: T * 1.9, dx: dx * 0.6, dy: up * 1.4 }, { t: T * 2.5, dx: 0, dy: 0 }]
+      : [{ t: 0, dx: 0, dy: 0 }, { t: T, dx: dx - Math.sign(dx || 1) * ((a[2] - a[0]) / 2 + (b[2] - b[0]) / 2 + 6), dy: 0 }, { t: T + 0.8, dx: dx - Math.sign(dx || 1) * ((a[2] - a[0]) / 2 + (b[2] - b[0]) / 2 + 6), dy: 0 }, { t: 2 * T + 0.8, dx: 0, dy: 0 }];
+    Object.assign(me, { k: 'path', path: { loop: true, keys }, sub, face: Math.sign(dx) || 1 });
+  } else Object.assign(me, w.k ? w : { k: sub || 'auto' });
+  return plan;
+}
 async function motionPlan(text, sp, pieces) {
   /* with AI: it sees the numbered pieces and the request and says what each piece does; pieces in the same group move as one */
   if (AI.ready('read')) {
@@ -9073,14 +9102,15 @@ async function motionPlan(text, sp, pieces) {
         + 'Then choose for each group the motion that does exactly what the teacher asked, as naturally as possible:\n'
         + '- "physics": a real rigid body on the page. It falls with gravity, rolls down drawn slopes, bounces off lines, pictures and the page edges, and knocks into other moving things. Use it for falling, dropping, rolling down, bouncing, throwing, sliding, colliding, anything that should obey real physics. Give phys: vx, vy start velocity in page units per second (y down, so negative vy is upward; a throw is about 300 to 900), bounce 0 to 0.9 (ball 0.7, rock 0.3, clay 0.05), friction 0 to 1, gravity 1 (0 for space), round true for balls, wheels, circles, spin start turn in radians per second.\n'
         + '- "preset": one of these behaviours when it fits well: ' + kinds + '.\n'
-        + '- "path": any other movement described (circle around, climb up then come down, jump onto something, wave, spin three times, grow, shrink, go to a place). Give path.keys as a list of key frames {t seconds from start, dx, dy offset in page units from where it is drawn, rot degrees, scale}, first key t 0 with dx 0 dy 0, and loop true or false. Use enough keys (6 to 20) for a smooth natural motion and keep it on the page.\n'
+        + '- "path": any other movement described (circle around, climb up then come down, jump onto something, wave, spin three times, grow, shrink, go to a place). Give path.keys as a list of key frames {t seconds from start, dx, dy offset in page units from where it is drawn, rot degrees, scale}, first key t 0 with dx 0 dy 0, and loop true or false; path.anim is the behaviour the body keeps doing while it follows the path (flap for a bird beating its wings, walk4, swim, wiggle, or none). To go to another piece (swoop at it, run to it, chase it), aim the keys at that piece using the boxes above. Use enough keys (6 to 20) for a smooth natural motion and keep it on the page.\n'
+        + 'Only the pieces the teacher asks to move should move; every other piece gets mode "none" (it may still react when something hits it).\n'
         + 'Reply with JSON only: {"pieces":[{"n":1,"group":1,"what":"ball","mode":"physics","k":"","face":"right","speed":1,"edge":"bounce","touch":true,"phys":{"vx":0,"vy":0,"bounce":0.6,"friction":0.3,"gravity":1,"round":true,"spin":0},"path":null}]}\nface is left or right, speed 0.3 to 3, edge is wrap, bounce, peek or stay, touch true when it should walk on or bump into other things.', { images: [blob], maxTokens: 2200 });
       const j = JSON.parse(String(r.text || '').replace(/^[^{]*/, '').replace(/[^}]*$/, ''));
       if (j && Array.isArray(j.pieces) && j.pieces.length) return j.pieces.map((q) => {
         const o = { n: +q.n, group: +q.group || +q.n, what: String(q.what || '').slice(0, 40), k: q.k, face: q.face === 'left' ? -1 : q.face === 'right' ? 1 : 0, sp: +q.speed || 1, edge: q.edge, touch: q.touch ? 1 : 0 };
         if (q.mode === 'none') o.k = 'none';
         else if (q.mode === 'physics' || q.k === 'phys') { const f = q.phys || {}; o.k = 'phys'; o.phys = { vx: clamp(+f.vx || 0, -2500, 2500), vy: clamp(+f.vy || 0, -2500, 2500), e: clamp(f.bounce == null ? 0.5 : +f.bounce, 0, 0.95), mu: clamp(f.friction == null ? 0.35 : +f.friction, 0, 1.5), g: clamp(f.gravity == null ? 1 : +f.gravity, 0, 3), spin: clamp(+f.spin || 0, -40, 40) }; if (f.round != null) o.phys.round = f.round ? 1 : 0; }
-        else if (q.mode === 'path' && q.path && Array.isArray(q.path.keys) && q.path.keys.length >= 2) { o.k = 'path'; o.path = { loop: q.path.loop !== false, keys: q.path.keys.slice(0, 40).map((k) => ({ t: clamp(+k.t || 0, 0, 60), dx: clamp(+k.dx || 0, -W, W), dy: clamp(+k.dy || 0, -H, H), rot: clamp(+k.rot || 0, -3600, 3600), scale: clamp(+k.scale || 1, 0.1, 5) })) }; }
+        else if (q.mode === 'path' && q.path && Array.isArray(q.path.keys) && q.path.keys.length >= 2) { o.k = 'path'; o.sub = LIFE_KINDS.some((x) => x[0] === q.path.anim) ? q.path.anim : (/bird|นก|butterfly|bat/i.test(o.what) ? 'flap' : undefined); o.path = { loop: q.path.loop !== false, keys: q.path.keys.slice(0, 40).map((k) => ({ t: clamp(+k.t || 0, 0, 60), dx: clamp(+k.dx || 0, -W, W), dy: clamp(+k.dy || 0, -H, H), rot: clamp(+k.rot || 0, -3600, 3600), scale: clamp(+k.scale || 1, 0.1, 5) })) }; }
         return o;
       });
     } catch (e) { /* fall back to the words */ }
@@ -9089,6 +9119,7 @@ async function motionPlan(text, sp, pieces) {
   const per = {}; const re = /ชิ้น(?:ที่)?\s*(\d+)([^]*?)(?=ชิ้น(?:ที่)?\s*\d+|$)/g; let m;
   while ((m = re.exec(text))) per[+m[1]] = motionWords(m[2]);
   if (Object.keys(per).length) return pieces.map((p) => Object.assign({ n: p.n, group: p.n }, per[p.n] || { k: 'auto' }));
+  { const tg = motionTargeted(text, pieces); if (tg) return tg; }
   const all = motionWords(text); return pieces.map((p) => Object.assign({ n: p.n, group: 1 }, all.k ? all : Object.assign({ k: 'auto' }, all)));
 }
 async function motionDo(text, sp, pieces) {
@@ -9099,7 +9130,7 @@ async function motionDo(text, sp, pieces) {
     const q = g.plan; if (q.k === 'none') continue;
     const sub = { refs: g.refs, items: g.items, box: g.box };
     let k = q.k, f = q.face || 0;
-    if (k === 'phys' || k === 'path') { await placeLife(sub, k, 'stay', f, k === 'phys' ? Object.assign({ touch: 1 }, q.phys || {}) : { path: q.path }); made++; continue; }
+    if (k === 'phys' || k === 'path') { await placeLife(sub, k, 'stay', f, k === 'phys' ? Object.assign({ touch: 1 }, q.phys || {}) : Object.assign({ path: q.path }, q.sub ? { sub: q.sub } : {})); made++; continue; }
     if (!k || k === 'auto' || !LIFE_KINDS.some((x) => x[0] === k)) { const a = await lifeAuto(Object.assign({}, sp, sub)); if (Array.isArray(a)) { k = a[0]; f = f || a[1]; } else k = a; if (k === 'person') k = 'wiggle'; }
     const before = new Set((S.page.items || []).map((x) => x.id));
     await placeLife(sub, k, q.edge || 'bounce', f);
@@ -10067,7 +10098,7 @@ function lifeDraw(it, rt) {
   const c = cv.getContext('2d'); c.setTransform(cap, 0, 0, cap, 0, 0); c.clearRect(0, 0, w, h); c.translate(-it.x, -it.y);
   if (rt.seed == null) rt.seed = Math.random() * 50;
   const B = it.B, b = it.beh, A = (b.amp || 1) * (1 + (b.k === 'flap' ? 0.5 * (rt.scare || 0) : 0)), T0 = rt.t, t = T0 + rt.seed + (b.k === 'flap' ? (rt.wingX = (rt.wingX || 0) + (rt.scare || 0) * 0.03) : 0), bw = B[2] - B[0], bh = B[3] - B[1], cx = (B[0] + B[2]) / 2, cy = (B[1] + B[3]) / 2, TAU = Math.PI * 2;
-  const face = b.face || 1, moving = b.move && b.edge !== 'stay', k = b.k, base = (LIFE_SPEED[k] || 60) * (b.sp || 1), vr = moving ? clamp((rt.v || 0) / Math.max(1, base), 0, 1.6) : 1;
+  const face = b.face || 1, moving = b.move && b.edge !== 'stay', isPath = b.k === 'path', k = isPath && b.sub ? b.sub : b.k, base = (LIFE_SPEED[k] || 60) * (b.sp || 1), vr = moving ? clamp((rt.v || 0) / Math.max(1, base), 0, 1.6) : 1;
   /* whole-body motion: offset, rotation and squash about a pivot */
   let ox = rt.dx, oy = 0, rot = 0, sx = 1, sy = 1, px = cx, py = B[3];
   if (k === 'bob') { oy = -(Math.sin(t * 1.7) * 0.7 + Math.sin(t * 0.63) * 0.3) * bh * 0.12 * A; rot = (Math.sin(t * 1.1) * 0.05 + lifeNoise(t, 2) * 0.03) * A; py = cy; }
@@ -10095,14 +10126,16 @@ function lifeDraw(it, rt) {
     oy = B[3] - lo;
   }
   if (k === 'phys') { ox = rt.px || 0; oy = rt.py || 0; rot = rt.ang || 0; px = cx; py = cy; sx = sy = 1; }
-  if (k === 'path') { const q = lifePathAt(it, T0); ox = q.dx; oy = q.dy; rot = q.rot; sx = sy = q.s; px = cx; py = cy; }
+  /* a path the AI or the teacher's words gave: the body follows it while its own movement (wings beating, legs walking) goes on */
+  let pathDir = 0;
+  if (isPath) { const q = lifePathAt(it, T0), q2 = lifePathAt(it, T0 + 0.06); pathDir = Math.abs(q2.dx - q.dx) > 0.2 ? Math.sign(q2.dx - q.dx) : (rt.pathDir || 0); rt.pathDir = pathDir; const wob = k === 'flap' ? Math.sin(t * 9 + Math.PI) * bh * 0.05 * A : 0; ox = q.dx; oy = q.dy + wob; rot = q.rot + (k === 'flap' ? -(pathDir || face) * clamp((q2.dy - q.dy) * 0.02, -0.35, 0.35) : 0); sx = sy = q.s; px = cx; py = cy; }
   if (lifeTouch(b) && LIFE_GROUND.includes(k)) oy += rt.gy || 0;
   if (rt.bump) { const q = rt.bump; sx *= 1 - 0.12 * q; sy *= 1 + 0.08 * q; }
   if (rt.jolt) { oy -= Math.sin(Math.PI * rt.jolt) * bh * 0.18; rot += rt.dir * 0.08 * rt.jolt; }
   if (rt.scare && k !== 'flap' && k !== 'phys' && k !== 'path') rot += Math.sin(T0 * 40) * 0.02 * rt.scare;
   /* turning back: the drawing turns on the spot like a page flipping, instead of jumping to face the other way */
   let tsx = 1; if (rt.state === 'turn') tsx = Math.max(0.1, Math.abs(Math.cos(Math.PI * (rt.tp || 0))));
-  const flip = moving && k !== 'spin' && k !== 'roll' && k !== 'phys' && k !== 'path' && rt.dir !== face;
+  const flip = isPath ? (pathDir !== 0 && pathDir !== face) : (moving && k !== 'spin' && k !== 'roll' && k !== 'phys' && rt.dir !== face);
   const peekLean = rt.state === 'peek' ? Math.sin((T0 - rt.st0) * 2.4) * 0.1 + 0.06 : 0;
   c.save();
   c.translate(px + ox, py + oy); c.scale(flip ? -tsx : tsx, 1); c.rotate(rot + peekLean * face); c.scale(sx, sy); c.translate(-px, -py);
@@ -19223,7 +19256,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793341097';
+const BUILD = '1793341262';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
