@@ -312,13 +312,39 @@ body.tv .toast { bottom: 112px; }
 .pthumb[aria-current="true"] { color: var(--accent); font-weight: 700; }
 .pthumb.add .pc { display: flex; align-items: center; justify-content: center; background: transparent; box-shadow: inset 0 0 0 1.5px var(--line); color: var(--muted); }
 .pthumb.add svg { width: 26px; height: 26px; }
-.pfoot { border-top: 1px solid var(--line); padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 8px; }
+.pfoot { border-top: 1px solid var(--line); padding: 6px 10px 8px; display: flex; flex-direction: column; gap: 8px; }
+.pfhead { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 40px; padding: 4px 6px; border: 0; border-radius: 10px; background: transparent; color: var(--fg); cursor: pointer; font: inherit; text-align: left; }
+.pfhead:hover { background: var(--hover, rgba(16,24,40,0.05)); }
+.pfhead .label { font-weight: 600; }
+.pfhead .pfsum { flex: 1 1 auto; font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pfhead svg { width: 18px; height: 18px; color: var(--muted); transform: rotate(180deg); transition: transform 0.15s; flex: none; }
+.pfhead[aria-expanded="true"] svg { transform: none; }
+.pfmore { display: flex; flex-direction: column; gap: 10px; max-height: 52vh; overflow-y: auto; padding: 2px 2px 2px; }
+.pfrow.col { flex-direction: column; align-items: stretch; gap: 4px; }
+.pfmore .flowseg { margin: 0; }
+.pfmore .flowseg button { font-size: 12px; padding: 0 4px; white-space: nowrap; }
+.pfmore .orient { margin: 0; }
+.psel { padding: 8px 10px; border-bottom: 1px solid var(--line); display: flex; flex-direction: column; gap: 8px; }
+.pselh { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+.pselh b { white-space: nowrap; font-size: 14px; }
+.pselh span { display: flex; gap: 4px; }
+.pselh .btn.sm, .pselacts .btn { min-height: 34px; padding: 0 10px; font-size: 13px; }
+.pselacts { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.pgrid.picking .pthumb { position: relative; }
+.pgrid.picking .pthumb .pc { opacity: 0.55; }
+.pgrid.picking .pthumb[aria-pressed="true"] .pc { opacity: 1; box-shadow: 0 0 0 2.5px var(--accent), 0 2px 6px rgba(47, 75, 184, 0.25); }
+.pgrid .pthumb .tick { display: none; }
+.pgrid.picking .pthumb .tick { display: grid; z-index: 2; position: absolute; top: 5px; right: 5px; width: 22px; height: 22px; border-radius: 50%; background: var(--surface); box-shadow: 0 0 0 1.5px var(--line); place-items: center; }
+.pgrid.picking .pthumb[aria-pressed="true"] .tick { background: var(--accent); box-shadow: none; }
+.pgrid.picking .pthumb .tick svg { width: 13px; height: 13px; opacity: 0; }
+.pgrid.picking .pthumb[aria-pressed="true"] .tick svg { opacity: 1; }
+#pages.picking .pfoot, #pages.picking #bAddPage { display: none; }
 .pfrow { display: flex; align-items: center; justify-content: space-between; }
 .pmove { display: flex; gap: 4px; }
 .btn.icon.sm { min-width: 36px; min-height: 36px; width: 36px; height: 36px; padding: 0; }
-.papers { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.papers { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; }
 .pap { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 4px 2px; border-radius: 10px; border: 1px solid transparent; background: transparent; cursor: pointer; font-size: 11px; color: var(--muted); }
-.pap canvas { width: 40px; height: 52px; border-radius: 3px; box-shadow: 0 0 0 1px var(--line); background: #FFFFFF; }
+.pap canvas { width: 32px; height: 42px; border-radius: 3px; box-shadow: 0 0 0 1px var(--line); background: #FFFFFF; }
 .pap[aria-pressed="true"] { border-color: var(--accent); color: var(--fg); font-weight: 600; background: var(--accent-soft, rgba(47,75,184,0.08)); }
 .btn.danger { color: #B42318; border-color: rgba(180, 35, 24, 0.35); }
 body.tv #pages { width: 300px; }
@@ -1449,17 +1475,25 @@ body.role-student .scnpill .sbtns button[data-s="back"], body.role-student .scnp
   <div id="stage">
     <aside class="drawer" id="pages" hidden aria-label="หน้าในสมุด">
       <header><span class="ph"><b>หน้า</b><small id="pageCount"></small></span><button class="btn icon" id="bAddPage" aria-label="เพิ่มหน้าต่อจากหน้านี้" title="เพิ่มหน้าต่อจากหน้านี้"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 4v12 M4 10h12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button></header>
-      <div class="seg flowseg" id="flowSeg" role="group" aria-label="วิธีเปลี่ยนหน้า"><button type="button" data-f="0">เปลี่ยนทีละหน้า</button><button type="button" data-f="1">เลื่อนต่อเนื่อง</button></div>
+      <div class="psel" id="pselBar" hidden>
+        <div class="pselh"><b id="pselN">เลือก 0 หน้า</b><span><button class="btn sm" id="bPselAll" type="button">ทั้งหมด</button><button class="btn sm" id="bPselEnd" type="button">เสร็จ</button></span></div>
+        <div class="pselacts"><button class="btn" id="bPselPdf" type="button">ส่งออก PDF</button><button class="btn" id="bPselDup" type="button">ทำสำเนา</button><button class="btn" id="bPselPeek" type="button">ดูคู่กัน</button><button class="btn danger" id="bPselDel" type="button">ลบ</button></div>
+        <div id="pselConfirm" hidden class="note err"><span id="pselConfirmT"></span><div class="row2" style="margin-top:8px"><button class="btn" id="bPselDelYes" type="button">ลบเลย</button><button class="btn" id="bPselDelNo" type="button">ยกเลิก</button></div></div>
+      </div>
       <div class="body pbody">
         <div id="pageList" class="pgrid" role="list"></div>
       </div>
-      <div class="pfoot">
-        <div class="pfrow"><span class="label" id="curPageLabel">หน้านี้</span>
-          <span class="pmove"><button class="btn icon sm" id="bPgUp" aria-label="เลื่อนหน้านี้ขึ้น" title="เลื่อนขึ้น"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 12l5-5 5 5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button><button class="btn icon sm" id="bPgDown" aria-label="เลื่อนหน้านี้ลง" title="เลื่อนลง"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 8l5 5 5-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button></span>
+      <div class="pfoot" id="pfoot">
+        <button class="pfhead" id="bPfToggle" type="button" aria-expanded="false" aria-controls="pfMore"><span class="label" id="curPageLabel">หน้านี้</span><span class="pfsum" id="pfSum"></span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6 8l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        <div class="pfmore" id="pfMore" hidden>
+          <div class="papers" id="paperChips" role="group" aria-label="ชนิดกระดาษ"></div>
+          <div class="pfrow"><span class="label">ย้ายหน้านี้</span><span class="pmove"><button class="btn icon sm" id="bPgUp" aria-label="เลื่อนหน้านี้ขึ้น" title="เลื่อนขึ้น"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 12l5-5 5 5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button><button class="btn icon sm" id="bPgDown" aria-label="เลื่อนหน้านี้ลง" title="เลื่อนลง"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 8l5 5 5-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button></span></div>
+          <div class="pfrow col"><span class="label">การเปลี่ยนหน้า</span>
+          <div class="seg flowseg" id="flowSeg" role="group" aria-label="วิธีเปลี่ยนหน้า"><button type="button" data-f="0">เปลี่ยนทีละหน้า</button><button type="button" data-f="1">เลื่อนต่อเนื่อง</button></div>
+          </div>
+          <button class="btn danger" id="bDelPage">ลบหน้านี้</button>
+          <div id="delConfirm" hidden class="note err">ลบหน้านี้และลายมือทั้งหมดในหน้า ย้อนกลับไม่ได้ <div class="row2" style="margin-top:8px"><button class="btn" id="bDelYes">ลบเลย</button><button class="btn" id="bDelNo">ยกเลิก</button></div></div>
         </div>
-        <div class="papers" id="paperChips" role="group" aria-label="ชนิดกระดาษ"></div>
-        <button class="btn danger" id="bDelPage">ลบหน้านี้</button>
-        <div id="delConfirm" hidden class="note err">ลบหน้านี้และลายมือทั้งหมดในหน้า ย้อนกลับไม่ได้ <div class="row2" style="margin-top:8px"><button class="btn" id="bDelYes">ลบเลย</button><button class="btn" id="bDelNo">ยกเลิก</button></div></div>
       </div>
     </aside>
 
@@ -6322,11 +6356,14 @@ function renderPageList() {
     b.setAttribute('aria-label', 'หน้า ' + (i + 1));
     b.innerHTML = '<span class="pc"><canvas></canvas></span><span>' + (i + 1) + '</span>';
     const cv = b.querySelector('canvas'); cv.dataset.pid = pid;
-    holdable(b, () => { openPage(pid); if (window.innerWidth < 900) togglePages(false); }, () => { openPeek(S.nid, pid); toast('เปิดหน้า ' + (i + 1) + ' ดูคู่กันแล้ว', 1800); });
-    b.title = 'แตะเพื่อเปิด แตะค้างเพื่อดูคู่กัน';
+    if (PSEL.on) { b.setAttribute('aria-pressed', PSEL.set.has(pid) ? 'true' : 'false'); b.insertAdjacentHTML('afterbegin', '<span class="tick"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 10.5l3.2 3.2L15 7" fill="none" stroke="#FFFFFF" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span>'); }
+    holdable(b, () => { if (PSEL.on) { pselToggle(pid); return; } openPage(pid); if (window.innerWidth < 900) togglePages(false); }, () => { if (PSEL.on) pselToggle(pid); else pselStart(pid); });
+    b.title = PSEL.on ? 'แตะเพื่อเลือกหรือเอาออก' : 'แตะเพื่อเปิด แตะค้างเพื่อเลือกหลายหน้า';
     el.appendChild(b);
     if (io) io.observe(cv); else setTimeout(() => drawThumb(pid, cv).catch(() => {}), 30 * i);
   });
+  el.classList.toggle('picking', PSEL.on); $('#pages').classList.toggle('picking', PSEL.on); pselSync();
+  if (PSEL.on) return;
   const add = document.createElement('button'); add.className = 'pthumb add'; add.type = 'button';
   add.innerHTML = '<span class="pc"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 4v12 M4 10h12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span><span>เพิ่มหน้าท้ายสมุด</span>';
   add.onclick = () => addPageAt(pages.length);
@@ -6341,11 +6378,14 @@ const refreshCurThumb = debounce(() => {
 }, 900);
 function renderPaperChips() {
   const el = $('#paperChips'); el.innerHTML = '';
-  let oc = $('#orientChips'); if (!oc) { oc = document.createElement('div'); oc.id = 'orientChips'; oc.className = 'orient chips'; el.parentNode.insertBefore(oc, el); }
+  let oc = $('#orientChips'); if (!oc) { oc = document.createElement('div'); oc.id = 'orientChips'; oc.className = 'orient chips'; el.parentNode.insertBefore(oc, el.nextSibling); }
   oc.innerHTML = '';
   for (const [k, n] of [['port', 'แนวตั้ง'], ['land', 'แนวนอน']]) { const b = document.createElement('button'); b.type = 'button'; b.className = 'chip'; b.textContent = n; b.setAttribute('aria-pressed', ((S.page && S.page.orient === 'land') ? 'land' : 'port') === k ? 'true' : 'false'); b.onclick = () => setOrient(k); oc.appendChild(b); }
   const cur = (S.page && S.page.paper) || 'grid';
-  for (const [k, n] of PAPERS) {
+  const rank = ['grid', 'lined', 'blank', 'dot', 'mm', 'cornell', 'art', 'board'];
+  const list = PAPERS.slice().sort((a, b) => rank.indexOf(a[0]) - rank.indexOf(b[0]));
+  { const pn = (PAPERS.find((x) => x[0] === cur) || [0, ''])[1]; const sm = $('#pfSum'); if (sm) sm.textContent = 'กระดาษ' + pn + ' ' + ((S.page && S.page.orient === 'land') ? 'แนวนอน' : 'แนวตั้ง'); }
+  for (const [k, n] of list) {
     const b = document.createElement('button'); b.className = 'pap'; b.type = 'button';
     b.setAttribute('aria-pressed', k === cur ? 'true' : 'false'); b.setAttribute('aria-label', 'กระดาษ' + n);
     b.innerHTML = '<canvas width="80" height="104"></canvas><span></span>';
@@ -6370,6 +6410,59 @@ async function movePage(d) {
   pages.splice(i, 1); pages.splice(j, 0, S.pid);
   try { await S.store.update('notebooks/' + S.nid, { pages, updatedAt: now() }); S.nb = Object.assign({}, S.nb, { pages }); renderPageList(); renderTitle(); toast('ย้ายเป็นหน้า ' + (j + 1) + ' แล้ว', 1500); } catch (e) { onStoreError(e); }
 }
+/* ---------- several pages at once: hold a thumbnail to start picking, then tap more ---------- */
+const PSEL = { on: false, set: new Set() };
+function pselStart(pid) { PSEL.on = true; PSEL.set = new Set(pid ? [pid] : []); $('#pselConfirm').hidden = true; renderPageList(); }
+function pselEnd() { PSEL.on = false; PSEL.set.clear(); renderPageList(); }
+function pselToggle(pid) { if (PSEL.set.has(pid)) PSEL.set.delete(pid); else PSEL.set.add(pid); $('#pselConfirm').hidden = true; const b = $('#pageList').querySelector('.pthumb canvas[data-pid="' + pid + '"]'); if (b) b.closest('.pthumb').setAttribute('aria-pressed', PSEL.set.has(pid) ? 'true' : 'false'); pselSync(); }
+function pselList() { return ((S.nb && S.nb.pages) || []).filter((p) => PSEL.set.has(p)); }
+function pselSync() {
+  const bar = $('#pselBar'); bar.hidden = !PSEL.on; if (!PSEL.on) return;
+  const n = pselList().length, all = ((S.nb && S.nb.pages) || []).length;
+  $('#pselN').textContent = n ? 'เลือก ' + n + ' หน้า' : 'แตะหน้าที่ต้องการ';
+  $('#bPselAll').textContent = n === all ? 'ล้าง' : 'ทั้งหมด';
+  $('#bPselPdf').disabled = $('#bPselDup').disabled = !n; $('#bPselDel').disabled = !n || n >= all; $('#bPselPeek').disabled = n !== 1;
+}
+async function pselDup() {
+  const pick = pselList(); if (!pick.length || !S.nb) return;
+  saveMine.flush(); savePage.flush();
+  const pages = (S.nb.pages || []).slice(); let made = 0;
+  try {
+    for (const pid of pick) {
+      const src = pid === S.pid ? Object.assign({}, S.page, { nb: S.nid }) : await S.store.get('pages/' + pid); if (!src) continue;
+      const np = 'p' + uid(), body = { nb: S.nid, paper: src.paper || 'grid', items: clone(src.items || []).map((it) => Object.assign(it, { id: 'i' + uid() })), rev: now() }; if (src.orient === 'land') body.orient = 'land';
+      await S.store.set('pages/' + np, body);
+      const ls = pid === S.pid ? allStrokes().reduce((m, r) => { (m[r.layer] = m[r.layer] || []).push(r.s); return m; }, {}) : (await S.store.list('pages/' + pid + '/layers')).reduce((m, l) => { m[l.id] = l.strokes || []; return m; }, {});
+      for (const [lid, arr] of Object.entries(ls)) if (arr.length) await S.store.set('pages/' + np + '/layers/' + lid, { strokes: clone(arr), rev: now(), dev: lid });
+      pages.splice(pages.indexOf(pid) + 1, 0, np); made++;
+    }
+    await S.store.update('notebooks/' + S.nid, { pages, updatedAt: now() }); S.nb = Object.assign({}, S.nb, { pages });
+    toast('ทำสำเนา ' + made + ' หน้าแล้ว ต่อท้ายหน้าต้นฉบับ', 2200); pselEnd(); renderTitle();
+  } catch (e) { onStoreError(e); }
+}
+async function pselDel() {
+  const pick = pselList(); if (!pick.length || !S.nb) return;
+  const pages = (S.nb.pages || []).filter((p) => !PSEL.set.has(p)); if (!pages.length) { toast('สมุดต้องมีอย่างน้อยหนึ่งหน้า'); return; }
+  const old = S.nb.pages || [], idx = old.indexOf(S.pid);
+  try {
+    await S.store.update('notebooks/' + S.nid, { pages, updatedAt: now() }); S.nb = Object.assign({}, S.nb, { pages });
+    if (PSEL.set.has(S.pid)) { let j = idx; while (j >= 0 && PSEL.set.has(old[j])) j--; openPage(j >= 0 ? old[j] : pages[0]); }
+    for (const pid of pick) { const layers = await S.store.list('pages/' + pid + '/layers').catch(() => []); for (const l of layers) S.store.del('pages/' + pid + '/layers/' + l.id); S.store.del('pages/' + pid); }
+    toast('ลบ ' + pick.length + ' หน้าแล้ว', 1800); pselEnd(); renderTitle();
+  } catch (e) { onStoreError(e); }
+}
+$('#bPselEnd').onclick = pselEnd;
+$('#bPselAll').onclick = () => { const all = (S.nb && S.nb.pages) || []; PSEL.set = new Set(pselList().length === all.length ? [] : all); renderPageList(); };
+$('#bPselPdf').onclick = () => { const pick = pselList(); if (!pick.length) return; openExport(); EXP.sel = new Set(pick); $('#expRange').value = expRangeText(); expSync(); };
+$('#bPselDup').onclick = pselDup;
+$('#bPselPeek').onclick = () => { const p = pselList()[0]; if (!p) return; const i = ((S.nb && S.nb.pages) || []).indexOf(p); openPeek(S.nid, p); toast('เปิดหน้า ' + (i + 1) + ' ดูคู่กันแล้ว', 1800); pselEnd(); };
+$('#bPselDel').onclick = () => { const n = pselList().length; $('#pselConfirmT').textContent = 'ลบ ' + n + ' หน้าที่เลือก พร้อมลายมือทั้งหมดในหน้าเหล่านั้น ย้อนกลับไม่ได้'; $('#pselConfirm').hidden = false; };
+$('#bPselDelNo').onclick = () => { $('#pselConfirm').hidden = true; };
+$('#bPselDelYes').onclick = () => { $('#pselConfirm').hidden = true; pselDel(); };
+/* page settings fold away under the thumbnails; open only when needed */
+function pfSet(open) { $('#pfMore').hidden = !open; $('#bPfToggle').setAttribute('aria-expanded', open ? 'true' : 'false'); store_ls.set('tp-pfoot', open ? '1' : '0'); }
+$('#bPfToggle').onclick = () => pfSet($('#pfMore').hidden);
+pfSet(store_ls.get('tp-pfoot') === '1');
 $('#bPgUp').onclick = () => movePage(-1);
 $('#bPgDown').onclick = () => movePage(1);
 /* ---------- open notebooks as small tabs, and a side-by-side peek window ---------- */
@@ -15200,11 +15293,21 @@ function subjTracks() {
   return sj === 'sci' ? ['scip', 'sci'].filter((k) => CURRIC[k]).concat(t.filter((k) => k !== 'scip' && k !== 'sci')) : t;
 }
 /* the track that matches the notebook's subject and level */
+/* how hard each track is, on the same scale as the notebook levels, so the practice opens at the notebook's level */
+const LEVEL_RANK = { p: 0, mt: 1, mp: 2, olymp: 2.6, u: 3, grad: 4, pro: 3 };
+const TRACK_RANK = { p: 0, scip: 0, mt: 1, sci: 1, ijso: 1.6, mpb: 1.9, mp: 2, math: 2, mathx: 2.1, earth: 2, chem: 2.3, bio: 2.3, olymp: 2.6, u: 3, mathu: 3 };
+function trackRank(t) { if (TRACK_RANK[t] != null) return TRACK_RANK[t]; const m = BANK_META[t] || {}; return LEVEL_RANK[m.level] != null ? LEVEL_RANK[m.level] : 2; }
+function nbRank(nb) { const lv = (nb && nb.level) || 'mp'; return LEVEL_RANK[lv] != null ? LEVEL_RANK[lv] : 2; }
+/* closest first; at equal distance the harder track wins for olympiad and university notebooks, the easier one otherwise */
+function byLevel(tracks, nb) {
+  const r = nbRank(nb), up = r >= 2.6;
+  return tracks.map((t, i) => [t, i]).sort((a, b) => { const da = Math.abs(trackRank(a[0]) - r), db = Math.abs(trackRank(b[0]) - r); if (Math.abs(da - db) > 1e-9) return da - db; const ha = trackRank(a[0]), hb = trackRank(b[0]); if (ha !== hb) return up ? hb - ha : ha - hb; return a[1] - b[1]; }).map((x) => x[0]);
+}
 function defaultTrack(nb) {
   const sj = subjOf(nb)[0], lv = (nb && nb.level) || 'mp', mine = subjTracks();
   if (sj === 'phys') return ({ p: 'p', mt: 'mt', mp: 'mp', olymp: 'olymp', u: 'u', grad: 'u', pro: 'u' })[lv] || 'mp';
-  if (sj === 'sci') return lv === 'p' ? 'scip' : 'sci';
-  return mine[0];
+  if (sj === 'sci') return lv === 'p' ? 'scip' : lv === 'olymp' && mine.includes('ijso') ? 'ijso' : 'sci';
+  return byLevel(mine, nb)[0];
 }
 /* mastery by objective and by thinking level, from the answers of one learner (or everyone) */
 function exMastery(who, track) {
@@ -15387,13 +15490,16 @@ function exRenderSetup(body) {
   const allT = Object.keys(CURRIC).filter((t) => all.some((q) => q.t === t));
   if (EX.otherSubj) { const extra = Object.keys(BANK_META).filter((t) => BANK_META[t].file && !BANKS[t]); if (extra.length) { body.appendChild(exEl('div', 'note', 'กำลังเปิดคลังวิชาอื่น')); bankEnsure(extra).then(() => { if (!$('#examSheet').hidden) exRender(); }); return; } }
   const tracks = EX.otherSubj ? st.filter((t) => allT.includes(t)).concat(allT.filter((t) => !st.includes(t))) : st.filter((t) => all.some((q) => q.t === t));
-  { const k = S.nid + ':' + ((S.nb && S.nb.level) || ''); if (EX.trackKey !== k) { EX.trackKey = k; const d = defaultTrack(S.nb); if (tracks.includes(d)) { EX.track = d; EX.chs.clear(); } } }
+  { const k = S.nid + ':' + ((S.nb && S.nb.level) || '') + ':' + curSubj().join('/'); if (EX.trackKey !== k) { EX.trackKey = k; const d = defaultTrack(S.nb); EX.track = tracks.includes(d) ? d : (byLevel(tracks.filter((t) => st.includes(t)), S.nb)[0] || byLevel(tracks, S.nb)[0]); EX.chs.clear(); EX.want = tracks.includes(d) ? null : d; } }
+  /* the notebook's own level first, then the nearest ones */
+  { const own = byLevel(tracks.filter((t) => st.includes(t)), S.nb); tracks.splice(0, tracks.length, ...own.concat(tracks.filter((t) => !st.includes(t)))); }
   if (!tracks.length) {
     body.appendChild(exEl('div', 'note', 'วิชา' + esc(subjName(curSubj()[0], S.nb)) + ' ยังไม่มีโจทย์ในคลัง สร้างคลังโจทย์ของวิชานี้ได้ด้านล่าง'));
     if (st.length) aiBankPanel(body, st); else aiCurricPanel(body);
     return;
   }
   if (!tracks.includes(EX.track)) EX.track = tracks[0];
+  if (EX.want && CURRIC[EX.want] && EX.track !== EX.want) { const lvn = (LEVELS.find((x) => x[0] === ((S.nb && S.nb.level) || 'mp')) || [0, ''])[1]; const n = exEl('div', 'note small', 'สมุดนี้ตั้งระดับ' + esc(lvn) + ' แต่คลังในแอปยังไม่มีโจทย์' + esc(exTrackName(EX.want)) + ' จึงเปิดระดับที่ใกล้ที่สุดให้ก่อน เลือกระดับอื่นได้ด้านล่าง หรือสร้างโจทย์ระดับนี้ด้วย AI ที่แท็บคลังโจทย์'); body.appendChild(n); }
   body.appendChild(exEl('span', 'label', 'สนามสอบ'));
   exChips(body, tracks.map((t) => [t, exTrackName(t)]), (v) => v === EX.track, (v) => { EX.track = v; EX.chs.clear(); store_ls.set('tp-extrack', v); exRender(); });
   { const ob = exEl('button', 'chip', EX.otherSubj ? 'แสดงเฉพาะวิชาของสมุดนี้' : 'วิชาอื่น ๆ'); ob.type = 'button'; ob.onclick = () => { EX.otherSubj = !EX.otherSubj; exRender(); }; const row = exEl('div', 'chips'); row.appendChild(ob); body.appendChild(row); }
@@ -15808,7 +15914,7 @@ function aiCurricPanel(body) {
 }
 function aiBankPanel(body, tracks) {
   const sj = curSubj(), box = exEl('div', 'aibank'); body.appendChild(box);
-  const T = { t: tracks.includes(EX.track) ? EX.track : tracks[0], chs: new Set(), n: 10, d: 0 };
+  const dT = defaultTrack(S.nb), T = { t: tracks.includes(dT) ? dT : tracks.includes(EX.track) ? EX.track : tracks[0], chs: new Set(), n: 10, d: 0 };
   const paint = () => {
     box.innerHTML = '<h3>สร้างคลังโจทย์ของวิชานี้ด้วย AI</h3><div class="note small">AI เขียนโจทย์ปรนัยพร้อมเฉลย เหตุผล และความเข้าใจคลาดเคลื่อนของตัวเลือกผิดทีละบท แล้วให้ AI อีกรอบลองทำโดยไม่เห็นเฉลย เก็บเฉพาะข้อที่คำตอบตรงกัน โจทย์เก็บในบัญชีของคุณ ใช้ฝึก สั่งการบ้าน และห้องเรียนสดได้เหมือนคลังหลัก ควรตรวจก่อนใช้สอบจริง</div>';
     if (tracks.length > 1) { box.appendChild(exEl('span', 'label', 'ระดับหรือสนาม')); exChips(box, tracks.map((t) => [t, exTrackName(t)]), (v) => v === T.t, (v) => { T.t = v; T.chs.clear(); paint(); }); }
@@ -18738,7 +18844,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793323383';
+const BUILD = '1793324290';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
