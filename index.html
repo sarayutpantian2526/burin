@@ -9257,7 +9257,8 @@ function ipBox(strokes, pics) {
 }
 /* where the joints of a drawn stick figure are */
 function ipRig(strokes) {
-  const B = ipBox(strokes), Hd = Math.max(20, B[3] - B[1]), all = []; for (const s of strokes) for (const p of ipPts(s)) all.push(p);
+  /* points every couple of units along each line: a straight arm drawn quickly may be stored as just its two ends */
+  const B = ipBox(strokes), Hd = Math.max(20, B[3] - B[1]), all = []; for (const s of strokes) { const P = ipPts(s); if (P.length) all.push(P[0]); for (let q = 1; q < P.length; q++) { const a = P[q - 1], z = P[q], n = Math.max(1, Math.ceil(Math.hypot(z[0] - a[0], z[1] - a[1]) / 2.5)); for (let m = 1; m <= n; m++) all.push([a[0] + (z[0] - a[0]) * m / n, a[1] + (z[1] - a[1]) * m / n]); } }
   let headC = null, headR = 0;
   for (const s of strokes) { const P = ipPts(s); if (P.length < 6) continue; const b = ipBox([s]), bw = b[2] - b[0], bh = b[3] - b[1], sz = Math.max(bw, bh); if (Math.hypot(P[0][0] - P[P.length - 1][0], P[0][1] - P[P.length - 1][1]) < 0.4 * sz && bh > 0.06 * Hd && bh < 0.45 * Hd && (b[1] + b[3]) / 2 < B[1] + 0.4 * Hd && bw / Math.max(1, bh) > 0.5 && bw / Math.max(1, bh) < 2) { if (!headC || b[1] < headC[1] - headR) { headC = [(b[0] + b[2]) / 2, (b[1] + b[3]) / 2]; headR = sz / 2; } } }
   if (!headC) { const top = all.filter((p) => p[1] < B[1] + 0.1 * Hd); headC = [top.reduce((a, p) => a + p[0], 0) / Math.max(1, top.length) || (B[0] + B[2]) / 2, B[1] + 0.1 * Hd]; headR = 0.1 * Hd; }
@@ -9869,7 +9870,7 @@ function lifeRegion(B, beh) {
   if (beh.k === 'path' && beh.path && Array.isArray(beh.path.keys)) {
     let x0 = B[0], y0 = B[1], x1 = B[2], y1 = B[3]; const r = Math.hypot(B[2] - B[0], B[3] - B[1]) / 2, cx = (B[0] + B[2]) / 2, cy = (B[1] + B[3]) / 2;
     for (const k of beh.path.keys) { const s = Math.max(0.2, +k.scale || +k.s || 1); x0 = Math.min(x0, cx + (+k.dx || 0) - r * s); x1 = Math.max(x1, cx + (+k.dx || 0) + r * s); y0 = Math.min(y0, cy + (+k.dy || 0) - r * s); y1 = Math.max(y1, cy + (+k.dy || 0) + r * s); }
-    return [Math.max(0, Math.round(x0 - 20)), Math.max(0, Math.round(y0 - 20)), Math.min(W, Math.round(x1 + 20)), Math.min(H, Math.round(y1 + 20))];
+    return [Math.max(0, Math.round(x0 - 20)), Math.max(0, Math.round(y0 - 20)), Math.min(W, Math.round(x1 + 20)), H]; /* down to the bottom of the page, where its shadow can fall */
   }
   const bw = B[2] - B[0], bh = B[3] - B[1], mv = beh.move && beh.edge !== 'stay';
   const up = beh.k === 'hop' ? bh * 1.3 : beh.k === 'flap' ? bh * 0.8 : beh.k === 'bob' ? bh * 0.35 : beh.k === 'roll' ? bw * 0.3 : bh * 0.3;
@@ -10155,6 +10156,13 @@ function lifeDraw(it, rt) {
   let tsx = 1; if (rt.state === 'turn') tsx = Math.max(0.1, Math.abs(Math.cos(Math.PI * (rt.tp || 0))));
   const flip = isPath ? (pathDir !== 0 && pathDir !== face) : (moving && k !== 'spin' && k !== 'roll' && k !== 'phys' && rt.dir !== face);
   const peekLean = rt.state === 'peek' ? Math.sin((T0 - rt.st0) * 2.4) * 0.1 + 0.06 : 0;
+  /* a soft shadow on the ground under anything off the ground, smaller and fainter the higher it is */
+  if (['flap', 'hop', 'phys', 'bob'].includes(k) || isPath) {
+    const gy = lifeGroundBelow(cx + ox, B[3] + Math.max(0, oy)), lift = gy - (B[3] + oy);
+    if (lift > 2 && lift < 600) { const f = clamp(1 - lift / 400, 0.15, 1); c.save(); c.globalAlpha = 0.16 * f; c.fillStyle = '#1B2230'; c.beginPath(); c.ellipse(cx + ox, gy - 2, bw * 0.42 * (0.6 + 0.4 * f), Math.max(2, bh * 0.08 * f), 0, 0, 6.2832); c.fill(); c.restore(); }
+  }
+  /* a hard landing or a bounce squashes the body a little along the hit, then it springs back */
+  if (rt.sq) { const d = rt.sqN || [0, 1], ang = Math.atan2(d[1], d[0]), q = rt.sq; c.translate(cx + ox, cy + oy); c.rotate(ang); c.scale(1 - 0.22 * q, 1 + 0.12 * q); c.rotate(-ang); c.translate(-cx - ox, -cy - oy); }
   c.save();
   if (rt.flinch) { const f = Math.sin(Math.min(1, rt.flinch) * Math.PI / 2), fd = rt.flinchDir || 1; c.translate(cx + fd * bw * 0.14 * f, B[3]); c.rotate(fd * 0.2 * f); c.scale(1 + 0.05 * f, 1 - (rt.flinchUp ? 0.22 : 0.08) * f); c.translate(-cx, -B[3]); }
   c.translate(px + ox, py + oy); c.scale(flip ? -tsx : tsx, 1); c.rotate(rot + peekLean * face); c.scale(sx, sy); c.translate(-px, -py);
@@ -10185,10 +10193,19 @@ function lifeDraw(it, rt) {
   const deforms = ['sway', 'flutter', 'swim', 'flicker', 'breathe', 'walk4'].includes(k) || (k === 'flap' && !wings.length);
   for (const q of it.pics || []) { const im = q.asset && scSprite(q.asset); if (im) c.drawImage(im, q.x, q.y, q.w, q.h); }
   const inW = new Set(); (it.wheels || []).forEach((wl) => wl.i.forEach((i) => inW.add(i)));
+  /* a drawn person flinching throws the arms up over the head */
+  let armUp = null;
+  if (rt.flinch > 0.02 && it.ink.length >= 4 && typeof ipRig === 'function') {
+    if (rt.rig === undefined) { try { const rg = ipRig(it.ink); rt.rig = rg && rg.headC && rg.legs && rg.legs.filter(Boolean).length === 2 ? rg : null; } catch (e) { rt.rig = null; } }
+    const R = rt.rig;
+    if (R) { const Hd = Math.max(20, B[3] - B[1]), f = Math.sin(Math.min(1, rt.flinch) * Math.PI / 2), tx = (y) => R.neck[0] + (R.hip[0] - R.neck[0]) * clamp((y - R.neck[1]) / ((R.hip[1] - R.neck[1]) || 1), 0, 1);
+      armUp = (x, y) => { if (y <= R.neck[1] || y >= R.hip[1] + 0.1 * Hd || Math.abs(x - tx(y)) <= 0.07 * Hd || Math.hypot(x - R.headC[0], y - R.headC[1]) <= R.headR * 1.2) return [x, y]; const left = x < tx(y), a = (left ? 1 : -1) * 1.9 * f, dx = x - R.sh[0], dy = y - R.sh[1], ca = Math.cos(a), sa = Math.sin(a); return [R.sh[0] + dx * ca - dy * sa, R.sh[1] + dx * sa + dy * ca]; }; }
+  }
   it.ink.forEach((s, i) => {
     if (inW.has(i)) return;
     if (legOf.has(i)) { const g = legOf.get(i), ph = gait.ph0 + g.ph, th = -face * 0.38 * A * gait.a * Math.sin(ph), lift = Math.max(0, Math.cos(ph)) * 0.12 * gait.L * A * gait.a; c.save(); c.translate(g.px, g.top - lift * 0.5); c.rotate(th); c.translate(-g.px, -g.top); drawStroke(c, s); c.restore(); return; }
     if (wingSet.has(i)) { const wg = wings.find((q) => q.i === i), fl = (t % 3.4) < 2.3, a = -face * (fl ? Math.sin(t * 9) * 0.6 : -0.15) * A; c.save(); c.translate(wg.pv[0], wg.pv[1]); c.rotate(a); c.translate(-wg.pv[0], -wg.pv[1]); drawStroke(c, s); c.restore(); return; }
+    if (armUp) { const p = s.p.slice(); for (let j = 0; j + 1 < p.length; j += 3) { let x = p[j] / 10, y = p[j + 1] / 10; if (deforms) { const n = deform(x, y); if (n) { x = n[0]; y = n[1]; } } const n2 = armUp(x, y); p[j] = n2[0] * 10; p[j + 1] = n2[1] * 10; } drawStroke(c, Object.assign({}, s, { p })); return; }
     if (!deforms) { drawStroke(c, s); return; }
     const p = s.p.slice(); for (let j = 0; j + 1 < p.length; j += 3) { const n = deform(p[j] / 10, p[j + 1] / 10); if (n) { p[j] = n[0] * 10; p[j + 1] = n[1] * 10; } }
     drawStroke(c, Object.assign({}, s, { p }));
@@ -10205,8 +10222,21 @@ function lifePathAt(it, t) {
   const dur = Math.max(0.2, K[K.length - 1].t);
   let u = P.loop === false ? Math.min(t, dur) : t % dur;
   let i = 0; while (i < K.length - 2 && u > K[i + 1].t) i++;
-  const a = K[i], b = K[Math.min(i + 1, K.length - 1)], q = b.t > a.t ? clamp((u - a.t) / (b.t - a.t), 0, 1) : 1, e = q * q * (3 - 2 * q);
-  return { dx: a.dx + (b.dx - a.dx) * e, dy: a.dy + (b.dy - a.dy) * e, rot: a.rot + (b.rot - a.rot) * e, s: a.s + (b.s - a.s) * e };
+  const n = K.length, loop = P.loop !== false, at = (j) => K[loop ? (j + n - 1) % (n - 1) : clamp(j, 0, n - 1)] || K[clamp(j, 0, n - 1)];
+  const a = K[i], b = K[Math.min(i + 1, n - 1)], q = b.t > a.t ? clamp((u - a.t) / (b.t - a.t), 0, 1) : 1;
+  /* the path passes through every key with a continuous speed (Catmull-Rom), only the very ends ease in and out */
+  const p0 = i > 0 ? K[i - 1] : (loop && n > 2 ? at(n - 2) : a), p3 = i + 2 < n ? K[i + 2] : (loop && n > 2 ? K[1] : b);
+  const cr = (k) => { const v0 = p0[k], v1 = a[k], v2 = b[k], v3 = p3[k]; return 0.5 * (2 * v1 + (-v0 + v2) * q + (2 * v0 - 5 * v1 + 4 * v2 - v3) * q * q + (-v0 + 3 * v1 - 3 * v2 + v3) * q * q * q); };
+  const e = q * q * (3 - 2 * q);
+  return { dx: cr('dx'), dy: cr('dy'), rot: a.rot + (b.rot - a.rot) * e, s: a.s + (b.s - a.s) * e };
+}
+
+/* the top of the nearest line or box under a point: where a shadow falls */
+function lifeGroundBelow(x, y) {
+  const Wd = lifeWorldNow(); let g = H;
+  for (const o of Wd.strokes) { const q = o.b; if (!o.ground || q[0] > x || q[2] < x || q[3] < y) continue; const t = lifeTopIn(o.s, x - 2, x + 2, y, H); if (t != null && t < g) g = t; }
+  for (const q of Wd.boxes) if (q[0] <= x && q[2] >= x && q[1] >= y && q[1] < g) g = q[1];
+  return g;
 }
 /* is the drawing round enough to roll like a ball or a wheel */
 function lifeRoundish(ink, B) {
@@ -10243,6 +10273,7 @@ function lifeImpulse(rt, sh, n, rx, ry, rel, e, mu, other) {
   const inv = 1 / sh.m + rn * rn / sh.I + (other ? 1 / other.sh.m + other.rn * other.rn / other.sh.I : 0);
   const ee = Math.abs(vn) < 40 ? 0 : e; /* slow contacts settle instead of jittering */
   const j = -(1 + ee) * vn / inv;
+  if (Math.abs(vn) > 160) { rt.sq = Math.min(1, Math.max(rt.sq || 0, Math.abs(vn) / 1400)); rt.sqN = n; }
   rt.vx += j * n[0] / sh.m; rt.vy += j * n[1] / sh.m; rt.w += (rx * n[1] - ry * n[0]) * j / sh.I;
   if (other) { other.rt.vx -= j * n[0] / other.sh.m; other.rt.vy -= j * n[1] / other.sh.m; other.rt.w -= other.rn * j / other.sh.I; }
   /* friction along the surface */
@@ -10298,6 +10329,7 @@ function lifePhys(it, rt, dt) {
       }
     }
   }
+  if (rt.sq) rt.sq = Math.max(0, rt.sq - dt * 7);
   /* settle a body lying still, so it does not shiver */
   if (Math.hypot(rt.vx, rt.vy) < 6 && Math.abs(rt.w) < 0.15) { rt.sleep = (rt.sleep || 0) + dt; if (rt.sleep > 0.4) { rt.vx = 0; rt.w = 0; if (Math.abs(rt.vy) < 6) rt.vy = 0; } } else rt.sleep = 0;
 }
@@ -19275,7 +19307,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793341367';
+const BUILD = '1793341608';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
