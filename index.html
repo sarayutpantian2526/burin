@@ -3376,10 +3376,10 @@ function buildItemEl(it, forExport) {
   d.dataset.id = it.id;
   if (it.type === 'svg') { if (it.vec3) buildVecFig(d, it, forExport); else d.innerHTML = cleanSvg(it.svg) || ''; }
   else if (it.type === 'img') {
-    if (okAsset(it.asset) || okRemote(it.url)) { const im = document.createElement('img'); im.alt = 'ภาพที่แทรก'; im.draggable = false; im.decoding = 'async'; d.appendChild(im); if (okAsset(it.asset)) setAssetSrc(im, it.asset); else { im.crossOrigin = 'anonymous'; im.src = it.url; } }
+    const ta = tcopyAsset(it); if (okAsset(it.asset) || ta || okRemote(it.url)) { const im = document.createElement('img'); im.alt = 'ภาพที่แทรก'; im.draggable = false; im.decoding = 'async'; d.appendChild(im); if (okAsset(it.asset) || ta) setAssetSrc(im, it.asset || ta); else { im.crossOrigin = 'anonymous'; im.src = it.url; } }
   } else if (it.type === 'video') {
     if (forExport) { d.innerHTML = '<div style="aspect-ratio:16/9;background:#20262F;color:#FFFFFF;display:flex;align-items:center;justify-content:center;border-radius:6px;font-family:var(--ui)">วิดีโอ ดูได้ในแอป</div>'; }
-    else if (okAsset(it.asset) || okRemote(it.url)) { const bar = document.createElement('div'); bar.className = 'vbar'; bar.innerHTML = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 7h12 M4 10h12 M4 13h12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span>วิดีโอ แตะแถบนี้เพื่อเลือก ย้าย หรือลบ</span>'; d.appendChild(bar); const v = document.createElement('video'); v.controls = true; v.playsInline = true; v.preload = 'metadata'; d.appendChild(v); if (okAsset(it.asset)) setAssetSrc(v, it.asset); else { v.src = it.url; if (okRemote(it.poster)) v.poster = it.poster; } }
+    else if (okAsset(it.asset) || tcopyAsset(it) || okRemote(it.url)) { const bar = document.createElement('div'); bar.className = 'vbar'; bar.innerHTML = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 7h12 M4 10h12 M4 13h12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span>วิดีโอ แตะแถบนี้เพื่อเลือก ย้าย หรือลบ</span>'; d.appendChild(bar); const v = document.createElement('video'); v.controls = true; v.playsInline = true; v.preload = 'metadata'; d.appendChild(v); if (okAsset(it.asset) || tcopyAsset(it)) setAssetSrc(v, it.asset || tcopyAsset(it)); else { v.src = it.url; if (okRemote(it.poster)) v.poster = it.poster; } }
   } else if (it.type === 'graph') { buildGraph(d, it, forExport); }
   else if (it.type === 'sim') { buildSim(d, it, forExport); }
   else if (it.type === 'scene') { buildScene(d, it, forExport); }
@@ -16462,10 +16462,40 @@ async function studentNbFor(d) {
   store_ls.set('tp-snb-' + key, nid); store_ls.set('tp-snb-last-' + LIVE.code, key);
   LIVE.tkey = key; if (LIVE.nid !== nid) { LIVE.nid = nid; openNotebook(nid); }
 }
+/* the teacher's pictures reach the student as signed links that run out (one day in a live class);
+   a copy goes into the student's own files, so the page and its PDF keep them for good */
+const TCOPY = { map: null, busy: new Set() };
+function tcopyKey(u) { return String(u || '').split('?')[0]; }
+function tcopyMap() { if (!TCOPY.map) { try { TCOPY.map = JSON.parse(store_ls.get('tp-tcopy') || '{}') || {}; } catch (e) { TCOPY.map = {}; } } return TCOPY.map; }
+function tcopyAsset(it) { if (!it || okAsset(it.asset) || !okSigned(it.url)) return null; const a = tcopyMap()[tcopyKey(it.url)]; return okAsset(a) ? a : null; }
+function tcopyApply(items) {
+  return (items || []).map((it) => { const a = (it.type === 'img' || it.type === 'video') ? tcopyAsset(it) : null; if (!a) return it; const o = Object.assign({}, it, { asset: a }); delete o.url; delete o.poster; return o; });
+}
+async function tcopyFetch(lpid, items) {
+  const need = (items || []).filter((it) => (it.type === 'img' || it.type === 'video') && !okAsset(it.asset) && okSigned(it.url) && !tcopyAsset(it));
+  if (!need.length) return;
+  const A = await getAssets().catch(() => null); if (!A) return;
+  let got = 0;
+  for (const it of need) {
+    const k = tcopyKey(it.url); if (TCOPY.busy.has(k)) continue; TCOPY.busy.add(k);
+    try {
+      const r = await fetch(it.url); if (!r.ok) throw new Error('fetch');
+      const b = await r.blob(); if (!b.size || b.size > 60e6) throw new Error('size');
+      const up = await A.upload(b, { type: b.type || (it.type === 'video' ? 'video/mp4' : 'image/jpeg') });
+      if (up && okAsset(up.id)) { const m = tcopyMap(); m[k] = up.id; const ks = Object.keys(m); if (ks.length > 3000) for (const x of ks.slice(0, ks.length - 3000)) delete m[x]; try { store_ls.set('tp-tcopy', JSON.stringify(m)); } catch (e) { /* full: the page still keeps the copy */ } got++; }
+    } catch (e) { /* link already gone or offline: try again next time the page arrives */ }
+    TCOPY.busy.delete(k);
+  }
+  if (!got) return;
+  if (lpid === S.pid && S.page) { S.page.items = tcopyApply(S.page.items); renderItems(); savePage(); return; }
+  const pg = await S.store.get('pages/' + lpid).catch(() => null);
+  if (pg) await S.store.set('pages/' + lpid, Object.assign({}, pg, { items: tcopyApply(pg.items) })).catch(() => {});
+}
 async function studentPutPage(nid, lpid, idx, d, strokes) {
   const old = await S.store.get('pages/' + lpid);
   const mine = ((old && old.items) || []).filter((it) => it.by !== 'teacher');
-  await S.store.set('pages/' + lpid, { nb: nid, paper: d.paper || 'grid', orient: d.orient === 'land' ? 'land' : undefined, items: (d.items || []).map((it) => Object.assign({}, it, { by: 'teacher' })).concat(mine), rev: now(), tidx: idx });
+  await S.store.set('pages/' + lpid, { nb: nid, paper: d.paper || 'grid', orient: d.orient === 'land' ? 'land' : undefined, items: tcopyApply((d.items || []).map((it) => Object.assign({}, it, { by: 'teacher' }))).concat(mine), rev: now(), tidx: idx });
+  setTimeout(() => tcopyFetch(lpid, d.items), 50);
   if (strokes) await S.store.set('pages/' + lpid + '/layers/teacher', { strokes, rev: now(), dev: 'teacher' });
   const nb = await S.store.get('notebooks/' + nid); if (!nb) return; const pages = (nb.pages || []).slice();
   const tid = (x) => 'T' + String(x).replace(/[^A-Za-z0-9]/g, '');
@@ -18708,7 +18738,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793322784';
+const BUILD = '1793322924';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
