@@ -3784,7 +3784,29 @@ vp.addEventListener('pointerup', onUp);
 vp.addEventListener('pointercancel', onUp);
 vp.addEventListener('contextmenu', (e) => e.preventDefault());
 
+/* the page keeps sliding after a flick and slows down by itself, like paper pushed across a desk */
+const GLIDE = { raf: 0 };
+function glideStop() { if (GLIDE.raf) cancelAnimationFrame(GLIDE.raf); GLIDE.raf = 0; }
+function glideStart(pt) {
+  glideStop();
+  const vs = pt.vs || [], tn = performance.now(); if (vs.length < 2 || tn - vs[vs.length - 1][0] > 60) return;
+  const span = Math.max(16, tn - vs[0][0]); let sx = 0, sy = 0; for (const v of vs) { sx += v[1]; sy += v[2]; }
+  let vx = sx / span, vy = sy / span; const sp = Math.hypot(vx, vy); if (sp < 0.25) return;
+  const cap = 6 / sp; if (cap < 1) { vx *= cap; vy *= cap; }
+  let last = tn;
+  const step = (t) => {
+    const dt = Math.min(40, t - last); last = t;
+    const k = Math.exp(-dt / 325); vx *= k; vy *= k;
+    const b = bounds(), ox = S.tx, oy = S.ty;
+    S.tx = clamp(S.tx + vx * dt, b.x0, b.x1); S.ty = clamp(S.ty + vy * dt, b.y0, b.y1);
+    if (S.tx === ox) vx = 0; if (S.ty === oy) vy = 0;
+    applyT(); resizeLater();
+    if (Math.hypot(vx, vy) > 0.02) GLIDE.raf = requestAnimationFrame(step); else GLIDE.raf = 0;
+  };
+  GLIDE.raf = requestAnimationFrame(step);
+}
 function onDown(e) {
+  glideStop();
   if (DIARY.pending.length) diaryPenDown();
   /* writing on the page shown above or below moves onto that page first */
   if (FLOW.on && !S.present && drawTool() && (e.pointerType !== 'touch' || S.finger) && !e.target.closest('button,input,select,textarea,.item.live')) { const [, ly] = toLogical(e.clientX, e.clientY); if ((ly < -4 && flowGo(-1)) || (ly > H + 4 && flowGo(1))) FLOW.lockTy = S.ty; }
@@ -3921,7 +3943,7 @@ function onMove(e) {
   const dxs = e.clientX - pt.lx, dys = e.clientY - pt.ly;
   pt.moved += Math.abs(dxs) + Math.abs(dys);
   if (G && G.ids.includes(e.pointerId)) { pt.lx = e.clientX; pt.ly = e.clientY; moveGesture(); return; }
-  if (pt.mode === 'pan') { S.tx += dxs; const b = bounds(); S.tx = clamp(S.tx, b.x0, b.x1); setVirtualY(S.ty + (S.pull || 0) + dys); applyT(); }
+  if (pt.mode === 'pan') { S.tx += dxs; const b = bounds(); S.tx = clamp(S.tx, b.x0, b.x1); setVirtualY(S.ty + (S.pull || 0) + dys); applyT(); const tn = performance.now(); (pt.vs || (pt.vs = [])).push([tn, dxs, dys]); while (pt.vs.length && tn - pt.vs[0][0] > 90) pt.vs.shift(); }
   else if (pt.mode === 'draw') {
     if (pt.snapped) { const [x, y] = toLogical(e.clientX, e.clientY); moveSnapped(pt, x, y); }
     else {
@@ -3963,6 +3985,7 @@ function onUp(e) {
   if (G && G.ids.includes(e.pointerId)) { endGesture(); return; }
   const tap = pt.moved < 10 && now() - pt.t0 < 380;
   if (pt.mode === 'pan') {
+    if (!S.pull && !tap && e.type !== 'pointercancel') glideStart(pt);
     if (S.pull) releasePull();
     else if (S.convMode && tap && e.type !== 'pointercancel') { const [x, y] = toLogical(e.clientX, e.clientY); convertAt(x, y); }
     return;
@@ -19150,7 +19173,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793339795';
+const BUILD = '1793340222';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
@@ -19992,7 +20015,7 @@ $('#expScope').querySelectorAll('.chip').forEach((b) => { b.onclick = () => {
   if (v !== 'none') expScope = v;
   EXP.sel = new Set(v === 'all' ? pages : v === 'page' ? [S.pid] : []); $('#expRange').value = expRangeText(); expSync();
 }; });
-vp.addEventListener('wheel', (e) => {
+vp.addEventListener('wheel', (e) => { glideStop();
   e.preventDefault();
   if (e.ctrlKey || e.metaKey) {
     const r = vp.getBoundingClientRect(), mx = e.clientX - r.left, my = e.clientY - r.top;
