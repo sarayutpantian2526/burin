@@ -3712,7 +3712,7 @@ async function diaryAsk() {
     const hit = (x, y) => occupiedBoxes().some((b) => x < b[2] + 10 && x + w > b[0] - 10 && y < b[3] + 10 && y + h > b[1] - 10);
     /* a person never writes past the edge of the paper: find room on this page, or turn to a new page */
     let apid = pid;
-    if (at[1] + h > H - 20 || hit(at[0], at[1])) { const f = freeSpot(w, h, [at[0], box[3] + 16]); if (f) at = f; else { const np = await addPage(); if (!np) return; apid = np; at = [Math.round((W - w) / 2), 50]; toast('หน้าเต็มแล้ว สมุดเขียนตอบในหน้าถัดไป', 2400); } }
+    if (at[1] + h > H - 20 || hit(at[0], at[1])) { const f = freeSpot(w, h, [at[0], box[3] + 16], true); if (f) at = f; else { const np = await addPage(); if (!np) return; apid = np; at = [Math.round((W - w) / 2), 50]; toast('หน้าเต็มแล้ว สมุดเขียนตอบในหน้าถัดไป', 2400); } }
     const ink = '#2B3A67', id = 'i' + uid();
     if (text) addItem({ id, type: 'text', x: Math.round(at[0]), y: Math.round(at[1]), w: Math.round(w), md: text, fs, hand: DIARY_HAND(), ink, diary: true, dv: 2 });
     S.page = Object.assign({}, S.page, { diaryLog: log }); savePage();
@@ -3729,7 +3729,7 @@ async function diaryAsk() {
         const dh = Math.round(clamp(fs * 2.6, 46, 100)), dw = Math.round(dh * 100 / 60), tlw = clamp(fs * 0.07, 1.6, 3.5);
         const goT = async () => {
           if (S.pid !== apid) { diaryDraw(tiny, clamp(Math.round(at[0] + w - dw), 20, W - 20 - dw), clamp(near[1] - 6, 20, H - 20 - dh), dw, dh, tlw, ink, fs, apid); return; }
-          let spot = freeSpot(dw, dh, [Math.round(at[0] + w - dw), near[1] - 6]), pg = apid;
+          let spot = freeSpot(dw, dh, [Math.round(at[0] + w - dw), near[1] - 6], true), pg = apid;
           if (!spot) { const np = await addPage(); if (!np) return; pg = np; spot = [Math.round(W - 40 - dw), 60]; }
           diaryDraw(tiny, spot[0], spot[1], dw, dh, tlw, ink, fs, pg);
         };
@@ -3740,7 +3740,7 @@ async function diaryAsk() {
         /* the page was left in the meantime: the drawing is still made, and appears when that page is opened again */
         if (S.pid !== apid) { const dw0 = Math.round(clamp(fs * 16, 320, Math.min(640, W - 80))); diaryDraw(sketch, Math.round((W - dw0) / 2), clamp(near[1], 20, H - 20 - dw0 * 0.6), dw0, Math.round(dw0 * 0.6), lw, ink, fs, apid); return; }
         let dw = Math.round(clamp(fs * 16, 320, Math.min(640, W - 80))), spot = null;
-        while (!spot && dw >= 240) { const dh0 = Math.round(dw * 0.6); spot = freeSpot(dw, dh0, [Math.round((W - dw) / 2), near[1]]); if (!spot) dw = Math.round(dw * 0.85); }
+        while (!spot && dw >= 240) { const dh0 = Math.round(dw * 0.6); spot = freeSpot(dw, dh0, [Math.round((W - dw) / 2), near[1]], true); if (!spot) dw = Math.round(dw * 0.85); }
         let pg = apid;
         if (!spot) { dw = Math.round(clamp(fs * 16, 320, Math.min(640, W - 80))); const np = await addPage(); if (!np) return; pg = np; spot = [Math.round((W - dw) / 2), 60]; toast('หน้าเต็มแล้ว สมุดวาดต่อในหน้าถัดไป', 2400); }
         diaryDraw(sketch, spot[0], spot[1], dw, Math.round(dw * 0.6), lw, ink, fs, pg);
@@ -18233,13 +18233,14 @@ function occupiedBoxes() {
   for (const r of allStrokes()) { const b = sbox(r.s); out.push([b[0], b[1], b[2], b[3]]); }
   return out;
 }
-function freeSpot(w, h, near) {
+function freeSpot(w, h, near, below) {
   const occ = occupiedBoxes(), m = 14;
   const fits = (x, y) => x >= 6 && y >= 6 && x + w <= W - 6 && y + h <= H - 6 && !occ.some((b) => x < b[2] + m && x + w > b[0] - m && y < b[3] + m && y + h > b[1] - m);
   const xs = []; if (near) xs.push(clamp(Math.round(near[0]), 6, W - w - 6)); xs.push(40, Math.round((W - w) / 2), W - w - 40);
   const y0 = near ? Math.round(near[1]) : Math.round(viewSpot(w, h)[1]);
   for (const x of xs) for (let y = clamp(y0, 6, H); y + h <= H - 6; y += 12) if (fits(x, y)) return [x, y];
-  for (const x of xs) for (let y = 6; y + h <= H - 6; y += 12) if (fits(x, y)) return [x, y];
+  /* a reply keeps to the order of the conversation: it never jumps above what was written */
+  if (!below) for (const x of xs) for (let y = 6; y + h <= H - 6; y += 12) if (fits(x, y)) return [x, y];
   return null;
 }
 
@@ -20263,7 +20264,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793433007';
+const BUILD = '1793433351';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
