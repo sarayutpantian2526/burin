@@ -1106,6 +1106,37 @@ body.present .peekcard { display: none !important; }
 .exbar i.did { background: var(--chrome); opacity: .55; }
 .exch { font-size: 13px; color: var(--muted); }
 .exch span { margin-left: 6px; padding: 1px 8px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+.exsetup { display: flex; flex-direction: column; }
+.exrow { display: grid; grid-template-columns: 116px minmax(0, 1fr); gap: 8px 14px; align-items: start; padding: 10px 0; border-top: 1px solid var(--line); }
+.exrow:first-child { border-top: 0; padding-top: 2px; }
+.exrow > .label { padding-top: 11px; line-height: 1.3; }
+.exrow > .label small { display: block; font-weight: 400; margin-top: 2px; }
+.exrow > .chips, .exrow > .note, .exrow > div { grid-column: 2; }
+.exrow .chip { white-space: nowrap; }
+.exrow.exlist > .chips { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+.exrow.exlist .chip { white-space: normal; text-align: left; border-radius: 10px; padding: 7px 12px; line-height: 1.35; }
+.exsetup > .exgo { margin-top: 10px; }
+.chip .cnt { margin-left: 6px; font-size: 11.5px; opacity: 0.6; font-variant-numeric: tabular-nums; }
+.exrow.exlist .chip { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.exrow.exlist .chip .cnt { margin-left: 0; flex: 0 0 auto; }
+.exrow.exlist > .chips.exlesson { display: flex; }
+.exrow .exlesson .chip { border-style: dashed; color: var(--accent); justify-content: center; }
+@media (max-width: 600px) {
+  .exrow { grid-template-columns: minmax(0, 1fr); gap: 6px; padding: 9px 0; }
+  .exrow > .label { padding-top: 0; }
+  .exrow > .label small { display: inline; margin: 0 0 0 6px; }
+  .exrow > .chips, .exrow > .note, .exrow > div { grid-column: 1; }
+  .exrow:not(.exlist) > .chips { flex-wrap: nowrap; overflow-x: auto; margin: 0 -18px; padding: 0 18px 2px; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+  .exrow:not(.exlist) > .chips::-webkit-scrollbar { display: none; }
+  .exrow:not(.exlist) .chip { flex: 0 0 auto; }
+  .exrow.exlist > .chips { grid-template-columns: minmax(0, 1fr); }
+  .exrow > .chips.scrolls { -webkit-mask-image: linear-gradient(90deg, #000 82%, transparent); mask-image: linear-gradient(90deg, #000 82%, transparent); }
+  .exrow > .chips.scrolls.atend { -webkit-mask-image: none; mask-image: none; }
+  #examSheet .exgroups button, #examSheet #exTabs button { white-space: nowrap; font-size: 13px; padding-left: 8px; padding-right: 8px; flex: 0 0 auto; }
+  #examSheet .exgroups, #examSheet #exTabs { flex-shrink: 0; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; max-width: 100%; box-sizing: border-box; }
+  #examSheet .exgroups::-webkit-scrollbar, #examSheet #exTabs::-webkit-scrollbar { display: none; }
+}
+.exrow > .chips { position: relative; }
 .exq { font-size: 19px; line-height: 1.6; }
 .exq p { margin: 0 0 6px; }
 .exopts { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 8px; }
@@ -15968,7 +15999,7 @@ function exPutOnPage(x, withKey) {
 function exEl(tag, cls, html) { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; }
 function exChips(box, list, cur, on) {
   const c = exEl('span', 'chips');
-  for (const [v, label] of list) { const b = exEl('button', 'chip'); b.type = 'button'; b.textContent = label; b.setAttribute('aria-pressed', cur(v) ? 'true' : 'false'); b.onclick = () => on(v); c.appendChild(b); }
+  for (const [v, label] of list) { const b = exEl('button', 'chip'); b.type = 'button'; const m = /^(.*\S) \((\d+)\)$/.exec(String(label)); if (m) { b.appendChild(exEl('span', '', esc(m[1]))); b.appendChild(exEl('small', 'cnt', m[2])); } else b.textContent = label; b.setAttribute('aria-pressed', cur(v) ? 'true' : 'false'); b.onclick = () => on(v); c.appendChild(b); }
   box.appendChild(c); return c;
 }
 function exRenderWho() {
@@ -16011,10 +16042,17 @@ function exRenderSetup(body) {
   if (st.some((t) => BANK_META[t] && BANK_META[t].file && !BANKS[t])) { body.appendChild(exEl('div', 'note', 'กำลังเปิดคลังโจทย์')); bankEnsure(st).then(() => { if (!$('#examSheet').hidden) exRender(); }); return; }
   const allT = Object.keys(CURRIC).filter((t) => all.some((q) => q.t === t));
   if (EX.otherSubj) { const extra = Object.keys(BANK_META).filter((t) => BANK_META[t].file && !BANKS[t]); if (extra.length) { body.appendChild(exEl('div', 'note', 'กำลังเปิดคลังวิชาอื่น')); bankEnsure(extra).then(() => { if (!$('#examSheet').hidden) exRender(); }); return; } }
-  const tracks0 = EX.otherSubj ? st.filter((t) => allT.includes(t)).concat(allT.filter((t) => !st.includes(t))) : st.filter((t) => all.some((q) => q.t === t));
+  const ownSj = curSubj()[0], sjs = [...new Set(allT.map(trackSubj))].filter((x) => x !== ownSj);
+  if (EX.otherSubj && !sjs.includes(EX.osj)) EX.osj = sjs[0];
+  const tracks0 = EX.otherSubj && EX.osj ? allT.filter((t) => trackSubj(t) === EX.osj) : st.filter((t) => all.some((q) => q.t === t));
+  body = body.appendChild(exEl('div', 'exsetup'));
+  const row = (label, cls) => { const r = exEl('div', 'exrow' + (cls ? ' ' + cls : '')); r.appendChild(exEl('span', 'label', label)); body.appendChild(r); return r; };
+  /* subject: this notebook's subject, or any other subject that has a bank */
+  if (sjs.length) exChips(row('วิชา'), [['_own', subjName(ownSj, S.nb) || 'วิชาของสมุดนี้']].concat(EX.otherSubj ? sjs.map((x) => [x, subjName(x, S.nb)]) : [['_more', 'วิชาอื่น ๆ']]),
+    (v) => (v === '_own' ? !EX.otherSubj : EX.otherSubj && v === EX.osj), (v) => { if (v === '_own') EX.otherSubj = false; else { EX.otherSubj = true; if (v !== '_more') EX.osj = v; } EX.examKey = null; EX.trackKey = null; exRender(); });
   /* level first (ประถม, ม.ต้น, ม.ปลาย, มหาวิทยาลัย), then only the kinds of exam that exist at that level, then the sets */
   const bands = BANDS.filter((b) => tracks0.some((t) => trackBand(t) === b));
-  { const k = S.nid + ':' + ((S.nb && S.nb.level) || '') + ':' + curSubj().join('/') + ':' + (EX.otherSubj ? 1 : 0); if (EX.examKey !== k || !bands.includes(EX.band)) { EX.examKey = k; const lv = (S.nb && S.nb.level) || 'mp'; let b = nbBand(S.nb), ex = 'normal';
+  { const k = S.nid + ':' + ((S.nb && S.nb.level) || '') + ':' + curSubj().join('/') + ':' + (EX.otherSubj ? EX.osj : 0); if (EX.examKey !== k || !bands.includes(EX.band)) { EX.examKey = k; const lv = (S.nb && S.nb.level) || 'mp'; let b = nbBand(S.nb), ex = 'normal';
       if (lv === 'olymp') { const hasPosn = tracks0.some((t) => trackBand(t) === 'mp' && trackExam(t) === 'posn'), hasIjso = tracks0.some((t) => trackExam(t) === 'ijso'); if (hasPosn) ex = 'posn'; else if (hasIjso) { b = 'mt'; ex = 'ijso'; } }
       if (!bands.includes(b)) { const bi = BANDS.indexOf(b); b = bands.slice().sort((x, y) => Math.abs(BANDS.indexOf(x) - bi) - Math.abs(BANDS.indexOf(y) - bi))[0]; }
       EX.band = b; EX.exam = ex; } }
@@ -16033,36 +16071,32 @@ function exRenderSetup(body) {
   if (!tracks.includes(EX.track)) EX.track = tracks[0];
   if (EX.band !== nbBand(S.nb) && !EX.otherSubj && ((S.nb && S.nb.level) || 'mp') !== 'olymp') { const lvn = (LEVELS.find((x) => x[0] === ((S.nb && S.nb.level) || 'mp')) || [0, ''])[1]; body.appendChild(exEl('div', 'note small', 'สมุดนี้ตั้งระดับ' + esc(lvn) + ' แต่คลังวิชานี้ยังไม่มีโจทย์ระดับนั้น จึงเปิดระดับ' + BAND_NAME[EX.band] + 'ซึ่งใกล้ที่สุดให้ก่อน เลือกระดับอื่นได้ด้านล่าง หรือสร้างโจทย์ระดับนี้ด้วย AI ที่แท็บคลังโจทย์')); }
   if (bands.length > 1) {
-    body.appendChild(exEl('span', 'label', 'ระดับ'));
-    exChips(body, bands.map((b) => [b, BAND_NAME[b]]), (v) => v === EX.band, (v) => { EX.band = v; const ex = ['normal', 'posn', 'ijso'].filter((e) => tracks0.some((t) => trackBand(t) === v && trackExam(t) === e)); if (!ex.includes(EX.exam)) EX.exam = ex.includes('normal') ? 'normal' : ex[0]; pickTrack(); exRender(); });
+    exChips(row('ระดับ'), bands.map((b) => [b, BAND_NAME[b]]), (v) => v === EX.band, (v) => { EX.band = v; const ex = ['normal', 'posn', 'ijso'].filter((e) => tracks0.some((t) => trackBand(t) === v && trackExam(t) === e)); if (!ex.includes(EX.exam)) EX.exam = ex.includes('normal') ? 'normal' : ex[0]; pickTrack(); exRender(); });
   }
   if (exams.length > 1 || EX.exam !== 'normal') {
-    body.appendChild(exEl('span', 'label', 'ประเภทการสอบ'));
-    exChips(body, exams.map((e) => [e, examName(e, EX.band)]), (v) => v === EX.exam, (v) => { EX.exam = v; pickTrack(); exRender(); });
+    exChips(row('ประเภทการสอบ'), exams.map((e) => [e, examName(e, EX.band)]), (v) => v === EX.exam, (v) => { EX.exam = v; pickTrack(); exRender(); });
   }
-  if (tracks.length > 1) body.appendChild(exEl('span', 'label', 'ชุดโจทย์'));
-  if (tracks.length > 1) exChips(body, tracks.slice().sort((a, b) => (st.includes(a) ? 0 : 1) - (st.includes(b) ? 0 : 1) || trackRank(a) - trackRank(b)).map((t) => [t, trackShort(t, tracks.every((x) => st.includes(x)))]), (v) => v === EX.track, (v) => { EX.track = v; EX.chs.clear(); store_ls.set('tp-extrack', v); exRender(); });
-  { const ob = exEl('button', 'chip', EX.otherSubj ? 'แสดงเฉพาะวิชาของสมุดนี้' : 'วิชาอื่น ๆ'); ob.type = 'button'; ob.onclick = () => { EX.otherSubj = !EX.otherSubj; exRender(); }; const row = exEl('div', 'chips'); row.appendChild(ob); body.appendChild(row); }
+  if (tracks.length > 1) exChips(row('ชุดโจทย์'), tracks.slice().sort((a, b) => (st.includes(a) ? 0 : 1) - (st.includes(b) ? 0 : 1) || trackRank(a) - trackRank(b)).map((t) => [t, trackShort(t, tracks.every((x) => st.includes(x)))]), (v) => v === EX.track, (v) => { EX.track = v; EX.chs.clear(); store_ls.set('tp-extrack', v); exRender(); });
   const { by } = exStats(EX.who);
-  body.appendChild(exEl('span', 'label', 'บทที่จะฝึก แตะเลือกได้หลายบท ไม่เลือกคือทุกบท'));
+  const chr = row('บท', 'exlist'); chr.querySelector('.label').innerHTML = 'บทที่จะฝึก<small>เลือกได้หลายบท ไม่เลือกคือทุกบท</small>';
   const chs = [...new Set(all.filter((q) => q.t === EX.track).map((q) => q.ch))].sort((a, b) => a - b);
-  const c = exChips(body, [['all', 'ทุกบท']].concat(chs.map((ch) => [ch, exChName(EX.track, ch) + ' (' + all.filter((q) => q.t === EX.track && q.ch === ch).length + ')'])),
+  const c = exChips(chr, [['all', 'ทุกบท']].concat(chs.map((ch) => [ch, exChName(EX.track, ch) + ' (' + all.filter((q) => q.t === EX.track && q.ch === ch).length + ')'])),
     (v) => (v === 'all' ? !EX.chs.size : EX.chs.has(v)), (v) => { if (v === 'all') EX.chs.clear(); else if (EX.chs.has(v)) EX.chs.delete(v); else EX.chs.add(v); exRender(); });
   c.querySelectorAll('.chip').forEach((b, i) => { const ch = chs[i - 1]; const s = by[EX.track + ':' + ch]; if (i && s && s.n >= 3 && exWeakness(s) < 0.6) b.classList.add('weak'); });
-  { const ls = (BANK_META[EX.track] && BANK_META[EX.track].lessons) || [], one = EX.chs.size === 1 ? [...EX.chs][0] : null; if (ls.length) { const r = exEl('div', 'chips'); const b = exEl('button', 'chip', one != null && ls.includes(one) ? 'อ่านบทเรียนสรุปของบทนี้' : 'อ่านบทเรียนสรุป'); b.type = 'button'; b.onclick = () => { $('#examSheet').hidden = true; openLesson(EX.track, one != null && ls.includes(one) ? one : ls[0]); }; r.appendChild(b); body.appendChild(r); } }
-  body.appendChild(exEl('span', 'label', 'ความยาก'));
+  { const ls = (BANK_META[EX.track] && BANK_META[EX.track].lessons) || [], one = EX.chs.size === 1 ? [...EX.chs][0] : null; if (ls.length) { const r = exEl('div', 'chips exlesson'); const b = exEl('button', 'chip', one != null && ls.includes(one) ? 'อ่านบทเรียนสรุปของบทนี้' : 'อ่านบทเรียนสรุป'); b.type = 'button'; b.onclick = () => { $('#examSheet').hidden = true; openLesson(EX.track, one != null && ls.includes(one) ? one : ls[0]); }; r.appendChild(b); chr.appendChild(r); } }
   { const pool = all.filter((q) => q.t === EX.track && (!EX.chs.size || EX.chs.has(q.ch))), cnt = (d) => pool.filter((q) => (q.d || 2) === d).length;
-    exChips(body, [['all', 'ทุกระดับ'], ['easy', 'ง่าย (' + cnt(1) + ')'], ['mid', 'กลาง (' + cnt(2) + ')'], ['hard', 'ยาก (' + cnt(3) + ')'], ['mix', 'คละ ง่ายไปยาก']], (v) => v === (EX.dlev || 'all'), (v) => { EX.dlev = v; try { store_ls.set('tp-exdlev', v); } catch (e) { /* fine */ } exRender(); }); }
-  body.appendChild(exEl('span', 'label', 'จำนวนข้อ'));
-  exChips(body, [[5, '5 ข้อ'], [10, '10 ข้อ'], [20, '20 ข้อ'], [40, '40 ข้อ']], (v) => v === EX.n, (v) => { EX.n = v; exRender(); });
-  body.appendChild(exEl('span', 'label', 'รูปแบบ'));
-  exChips(body, [['practice', 'ฝึก เฉลยทันทีทีละข้อ'], ['work', 'แสดงวิธีทำ เขียนแล้วให้ AI ตรวจลายมือตาม 5 ขั้น'], ['exam', 'สอบ จับเวลา 2 นาทีต่อข้อ เฉลยตอนจบ']], (v) => v === EX.mode, (v) => { EX.mode = v; exRender(); });
-  if (EX.mode === 'work') body.appendChild(exEl('div', 'note small', 'แต่ละข้อมีที่ให้เขียนวิธีทำด้วยปากกาหรือนิ้ว กดตรวจจากลายมือ แล้ว AI จะอ่านวิธีทำและบอกว่าแต่ละขั้นทำได้ดีแค่ไหน: ' + SOL_STEPS.map((x, i) => (i + 1) + ' ' + x).join(' ') + (AI.anyReady() ? '' : ' ต้องเชื่อมต่อ AI ก่อน')));
-  const row = exEl('div', 'row2');
-  const go = exEl('button', 'btn solid', 'เริ่มทำ'); go.onclick = exStartFromSetup; row.appendChild(go);
-  const wk = exEl('button', 'btn', 'ฝึกจุดอ่อนของ ' + esc(EX.who)); wk.onclick = exStartWeak; row.appendChild(wk);
-  body.appendChild(row);
+    exChips(row('ความยาก'), [['all', 'ทุกระดับ'], ['easy', 'ง่าย (' + cnt(1) + ')'], ['mid', 'กลาง (' + cnt(2) + ')'], ['hard', 'ยาก (' + cnt(3) + ')'], ['mix', 'คละ ง่ายไปยาก']], (v) => v === (EX.dlev || 'all'), (v) => { EX.dlev = v; try { store_ls.set('tp-exdlev', v); } catch (e) { /* fine */ } exRender(); }); }
+  exChips(row('จำนวนข้อ'), [[5, '5 ข้อ'], [10, '10 ข้อ'], [20, '20 ข้อ'], [40, '40 ข้อ']], (v) => v === EX.n, (v) => { EX.n = v; exRender(); });
+  const mr = row('รูปแบบ', 'exlist');
+  exChips(mr, [['practice', 'ฝึก เฉลยทันทีทีละข้อ'], ['work', 'แสดงวิธีทำ เขียนแล้วให้ AI ตรวจลายมือตาม 5 ขั้น'], ['exam', 'สอบ จับเวลา 2 นาทีต่อข้อ เฉลยตอนจบ']], (v) => v === EX.mode, (v) => { EX.mode = v; exRender(); });
+  if (EX.mode === 'work') mr.appendChild(exEl('div', 'note small', 'แต่ละข้อมีที่ให้เขียนวิธีทำด้วยปากกาหรือนิ้ว กดตรวจจากลายมือ แล้ว AI จะอ่านวิธีทำและบอกว่าแต่ละขั้นทำได้ดีแค่ไหน: ' + SOL_STEPS.map((x, i) => (i + 1) + ' ' + x).join(' ') + (AI.anyReady() ? '' : ' ต้องเชื่อมต่อ AI ก่อน')));
+  const gor = exEl('div', 'row2 exgo');
+  const go = exEl('button', 'btn solid', 'เริ่มทำ'); go.onclick = exStartFromSetup; gor.appendChild(go);
+  const wk = exEl('button', 'btn', 'ฝึกจุดอ่อนของ ' + esc(EX.who)); wk.onclick = exStartWeak; gor.appendChild(wk);
+  body.appendChild(gor);
   if (!isStudentSide() || AI.anyReady()) { const more = document.createElement('details'); more.className = 'aimore'; more.innerHTML = '<summary>สร้างโจทย์เพิ่มด้วย AI</summary>'; more.ontoggle = () => { if (more.open && !more.querySelector('.aibank')) aiBankPanel(more, st.filter((t) => CURRIC[t])); }; body.appendChild(more); }
+  /* on a phone the short option rows scroll sideways: bring the chosen chip into view and fade the edge while more is hidden */
+  requestAnimationFrame(() => body.querySelectorAll('.exrow:not(.exlist) > .chips').forEach((c) => { const more = c.scrollWidth > c.clientWidth + 2; c.classList.toggle('scrolls', more); if (!more) return; const b = c.querySelector('[aria-pressed="true"]'); if (b && b.offsetLeft + b.offsetWidth > c.clientWidth) c.scrollLeft = b.offsetLeft - 18; const f = () => c.classList.toggle('atend', c.scrollLeft + c.clientWidth >= c.scrollWidth - 4); f(); c.onscroll = f; }));
   body.appendChild(exEl('div', 'note', 'ระบบเลือกข้อที่เคยทำผิดและข้อที่ยังไม่เคยทำก่อน คะแนนทุกชุดเก็บแยกตามผู้ฝึกและซิงก์ข้ามเครื่อง บทที่มีกรอบสีส้มคือบทที่ยังเป็นจุดอ่อน'));
 }
 function exRenderRun(body) {
@@ -19426,7 +19460,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793407616';
+const BUILD = '1793413779';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
