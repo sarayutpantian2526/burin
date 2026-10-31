@@ -3668,10 +3668,25 @@ async function diaryAsk() {
       + 'You can also DRAW with your pen, like a person sketching in a notebook: a diagram, a graph, a shape, arrows, a force picture, a circuit, a molecule, a map, a small picture or a friendly doodle, anything one can draw on paper. Draw whenever a sketch says it better than words, and always when they ask you to draw. A drawing goes with a short line of words (or none). Keep it a quick, clean hand sketch, not a work of art.\n'
       + 'Drawing commands, one per line, in a box 100 wide and 60 high, x to the right and y downwards: "line x1 y1 x2 y2", "arrow x1 y1 x2 y2", "poly x y x y ..." (open), "shape x y x y ..." (closed), "curve x y x y ..." (smooth line through the points), "circle cx cy r", "ellipse cx cy rx ry", "arc cx cy r fromDeg toDeg", "dash x1 y1 x2 y2", "dot x y", "text x y label" (a short label, at most 14 characters). Add a colour word at the end of a line if needed: red, blue, green, orange. At most 40 lines.\n'
       + 'Reply in exactly this format:\n@@READ\n(what they wrote)\n@@REPLY\n(your handwritten answer)\n@@DRAW\n(drawing commands, or leave this section out)';
-    const r = await AI.run('read', prompt, { images: [img.blob], maxTokens: 1600, cache: false });
+    const r = await AI.run('read', prompt, { images: [img.blob], maxTokens: 3500, cache: false });
     const sec = sections(r.text), read = sec.find((x) => x.key === 'READ'), rep = sec.find((x) => x.key === 'REPLY');
-    const drw = sec.find((x) => x.key === 'DRAW'), sketch = diaryParseDraw(drw ? drw.text : '');
-    let text = String((rep && rep.text) || (sketch.length ? '' : r.text) || '').replace(/@@\s*DRAW[\s\S]*$/i, '').replace(/[*_#`$]/g, '').replace(/\n{3,}/g, '\n\n').trim().slice(0, 600);
+    /* drawing commands are taken from wherever they ended up (their own section, or mixed into the reply when the
+       section mark came out broken), and every leftover section mark is cleaned off the words */
+    const DQ_LINE = /^\s*[-*0-9.)]*\s*(line|arrow|poly|shape|curve|circle|ellipse|arc|dash|dot|text)\s+-?\d/i;
+    const drw = sec.find((x) => x.key === 'DRAW');
+    const drawLines = String(drw ? drw.text : '').split('\n').concat(String(r.text || '').split('\n').filter((l) => DQ_LINE.test(l)));
+    let sketch = diaryParseDraw([...new Set(drawLines)].join('\n'));
+    /* the reply promised a picture but the drawing did not come with it: ask once more for the drawing alone */
+    const said = ((read && read.text) || '') + ' ' + ((rep && rep.text) || '');
+    if (!sketch.length && /วาด|แผนผัง|แผนภาพ|ภาพ|รูป|กราฟ|แผนที่|ไดอะแกรม|draw|diagram|sketch|graph|picture/i.test(said)) {
+      try {
+        const r2 = await AI.run('gen', 'You are the notebook in Burin and you are about to sketch by hand for this exchange.\nThe writer wrote: "' + ((read && read.text) || '').slice(0, 300) + '"\nYou replied: "' + ((rep && rep.text) || '').slice(0, 400) + '"\n'
+          + 'Now give ONLY the drawing as pen commands, one per line, in a box 100 wide and 60 high, x to the right and y downwards: "line x1 y1 x2 y2", "arrow x1 y1 x2 y2", "poly x y x y ...", "shape x y x y ..." (closed), "curve x y x y ...", "circle cx cy r", "ellipse cx cy rx ry", "arc cx cy r fromDeg toDeg", "dash x1 y1 x2 y2", "dot x y", "text x y label" (short label in the writer\'s language). Optional colour word at the end: red, blue, green, orange. A clear, simple hand sketch, at most 40 lines. No other words.', { maxTokens: 2500, cache: false });
+        sketch = diaryParseDraw(String(r2.text || '').split('\n').filter((l) => DQ_LINE.test(l)).join('\n'));
+      } catch (e) { /* the words alone still go on the page */ }
+    }
+    let text = String((rep && rep.text) || (sketch.length ? '' : r.text) || '').split('\n').filter((l) => !DQ_LINE.test(l)).join('\n')
+      .replace(/@@\s*[A-Za-z_]*[\s\S]*$/, '').replace(/@+\s*$/, '').replace(/[*_#`$]/g, '').replace(/\n{3,}/g, '\n\n').trim().slice(0, 600);
     dots.remove();
     if ((!text && !sketch.length) || S.pid !== pid) return;
     log.push(['u', ((read && read.text) || '').slice(0, 300)], ['a', text]); if (log.length > 30) log.splice(0, log.length - 30);
@@ -20183,7 +20198,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793430759';
+const BUILD = '1793431983';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
