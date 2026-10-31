@@ -3536,7 +3536,7 @@ function buildItemEl(it, forExport) {
     const ta = tcopyAsset(it); if (okAsset(it.asset) || ta || okRemote(it.url)) { const im = document.createElement('img'); im.alt = 'ภาพที่แทรก'; im.draggable = false; im.decoding = 'async'; d.appendChild(im); if (okAsset(it.asset) || ta) setAssetSrc(im, it.asset || ta); else { im.crossOrigin = 'anonymous'; im.src = it.url; } }
   } else if (it.type === 'video') {
     if (forExport) { d.innerHTML = '<div style="aspect-ratio:16/9;background:#20262F;color:#FFFFFF;display:flex;align-items:center;justify-content:center;border-radius:6px;font-family:var(--ui)">วิดีโอ ดูได้ในแอป</div>'; }
-    else if (okAsset(it.asset) || tcopyAsset(it) || okRemote(it.url)) { const bar = document.createElement('div'); bar.className = 'vbar'; bar.innerHTML = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 7h12 M4 10h12 M4 13h12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span>วิดีโอ แตะแถบนี้เพื่อเลือก ย้าย หรือลบ</span>'; d.appendChild(bar); const v = document.createElement('video'); v.controls = true; v.playsInline = true; v.preload = 'metadata'; d.appendChild(v); if (okAsset(it.asset) || tcopyAsset(it)) setAssetSrc(v, it.asset || tcopyAsset(it)); else { v.src = it.url; if (okRemote(it.poster)) v.poster = it.poster; } }
+    else if (okAsset(it.asset) || tcopyAsset(it) || okRemote(it.url)) { const bar = document.createElement('div'); bar.className = 'vbar'; bar.innerHTML = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 7h12 M4 10h12 M4 13h12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span>วิดีโอ แตะแถบนี้เพื่อเลือก ย้าย หรือลบ</span>'; d.appendChild(bar); const v = document.createElement('video'); v.controls = true; v.playsInline = true; v.preload = 'metadata'; d.appendChild(v); vidWatch(v); if (okAsset(it.asset) || tcopyAsset(it)) setAssetSrc(v, it.asset || tcopyAsset(it)); else { v.src = it.url; if (okRemote(it.poster)) v.poster = it.poster; } }
   } else if (it.type === 'graph') { buildGraph(d, it, forExport); }
   else if (it.type === 'sim') { buildSim(d, it, forExport); }
   else if (it.type === 'scene') { buildScene(d, it, forExport); }
@@ -8461,10 +8461,22 @@ function bindSim3D(cv, it, head) {
 
 const SIMRT = new Map();
 let simRaf = 0, simLast = 0;
+/* a moving thing out of sight (scrolled past, zoomed away) does not move, so it uses no battery; it goes on when seen again */
+function offView(el) {
+  if (document.hidden) return true;
+  const r = el.getBoundingClientRect(), v = vp.getBoundingClientRect();
+  return r.bottom < v.top || r.top > v.bottom || r.right < v.left || r.left > v.right || (!r.width && !r.height);
+}
+let VIDIO = null;
+function vidWatch(v) {
+  if (!('IntersectionObserver' in window)) return;
+  VIDIO = VIDIO || new IntersectionObserver((es) => { for (const e of es) if (!e.isIntersecting && !e.target.paused) { e.target.pause(); } }, { threshold: 0 });
+  VIDIO.observe(v);
+}
 function simParams(it) { const def = SIMS[it.kind].params, out = {}; for (const k of Object.keys(def)) out[k] = it.params && isFinite(it.params[k]) ? +it.params[k] : def[k][1]; return out; }
 function simRuntime(it) {
   let rt = SIMRT.get(it.id);
-  if (!rt) { rt = { playing: false, st: SIMS[it.kind].init(simParams(it)) }; SIMRT.set(it.id, rt); }
+  if (!rt) { rt = { playing: animOn(), st: SIMS[it.kind].init(simParams(it)) }; SIMRT.set(it.id, rt); }
   return rt;
 }
 function simRender(it, cv, ro) {
@@ -8483,7 +8495,10 @@ function simTick(t) {
   for (const [id, rt] of SIMRT) {
     if (!rt.playing) continue;
     const el = itemsEl.querySelector('[data-id="' + id + '"]'), it = findItem(id);
-    if (!el || !it || !SIMS[it.kind]) { rt.playing = false; continue; }
+    if (!it || !SIMS[it.kind]) { rt.playing = false; continue; }
+    /* on another page: keeps its place and goes on when that page is open again; scrolled out of sight: waits */
+    if (!el) continue;
+    if (offView(el)) { any = true; continue; }
     const done = SIMS[it.kind].step(rt.st, simParams(it), dt);
     simRender(it, el.querySelector('canvas'), el.querySelector('.sro'));
     if (done) { rt.playing = false; const b = el.querySelector('[data-s="play"]'); if (b) b.textContent = 'เล่นอีกครั้ง'; rt.ended = true; }
@@ -8528,6 +8543,7 @@ function buildSim(d, it, forExport) {
   if (!forExport) {
     const pb = head.querySelector('[data-s="play"]'), rb = head.querySelector('[data-s="reset"]');
     pb.textContent = rt.playing ? 'หยุด' : (rt.ended ? 'เล่นอีกครั้ง' : 'เล่น');
+    if (rt.playing && !simRaf) simRaf = requestAnimationFrame(simTick);
     pb.onclick = () => {
       const live = findItem(it.id) || it, R = simRuntime(live);
       if (R.ended) { const cam = R.st.cam; R.st = S0.init(simParams(live)); if (cam) R.st.cam = cam; R.ended = false; }
@@ -9102,8 +9118,9 @@ function scReset(it, r) {
 function scTick(ts) {
   scnRaf = 0; const dtw = scnLast ? Math.min(0.05, (ts - scnLast) / 1000) : 0.016; scnLast = ts; let any = false;
   for (const [id, r] of SCN) {
-    if (!r.playing) continue; const it = findItem(id); if (!it || !r.cv || !r.cv.isConnected) { r.playing = false; continue; }
-    any = true; const sp = it.spec;
+    if (!r.playing) continue; const it = findItem(id); if (!it) { r.playing = false; continue; }
+    if (!r.cv || !r.cv.isConnected) continue;
+    any = true; if (offView(r.cv)) continue; const sp = it.spec;
     if (sp.dim === 3) { sc3Tick(sp, r, dtw); scRender(it, r); continue; }
     if (sp.domain === 'phys') { if (r.turning != null) { r.turning += dtw / 0.4; if (r.turning >= 0.5 && !r.turned) { ipTurn(it, r); r.turned = true; } if (r.turning >= 1) { r.turning = null; r.turned = false; } scRender(it, r); continue; } if (r.peek) { r.peek -= dtw; if (r.peek <= 0) { r.peek = 0; r.turning = 0; r.turned = false; } scRender(it, r); continue; } const sim = dtw * (sp.speed || 1) * (r.slow ? 0.25 : 1), n = Math.max(1, Math.ceil(sim / 0.004)); for (let i = 0; i < n; i++) phStep(sp, r.st, sim / n); for (const b of r.st.bodies) { b.trail.push([b.x, b.y]); if (b.trail.length > 400) b.trail.shift(); }
       const pick = sp.show.graph; if (pick !== 'none') { r.st.hist.push([r.st.t].concat(r.st.bodies.filter((b) => !b.fixed).map((b) => pick === 'x' ? b.x : pick === 'y' ? b.y : pick === 'vx' ? b.vx : pick === 'vy' ? b.vy : pick === 'grf' ? (b.F.N ? b.F.N[1] : 0) : Math.hypot(b.vx, b.vy)))); if (r.st.hist.length > 600) r.st.hist.shift(); }
@@ -9197,6 +9214,9 @@ function buildScene(d, it, forExport) {
   if (forExport) { const tmp = { st: null, cache: new Map(), traces: {}, showGraph: false, read: [], cv, inkDraw: sp.bare ? (c, b, X, Y) => ipDrawInk(c, it, tmp, b, X, Y) : null }; SCN.set('__x' + it.id, tmp); scReset(it, tmp); if (sp.domain === 'math') tmp.st.t = (sp.t.min + sp.t.max) / 2; requestAnimationFrame(() => { scRender(it, tmp); SCN.delete('__x' + it.id); }); return; }
   requestAnimationFrame(() => scRender(findItem(it.id) || it, r));
   const pb = head.querySelector('[data-s="play"]'), rb = head.querySelector('[data-s="reset"]'), sb = head.querySelector('[data-s="slow"]');
+  /* plays by itself when it first appears (unless every moving picture was stopped with the page button) */
+  if (r.auto == null && !sp.bare) { r.auto = 1; if (animOn()) r.playing = true; }
+  if (r.playing && !scnRaf) scnRaf = requestAnimationFrame(scTick);
   pb.textContent = r.playing ? 'หยุด' : 'เล่น'; sb.setAttribute('aria-pressed', r.slow ? 'true' : 'false');
   pb.onclick = () => { const live = findItem(it.id) || it, R = scRuntime(live); if (R.ended) { scReset(live, R); } R.playing = !R.playing; pb.textContent = R.playing ? 'หยุด' : 'เล่น'; if (R.playing && !scnRaf) scnRaf = requestAnimationFrame(scTick); };
   rb.onclick = () => { const live = findItem(it.id) || it, R = scRuntime(live); R.playing = false; scReset(live, R); pb.textContent = 'เล่น'; scRender(live, R); };
@@ -20307,7 +20327,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793439092';
+const BUILD = '1793440583';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
