@@ -1438,6 +1438,14 @@ body.present .item .tsize, body.role-student .item .tsize { display: none; }
 .cutsheet .cutsl label { display: flex; gap: 8px; align-items: center; }
 .cutsheet .cutview { display: flex; justify-content: center; align-items: center; min-height: 200px; max-height: 62vh; border-radius: 12px; overflow: hidden;
   background-color: #FFFFFF; background-image: linear-gradient(45deg, #E3E7EE 25%, transparent 25%), linear-gradient(-45deg, #E3E7EE 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #E3E7EE 75%), linear-gradient(-45deg, transparent 75%, #E3E7EE 75%); background-size: 20px 20px; background-position: 0 0, 0 10px, 10px -10px, -10px 0; }
+.cutsheet .cutview { position: relative; }
+.cutsheet .cutview[data-bg="white"] { background: #FFFFFF; }
+.cutsheet .cutview[data-bg="dark"] { background: #1D2330; }
+.cutsheet .cutbusy { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(255, 255, 255, 0.55); }
+.cutsheet .cutbusy span { background: var(--surface, #fff); border: 1px solid var(--line, #DDE); border-radius: 12px; padding: 10px 16px; font-size: 14px; box-shadow: var(--shadow); }
+.cutsheet .cutbusy[hidden] { display: none; }
+.cutsheet .cutchk { display: inline-flex; gap: 6px; align-items: center; font-size: 13px; }
+.cutsheet .cutbgs { margin-left: auto; }
 .cutsheet .cutview canvas { max-width: 100%; max-height: 62vh; touch-action: none; cursor: crosshair; display: block; }
 .cutsheet .cutfoot { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
 .cutsheet .cutfoot small { color: var(--muted, #667); }
@@ -11048,9 +11056,16 @@ function casEigvec(rows, lam) {
 }
 
 
-/* ---------- cutting out the background of a picture: automatic from the edges, tap a region to remove it or bring it back,
-   or brush by hand; the result is a PNG with a see-through background and is trimmed to what is left ---------- */
-const CUT = { it: null, cv: null, ctx: null, orig: null, cur: null, w: 0, h: 0, mode: 'tap', tol: 28, brush: 18, undo: [] };
+/* ---------- cutting out the background of a picture ----------
+   Automatic: a flat background (a diagram, clip art, a scan, a drawing on plain paper) is removed by colour from the border,
+   with the colour of the background unmixed out of the soft edge so no white or coloured fringe is left; a photo goes through
+   a segmentation network (ISNet, run in the browser with onnxruntime-web, model downloaded once and kept in the cache), and
+   the mask is sharpened to the picture's own edges with a guided filter, small specks are dropped, and edge colours are
+   cleaned. Then tap a region to remove it or bring it back, remove one colour everywhere, or brush by hand.
+   The result is a PNG with a see-through background, trimmed to what is left. */
+const CUT = { it: null, cv: null, ctx: null, orig: null, cur: null, w: 0, h: 0, mode: 'tap', tol: 28, brush: 18, undo: [], holes: true, how: '', bg: 'grid', sess: null, busy: false };
+const CUT_ORT = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.20.1/dist/';
+const CUT_MODEL = 'models/isnet-q8-768.onnx', CUT_N = 768;
 const cutDist = (d, i, r, g, b) => { const dr = d[i] - r, dg = d[i + 1] - g, db = d[i + 2] - b; return Math.sqrt(dr * dr * 0.3 + dg * dg * 0.59 + db * db * 0.11) / 2.55; };
 async function cutLoad(it) {
   let blob = null;
@@ -11067,7 +11082,7 @@ async function openBgCut() {
   const k = Math.min(1, 1600 / Math.max(im.naturalWidth, im.naturalHeight));
   const w = Math.max(1, Math.round(im.naturalWidth * k)), h = Math.max(1, Math.round(im.naturalHeight * k));
   const cv = document.createElement('canvas'); cv.width = w; cv.height = h; const c = cv.getContext('2d', { willReadFrequently: true }); c.drawImage(im, 0, 0, w, h);
-  CUT.it = it.id; CUT.cv = cv; CUT.ctx = c; CUT.w = w; CUT.h = h; CUT.orig = c.getImageData(0, 0, w, h); CUT.cur = c.getImageData(0, 0, w, h); CUT.undo = [];
+  CUT.it = it.id; CUT.cv = cv; CUT.ctx = c; CUT.w = w; CUT.h = h; CUT.orig = c.getImageData(0, 0, w, h); CUT.cur = c.getImageData(0, 0, w, h); CUT.undo = []; CUT.how = '';
   clearSel(); cutSheet();
 }
 function cutSheet() {
@@ -11075,37 +11090,216 @@ function cutSheet() {
   if (!p) {
     p = document.createElement('div'); p.id = 'cutSheet'; p.className = 'sheet cutsheet no-ink';
     p.innerHTML = '<div class="panel wide" role="dialog" aria-label="ตัดพื้นหลังรูป"><div class="cuth"><h2>ตัดพื้นหลัง</h2><button type="button" class="btn" data-a="close">ยกเลิก</button></div>'
-      + '<div class="cutbar"><button type="button" class="btn solid" data-a="auto">ลบพื้นหลังอัตโนมัติ</button><span class="seg" role="group" aria-label="วิธีแก้"><button type="button" data-m="tap">แตะส่วนที่จะลบ</button><button type="button" data-m="keep">แตะส่วนที่จะเก็บคืน</button><button type="button" data-m="erase">ยางลบ</button><button type="button" data-m="restore">แปรงคืน</button></span></div>'
-      + '<div class="cutsl"><label><span>ความไวในการเลือกสี</span><input type="range" min="4" max="80" step="1" data-r="tol"></label><label><span>ขนาดแปรง</span><input type="range" min="4" max="80" step="1" data-r="brush"></label></div>'
-      + '<div class="cutview"><canvas></canvas></div>'
-      + '<div class="cutfoot"><small>พื้นลายตารางคือส่วนที่โปร่งใส ใช้ยางลบหรือแปรงคืนเก็บรายละเอียดตรงขอบ</small><span class="row2"><button type="button" class="btn" data-a="undo">ย้อนกลับ</button><button type="button" class="btn" data-a="reset">เริ่มใหม่</button><button type="button" class="btn solid" data-a="save">ใช้รูปนี้</button></span></div></div>';
+      + '<div class="cutbar"><button type="button" class="btn solid" data-a="auto">ลบพื้นหลังอัตโนมัติ</button><button type="button" class="btn" data-a="photo">แบบภาพถ่าย (AI)</button><button type="button" class="btn" data-a="flat">แบบพื้นสีเรียบ</button><label class="cutchk"><input type="checkbox" data-c="holes"> ลบช่องว่างด้านในด้วย</label></div>'
+      + '<div class="cutbar"><span class="seg" role="group" aria-label="วิธีแก้"><button type="button" data-m="tap">แตะส่วนที่จะลบ</button><button type="button" data-m="color">ลบสีนี้ทั้งรูป</button><button type="button" data-m="keep">แตะส่วนที่จะเก็บคืน</button><button type="button" data-m="erase">ยางลบ</button><button type="button" data-m="restore">แปรงคืน</button></span></div>'
+      + '<div class="cutsl"><label><span>ความไวในการเลือกสี</span><input type="range" min="4" max="80" step="1" data-r="tol"></label><label><span>ขนาดแปรง</span><input type="range" min="4" max="80" step="1" data-r="brush"></label><span class="seg cutbgs" role="group" aria-label="พื้นหลังที่ใช้ดู"><button type="button" data-b="grid">ตาราง</button><button type="button" data-b="white">ขาว</button><button type="button" data-b="dark">เข้ม</button></span></div>'
+      + '<div class="cutview"><canvas></canvas><div class="cutbusy" hidden><span></span></div></div>'
+      + '<div class="cutfoot"><small class="cutmsg">พื้นลายตารางคือส่วนที่โปร่งใส ใช้ยางลบหรือแปรงคืนเก็บรายละเอียดตรงขอบ</small><span class="row2"><button type="button" class="btn" data-a="undo">ย้อนกลับ</button><button type="button" class="btn" data-a="reset">เริ่มใหม่</button><button type="button" class="btn solid" data-a="save">ใช้รูปนี้</button></span></div></div>';
     document.body.appendChild(p);
-    p.querySelector('[data-a="close"]').onclick = () => { p.hidden = true; };
-    p.querySelector('[data-a="auto"]').onclick = () => { cutPush(); cutAuto(); cutDraw(); };
+    p.querySelector('[data-a="close"]').onclick = () => { p.hidden = true; cutFree(); };
+    p.querySelector('[data-a="auto"]').onclick = () => cutRun('auto');
+    p.querySelector('[data-a="photo"]').onclick = () => cutRun('photo');
+    p.querySelector('[data-a="flat"]').onclick = () => cutRun('flat');
     p.querySelector('[data-a="undo"]').onclick = () => { if (CUT.undo.length) { CUT.cur = CUT.undo.pop(); cutDraw(); } };
-    p.querySelector('[data-a="reset"]').onclick = () => { cutPush(); CUT.cur = new ImageData(new Uint8ClampedArray(CUT.orig.data), CUT.w, CUT.h); cutDraw(); };
+    p.querySelector('[data-a="reset"]').onclick = () => { cutPush(); CUT.cur = new ImageData(new Uint8ClampedArray(CUT.orig.data), CUT.w, CUT.h); CUT.how = ''; cutMsg(''); cutDraw(); };
     p.querySelector('[data-a="save"]').onclick = cutSave;
+    p.querySelector('[data-c="holes"]').onchange = (e) => { CUT.holes = e.target.checked; };
     p.querySelectorAll('[data-m]').forEach((b) => { b.onclick = () => { CUT.mode = b.dataset.m; cutModes(); }; });
+    p.querySelectorAll('[data-b]').forEach((b) => { b.onclick = () => { CUT.bg = b.dataset.b; cutModes(); }; });
     p.querySelectorAll('[data-r]').forEach((r) => { r.oninput = () => { CUT[r.dataset.r] = +r.value; }; });
     const view = p.querySelector('canvas');
     let drag = null;
     const at = (e) => { const r = view.getBoundingClientRect(); return [Math.floor((e.clientX - r.left) / r.width * CUT.w), Math.floor((e.clientY - r.top) / r.height * CUT.h), CUT.w / r.width]; };
     view.addEventListener('pointerdown', (e) => {
-      e.preventDefault(); const [x, y, k] = at(e); if (x < 0 || y < 0 || x >= CUT.w || y >= CUT.h) return;
+      e.preventDefault(); if (CUT.busy) return; const [x, y, k] = at(e); if (x < 0 || y < 0 || x >= CUT.w || y >= CUT.h) return;
       cutPush();
       if (CUT.mode === 'tap' || CUT.mode === 'keep') { cutFill(x, y, CUT.mode === 'keep'); cutDraw(); return; }
+      if (CUT.mode === 'color') { cutColor(x, y); cutDraw(); return; }
       drag = { k }; try { view.setPointerCapture(e.pointerId); } catch (er) { /* ignore */ } cutBrush(x, y, k); cutDraw();
     });
     view.addEventListener('pointermove', (e) => { if (!drag) return; const [x, y] = at(e); cutBrush(x, y, drag.k); cutDraw(); });
     view.addEventListener('pointerup', () => { drag = null; }); view.addEventListener('pointercancel', () => { drag = null; });
   }
-  p.querySelector('[data-r="tol"]').value = CUT.tol; p.querySelector('[data-r="brush"]').value = CUT.brush;
+  p.querySelector('[data-r="tol"]').value = CUT.tol; p.querySelector('[data-r="brush"]').value = CUT.brush; p.querySelector('[data-c="holes"]').checked = CUT.holes;
   const view = p.querySelector('canvas'); view.width = CUT.w; view.height = CUT.h;
-  p.hidden = false; cutModes(); cutDraw();
+  p.hidden = false; cutModes(); cutMsg(''); cutDraw();
 }
-function cutModes() { const p = $('#cutSheet'); if (!p) return; p.querySelectorAll('[data-m]').forEach((b) => b.setAttribute('aria-pressed', b.dataset.m === CUT.mode ? 'true' : 'false')); }
+function cutModes() {
+  const p = $('#cutSheet'); if (!p) return;
+  p.querySelectorAll('[data-m]').forEach((b) => b.setAttribute('aria-pressed', b.dataset.m === CUT.mode ? 'true' : 'false'));
+  p.querySelectorAll('[data-b]').forEach((b) => b.setAttribute('aria-pressed', b.dataset.b === CUT.bg ? 'true' : 'false'));
+  p.querySelector('.cutview').dataset.bg = CUT.bg;
+}
+function cutMsg(t) { const m = $('#cutSheet .cutmsg'); if (m) m.textContent = t || 'พื้นลายตารางคือส่วนที่โปร่งใส สลับดูบนพื้นขาวหรือพื้นเข้มเพื่อหาขอบที่ยังค้าง แล้วใช้ยางลบหรือแปรงคืนเก็บรายละเอียด'; }
+function cutBusy(t) { const b = $('#cutSheet .cutbusy'); if (!b) return; CUT.busy = !!t; b.hidden = !t; if (t) b.querySelector('span').textContent = t; }
+const cutFrame = () => new Promise((r) => requestAnimationFrame(() => setTimeout(r, 0)));
 function cutPush() { CUT.undo.push(new ImageData(new Uint8ClampedArray(CUT.cur.data), CUT.w, CUT.h)); if (CUT.undo.length > 20) CUT.undo.shift(); }
 function cutDraw() { const v = $('#cutSheet canvas'); if (!v) return; v.getContext('2d').putImageData(CUT.cur, 0, 0); }
+function cutFree() { try { if (CUT.sess && CUT.sess.release) CUT.sess.release(); } catch (e) { /* fine */ } CUT.sess = null; }
+
+/* ---------- which kind of picture: a flat background is one or two colours all round the border ---------- */
+function cutBorderRefs() {
+  const W0 = CUT.w, H0 = CUT.h, O = CUT.orig.data, buckets = new Map(), edge = [];
+  for (let x = 0; x < W0; x++) edge.push(x, x + (H0 - 1) * W0);
+  for (let y = 1; y < H0 - 1; y++) edge.push(y * W0, y * W0 + W0 - 1);
+  let clear = 0;
+  for (const p of edge) { const i = p * 4; if (O[i + 3] < 20) { clear++; continue; } const key = (O[i] >> 4) + '|' + (O[i + 1] >> 4) + '|' + (O[i + 2] >> 4); const bk = buckets.get(key) || { n: 0, r: 0, g: 0, b: 0 }; bk.n++; bk.r += O[i]; bk.g += O[i + 1]; bk.b += O[i + 2]; buckets.set(key, bk); }
+  /* merge neighbouring buckets so a slightly uneven paper counts as one colour */
+  const list = [...buckets.values()].sort((a, b) => b.n - a.n), refs = [];
+  for (const bk of list) { const c = [bk.r / bk.n, bk.g / bk.n, bk.b / bk.n]; const near = refs.find((r) => Math.hypot(r.c[0] - c[0], r.c[1] - c[1], r.c[2] - c[2]) < 30); if (near) near.n += bk.n; else refs.push({ c, n: bk.n }); }
+  refs.sort((a, b) => b.n - a.n);
+  const top = refs.filter((r, k) => k < 3 && r.n >= edge.length * 0.04);
+  const cover = (top.reduce((s, r) => s + r.n, 0) + clear) / edge.length;
+  return { refs: top.map((r) => r.c), cover, clear: clear / edge.length, edge };
+}
+async function cutRun(kind) {
+  if (CUT.busy) return;
+  const B = cutBorderRefs();
+  if (kind === 'auto') kind = B.clear > 0.6 ? 'flat' : B.cover >= 0.9 && B.refs.length <= 2 ? 'flat' : 'photo';
+  cutPush(); CUT.cur = new ImageData(new Uint8ClampedArray(CUT.orig.data), CUT.w, CUT.h);
+  if (kind === 'flat') {
+    if (!B.refs.length && B.clear < 0.6) { CUT.undo.pop(); toast('ขอบรูปมีหลายสีเกินไป ลองแบบภาพถ่าย (AI) หรือแตะส่วนที่จะลบแทน', 3500); return; }
+    cutBusy('กำลังลบพื้นหลัง'); await cutFrame();
+    cutFlat(B); CUT.how = 'flat'; cutBusy(''); cutDraw();
+    cutMsg('ใช้วิธีพื้นสีเรียบ (ลบสีพื้นจากขอบรูป) ถ้ายังไม่ดี ลองแบบภาพถ่าย (AI) หรือปรับความไวแล้วกดใหม่');
+    return;
+  }
+  try {
+    await cutPhoto(); CUT.how = 'photo'; cutDraw();
+    cutMsg('ใช้วิธีภาพถ่าย (AI แยกวัตถุหลัก) ถ้าเป็นภาพวาดหรือแผนภาพบนพื้นเรียบ ลองแบบพื้นสีเรียบ');
+  } catch (e) {
+    CUT.cur = CUT.undo.pop() || CUT.cur; cutDraw();
+    toast(navigator.onLine === false ? 'ครั้งแรกต้องต่อเน็ตเพื่อโหลดตัวแยกภาพ (ราว 46 MB) หลังจากนั้นใช้ได้แม้ไม่มีเน็ต' : 'แยกภาพด้วย AI ไม่สำเร็จ ลองแบบพื้นสีเรียบหรือแตะส่วนที่จะลบแทน', 4500);
+    console.warn('cut ai', e);
+  } finally { cutBusy(''); }
+}
+
+/* ---------- flat background: flood from the border by colour, then unmix the background colour out of the edge ---------- */
+function cutFlat(B) {
+  const W0 = CUT.w, H0 = CUT.h, O = CUT.orig.data, D = CUT.cur.data, tol = CUT.tol, refs = B.refs, n = W0 * H0;
+  const dist = new Float32Array(n), who = new Uint8Array(n);
+  for (let p = 0; p < n; p++) { const i = p * 4; if (O[i + 3] < 20) { dist[p] = 0; continue; } let m = 1e9, k = 0; for (let j = 0; j < refs.length; j++) { const c = refs[j], d = cutDist(O, i, c[0], c[1], c[2]); if (d < m) { m = d; k = j; } } dist[p] = m; who[p] = k; }
+  const gone = new Uint8Array(n), st = [];
+  for (const p of B.edge) if (!gone[p] && dist[p] <= tol) { gone[p] = 1; st.push(p); }
+  const grow = () => { while (st.length) { const p = st.pop(), x = p % W0; const nb = [x > 0 ? p - 1 : -1, x < W0 - 1 ? p + 1 : -1, p >= W0 ? p - W0 : -1, p < n - W0 ? p + W0 : -1]; for (const q of nb) if (q >= 0 && !gone[q] && dist[q] <= tol) { gone[q] = 1; st.push(q); } } };
+  grow();
+  /* enclosed pockets of the background colour (inside a letter, between the arms of a figure) of a fair size */
+  if (CUT.holes) {
+    const seen = new Uint8Array(n), minA = Math.max(30, n * 0.0004);
+    for (let p0 = 0; p0 < n; p0++) {
+      if (gone[p0] || seen[p0] || dist[p0] > tol * 0.6) continue;
+      const comp = [p0]; seen[p0] = 1;
+      for (let k = 0; k < comp.length; k++) { const p = comp[k], x = p % W0; const nb = [x > 0 ? p - 1 : -1, x < W0 - 1 ? p + 1 : -1, p >= W0 ? p - W0 : -1, p < n - W0 ? p + W0 : -1]; for (const q of nb) if (q >= 0 && !seen[q] && !gone[q] && dist[q] <= tol * 0.6) { seen[q] = 1; comp.push(q); } }
+      if (comp.length >= minA) for (const p of comp) { gone[p] = 1; st.push(p); }
+    }
+    grow();
+  }
+  /* soft edge: pixels next to removed ones get an alpha from how far their colour is from the background, and the background
+     colour is taken out of them (I = a F + (1 - a) B, so F = (I - (1 - a) B) / a) */
+  const band = new Uint8Array(n);
+  for (let p = 0; p < n; p++) { if (!gone[p]) continue; const x = p % W0; for (const q of [x > 0 ? p - 1 : -1, x < W0 - 1 ? p + 1 : -1, p >= W0 ? p - W0 : -1, p < n - W0 ? p + W0 : -1]) if (q >= 0 && !gone[q]) band[q] = 1; }
+  for (let pass = 0; pass < 1; pass++) { const add = []; for (let p = 0; p < n; p++) { if (!band[p]) continue; const x = p % W0; for (const q of [x > 0 ? p - 1 : -1, x < W0 - 1 ? p + 1 : -1, p >= W0 ? p - W0 : -1, p < n - W0 ? p + W0 : -1]) if (q >= 0 && !gone[q] && !band[q]) add.push(q); } for (const q of add) band[q] = 2; }
+  const hard = Math.max(tol * 3, 60);
+  for (let p = 0; p < n; p++) {
+    const i = p * 4;
+    if (gone[p]) { D[i + 3] = 0; continue; }
+    if (!band[p] || O[i + 3] < 20) continue;
+    const c = refs[who[p]] || [255, 255, 255];
+    const a = clamp((dist[p] - tol * 0.5) / (hard - tol * 0.5), 0, 1);
+    if (a >= 1) continue;
+    const aa = Math.max(a, 0.02);
+    for (let k = 0; k < 3; k++) D[i + k] = clamp(Math.round((O[i + k] - (1 - aa) * c[k]) / aa), 0, 255);
+    D[i + 3] = Math.round(O[i + 3] * a);
+  }
+}
+
+/* ---------- photos: ISNet mask, sharpened to the picture's edges ---------- */
+async function cutModel() {
+  if (CUT.sess) return CUT.sess;
+  if (!(window.ort && window.ort.InferenceSession)) { cutBusy('กำลังเตรียมตัวแยกภาพ'); await loadScript(CUT_ORT + 'ort.min.js'); }
+  ort.env.wasm.wasmPaths = CUT_ORT;
+  ort.env.wasm.numThreads = self.crossOriginIsolated ? Math.min(4, navigator.hardwareConcurrency || 2) : 1;
+  let buf = null, cache = null;
+  try { cache = await caches.open('burin-models'); const hit = await cache.match(CUT_MODEL); if (hit) buf = new Uint8Array(await hit.arrayBuffer()); } catch (e) { cache = null; }
+  if (!buf) {
+    cutBusy('กำลังโหลดตัวแยกภาพครั้งแรก (ราว 46 MB)');
+    const r = await fetch(CUT_MODEL); if (!r.ok) throw new Error('model ' + r.status);
+    const total = +r.headers.get('content-length') || 46400000, rd = r.body.getReader(), parts = []; let got = 0;
+    for (;;) { const { done, value } = await rd.read(); if (done) break; parts.push(value); got += value.length; cutBusy('กำลังโหลดตัวแยกภาพครั้งแรก ' + Math.min(99, Math.round(got / total * 100)) + '%'); }
+    buf = new Uint8Array(got); let o = 0; for (const p of parts) { buf.set(p, o); o += p.length; }
+    try { if (cache) await cache.put(CUT_MODEL, new Response(buf, { headers: { 'content-type': 'application/octet-stream' } })); } catch (e) { /* no room: load again next time */ }
+  }
+  cutBusy('กำลังเตรียมตัวแยกภาพ'); await cutFrame();
+  CUT.sess = await ort.InferenceSession.create(buf, { executionProviders: ['wasm'], graphOptimizationLevel: 'all' });
+  return CUT.sess;
+}
+/* box mean over a (2r+1) square with an integral image, edges clamped */
+function cutBox(src, W0, H0, r) {
+  const I = new Float64Array((W0 + 1) * (H0 + 1)), out = new Float32Array(W0 * H0);
+  for (let y = 0; y < H0; y++) { let s = 0; for (let x = 0; x < W0; x++) { s += src[y * W0 + x]; I[(y + 1) * (W0 + 1) + x + 1] = I[y * (W0 + 1) + x + 1] + s; } }
+  for (let y = 0; y < H0; y++) { const y0 = Math.max(0, y - r), y1 = Math.min(H0, y + r + 1); for (let x = 0; x < W0; x++) { const x0 = Math.max(0, x - r), x1 = Math.min(W0, x + r + 1); out[y * W0 + x] = (I[y1 * (W0 + 1) + x1] - I[y0 * (W0 + 1) + x1] - I[y1 * (W0 + 1) + x0] + I[y0 * (W0 + 1) + x0]) / ((y1 - y0) * (x1 - x0)); } }
+  return out;
+}
+function cutGuided(I, P, W0, H0, r, eps) {
+  const n = W0 * H0, II = new Float32Array(n), IP = new Float32Array(n);
+  for (let k = 0; k < n; k++) { II[k] = I[k] * I[k]; IP[k] = I[k] * P[k]; }
+  const mI = cutBox(I, W0, H0, r), mP = cutBox(P, W0, H0, r), cII = cutBox(II, W0, H0, r), cIP = cutBox(IP, W0, H0, r);
+  const A = new Float32Array(n), Bv = new Float32Array(n);
+  for (let k = 0; k < n; k++) { const v = cII[k] - mI[k] * mI[k], cv = cIP[k] - mI[k] * mP[k]; A[k] = cv / (v + eps); Bv[k] = mP[k] - A[k] * mI[k]; }
+  const mA = cutBox(A, W0, H0, r), mB = cutBox(Bv, W0, H0, r), Q = new Float32Array(n);
+  for (let k = 0; k < n; k++) Q[k] = mA[k] * I[k] + mB[k];
+  return Q;
+}
+async function cutPhoto() {
+  CUT.busy = true;
+  const sess = await cutModel();
+  cutBusy('กำลังแยกวัตถุออกจากพื้นหลัง'); await cutFrame();
+  const N = CUT_N, W0 = CUT.w, H0 = CUT.h, n = W0 * H0, O = CUT.orig.data, D = CUT.cur.data;
+  const src = document.createElement('canvas'); src.width = W0; src.height = H0; const sg = src.getContext('2d');
+  /* flatten any transparency onto white first, as the network expects an opaque picture */
+  sg.fillStyle = '#fff'; sg.fillRect(0, 0, W0, H0); const tmp = document.createElement('canvas'); tmp.width = W0; tmp.height = H0; tmp.getContext('2d').putImageData(CUT.orig, 0, 0); sg.drawImage(tmp, 0, 0);
+  const sm = document.createElement('canvas'); sm.width = N; sm.height = N; const smg = sm.getContext('2d', { willReadFrequently: true }); smg.imageSmoothingQuality = 'high'; smg.drawImage(src, 0, 0, N, N);
+  const px = smg.getImageData(0, 0, N, N).data, x = new Float32Array(3 * N * N);
+  for (let k = 0; k < N * N; k++) { x[k] = px[k * 4] / 255 - 0.5; x[N * N + k] = px[k * 4 + 1] / 255 - 0.5; x[2 * N * N + k] = px[k * 4 + 2] / 255 - 0.5; }
+  const feeds = {}; feeds[sess.inputNames[0]] = new ort.Tensor('float32', x, [1, 3, N, N]);
+  const res = await sess.run(feeds), out = res[sess.outputNames[0]].data;
+  let lo = Infinity, hi = -Infinity; for (let k = 0; k < out.length; k++) { if (out[k] < lo) lo = out[k]; if (out[k] > hi) hi = out[k]; }
+  cutBusy('กำลังเก็บขอบให้คม'); await cutFrame();
+  /* mask back to the picture's size, smoothly */
+  const mk = document.createElement('canvas'); mk.width = N; mk.height = N; const mg = mk.getContext('2d'); const md = mg.createImageData(N, N);
+  for (let k = 0; k < N * N; k++) { const v = Math.round((out[k] - lo) / (hi - lo + 1e-8) * 255); md.data[k * 4] = md.data[k * 4 + 1] = md.data[k * 4 + 2] = v; md.data[k * 4 + 3] = 255; }
+  mg.putImageData(md, 0, 0);
+  const up = document.createElement('canvas'); up.width = W0; up.height = H0; const ug = up.getContext('2d', { willReadFrequently: true }); ug.imageSmoothingQuality = 'high'; ug.drawImage(mk, 0, 0, W0, H0);
+  const U = ug.getImageData(0, 0, W0, H0).data, P = new Float32Array(n), G = new Float32Array(n);
+  const flat = sg.getImageData(0, 0, W0, H0).data;
+  for (let k = 0; k < n; k++) { P[k] = U[k * 4] / 255; G[k] = (flat[k * 4] * 0.299 + flat[k * 4 + 1] * 0.587 + flat[k * 4 + 2] * 0.114) / 255; }
+  /* guided filter: the edge of the mask follows the edges in the picture */
+  const r = Math.max(2, Math.round(Math.max(W0, H0) / 320)), Q = cutGuided(G, P, W0, H0, r, 0.0008);
+  const A = new Float32Array(n);
+  for (let k = 0; k < n; k++) { const t = clamp((Q[k] - 0.1) / 0.8, 0, 1); A[k] = t * t * (3 - 2 * t); }
+  /* drop specks: keep the pieces that are at least 1.5% of the biggest one */
+  const lab = new Int32Array(n).fill(-1), sizes = [];
+  for (let p0 = 0; p0 < n; p0++) {
+    if (lab[p0] >= 0 || A[p0] < 0.5) continue;
+    const id = sizes.length, st = [p0]; lab[p0] = id; let c = 0;
+    while (st.length) { const p = st.pop(); c++; const xx = p % W0; for (const q of [xx > 0 ? p - 1 : -1, xx < W0 - 1 ? p + 1 : -1, p >= W0 ? p - W0 : -1, p < n - W0 ? p + W0 : -1]) if (q >= 0 && lab[q] < 0 && A[q] >= 0.5) { lab[q] = id; st.push(q); } }
+    sizes.push(c);
+  }
+  const big = Math.max(0, ...sizes), keep = sizes.map((s) => s >= big * 0.015);
+  /* soft fringe of a dropped speck goes too: a pixel under 0.5 takes the decision of the nearest labelled pixel in a small window */
+  for (let p = 0; p < n; p++) { if (lab[p] >= 0) { if (!keep[lab[p]]) A[p] = 0; continue; } if (A[p] <= 0.01) continue; const xx = p % W0, yy = (p - xx) / W0; let ok = false, any = false; for (let dy = -3; dy <= 3 && !ok; dy++) for (let dx = -3; dx <= 3; dx++) { const X = xx + dx, Y = yy + dy; if (X < 0 || Y < 0 || X >= W0 || Y >= H0) continue; const l = lab[Y * W0 + X]; if (l >= 0) { any = true; if (keep[l]) { ok = true; break; } } } if (any && !ok) A[p] = 0; else if (!any && A[p] < 0.2) A[p] = 0; }
+  /* clean edge colours: estimate the object's own colour from nearby solid pixels */
+  const w = new Float32Array(n), cr = new Float32Array(n), cg = new Float32Array(n), cb = new Float32Array(n);
+  for (let k = 0; k < n; k++) { const a = A[k], ww = a * a * a * a; w[k] = ww; cr[k] = flat[k * 4] * ww; cg[k] = flat[k * 4 + 1] * ww; cb[k] = flat[k * 4 + 2] * ww; }
+  const rr = Math.max(2, r), bw = cutBox(w, W0, H0, rr), br = cutBox(cr, W0, H0, rr), bg = cutBox(cg, W0, H0, rr), bb = cutBox(cb, W0, H0, rr);
+  for (let k = 0; k < n; k++) {
+    const i = k * 4, a = A[k];
+    D[i + 3] = Math.round(Math.min(O[i + 3], a * 255));
+    if (a > 0.02 && a < 0.97 && bw[k] > 1e-4) { const m = Math.min(1, (1 - a) * 1.5); D[i] = Math.round(O[i] * (1 - m) + br[k] / bw[k] * m); D[i + 1] = Math.round(O[i + 1] * (1 - m) + bg[k] / bw[k] * m); D[i + 2] = Math.round(O[i + 2] * (1 - m) + bb[k] / bw[k] * m); }
+  }
+}
+
+/* ---------- by hand ---------- */
 /* remove (or bring back) the connected region around a tapped point whose colour is close to the tapped colour */
 function cutFill(x0, y0, keep) {
   const W0 = CUT.w, H0 = CUT.h, O = CUT.orig.data, D = CUT.cur.data, tol = CUT.tol, i0 = (y0 * W0 + x0) * 4;
@@ -11115,7 +11309,7 @@ function cutFill(x0, y0, keep) {
     const p = st.pop(), x = p % W0, y = (p - x) / W0, i = p * 4, d = cutDist(O, i, r, g, b);
     if (d > tol * 1.35) continue;
     const a = d <= tol ? 1 : 1 - (d - tol) / (tol * 0.35);
-    if (keep) D[i + 3] = Math.max(D[i + 3], Math.round(O[i + 3] * a)); else D[i + 3] = Math.min(D[i + 3], Math.round(255 * (1 - a)));
+    if (keep) { if (a > 0.5) { D[i] = O[i]; D[i + 1] = O[i + 1]; D[i + 2] = O[i + 2]; } D[i + 3] = Math.max(D[i + 3], Math.round(O[i + 3] * a)); } else D[i + 3] = Math.min(D[i + 3], Math.round(255 * (1 - a)));
     if (d > tol) continue;
     if (x > 0 && !seen[p - 1]) { seen[p - 1] = 1; st.push(p - 1); }
     if (x < W0 - 1 && !seen[p + 1]) { seen[p + 1] = 1; st.push(p + 1); }
@@ -11123,39 +11317,22 @@ function cutFill(x0, y0, keep) {
     if (y < H0 - 1 && !seen[p + W0]) { seen[p + W0] = 1; st.push(p + W0); }
   }
 }
-/* automatic: the colours along the border are taken as background, and everything connected to the border in those colours goes */
-function cutAuto() {
-  const W0 = CUT.w, H0 = CUT.h, O = CUT.orig.data, D = CUT.cur.data, tol = CUT.tol;
-  const buckets = new Map(), edge = [];
-  for (let x = 0; x < W0; x++) edge.push(x, x + (H0 - 1) * W0);
-  for (let y = 0; y < H0; y++) edge.push(y * W0, y * W0 + W0 - 1);
-  for (const p of edge) { const i = p * 4; if (O[i + 3] < 20) continue; const key = (O[i] >> 4) + '|' + (O[i + 1] >> 4) + '|' + (O[i + 2] >> 4); const bk = buckets.get(key) || { n: 0, r: 0, g: 0, b: 0 }; bk.n++; bk.r += O[i]; bk.g += O[i + 1]; bk.b += O[i + 2]; buckets.set(key, bk); }
-  const refs = [...buckets.values()].sort((a, b) => b.n - a.n).filter((bk, k, arr) => k < 4 && bk.n >= edge.length * 0.04).map((bk) => [bk.r / bk.n, bk.g / bk.n, bk.b / bk.n]);
-  if (!refs.length) { toast('ขอบรูปมีหลายสีเกินไป ใช้แตะส่วนที่จะลบแทน', 3000); return; }
-  const near = (i) => { let m = 1e9; for (const c of refs) { const d = cutDist(O, i, c[0], c[1], c[2]); if (d < m) m = d; } return m; };
-  const seen = new Uint8Array(W0 * H0), st = [];
-  for (const p of edge) if (!seen[p]) { seen[p] = 1; st.push(p); }
-  while (st.length) {
-    const p = st.pop(), x = p % W0, y = (p - x) / W0, i = p * 4, d = O[i + 3] < 20 ? 0 : near(i);
-    if (d > tol * 1.35) continue;
-    const a = d <= tol ? 1 : 1 - (d - tol) / (tol * 0.35);
-    D[i + 3] = Math.min(D[i + 3], Math.round(255 * (1 - a)));
-    if (d > tol) continue;
-    if (x > 0 && !seen[p - 1]) { seen[p - 1] = 1; st.push(p - 1); }
-    if (x < W0 - 1 && !seen[p + 1]) { seen[p + 1] = 1; st.push(p + 1); }
-    if (y > 0 && !seen[p - W0]) { seen[p - W0] = 1; st.push(p - W0); }
-    if (y < H0 - 1 && !seen[p + W0]) { seen[p + W0] = 1; st.push(p + W0); }
-  }
+/* remove one colour everywhere in the picture, joined or not (white inside letters, a coloured fill used all over) */
+function cutColor(x0, y0) {
+  const W0 = CUT.w, n = W0 * CUT.h, O = CUT.orig.data, D = CUT.cur.data, tol = CUT.tol, i0 = (y0 * W0 + x0) * 4, r = O[i0], g = O[i0 + 1], b = O[i0 + 2];
+  for (let p = 0; p < n; p++) { const i = p * 4, d = cutDist(O, i, r, g, b); if (d > tol * 1.35) continue; const a = d <= tol ? 1 : 1 - (d - tol) / (tol * 0.35); D[i + 3] = Math.min(D[i + 3], Math.round(255 * (1 - a))); }
 }
 function cutBrush(x, y, k) {
   const R = Math.max(1, CUT.brush * k), D = CUT.cur.data, O = CUT.orig.data, W0 = CUT.w, H0 = CUT.h;
   for (let yy = Math.max(0, Math.floor(y - R)); yy <= Math.min(H0 - 1, Math.ceil(y + R)); yy++) for (let xx = Math.max(0, Math.floor(x - R)); xx <= Math.min(W0 - 1, Math.ceil(x + R)); xx++) {
     const dd = Math.hypot(xx - x, yy - y); if (dd > R) continue; const i = (yy * W0 + xx) * 4, soft = clamp((R - dd) / Math.max(1, R * 0.25), 0, 1);
-    if (CUT.mode === 'erase') D[i + 3] = Math.min(D[i + 3], Math.round(D[i + 3] * (1 - soft))); else D[i + 3] = Math.max(D[i + 3], Math.round(O[i + 3] * soft));
+    if (CUT.mode === 'erase') D[i + 3] = Math.min(D[i + 3], Math.round(D[i + 3] * (1 - soft)));
+    else { if (soft > 0.5) { D[i] = O[i]; D[i + 1] = O[i + 1]; D[i + 2] = O[i + 2]; } D[i + 3] = Math.max(D[i + 3], Math.round(O[i + 3] * soft)); }
   }
 }
 /* save as PNG, trimmed to what is left, and put it in place of the old picture (undo brings the old one back) */
 async function cutSave() {
+  if (CUT.busy) return;
   const A = await getAssets(); if (!A) { toast('มุมมองนี้บันทึกรูปไม่ได้', 3000); return; }
   const it = findItem(CUT.it); if (!it) { $('#cutSheet').hidden = true; return; }
   const W0 = CUT.w, H0 = CUT.h, D = CUT.cur.data; let x0 = W0, y0 = H0, x1 = -1, y1 = -1;
@@ -11171,7 +11348,7 @@ async function cutSave() {
     const sc = (it.w || 480) / W0, before = clone(S.page.items || []);
     const items = before.map((t) => (t.id === it.id ? Object.assign({}, t, { asset: r.id, x: Math.round(t.x + x0 * sc), y: Math.round(t.y + y0 * sc), w: Math.max(20, Math.round(cw * sc)), ar: Math.round(ch / cw * 1000) / 1000, cut: 1 }) : t));
     setItems(items, before);
-    $('#cutSheet').hidden = true; toast('ตัดพื้นหลังแล้ว กดย้อนกลับบนหน้าได้ถ้าต้องการรูปเดิม', 3000);
+    $('#cutSheet').hidden = true; cutFree(); toast('ตัดพื้นหลังแล้ว กดย้อนกลับบนหน้าได้ถ้าต้องการรูปเดิม', 3000);
   } catch (e) { toast(assetErr(e), 4500); }
 }
 
@@ -19460,7 +19637,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793413779';
+const BUILD = '1793414580';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
