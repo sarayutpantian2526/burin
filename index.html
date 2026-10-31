@@ -1914,7 +1914,7 @@ body.role-student .scnpill .sbtns button[data-s="back"], body.role-student .scnp
       <button class="insb" id="iImg"><b>รูปภาพ</b><span>จากคลังภาพ กล้อง หรือไฟล์ วางจากคลิปบอร์ดหรือลากมาวางก็ได้</span></button>
       <button class="insb" id="iVid"><b>วิดีโอ</b><span>ไฟล์ MP4 ขนาดไม่เกิน 20 MB</span></button>
       <button class="insb" id="iGraph"><b>กราฟจากสมการ</b><span>พิมพ์สมการ แล้วปรับค่าตัวแปรด้วยแถบเลื่อน</span></button>
-      <button class="insb" id="iSim"><b>แบบจำลองการทดลอง</b><span>โพรเจกไทล์ ลูกตุ้ม สปริง พื้นเอียง การชน คลื่นนิ่ง ปรับค่าแล้วกดเล่น</span></button>
+      <button class="insb" id="iSim"><b>แบบจำลองการทดลอง</b><span>ทุกวิชา ฟิสิกส์ โลกและอวกาศ เคมี ชีวะ สุขภาพ คณิต สถิติ ปรับค่าแล้วกดเล่น หรือให้ AI สร้าง</span></button>
       <button class="insb" id="iLab"><b>การทดลองและตารางผล</b><span>วางแผนตัวแปร บันทึกผล พล็อตกราฟ หาความชันและค่าที่ต้องการพร้อมความไม่แน่นอน</span></button>
       <button class="insb" id="iCalc"><b>เครื่องคิดเลขและแก้สมการ</b><span>คิดพร้อมหน่วย แก้สมการ อนุพันธ์ อินทิเกรต เมทริกซ์ สมการเชิงอนุพันธ์</span></button>
       <button class="insb" id="iLesson"><b>บทเรียนสรุป</b><span>สรุปเนื้อหาทุกบท นิยาม สูตร ตัวอย่างพร้อมวิธีทำ วางลงหน้าเพื่อใช้สอนได้</span></button>
@@ -2117,12 +2117,9 @@ body.role-student .scnpill .sbtns button[data-s="back"], body.role-student .scnp
 
 <div class="sheet" id="simSheet" hidden>
   <div class="panel wide" role="dialog" aria-label="แบบจำลองการทดลอง">
-    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><h2>แบบจำลองที่ขยับได้</h2><button class="btn" id="bSimClose">ปิด</button></div>
-    <div class="note">แตะเพื่อวางลงหน้ากระดาษ ทุกแบบจำลองคำนวณตามสมการฟิสิกส์จริง ปรับค่าได้ด้วยแถบเลื่อน เวกเตอร์ความเร็วเป็นสีน้ำเงิน แรงเป็นสีส้ม</div>
-    <h3>วาดแล้วขยับได้ ทุกวิชา</h3>
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><h2>แบบจำลองการทดลอง</h2><button class="btn" id="bSimClose">ปิด</button></div>
+    <div class="note">แตะแบบจำลองเพื่อวางลงหน้ากระดาษ ทุกแบบคำนวณตามสมการจริง ปรับค่าด้วยแถบเลื่อนแล้วกดเล่น เลือกวิชาด้านล่าง หรือพิมพ์ค้นหาได้ทุกวิชา</div>
     <div id="scnPick"></div>
-    <h3>แบบจำลองการทดลองฟิสิกส์</h3>
-    <div class="simgrid" id="simGrid"></div>
   </div>
 </div>
 
@@ -8347,7 +8344,7 @@ function scClean(sp) {
     if (o.view.xmax <= o.view.xmin) o.view.xmax = o.view.xmin + 1; if (o.view.ymax <= o.view.ymin) o.view.ymax = o.view.ymin + 1;
     const t = sp.t || {}; o.t = { min: scNum(t.min, 0, -1e6, 1e6), max: scNum(t.max, 6.2832, -1e6, 1e6), speed: scNum(t.speed, 1, 0, 1e4), loop: t.loop !== false };
     o.vars = {}; for (const [k, v] of Object.entries(sp.vars || {}).slice(0, 8)) if (/^[a-zA-Z]\w{0,9}$/.test(k) && !/^(t|x|e|pi)$/.test(k)) o.vars[k] = scNum(v, 1, -1e9, 1e9);
-    const ex = (s) => scTxt(s, 120).replace(/[^0-9A-Za-z_+\-*/^().,\s<>=!]/g, '');
+    const ex = (s) => scTxt(s, 260).replace(/[^0-9A-Za-z_+\-*/^().,\s<>=!?:]/g, '');
     o.items = (Array.isArray(sp.items) ? sp.items : []).slice(0, 12).map((it, i) => ({
       type: ['func', 'curve', 'point', 'segment', 'vector', 'tangent', 'area', 'text'].includes(it.type) ? it.type : 'func', color: scCol(it.color, SC_PAL[i % SC_PAL.length]), label: scTxt(it.label, 24),
       expr: ex(it.expr), x: ex(it.x), y: ex(it.y), x1: ex(it.x1), y1: ex(it.y1), x2: ex(it.x2), y2: ex(it.y2), tmin: ex(it.tmin), tmax: ex(it.tmax), at: ex(it.at), a: ex(it.a), b: ex(it.b), n: ex(it.n), of: Math.round(scNum(it.of, 0, 0, 11)), trace: !!it.trace, text: scTxt(it.text, 60)
@@ -9017,7 +9014,44 @@ const SCENE_TPL = {
   ]
 };
 const SCENE_SUBJ = [['phys', 'ฟิสิกส์'], ['person', 'ร่างกายและการเคลื่อนไหว'], ['chem', 'เคมี'], ['bio', 'ชีววิทยา'], ['math', 'คณิตศาสตร์'], ['3d', 'สามมิติ']];
-function sceneDomainFor() { const sj = curSubj()[0]; return sj === 'sport' ? 'person' : sj === 'chem' ? 'chem' : sj === 'bio' || sj === 'med' || sj === 'nurse' || sj === 'ph' ? 'bio' : sj === 'math' || sj === 'stat' ? 'math' : 'phys'; }
+/* more ready-made models for every subject: earth and space, statistics, health, and extra chemistry, biology, maths */
+SCENE_TPL.earth = [
+  ['กฎข้อที่สองของเคปเลอร์', 'วงโคจรรี ดาวเคราะห์เร็วขึ้นเมื่อใกล้ดวงอาทิตย์ ช้าลงเมื่อไกล', { domain: 'phys', title: 'วงโคจรรีรอบดวงอาทิตย์', world: { w: 14, h: 9, x0: -9, y0: -4.5, g: 0 }, bodies: [{ id: 'A', label: '', shape: 'ball', r: 0.15, m: 1, x: 0, y: 3.4, vx: 1.6, vy: 0 }], fields: { central: { x: 0, y: 0, GM: 16, r: 0.6, label: 'ดวงอาทิตย์' } }, params: [{ key: 'A.vx', label: 'ความเร็วที่จุดไกลสุด', min: 0.8, max: 2.2, step: 0.05 }], show: { v: true, graph: 'v' }, note: 'กราฟอัตราเร็วสูงสุดตอนผ่านจุดใกล้ดวงอาทิตย์ที่สุด' }],
+  ['ความเร็วหลุดพ้น', 'เพิ่มความเร็วต้นจนวงโคจรเปิดออก ยานไม่กลับมาอีก', { domain: 'phys', title: 'ความเร็ววงโคจรและความเร็วหลุดพ้น', world: { w: 16, h: 10, x0: -8, y0: -5, g: 0 }, bodies: [{ id: 'A', label: 'ยาน', shape: 'ball', r: 0.15, m: 1, x: 0, y: 2.5, vx: 2.5, vy: 0 }], fields: { central: { x: 0, y: 0, GM: 16, r: 0.8, label: 'โลก' } }, params: [{ key: 'A.vx', label: 'ความเร็วต้น (m/s)', min: 1, max: 4.2, step: 0.05 }], show: { v: true, graph: 'v' }, note: 'วงกลมเมื่อ v = √(GM/r) = 2.53 หลุดพ้นเมื่อ v ≥ √(2GM/r) = 3.58' }],
+  ['ตกบนโลก ดวงจันทร์ ดาวอังคาร', 'ปล่อยลูกบอลจากความสูงเดียวกัน เลือกค่า g ของแต่ละที่', { domain: 'phys', title: 'การตกอิสระกับค่า g', world: { w: 4, h: 6, g: 1.62 }, bodies: [{ id: 'A', label: '', shape: 'ball', r: 0.15, m: 1, x: 2, y: 5.5, e: 0 }], surfaces: [{ x1: 0, y1: 0, x2: 4, y2: 0 }], params: [{ key: 'g', label: 'g (m/s²) โลก 9.8 ดวงจันทร์ 1.62 อังคาร 3.71', min: 0.5, max: 25, step: 0.01 }], show: { v: true, graph: 'y' } }],
+  ['ขว้างบอลบนดาวอังคาร', 'มุมและความเร็วเท่ากัน แต่ g ต่างกัน ระยะไกลต่างกันมาก', { domain: 'phys', title: 'โพรเจกไทล์บนดาวเคราะห์อื่น', world: { w: 60, h: 24, g: 3.71 }, bodies: [{ id: 'A', label: '', shape: 'ball', r: 0.5, m: 0.5, x: 1, y: 1, vx: 10, vy: 10, e: 0 }], surfaces: [{ x1: 0, y1: 0, x2: 60, y2: 0 }], params: [{ key: 'g', label: 'g (m/s²)', min: 1, max: 25, step: 0.01 }, { key: 'A.vx', label: 'vx (m/s)', min: 2, max: 20, step: 0.5 }, { key: 'A.vy', label: 'vy (m/s)', min: 2, max: 20, step: 0.5 }], show: { v: true, graph: 'y' } }],
+  ['มุมเงยของดวงอาทิตย์ตลอดปี', 'มุมเงยตอนเที่ยงเปลี่ยนตามวันในปีและละติจูด ที่มาของฤดูกาล', { domain: 'math', title: 'มุมเงยของดวงอาทิตย์ตอนเที่ยง', view: { xmin: 0, xmax: 365, ymin: 0, ymax: 100 }, t: { min: 0, max: 365, speed: 30 }, vars: { lat: 14 }, items: [{ type: 'func', expr: 'min(90, 90 - abs(lat - 23.44*sin(2*pi*(x-80)/365)))', label: 'มุมเงย (องศา)', color: '#E39B2D' }, { type: 'point', x: 't', y: 'min(90, 90 - abs(lat - 23.44*sin(2*pi*(t-80)/365)))', label: 'วันที่ t', color: '#C2571A' }], params: [{ key: 'lat', label: 'ละติจูด (องศาเหนือ) กรุงเทพฯ 13.7', min: -60, max: 70, step: 0.5 }], note: 'แกนนอนคือวันที่ของปี 80 คือราววันวิษุวัต 21 มีนาคม' }],
+  ['ความยาวกลางวันตามละติจูด', 'ยิ่งไกลเส้นศูนย์สูตร กลางวันฤดูร้อนยิ่งยาว ฤดูหนาวยิ่งสั้น', { domain: 'math', title: 'ความยาวช่วงกลางวัน (ชั่วโมง)', view: { xmin: 0, xmax: 365, ymin: 0, ymax: 24 }, t: { min: 0, max: 365, speed: 30 }, vars: { lat: 14 }, items: [{ type: 'func', expr: '24/pi*acos(max(-1, min(1, -tan(lat*pi/180)*tan(23.44*pi/180*sin(2*pi*(x-80)/365)))))', label: 'ชั่วโมง', color: '#2F4BB8' }, { type: 'point', x: 't', y: '24/pi*acos(max(-1, min(1, -tan(lat*pi/180)*tan(23.44*pi/180*sin(2*pi*(t-80)/365)))))', color: '#C2571A' }], params: [{ key: 'lat', label: 'ละติจูด (องศาเหนือ)', min: -66, max: 66, step: 0.5 }] }],
+  ['ข้างขึ้นข้างแรม', 'ส่วนสว่างของดวงจันทร์ที่เห็นจากโลกตลอดเดือนจันทรคติ', { domain: 'math', title: 'สัดส่วนส่วนสว่างของดวงจันทร์', view: { xmin: 0, xmax: 29.53, ymin: -0.1, ymax: 1.2 }, t: { min: 0, max: 29.53, speed: 3 }, items: [{ type: 'func', expr: '(1-cos(2*pi*x/29.53))/2', label: 'ส่วนสว่าง', color: '#E39B2D' }, { type: 'point', x: 't', y: '(1-cos(2*pi*t/29.53))/2', label: 'วันที่ t', color: '#2F4BB8' }, { type: 'text', x: '0.5', y: '1.1', text: 'เดือนดับ', color: '#667' }, { type: 'text', x: '13.6', y: '1.1', text: 'เพ็ญ', color: '#667' }] }]
+];
+SCENE_TPL.stat = [
+  ['การแจกแจงปกติ', 'ปรับค่าเฉลี่ยและส่วนเบี่ยงเบนมาตรฐาน แรเงาพื้นที่ระหว่าง a ถึง b', { domain: 'math', title: 'การแจกแจงปกติ N(μ, σ²)', view: { xmin: -6, xmax: 6, ymin: -0.05, ymax: 0.85 }, t: { min: 0, max: 0, speed: 0 }, vars: { mu: 0, s: 1, a: -1, b: 1 }, items: [{ type: 'func', expr: 'exp(-(x-mu)^2/(2*s^2))/(s*sqrt(2*pi))', color: '#2F4BB8' }, { type: 'area', of: 0, a: 'a', b: 'b', n: '120', color: '#E39B2D' }], params: [{ key: 'mu', label: 'μ', min: -3, max: 3, step: 0.1 }, { key: 's', label: 'σ', min: 0.4, max: 3, step: 0.05 }, { key: 'a', label: 'a', min: -6, max: 6, step: 0.1 }, { key: 'b', label: 'b', min: -6, max: 6, step: 0.1 }], note: 'μ ± σ ครอบคลุมราว 68% μ ± 2σ ราว 95%' }],
+  ['การแจกแจง t เทียบกับปกติ', 'องศาความเป็นอิสระน้อย หางหนากว่า ยิ่งมากยิ่งใกล้ปกติ', { domain: 'math', title: 'การแจกแจง t', view: { xmin: -5, xmax: 5, ymin: -0.02, ymax: 0.45 }, t: { min: 0, max: 0, speed: 0 }, vars: { v: 3 }, items: [{ type: 'func', expr: 'exp(-x^2/2)/sqrt(2*pi)', label: 'ปกติ', color: '#C6CCD6' }, { type: 'func', expr: 'gamma((v+1)/2)/(sqrt(v*pi)*gamma(v/2))*(1+x^2/v)^(-(v+1)/2)', label: 't', color: '#2F4BB8' }], params: [{ key: 'v', label: 'องศาความเป็นอิสระ', min: 1, max: 60, step: 1 }] }],
+  ['การแจกแจงไคกำลังสอง', 'รูปร่างเบ้ขวา ยิ่งองศาความเป็นอิสระมากยิ่งสมมาตร', { domain: 'math', title: 'การแจกแจงไคกำลังสอง', view: { xmin: 0, xmax: 30, ymin: -0.02, ymax: 0.5 }, t: { min: 0, max: 0, speed: 0 }, vars: { k: 4 }, items: [{ type: 'func', expr: 'larger(x,0) ? x^(k/2-1)*exp(-x/2)/(2^(k/2)*gamma(k/2)) : 0', color: '#2F4BB8' }], params: [{ key: 'k', label: 'องศาความเป็นอิสระ', min: 1, max: 20, step: 1 }], note: 'ค่าเฉลี่ยเท่ากับ k ความแปรปรวนเท่ากับ 2k' }],
+  ['ช่วงความเชื่อมั่นกับขนาดตัวอย่าง', 'ความกว้างของช่วงลดลงตาม 1/√n ต้องเพิ่ม n สี่เท่าจึงแคบลงครึ่งหนึ่ง', { domain: 'math', title: 'ความกว้างช่วงความเชื่อมั่น 95%', view: { xmin: 0, xmax: 400, ymin: 0, ymax: 12 }, t: { min: 0, max: 0, speed: 0 }, vars: { s: 10, n: 50 }, items: [{ type: 'func', expr: 'larger(x,1) ? 2*1.96*s/sqrt(x) : NaN', label: 'ความกว้าง', color: '#2F4BB8' }, { type: 'point', x: 'n', y: '2*1.96*s/sqrt(n)', label: 'n ที่เลือก', color: '#C2571A' }], params: [{ key: 's', label: 'ส่วนเบี่ยงเบนมาตรฐาน', min: 1, max: 30, step: 0.5 }, { key: 'n', label: 'ขนาดตัวอย่าง n', min: 2, max: 400, step: 1 }] }],
+  ['เส้นตรงกับข้อมูล', 'ปรับจุดตัดและความชันให้เส้นผ่านกลุ่มข้อมูลมากที่สุด แล้วเทียบกับเส้นกำลังสองน้อยสุด', { domain: 'math', title: 'การถดถอยเชิงเส้น', view: { xmin: 0, xmax: 10, ymin: 0, ymax: 12 }, t: { min: 0, max: 0, speed: 0 }, vars: { a: 2, b: 0.6 }, items: [{ type: 'point', x: '1', y: '2.6', color: '#667' }, { type: 'point', x: '2', y: '3.1', color: '#667' }, { type: 'point', x: '3', y: '4.4', color: '#667' }, { type: 'point', x: '4', y: '4.2', color: '#667' }, { type: 'point', x: '5', y: '5.9', color: '#667' }, { type: 'point', x: '6', y: '6.1', color: '#667' }, { type: 'point', x: '7', y: '7.5', color: '#667' }, { type: 'point', x: '8', y: '7.9', color: '#667' }, { type: 'point', x: '9', y: '9.4', color: '#667' }, { type: 'func', expr: 'a + b*x', label: 'เส้นของเรา', color: '#C2571A' }, { type: 'func', expr: '1.403 + 0.840*x', label: 'กำลังสองน้อยสุด', color: '#C6CCD6' }], params: [{ key: 'a', label: 'จุดตัดแกน y', min: -2, max: 6, step: 0.05 }, { key: 'b', label: 'ความชัน', min: -1, max: 2, step: 0.01 }], note: 'เส้นกำลังสองน้อยสุดของข้อมูลชุดนี้คือ y = 1.403 + 0.840x' }],
+  ['การแจกแจงเอกซ์โพเนนเชียล', 'เวลารอเหตุการณ์ครั้งถัดไป ค่าเฉลี่ยเท่ากับ 1/λ', { domain: 'math', title: 'การแจกแจงเอกซ์โพเนนเชียล', view: { xmin: 0, xmax: 6, ymin: -0.05, ymax: 2.2 }, t: { min: 0, max: 0, speed: 0 }, vars: { L: 1, c: 1 }, items: [{ type: 'func', expr: 'L*exp(-L*x)', color: '#2F4BB8' }, { type: 'area', of: 0, a: '0', b: 'c', n: '80', color: '#E39B2D' }], params: [{ key: 'L', label: 'λ', min: 0.2, max: 2, step: 0.05 }, { key: 'c', label: 'P(X ≤ c) แรเงาถึง c', min: 0, max: 6, step: 0.05 }] }]
+];
+SCENE_TPL.health = [
+  ['การระบาดของโรค (SIR)', 'ผู้ติดเชื้อชนผู้ยังไม่ติดแล้วแพร่เชื้อ ผู้ป่วยหายแล้วมีภูมิคุ้มกัน', { domain: 'bio', title: 'แบบจำลองการระบาด S I R', box: { w: 110, h: 65 }, T: 300, species: [{ id: 'S', label: 'ยังไม่ติดเชื้อ', n: 150, r: 1.1, color: '#2F4BB8' }, { id: 'I', label: 'ติดเชื้อ', n: 3, r: 1.1, color: '#D1453B' }, { id: 'R', label: 'หายแล้ว', n: 0, r: 1.1, color: '#2E8B57' }], reactions: [{ from: ['S', 'I'], to: ['I', 'I'], Ea: 0 }, { from: ['I'], to: ['R'], k: 0.08 }], params: [{ key: 'R2.k', label: 'อัตราการหาย', min: 0.01, max: 0.5, step: 0.01 }, { key: 'S.n', label: 'จำนวนคน', min: 20, max: 300, step: 10 }], note: 'กราฟผู้ติดเชื้อขึ้นเป็นยอดแล้วลดลง อัตราการหายยิ่งสูง ยอดยิ่งต่ำ' }],
+  ['วัคซีนกับภูมิคุ้มกันหมู่', 'เพิ่มคนที่ได้รับวัคซีน เชื้อหาทางแพร่ได้ยากขึ้น', { domain: 'bio', title: 'ภูมิคุ้มกันหมู่', box: { w: 110, h: 65 }, T: 300, species: [{ id: 'S', label: 'ยังไม่มีภูมิ', n: 70, r: 1.1, color: '#2F4BB8' }, { id: 'V', label: 'ได้วัคซีน', n: 80, r: 1.1, color: '#8A94A6' }, { id: 'I', label: 'ติดเชื้อ', n: 3, r: 1.1, color: '#D1453B' }, { id: 'R', label: 'หายแล้ว', n: 0, r: 1.1, color: '#2E8B57' }], reactions: [{ from: ['S', 'I'], to: ['I', 'I'], Ea: 0 }, { from: ['I'], to: ['R'], k: 0.08 }], params: [{ key: 'V.n', label: 'จำนวนคนได้วัคซีน', min: 0, max: 200, step: 10 }, { key: 'S.n', label: 'จำนวนคนไม่มีภูมิ', min: 10, max: 200, step: 10 }] }],
+  ['ระดับยาในเลือด', 'ยาเข้าสู่เลือดแล้วถูกกำจัด ระดับขึ้นถึงยอดแล้วลด ครึ่งชีวิตขึ้นกับอัตรากำจัด', { domain: 'math', title: 'ความเข้มข้นของยาในเลือด', view: { xmin: 0, xmax: 24, ymin: 0, ymax: 12 }, t: { min: 0, max: 24, speed: 3 }, vars: { D: 500, V: 50, ka: 1.2, ke: 0.17 }, items: [{ type: 'func', expr: 'larger(x,-1e-9) ? D*ka/(V*(ka-ke))*(exp(-ke*x)-exp(-ka*x)) : 0', label: 'mg/L', color: '#2F4BB8' }, { type: 'point', x: 't', y: 'D*ka/(V*(ka-ke))*(exp(-ke*t)-exp(-ka*t))', color: '#C2571A' }], params: [{ key: 'D', label: 'ขนาดยา (mg)', min: 100, max: 1000, step: 50 }, { key: 'ka', label: 'อัตราดูดซึม (ต่อชั่วโมง)', min: 0.2, max: 3, step: 0.05 }, { key: 'ke', label: 'อัตรากำจัด (ต่อชั่วโมง)', min: 0.05, max: 0.6, step: 0.01 }], note: 'ครึ่งชีวิตของยา = 0.693/ke ตัวอย่างนี้ใช้สอนแนวคิด ไม่ใช่ขนาดยาจริง' }],
+  ['ชีพจรระหว่างออกกำลังกาย', 'ชีพจรขึ้นสู่ระดับคงที่ตามความหนัก แล้วลดลงช่วงพัก', { domain: 'math', title: 'อัตราการเต้นของหัวใจ', view: { xmin: 0, xmax: 20, ymin: 50, ymax: 200 }, t: { min: 0, max: 20, speed: 2 }, vars: { rest: 70, I: 0.7, age: 20, tau: 1.2 }, items: [{ type: 'func', expr: 'smaller(x,10) ? rest + I*(208-0.7*age-rest)*(1-exp(-x/tau)) : rest + I*(208-0.7*age-rest)*(1-exp(-10/tau))*exp(-(x-10)/(1.8*tau))', label: 'ครั้งต่อนาที', color: '#D1453B' }, { type: 'func', expr: '208-0.7*age', label: 'ชีพจรสูงสุด', color: '#C6CCD6' }, { type: 'point', x: 't', y: 'smaller(t,10) ? rest + I*(208-0.7*age-rest)*(1-exp(-t/tau)) : rest + I*(208-0.7*age-rest)*(1-exp(-10/tau))*exp(-(t-10)/(1.8*tau))', color: '#2F4BB8' }], params: [{ key: 'I', label: 'ความหนัก (สัดส่วนของชีพจรสำรอง)', min: 0.3, max: 1, step: 0.05 }, { key: 'age', label: 'อายุ (ปี)', min: 10, max: 80, step: 1 }, { key: 'rest', label: 'ชีพจรขณะพัก', min: 40, max: 100, step: 1 }], note: 'ออกกำลัง 10 นาทีแรกแล้วพัก ชีพจรสูงสุดประมาณ 208 − 0.7 × อายุ' }]
+];
+SCENE_TPL.chem.push(
+  ['การสลายตัวของสารกัมมันตรังสี', 'นิวเคลียสสลายแบบสุ่มทีละตัว จำนวนที่เหลือลดลงครึ่งหนึ่งทุกครึ่งชีวิต', { domain: 'chem', title: 'การสลายตัวและครึ่งชีวิต', box: { w: 100, h: 60 }, T: 300, species: [{ id: 'P', label: 'นิวเคลียสตั้งต้น', n: 200, r: 1, color: '#C2571A' }, { id: 'D', label: 'นิวเคลียสลูก', n: 0, r: 1, color: '#2F4BB8' }], reactions: [{ from: ['P'], to: ['D'], k: 0.1 }], params: [{ key: 'R1.k', label: 'ค่าคงที่การสลาย', min: 0.01, max: 0.5, step: 0.01 }, { key: 'P.n', label: 'จำนวนเริ่มต้น', min: 20, max: 300, step: 10 }], note: 'ครึ่งชีวิต = 0.693 / ค่าคงที่การสลาย' }],
+  ['ตัวเร่งปฏิกิริยา', 'ตัวเร่งลดพลังงานก่อกัมมันต์ ปฏิกิริยาเร็วขึ้นโดยตัวเร่งไม่ถูกใช้หมด', { domain: 'chem', title: 'A + K → AK แล้ว AK → P + K', box: { w: 100, h: 60 }, T: 300, species: [{ id: 'A', label: 'สารตั้งต้น', n: 80, r: 1.2, color: '#2F4BB8' }, { id: 'K', label: 'ตัวเร่ง', n: 6, r: 2.2, m: 6, color: '#7B4FC9' }, { id: 'AK', label: 'สารเชิงซ้อน', n: 0, r: 2.4, m: 7, color: '#B07ADB' }, { id: 'P', label: 'ผลิตภัณฑ์', n: 0, r: 1.2, color: '#2E8B57' }], reactions: [{ from: ['A', 'K'], to: ['AK'], Ea: 0.6 }, { from: ['AK'], to: ['P', 'K'], k: 0.6 }], params: [{ key: 'K.n', label: 'จำนวนตัวเร่ง', min: 0, max: 30, step: 1 }, { key: 'T', label: 'อุณหภูมิ (K)', min: 200, max: 800, step: 10 }] }]
+);
+SCENE_TPL.bio.push(
+  ['การแพร่ผ่านเยื่อหุ้มเซลล์', 'ออกซิเจนผ่านเยื่อได้ โปรตีนโมเลกุลใหญ่ผ่านไม่ได้', { domain: 'bio', title: 'เยื่อเลือกผ่าน', box: { w: 100, h: 60 }, T: 310, species: [{ id: 'O', label: 'ออกซิเจน', n: 70, r: 0.9, m: 1, side: 'left', color: '#4C8DF6' }, { id: 'Pr', label: 'โปรตีน', n: 12, r: 2.6, m: 10, side: 'left', color: '#C2571A' }], membrane: { x: 0.5, pass: ['O'] }, params: [{ key: 'T', label: 'อุณหภูมิ (K)', min: 270, max: 330, step: 1 }] }]
+);
+SCENE_TPL.math.push(
+  ['เอกซ์โพเนนเชียลกับลอการิทึม', 'สองกราฟสะท้อนกันรอบเส้น y = x เพราะเป็นฟังก์ชันผกผันกัน', { domain: 'math', title: 'y = aˣ และ y = logₐ x', view: { xmin: -4, xmax: 6, ymin: -4, ymax: 6 }, t: { min: 0, max: 0, speed: 0 }, vars: { a: 2 }, items: [{ type: 'func', expr: 'a^x', label: 'aˣ', color: '#2F4BB8' }, { type: 'func', expr: 'larger(x,0) ? log(x)/log(a) : NaN', label: 'logₐ x', color: '#C2571A' }, { type: 'func', expr: 'x', label: 'y = x', color: '#C6CCD6' }], params: [{ key: 'a', label: 'ฐาน a', min: 0.2, max: 5, step: 0.05 }] }],
+  ['การแปลงกราฟไซน์', 'y = A sin(B(x − C)) + D แต่ละค่าย่อ ขยาย เลื่อนกราฟอย่างไร', { domain: 'math', title: 'y = A sin(B(x − C)) + D', view: { xmin: -7, xmax: 7, ymin: -5, ymax: 5 }, t: { min: 0, max: 0, speed: 0 }, vars: { A: 1, B: 1, C: 0, D: 0 }, items: [{ type: 'func', expr: 'sin(x)', color: '#E3E7EE' }, { type: 'func', expr: 'A*sin(B*(x-C))+D', label: 'y', color: '#2F4BB8' }], params: [{ key: 'A', label: 'A แอมพลิจูด', min: -3, max: 3, step: 0.1 }, { key: 'B', label: 'B', min: 0.2, max: 4, step: 0.05 }, { key: 'C', label: 'C เลื่อนแนวนอน', min: -3.2, max: 3.2, step: 0.05 }, { key: 'D', label: 'D เลื่อนแนวตั้ง', min: -3, max: 3, step: 0.1 }] }],
+  ['ลิมิตของ sin x / x', 'เมื่อ x เข้าใกล้ 0 ค่าเข้าใกล้ 1 แม้ที่ x = 0 จะหาค่าไม่ได้', { domain: 'math', title: 'lim sin x / x', view: { xmin: -10, xmax: 10, ymin: -0.5, ymax: 1.3 }, t: { min: -6, max: 6, speed: 1 }, items: [{ type: 'func', expr: 'equal(x,0) ? NaN : sin(x)/x', color: '#2F4BB8' }, { type: 'point', x: 't', y: 'equal(t,0) ? NaN : sin(t)/t', trace: true, label: 'x', color: '#C2571A' }, { type: 'func', expr: '1', color: '#E3E7EE' }] }]
+);
+SCENE_SUBJ.splice(0, SCENE_SUBJ.length, ['phys', 'ฟิสิกส์'], ['earth', 'โลกและอวกาศ'], ['chem', 'เคมี'], ['bio', 'ชีววิทยา'], ['health', 'สุขภาพและสาธารณสุข'], ['person', 'ร่างกายและการเคลื่อนไหว'], ['math', 'คณิตศาสตร์'], ['stat', 'สถิติ'], ['3d', 'สามมิติ']);
+function sceneDomainFor() { const sj = curSubj()[0]; return ({ sport: 'person', chem: 'chem', bio: 'bio', med: 'health', nurse: 'health', pharm: 'health', ph: 'health', earth: 'earth', math: 'math', stat: 'stat', econ: 'stat', fin: 'stat', mkt: 'stat', log: 'stat' })[sj] || 'phys'; }
 
 /* ---------- from a sketch or a sentence to a model, with the connected AI ---------- */
 function sceneSchema() {
@@ -9625,30 +9659,50 @@ async function placeInPlace(sp, kind, act, edge) {
   setTimeout(() => { const R = SCN.get(item.id); const live = findItem(item.id); if (R && live) { R.playing = true; if (!scnRaf) scnRaf = requestAnimationFrame(scTick); const pb = itemsEl.querySelector('.item[data-id="' + item.id + '"] [data-s="play"]'); if (pb) pb.textContent = 'หยุด'; } }, 350);
   toast(person ? 'ภาพคนที่วาดขยับแขนขาตามการเคลื่อนไหวจริงแล้ว' : 'ภาพเคลื่อนที่บนกระดาษแล้ว เส้นที่วาดไว้รอบ ๆ เป็นพื้นผิวที่ชนได้', 2800);
 }
-function renderScenePicker(box, dom) {
-  box.innerHTML = '';
+function renderScenePicker(box, dom, q) {
+  box.innerHTML = ''; q = String(q || '').trim().toLowerCase();
+  const own = sceneDomainFor();
+  /* search across every subject */
+  const sr = document.createElement('label'); sr.className = 'field scnsearch'; sr.innerHTML = '<span>ค้นหาแบบจำลอง</span><input type="search" placeholder="เช่น สปริง วงโคจร การระบาด ปกติ เอนไซม์">';
+  const si = sr.querySelector('input'); si.value = q; let tm = 0; si.oninput = () => { clearTimeout(tm); tm = setTimeout(() => { renderScenePicker(box, dom, si.value); const n = box.querySelector('.scnsearch input'); if (n) { n.focus(); n.setSelectionRange(n.value.length, n.value.length); } }, 250); };
+  box.appendChild(sr);
   const tabs = document.createElement('div'); tabs.className = 'chips'; box.appendChild(tabs);
-  const grid = document.createElement('div'); grid.className = 'simgrid';
-  for (const [k, n] of SCENE_SUBJ) { const b = document.createElement('button'); b.type = 'button'; b.className = 'chip'; b.textContent = n; b.setAttribute('aria-pressed', k === dom ? 'true' : 'false'); b.onclick = () => renderScenePicker(box, k); tabs.appendChild(b); }
+  /* the notebook's own subject first */
+  const order = SCENE_SUBJ.slice().sort((a, b) => (a[0] === own ? -1 : b[0] === own ? 1 : 0));
+  for (const [k, n] of order) { const cnt = (SCENE_TPL[k] || []).length + (k === 'phys' ? Object.keys(SIMS).length : 0); const b = document.createElement('button'); b.type = 'button'; b.className = 'chip'; b.textContent = n + ' ' + cnt; b.setAttribute('aria-pressed', !q && k === dom ? 'true' : 'false'); b.onclick = () => renderScenePicker(box, k); tabs.appendChild(b); }
   const ai = document.createElement('div'); ai.className = 'scnai';
-  ai.innerHTML = '<label class="field"><span>อธิบายสิ่งที่อยากให้ขยับ แล้วให้ AI สร้าง</span><textarea rows="2" placeholder="เช่น กล่อง 2 kg ถูกดึงด้วยแรง 10 N ทำมุม 30 องศา บนพื้นที่มีแรงเสียดทาน 0.2"></textarea></label><button class="btn solid" type="button">สร้างแบบจำลอง</button><div class="note small">หรือวาดภาพบนหน้า วงรอบด้วยบ่วงเลือก แล้วกด "ขยับได้"</div>';
+  ai.innerHTML = '<label class="field"><span>ไม่มีแบบที่ต้องการ อธิบายสิ่งที่อยากให้ขยับ แล้วให้ AI สร้าง</span><textarea rows="2" placeholder="เช่น กล่อง 2 kg ถูกดึงด้วยแรง 10 N ทำมุม 30 องศา บนพื้นที่มีแรงเสียดทาน 0.2"></textarea></label><button class="btn solid" type="button">สร้างแบบจำลอง</button><div class="note small">หรือวาดภาพบนหน้า วงรอบด้วยบ่วงเลือก แล้วกด "ขยับได้"</div>';
   ai.querySelector('button').onclick = async () => {
     const t = ai.querySelector('textarea').value.trim(); if (!t) return; if (!needAI('gen')) return;
     const bt = ai.querySelector('button'); bt.disabled = true; bt.textContent = 'กำลังสร้าง';
     try { const spec = await sceneFromAI(t, null); $('#simSheet').hidden = true; insertScene(spec); } catch (e) { toast('สร้างไม่สำเร็จ ลองอธิบายให้ชัดขึ้น', 3000); }
     bt.disabled = false; bt.textContent = 'สร้างแบบจำลอง';
   };
-  box.appendChild(ai);
-  for (const [name, hint, spec] of SCENE_TPL[dom] || []) {
-    const b = document.createElement('button'); b.className = 'simpick'; b.type = 'button';
-    b.innerHTML = '<canvas class="scnprev"></canvas><b></b><span></span>'; b.querySelector('b').textContent = name; b.querySelector('span').textContent = hint;
-    b.onclick = () => { $('#simSheet').hidden = true; insertScene(JSON.parse(JSON.stringify(spec))); };
-    grid.appendChild(b);
-    const cv = b.querySelector('canvas'); const it = { id: '__p' + name, spec: scClean(JSON.parse(JSON.stringify(spec))) }; const r = { st: null, cache: new Map(), traces: {}, showGraph: false, read: [], cv };
-    scReset(it, r); if (it.spec.domain === 'math') r.st.t = (it.spec.t.min + it.spec.t.max) / 2 || 1;
-    requestAnimationFrame(() => { cv.style.width = '100%'; cv.style.height = '150px'; scRender(it, r); });
+  const doms = q ? SCENE_SUBJ.map((x) => x[0]) : [dom];
+  let shown = 0;
+  for (const d of doms) {
+    const list = (SCENE_TPL[d] || []).filter(([name, hint]) => !q || (name + ' ' + hint).toLowerCase().includes(q));
+    if (q && list.length) { const h = document.createElement('h3'); h.textContent = (SCENE_SUBJ.find((x) => x[0] === d) || [0, ''])[1]; box.appendChild(h); }
+    const grid = document.createElement('div'); grid.className = 'simgrid';
+    for (const [name, hint, spec] of list) {
+      shown++;
+      const b = document.createElement('button'); b.className = 'simpick'; b.type = 'button';
+      b.innerHTML = '<canvas class="scnprev"></canvas><b></b><span></span>'; b.querySelector('b').textContent = name; b.querySelector('span').textContent = hint;
+      b.onclick = () => { $('#simSheet').hidden = true; insertScene(JSON.parse(JSON.stringify(spec))); };
+      grid.appendChild(b);
+      const cv = b.querySelector('canvas'); const it = { id: '__p' + name, spec: scClean(JSON.parse(JSON.stringify(spec))) }; const r = { st: null, cache: new Map(), traces: {}, showGraph: false, read: [], cv };
+      scReset(it, r); if (it.spec.domain === 'math') r.st.t = (it.spec.t.min + it.spec.t.max) / 2 || 1;
+      requestAnimationFrame(() => { cv.style.width = '100%'; cv.style.height = '150px'; scRender(it, r); });
+    }
+    box.appendChild(grid);
+    /* the hand-built physics laboratory models belong to physics only */
+    if (d === 'phys' && typeof renderSimPicker === 'function') {
+      const sg = document.createElement('div'); sg.className = 'simgrid'; renderSimPicker(sg, q);
+      if (sg.children.length) { const h = document.createElement('h3'); h.textContent = 'ห้องปฏิบัติการฟิสิกส์ ปรับค่าละเอียด'; box.appendChild(h); box.appendChild(sg); shown += sg.children.length; }
+    }
   }
-  box.appendChild(grid);
+  if (q && !shown) box.appendChild(Object.assign(document.createElement('div'), { className: 'note', textContent: 'ไม่พบแบบจำลองที่ตรงกับคำค้น ลองคำอื่น หรือให้ AI สร้างจากคำอธิบายด้านล่าง' }));
+  box.appendChild(ai);
 }
 
 
@@ -11918,9 +11972,10 @@ function insertSim(kind) {
   addItem({ type: 'sim', kind, params: {}, x, y, w });
   toast('วางแบบจำลองแล้ว กดเล่น แล้วเลื่อนแถบเพื่อเปลี่ยนค่า', 2600);
 }
-function renderSimPicker() {
-  const g = $('#simGrid'); g.innerHTML = '';
+function renderSimPicker(g, q) {
+  g = g || $('#simGrid'); if (!g) return; g.innerHTML = '';
   for (const [k, S0] of Object.entries(SIMS)) {
+    if (q && !(S0.title + ' ' + S0.hint).toLowerCase().includes(q)) continue;
     const b = document.createElement('button'); b.className = 'simpick'; b.type = 'button';
     b.innerHTML = '<canvas width="280" height="150"></canvas><b></b><span></span>';
     b.querySelector('b').textContent = S0.title; b.querySelector('span').textContent = S0.hint;
@@ -19839,7 +19894,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793425813';
+const BUILD = '1793426378';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
@@ -20182,7 +20237,7 @@ $('#qsKey').addEventListener('input', () => { const g = detectVendor($('#qsKey')
 $('#qsMore').onclick = () => { $('#aiSetup').hidden = true; menuTab('acc'); $('#menu').hidden = false; const c = $('#cfgKey'); if (c) { c.open = true; setTimeout(() => c.scrollIntoView({ block: 'center' }), 50); } };
 $('#iLab').onclick = () => { closeSheets(); renderLabPicker(); $('#labSheet').hidden = false; };
 $('#bLabClose').onclick = () => { $('#labSheet').hidden = true; };
-$('#iSim').onclick = () => { closeSheets(); renderSimPicker(); renderScenePicker($('#scnPick'), sceneDomainFor()); $('#simSheet').hidden = false; };
+$('#iSim').onclick = () => { closeSheets(); renderScenePicker($('#scnPick'), sceneDomainFor()); $('#simSheet').hidden = false; };
 $('#bSimClose').onclick = () => { $('#simSheet').hidden = true; };
 $('#iText').onclick = () => { closeSheets(); setTool('text'); toast('แตะบนหน้าตรงที่ต้องการพิมพ์', 2500); };
 $('#iPdf').onclick = () => { $('#insSheet').hidden = true; $('#fPdf').value = ''; $('#fPdf').click(); };
