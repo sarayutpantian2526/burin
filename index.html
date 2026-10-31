@@ -3598,7 +3598,7 @@ const savePage = debounce(() => {
 }, 300);
 /* ---------- the notebook that writes back: write by hand, pause, and the page answers in handwriting, letter by letter.
    Your own writing stays on the page. ---------- */
-const DIARY = { on: false, pending: [], t: null, busy: false, log: {}, anim: {} };
+const DIARY = { on: false, pending: [], t: null, busy: false, log: {}, anim: {}, later: {}, hold: {} };
 /* the answering notebook is a mode: one switch in the tool bar, and a bar on the page that says it is on with a button to turn it off */
 function diarySync() {
   const on = diaryOn();
@@ -3688,7 +3688,15 @@ async function diaryAsk() {
     let text = String((rep && rep.text) || (sketch.length ? '' : r.text) || '').split('\n').filter((l) => !DQ_LINE.test(l)).join('\n')
       .replace(/@@\s*[A-Za-z_]*[\s\S]*$/, '').replace(/@+\s*$/, '').replace(/[*_#`$]/g, '').replace(/\n{3,}/g, '\n\n').trim().slice(0, 600);
     dots.remove();
-    if ((!text && !sketch.length) || S.pid !== pid) return;
+    if (!text && !sketch.length) return;
+    if (S.pid !== pid) {
+      /* the writer turned the page while the notebook was thinking: the reply is kept and appears on that page next time it is opened */
+      const fs0 = 26, w0 = Math.round(clamp(W - 80, 320, 1100)), y0 = clamp(box[3] + 16, 20, H - 120);
+      const entry = { strokes: [], labels: [], items: text ? [{ type: 'text', x: Math.round((W - w0) / 2), y: Math.round(y0), w: w0, md: text, fs: fs0, hand: DIARY_HAND(), ink: '#2B3A67', diary: true, dv: 2 }] : [] };
+      (DIARY.later[pid] = DIARY.later[pid] || []).push(entry);
+      if (sketch.length) { const dw0 = 520; diaryDraw(sketch, Math.round((W - dw0) / 2), clamp(y0 + (text ? estTextH(text, w0, fs0) + 20 : 0), 20, H - 20 - 312), dw0, 312, 3, '#2B3A67', fs0, pid); }
+      return;
+    }
     log.push(['u', ((read && read.text) || '').slice(0, 300)], ['a', text]); if (log.length > 30) log.splice(0, log.length - 30);
     /* a full-width note across the page, placed where there is no writing yet */
     /* write back at the size they wrote: the typical height of their strokes sets the letter size */
@@ -3696,8 +3704,10 @@ async function diaryAsk() {
     /* small strokes are vowel and tone marks: leave them out, the letter bodies set the size; a Thai letter body is about 0.6 of the font size */
     const p75 = hs.length ? hs[Math.floor(hs.length * 0.75)] : 0, body = hs.filter((v) => v >= p75 * 0.45);
     const hMid = body.length ? body[Math.floor(body.length / 2)] : 16;
-    const fs = Math.round(clamp(hMid / 0.6, 14, 140)), w = Math.round(clamp(W - 80, 320, 1100));
-    const h = estTextH(text, w, fs) * 1.25 + 10;
+    let fs = Math.round(clamp(hMid / 0.6, 14, 140)); const w = Math.round(clamp(W - 80, 320, 1100));
+    /* a long reply in big handwriting still fits on one sheet: the letters get a little smaller */
+    while (text && fs > 16 && estTextH(text, w, fs) * 1.25 + 10 > H - 140) fs -= 2;
+    const h = text ? estTextH(text, w, fs) * 1.25 + 10 : 0;
     let at = [Math.round((W - w) / 2), box[3] + 16];
     const hit = (x, y) => occupiedBoxes().some((b) => x < b[2] + 10 && x + w > b[0] - 10 && y < b[3] + 10 && y + h > b[1] - 10);
     /* a person never writes past the edge of the paper: find room on this page, or turn to a new page */
@@ -3713,8 +3723,8 @@ async function diaryAsk() {
       /* placed when the words are done, so the reply itself counts as taken space: the drawing shrinks a little to fit
          the free part of the page, and when the page is full it goes on a new page right after this one */
       const go = async () => {
-        if (text && S.pid !== apid) return;
-        if (S.pid !== apid) return;
+        /* the page was left in the meantime: the drawing is still made, and appears when that page is opened again */
+        if (S.pid !== apid) { const dw0 = Math.round(clamp(fs * 16, 320, Math.min(640, W - 80))); diaryDraw(sketch, Math.round((W - dw0) / 2), clamp(near[1], 20, H - 20 - dw0 * 0.6), dw0, Math.round(dw0 * 0.6), lw, ink, fs, apid); return; }
         let dw = Math.round(clamp(fs * 16, 320, Math.min(640, W - 80))), spot = null;
         while (!spot && dw >= 240) { const dh0 = Math.round(dw * 0.6); spot = freeSpot(dw, dh0, [Math.round((W - dw) / 2), near[1]]); if (!spot) dw = Math.round(dw * 0.85); }
         let pg = apid;
@@ -3722,7 +3732,7 @@ async function diaryAsk() {
         diaryDraw(sketch, spot[0], spot[1], dw, Math.round(dw * 0.6), lw, ink, fs, pg);
       };
       /* a hand writes first, then draws */
-      if (text && !diaryInstant()) { const wait = () => { if (DIARY.anim[id] != null) setTimeout(wait, 300); else setTimeout(go, 350); }; setTimeout(wait, 600); } else go();
+      if (text && !diaryInstant()) { const t0 = now(); const wait = () => { if (DIARY.anim[id] != null && findItem(id) && now() - t0 < 90000) setTimeout(wait, 300); else setTimeout(go, 350); }; setTimeout(wait, 600); } else go();
     }
   } catch (e) { dots.remove(); toast('สมุดยังตอบไม่ได้ ' + aiErr(e), 3500); }
   finally { DIARY.busy = false; if (DIARY.pending.length) DIARY.t = setTimeout(diaryAsk, 1500); }
@@ -3736,7 +3746,7 @@ function diaryParseDraw(t) {
     const m = line.match(/^(line|arrow|poly|shape|curve|circle|ellipse|arc|dash|dot|text)\s+(.*)$/i); if (!m) continue;
     const kind = m[1].toLowerCase(); let rest = m[2].trim(), col = null;
     const cm = rest.match(/\s+(red|blue|green|orange)\s*$/i); if (cm) { col = DQ_COL[cm[1].toLowerCase()]; rest = rest.slice(0, cm.index).trim(); }
-    if (kind === 'text') { const tm = rest.match(/^(-?[\d.]+)[\s,]+(-?[\d.]+)\s+(.+)$/); if (tm) out.push({ kind, n: [+tm[1], +tm[2]], label: tm[3].replace(/^["']|["']$/g, '').slice(0, 20), col }); continue; }
+    if (kind === 'text') { const tm = rest.match(/^(-?[\d.]+)[\s,]+(-?[\d.]+)\s+(.+)$/); if (tm) { const label = tm[3].replace(/^["']|["']$/g, '').replace(/[*_#`$<>@]/g, '').trim().slice(0, 20); if (label) out.push({ kind, n: [clamp(+tm[1], 0, 100), clamp(+tm[2], 0, 60)], label, col }); } continue; }
     const n = (rest.match(/-?\d+(\.\d+)?/g) || []).map(Number).filter(isFinite);
     const need = { line: 4, arrow: 4, dash: 4, circle: 3, ellipse: 4, arc: 5, dot: 2, poly: 4, shape: 6, curve: 4 }[kind];
     if (n.length < need) continue;
@@ -3757,15 +3767,23 @@ function diaryShapePts(sh) {
     case 'poly': P.push(pairs()); break;
     case 'shape': { const q = pairs(); q.push(q[0]); P.push(q); break; }
     case 'curve': { const q = pairs(), o = []; for (let i = 0; i < q.length - 1; i++) { const p0 = q[Math.max(0, i - 1)], p1 = q[i], p2 = q[i + 1], p3 = q[Math.min(q.length - 1, i + 2)]; for (let k = 0; k < 10; k++) { const t = k / 10, t2 = t * t, t3 = t2 * t; o.push([0.5 * (2 * p1[0] + (-p0[0] + p2[0]) * t + (2 * p0[0] - 5 * p1[0] + 4 * p2[0] - p3[0]) * t2 + (-p0[0] + 3 * p1[0] - 3 * p2[0] + p3[0]) * t3), 0.5 * (2 * p1[1] + (-p0[1] + p2[1]) * t + (2 * p0[1] - 5 * p1[1] + 4 * p2[1] - p3[1]) * t2 + (-p0[1] + 3 * p1[1] - 3 * p2[1] + p3[1]) * t3)]); } } o.push(q[q.length - 1]); P.push(o); break; }
-    case 'circle': P.push(ring(n[0], n[1], n[2], n[2], -100, 262)); break;
-    case 'ellipse': P.push(ring(n[0], n[1], n[2], n[3], -100, 262)); break;
-    case 'arc': P.push(ring(n[0], n[1], n[2], n[2], n[3], n[4])); break;
+    case 'circle': P.push(ring(n[0], n[1], Math.abs(n[2]) || 1, Math.abs(n[2]) || 1, -100, 262)); break;
+    case 'ellipse': P.push(ring(n[0], n[1], Math.abs(n[2]) || 1, Math.abs(n[3]) || 1, -100, 262)); break;
+    case 'arc': P.push(ring(n[0], n[1], Math.abs(n[2]) || 1, Math.abs(n[2]) || 1, n[3], clamp(n[4], n[3] - 360, n[3] + 360))); break;
     case 'dot': P.push(ring(n[0], n[1], 0.7, 0.7, 0, 360)); break;
   }
   return P;
 }
+function diaryFlushLater() {
+  const list = DIARY.later[S.pid]; if (!list || !list.length || !S.ownLoaded) return;
+  delete DIARY.later[S.pid];
+  for (const d of list) {
+    if (d.strokes.length) { const before = { [DEV]: clone(S.mine) }; const have = new Set(S.mine.map((x) => x.id)); for (const st of d.strokes) if (!have.has(st.id)) S.mine.push(st); pushUndo({ t: 'layers', before, after: { [DEV]: clone(S.mine) } }); saveMine(); drawInk(); }
+    for (const it of d.items || []) addItem(it);
+    for (const lb of d.labels) addItem({ type: 'text', x: Math.round(lb.x), y: Math.round(lb.y), w: Math.round(lb.w), md: lb.md, fs: lb.fs, hand: DIARY_HAND(), ink: lb.ink, diary: true, dv: 2 });
+  }
+}
 function diaryDraw(sketch, x0, y0, dw, dh, lw, ink, fs, pid) {
-  if (S.pid !== pid) return;
   /* never past the edge of the paper */
   if (dw > W - 40) { dh = Math.round(dh * (W - 40) / dw); dw = W - 40; }
   if (dh > H - 40) { dw = Math.round(dw * (H - 40) / dh); dh = H - 40; }
@@ -3785,26 +3803,34 @@ function diaryDraw(sketch, x0, y0, dw, dh, lw, ink, fs, pid) {
         for (let j = 1; j < k; j++) dense.push([a[0] + (b[0] - a[0]) * j / k, a[1] + (b[1] - a[1]) * j / k]);
       }
       const ph = rnd() * 6, amp = Math.min(1.2, lw * 0.35), p = [];
-      dense.forEach((q, i) => {
+      dense.forEach((q0, i) => {
+        const q = [clamp(q0[0], 0, 100), clamp(q0[1], 0, 60)];
         const t = dense.length > 1 ? i / (dense.length - 1) : 0, wob = Math.sin(ph + t * 5.5) * amp;
         p.push(Math.round((x0 + q[0] * sx + wob) * 10), Math.round((y0 + q[1] * sy + wob * 0.6) * 10), Math.round(40 + 25 * Math.sin(Math.PI * t)));
       });
       strokes.push({ id: 's' + uid(), k: 'p', c: sh.col || ink, w: lw, p, g });
     }
   }
+  const box = [x0, y0, x0 + dw, y0 + dh]; (DIARY.hold[pid] = DIARY.hold[pid] || []).push(box);
+  const unhold = () => { const a = DIARY.hold[pid] || []; const k = a.indexOf(box); if (k >= 0) a.splice(k, 1); };
+  let done = false;
   const commit = () => {
-    if (S.pid !== pid) return;
+    if (done) return; done = true; unhold();
+    /* the page was left before the drawing finished: it is kept and put on that page when it is opened again */
+    if (S.pid !== pid) { (DIARY.later[pid] = DIARY.later[pid] || []).push({ strokes, labels: labels.map((lb) => ({ x: clamp(x0 + lb.n[0] * sx, 10, W - 120), y: clamp(y0 + lb.n[1] * sy - fs * 0.45, 10, H - fs * 1.4), w: clamp(lb.label.length * fs * 0.62 + 20, 40, 260), md: lb.label, fs: Math.round(clamp(fs * 0.8, 14, 60)), ink: lb.col || ink })) }); return; }
     if (strokes.length) { const before = { [DEV]: clone(S.mine) }; for (const st of strokes) S.mine.push(st); pushUndo({ t: 'layers', before, after: { [DEV]: clone(S.mine) } }); saveMine(); drawInk(); }
     for (const lb of labels) addItem({ type: 'text', x: Math.round(clamp(x0 + lb.n[0] * sx, 10, W - 120)), y: Math.round(clamp(y0 + lb.n[1] * sy - fs * 0.45, 10, H - fs * 1.4)), w: Math.round(clamp(lb.label.length * fs * 0.62 + 20, 40, 260)), md: lb.label, fs: Math.round(clamp(fs * 0.8, 14, 60)), hand: DIARY_HAND(), ink: lb.col || ink, diary: true, dv: 2 });
   };
-  if (diaryInstant() || !strokes.length) { commit(); return; }
+  if (diaryInstant() || !strokes.length || S.pid !== pid) { commit(); return; }
   /* drawn as by a pen: each stroke traced in turn on a layer over the page, then it becomes ordinary ink you can erase or move */
   const NS = 'http://www.w3.org/2000/svg', svg = document.createElementNS(NS, 'svg');
   svg.setAttribute('class', 'dqdraw no-ink'); svg.style.cssText = 'position:absolute;left:0;top:0;width:' + W + 'px;height:' + H + 'px;overflow:visible;pointer-events:none';
   itemsEl.appendChild(svg);
   let i = 0;
   const next = () => {
-    if (!svg.isConnected || S.pid !== pid) { svg.remove(); return; }
+    if (S.pid !== pid) { svg.remove(); commit(); return; }
+    /* the page may be drawn again under us (a save coming back from the cloud): put the drawing layer back and carry on */
+    if (!svg.isConnected) itemsEl.appendChild(svg);
     if (i >= strokes.length) { setTimeout(() => { commit(); svg.remove(); }, 120); return; }
     const st = strokes[i++], d = [];
     for (let k = 0; k < st.p.length; k += 3) d.push((k ? 'L' : 'M') + (st.p[k] / 10).toFixed(1) + ' ' + (st.p[k + 1] / 10).toFixed(1));
@@ -5090,6 +5116,7 @@ function openPage(pid) {
     }
     S.ownLoaded = true;
     S.others = others;
+    if (DIARY.later[S.pid]) setTimeout(diaryFlushLater, 500);
     if (S.sel) {
       S.sel.strokes = S.sel.strokes.filter((r) => findStroke(r));
       if (!S.sel.strokes.length && !S.sel.items.length) clearSel();
@@ -18164,6 +18191,8 @@ function estTextH(md, w, fs) {
 }
 function occupiedBoxes() {
   const out = [];
+  /* a drawing the notebook is still making already owns its place */
+  for (const b of (typeof DIARY !== 'undefined' && DIARY.hold[S.pid]) || []) out.push(b);
   for (const it of (S.page && S.page.items) || []) if (!it.lock && !(it.spec && it.spec.bare)) out.push(it.type === 'life' && it.B ? it.B : itemBox(it));
   for (const r of allStrokes()) { const b = sbox(r.s); out.push([b[0], b[1], b[2], b[3]]); }
   return out;
@@ -20198,7 +20227,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793431983';
+const BUILD = '1793432171';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
