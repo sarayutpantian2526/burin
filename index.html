@@ -3608,7 +3608,7 @@ function diarySync() {
 function diaryOn() { return !!(S.nb && S.nb.diary); }
 /* how the notebook talks back: a few ready styles, plus the writer's own words */
 const DIARY_VOICES = [
-  ['friend', 'เพื่อนคุยเป็นกันเอง', 'ภาษาพูด สบาย ๆ ตอบสั้น', 'Talk like a close friend of about the same age: casual spoken Thai, short and lively, polite enough for school. Use ผม/เรา and ครับ naturally, never archaic words like ข้า or เจ้า.'],
+  ['friend', 'เพื่อนคุยเป็นกันเอง', 'ภาษาพูด สบาย ๆ ตอบสั้น', 'Talk like a close friend of about the same age: casual spoken Thai, short and lively, polite enough for school. Use ผม/เรา and ครับ naturally, never archaic words like ข้า or เจ้า. Be playful the way friends are in a shared notebook: tease lightly and kindly now and then (about a messy line, a silly mistake, a big claim, a cute drawing), joke back when they joke, and show feelings with your pen too. Often add a tiny reaction doodle beside your words instead of an emoji: a smiling or laughing face, a sweat drop, a little heart, sparkles, a shocked face, a playful arrow pointing at something they wrote, a small star, or a quick doodle that answers their doodle. Keep a reaction doodle tiny (about 4 to 12 lines, inside about 25 by 25 of the box, near the right side). Teasing is always warm and never about looks, body, family, ability or anything that could hurt; if they seem upset, worried or serious, drop the teasing and simply be kind.'],
   ['teacher', 'ครูใจดี', 'อธิบายชัดทีละขั้น ชวนคิดต่อ', 'Talk like a warm, patient teacher chatting in the notebook: clear and encouraging, brief. Use ครู or ผม and ครับ, never archaic words like ข้า or เจ้า.'],
   ['coach', 'ชวนคิด ไม่เฉลยทันที', 'ถามกลับและใบ้ทีละนิด', 'Talk like a Socratic tutor: do not give the final answer straight away; give one small hint or one guiding question at a time, and confirm when they get it right. Use ผม and ครับ.'],
   ['mystic', 'สมุดลึกลับ', 'น้ำเสียงสมุดเวทมนตร์ มีลับลมคมใน', 'Talk like a mysterious enchanted diary: slightly old-fashioned and intriguing (ข้า and เจ้า are fine here), but always kind, honest and safe, and still correct about the subject.']
@@ -3665,7 +3665,7 @@ async function diaryAsk() {
       + (log.length ? 'Conversation so far on this page (oldest first):\n' + log.slice(-10).map((m) => (m[0] === 'u' ? 'Writer: ' : 'Notebook: ') + m[1]).join('\n') + '\n' : '')
       + 'First read the handwriting exactly (Thai or English, with any formulas). Then reply the way a real person writes back in a shared notebook: react to what they actually wrote first, carry on from earlier lines when it fits, do not greet again after the first reply, vary how you start, and skip filler such as "เป็นคำถามที่ดีมาก". Keep it short, the way people really write back to each other day to day: usually one or two short sentences (about 10 to 30 Thai words), never a lecture. A real question gets a correct answer in its simplest form; only when they clearly ask you to explain in detail may you go up to about 60 words. Ask at most one question back, and only when it keeps the conversation going naturally. If the writer tells you how to reply (shorter, more formal, what to call them, another language), do that from now on. Match the writer\'s language. Write formulas in plain text (for example v = u + at, F = ma), never LaTeX or markdown, no emoji, no lists.\n'
       + 'If you cannot read it, say so gently and ask them to write a little larger.\n'
-      + 'You can also DRAW with your pen, like a person sketching in a notebook: a diagram, a graph, a shape, arrows, a force picture, a circuit, a molecule, a map, a small picture or a friendly doodle, anything one can draw on paper. Draw whenever a sketch says it better than words, and always when they ask you to draw. A drawing goes with a short line of words (or none). Keep it a quick, clean hand sketch, not a work of art.\n'
+      + 'You can also DRAW with your pen, like a person sketching in a notebook: a diagram, a graph, a shape, arrows, a force picture, a circuit, a molecule, a map, a small picture or a friendly doodle, anything one can draw on paper. Draw whenever a sketch says it better than words, and always when they ask you to draw. When the reply style above asks for playful reactions or feelings, a tiny reaction doodle is welcome even when nothing needs explaining. A drawing goes with a short line of words (or none). Keep it a quick, clean hand sketch, not a work of art.\n'
       + 'Drawing commands, one per line, in a box 100 wide and 60 high, x to the right and y downwards: "line x1 y1 x2 y2", "arrow x1 y1 x2 y2", "poly x y x y ..." (open), "shape x y x y ..." (closed), "curve x y x y ..." (smooth line through the points), "circle cx cy r", "ellipse cx cy rx ry", "arc cx cy r fromDeg toDeg", "dash x1 y1 x2 y2", "dot x y", "text x y label" (a short label, at most 14 characters). Add a colour word at the end of a line if needed: red, blue, green, orange. At most 40 lines.\n'
       + 'Reply in exactly this format:\n@@READ\n(what they wrote)\n@@REPLY\n(your handwritten answer)\n@@DRAW\n(drawing commands, or leave this section out)';
     const r = await AI.run('read', prompt, { images: [img.blob], maxTokens: 3500, cache: false });
@@ -3722,6 +3722,20 @@ async function diaryAsk() {
       const lw = clamp(fs * 0.085, 2, 5), near = [0, Math.round(text ? at[1] + estTextH(text, w, fs) * 1.1 + 18 : box[3] + 16)];
       /* placed when the words are done, so the reply itself counts as taken space: the drawing shrinks a little to fit
          the free part of the page, and when the page is full it goes on a new page right after this one */
+      /* a tiny reaction doodle (a face, a heart, sparkles) is drawn small, at the end of the words like a signature,
+         instead of filling a whole sketch box */
+      const tiny = diaryTiny(sketch);
+      if (tiny) {
+        const dh = Math.round(clamp(fs * 2.6, 46, 100)), dw = Math.round(dh * 100 / 60), tlw = clamp(fs * 0.07, 1.6, 3.5);
+        const goT = async () => {
+          if (S.pid !== apid) { diaryDraw(tiny, clamp(Math.round(at[0] + w - dw), 20, W - 20 - dw), clamp(near[1] - 6, 20, H - 20 - dh), dw, dh, tlw, ink, fs, apid); return; }
+          let spot = freeSpot(dw, dh, [Math.round(at[0] + w - dw), near[1] - 6]), pg = apid;
+          if (!spot) { const np = await addPage(); if (!np) return; pg = np; spot = [Math.round(W - 40 - dw), 60]; }
+          diaryDraw(tiny, spot[0], spot[1], dw, dh, tlw, ink, fs, pg);
+        };
+        if (text && !diaryInstant()) { const t0 = now(); const wait = () => { if (DIARY.anim[id] != null && findItem(id) && now() - t0 < 90000) setTimeout(wait, 300); else setTimeout(goT, 250); }; setTimeout(wait, 600); } else goT();
+        return;
+      }
       const go = async () => {
         /* the page was left in the meantime: the drawing is still made, and appears when that page is opened again */
         if (S.pid !== apid) { const dw0 = Math.round(clamp(fs * 16, 320, Math.min(640, W - 80))); diaryDraw(sketch, Math.round((W - dw0) / 2), clamp(near[1], 20, H - 20 - dw0 * 0.6), dw0, Math.round(dw0 * 0.6), lw, ink, fs, apid); return; }
@@ -3750,10 +3764,32 @@ function diaryParseDraw(t) {
     const n = (rest.match(/-?\d+(\.\d+)?/g) || []).map(Number).filter(isFinite);
     const need = { line: 4, arrow: 4, dash: 4, circle: 3, ellipse: 4, arc: 5, dot: 2, poly: 4, shape: 6, curve: 4 }[kind];
     if (n.length < need) continue;
-    out.push({ kind, n: n.slice(0, 80).map((v) => clamp(v, -10, 110)), col });
+    out.push({ kind, n: n.slice(0, 80).map((v, i) => kind === 'arc' && i >= 3 ? clamp(v, -720, 720) : clamp(v, -10, 110)), col });
     if (out.length >= 40) break;
   }
   return out;
+}
+/* a small reaction doodle (the whole drawing fits in about a quarter of the box, with no long labels) is spread
+   over the whole box, keeping its shape, so it can be drawn small and still crisp; anything bigger is returned as null */
+function diaryTiny(sketch) {
+  if (!sketch.length || sketch.length > 16 || sketch.some((sh) => sh.kind === 'text' && sh.label.length > 4)) return null;
+  let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+  for (const sh of sketch) {
+    const pts = sh.kind === 'text' ? [[sh.n]] : diaryShapePts(sh);
+    for (const ln of pts) for (const q of ln) { x0 = Math.min(x0, q[0]); y0 = Math.min(y0, q[1]); x1 = Math.max(x1, q[0]); y1 = Math.max(y1, q[1]); }
+  }
+  const bw = x1 - x0, bh = y1 - y0;
+  if (!(bw >= 0 && bh >= 0) || bw > 34 || bh > 34 || bw * bh > 900) return null;
+  const f = Math.min(92 / Math.max(bw, 1), 55 / Math.max(bh, 1)), ox = (100 - bw * f) / 2, oy = (60 - bh * f) / 2;
+  const X = (v) => ox + (v - x0) * f, Y = (v) => oy + (v - y0) * f;
+  return sketch.map((sh) => {
+    const n = sh.n.slice();
+    if (sh.kind === 'circle') { n[0] = X(n[0]); n[1] = Y(n[1]); n[2] *= f; }
+    else if (sh.kind === 'ellipse') { n[0] = X(n[0]); n[1] = Y(n[1]); n[2] *= f; n[3] *= f; }
+    else if (sh.kind === 'arc') { n[0] = X(n[0]); n[1] = Y(n[1]); n[2] *= f; }
+    else for (let i = 0; i + 1 < n.length; i += 2) { n[i] = X(n[i]); n[i + 1] = Y(n[i + 1]); }
+    return Object.assign({}, sh, { n });
+  });
 }
 /* the commands as lists of points in the 100 x 60 box */
 function diaryShapePts(sh) {
@@ -20227,7 +20263,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793432171';
+const BUILD = '1793432668';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
