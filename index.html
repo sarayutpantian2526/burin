@@ -865,21 +865,16 @@ body.nodesk #tTitle::after { content: ''; }
 .item .dsvg text { stroke-linecap: round; stroke-linejoin: round; }
 .item .dbase { display: inline-block; width: 0; height: 0; vertical-align: baseline; }
 @keyframes dink { 0% { opacity: 0; filter: blur(2px); } 60% { opacity: 0.9; filter: blur(0.4px); } 100% { opacity: 1; filter: none; } }
-.diarydots { position: absolute; pointer-events: none; width: calc(84px * var(--hk, 1)); height: calc(26px * var(--hk, 1)); transform-origin: 0 0; }
+.diarydots { position: absolute; pointer-events: none; width: calc(30px * var(--hk, 1)); height: calc(26px * var(--hk, 1)); }
 .diarydots svg { width: 100%; height: 100%; overflow: visible; display: block; }
-.diarydots .dq { fill: none; stroke: url(#dqInk); stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 120 140; stroke-dashoffset: 120; animation: dqWrite 3.4s cubic-bezier(.55,.1,.35,1) infinite; filter: drop-shadow(0 0 1.6px rgba(91, 76, 196, 0.45)); }
-.diarydots .dqb { fill: none; stroke: #2B3A67; stroke-width: 7; stroke-linecap: round; opacity: 0; stroke-dasharray: 120 140; stroke-dashoffset: 120; animation: dqBleed 3.4s cubic-bezier(.55,.1,.35,1) infinite; filter: blur(3px); }
-.diarydots .dqt { fill: #5B4CC4; offset-path: path('M3 19 C 8 19, 12 16, 15 11 C 18 6, 16 3, 14 5 C 12 7, 13 17, 20 18 C 24 19, 26 15, 28 11 C 31 6, 29 3, 27 5 C 25 7, 26 17, 33 18 C 37 19, 39 15, 41 11 C 44 6, 42 3, 40 5 C 38 7, 39 17, 46 18 C 50 19, 52 15, 54 11 C 57 6, 55 3, 53 5 C 51 7, 52 17, 59 18 C 63 19, 65 15, 67 11 C 70 6, 68 3, 66 5 C 64 7, 65 17, 72 18 C 76 19, 78 15, 80 11'); offset-rotate: 0deg; animation: dqTip 3.4s cubic-bezier(.55,.1,.35,1) infinite; }
-/* thinking first: three drops of ink rise like a thought, one after another, then fall together into the pen point */
-.diarydots .dqk { fill: #4A3FA8; transform-box: fill-box; transform-origin: center; opacity: 0; filter: drop-shadow(0 0 1.4px rgba(91, 76, 196, 0.5)); }
-.diarydots .k1 { animation: dqK1 3.4s ease-in-out infinite; } .diarydots .k2 { animation: dqK2 3.4s ease-in-out infinite; } .diarydots .k3 { animation: dqK3 3.4s ease-in-out infinite; }
-@keyframes dqK1 { 0% { opacity: 0; transform: scale(0.2); } 6% { opacity: 0.9; transform: scale(1); } 14% { transform: scale(0.8); } 22% { transform: scale(1); } 30% { opacity: 0.9; transform: translate(0, 0) scale(1); } 37% { opacity: 0; transform: translate(-3px, 7px) scale(0.3); } 100% { opacity: 0; } }
-@keyframes dqK2 { 0%, 6% { opacity: 0; transform: scale(0.2); } 12% { opacity: 0.85; transform: scale(1); } 20% { transform: scale(0.82); } 28% { transform: scale(1); } 31% { opacity: 0.85; transform: translate(0, 0) scale(1); } 37% { opacity: 0; transform: translate(-8px, 12px) scale(0.3); } 100% { opacity: 0; } }
-@keyframes dqK3 { 0%, 12% { opacity: 0; transform: scale(0.2); } 18% { opacity: 0.8; transform: scale(1); } 25% { transform: scale(0.85); } 30% { opacity: 0.8; transform: translate(0, 0) scale(1); } 37% { opacity: 0; transform: translate(-15px, 15px) scale(0.3); } 100% { opacity: 0; } }
-@keyframes dqWrite { 0%, 35% { stroke-dashoffset: 120; opacity: 0; } 36% { stroke-dashoffset: 120; opacity: 1; } 82% { stroke-dashoffset: 0; opacity: 1; } 94% { stroke-dashoffset: 0; opacity: 0; } 100% { stroke-dashoffset: 120; opacity: 0; } }
-@keyframes dqBleed { 0%, 36% { stroke-dashoffset: 120; opacity: 0; } 60% { opacity: 0.12; } 82% { stroke-dashoffset: 0; opacity: 0.16; } 94%, 100% { stroke-dashoffset: 0; opacity: 0; } }
-@keyframes dqTip { 0%, 34% { offset-distance: 0%; opacity: 0; } 38% { opacity: 1; } 82% { offset-distance: 100%; opacity: 1; } 90%, 100% { offset-distance: 100%; opacity: 0; } }
-@media (prefers-reduced-motion: reduce) { .diarydots .dq { animation: none; stroke-dashoffset: 0; opacity: 0.5; } .diarydots .dqb, .diarydots .dqt, .diarydots .dqk { display: none; } }
+/* the notebook thinking: one drop of ink breathing slowly in a warm light, and now and then a small smile under it */
+.diarydots .dg { fill: #F2C46B; opacity: 0; transform-box: fill-box; transform-origin: center; filter: blur(2.5px); animation: dqGlow 4.6s ease-in-out infinite; }
+.diarydots .dd { fill: #2B3A67; transform-box: fill-box; transform-origin: center; animation: dqDot 4.6s ease-in-out infinite; }
+.diarydots .ds { fill: none; stroke: #2B3A67; stroke-width: 2.2; stroke-linecap: round; stroke-dasharray: 100 120; stroke-dashoffset: 100; animation: dqSmile 4.6s ease-in-out infinite; }
+@keyframes dqDot { 0% { transform: scale(0.85); opacity: 0.55; } 22% { transform: scale(1.12); opacity: 1; } 44% { transform: scale(0.88); opacity: 0.75; } 66% { transform: scale(1.08); opacity: 1; } 100% { transform: scale(0.85); opacity: 0.55; } }
+@keyframes dqGlow { 0% { opacity: 0.1; transform: scale(1); } 22% { opacity: 0.55; transform: scale(1.7); } 44% { opacity: 0.18; transform: scale(1.2); } 66% { opacity: 0.5; transform: scale(1.6); } 100% { opacity: 0.1; transform: scale(1); } }
+@keyframes dqSmile { 0%, 52% { stroke-dashoffset: 100; opacity: 1; } 68% { stroke-dashoffset: 0; opacity: 1; } 86% { stroke-dashoffset: 0; opacity: 1; } 98%, 100% { stroke-dashoffset: 0; opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .diarydots .dd, .diarydots .dg, .diarydots .ds { animation: none; } .diarydots .ds { stroke-dashoffset: 0; } }
 #tDiary[aria-pressed="true"] { background: #2B3A67; color: #F6E7C1; }
 .diarybar { position: absolute; z-index: 6; left: 12px; bottom: 12px; min-height: 44px; box-sizing: border-box; display: flex; align-items: center; gap: 8px; max-width: calc(100% - 24px); padding: 5px 6px 5px 12px; border-radius: 999px; background: #2B3A67; color: #F6E7C1; box-shadow: 0 6px 18px rgba(20,26,34,0.22); font-size: 13px; white-space: nowrap; }
 .diarybar svg { flex: 0 0 18px; width: 18px; height: 18px; }
@@ -3659,7 +3654,7 @@ async function diaryAsk() {
   if (refs.length < 2) { const st = findStroke(refs[0]), b = st && sbox(st); if (!b || (b[2] - b[0] < 24 && b[3] - b[1] < 24)) return; }
   const img = await inkBlob(refs, 20); if (!img) return;
   DIARY.busy = true; const pid = S.pid, box = img.box;
-  const dots = document.createElement('div'); dots.className = 'diarydots no-ink'; dots.innerHTML = '<svg viewBox="0 0 84 26" aria-hidden="true"><defs><linearGradient id="dqInk" x1="0" x2="1"><stop offset="0" stop-color="#2B3A67"/><stop offset="0.55" stop-color="#4A3FA8"/><stop offset="1" stop-color="#7A5BD6"/></linearGradient></defs><path class="dqb" pathLength="120" d="M3 19 C 8 19, 12 16, 15 11 C 18 6, 16 3, 14 5 C 12 7, 13 17, 20 18 C 24 19, 26 15, 28 11 C 31 6, 29 3, 27 5 C 25 7, 26 17, 33 18 C 37 19, 39 15, 41 11 C 44 6, 42 3, 40 5 C 38 7, 39 17, 46 18 C 50 19, 52 15, 54 11 C 57 6, 55 3, 53 5 C 51 7, 52 17, 59 18 C 63 19, 65 15, 67 11 C 70 6, 68 3, 66 5 C 64 7, 65 17, 72 18 C 76 19, 78 15, 80 11"/><path class="dq" pathLength="120" d="M3 19 C 8 19, 12 16, 15 11 C 18 6, 16 3, 14 5 C 12 7, 13 17, 20 18 C 24 19, 26 15, 28 11 C 31 6, 29 3, 27 5 C 25 7, 26 17, 33 18 C 37 19, 39 15, 41 11 C 44 6, 42 3, 40 5 C 38 7, 39 17, 46 18 C 50 19, 52 15, 54 11 C 57 6, 55 3, 53 5 C 51 7, 52 17, 59 18 C 63 19, 65 15, 67 11 C 70 6, 68 3, 66 5 C 64 7, 65 17, 72 18 C 76 19, 78 15, 80 11"/><circle class="dqt" r="2.2"/><circle class="dqk k1" cx="6" cy="12" r="1.7"/><circle class="dqk k2" cx="11" cy="7" r="2.3"/><circle class="dqk k3" cx="18" cy="4" r="3"/></svg>'; dots.setAttribute('role', 'status'); dots.setAttribute('aria-label', 'สมุดกำลังเขียนตอบ'); dots.style.left = box[0] + 'px'; dots.style.top = (box[3] + 14) + 'px'; itemsEl.appendChild(dots);
+  const dots = document.createElement('div'); dots.className = 'diarydots no-ink'; dots.innerHTML = '<svg viewBox="0 0 30 26" aria-hidden="true"><circle class="dg" cx="15" cy="10" r="3.4"/><circle class="dd" cx="15" cy="10" r="2.6"/><path class="ds" pathLength="100" d="M10 15.5 Q 15 21, 20 15.5"/></svg>'; dots.setAttribute('role', 'status'); dots.setAttribute('aria-label', 'สมุดกำลังเขียนตอบ'); dots.style.left = box[0] + 'px'; dots.style.top = (box[3] + 14) + 'px'; itemsEl.appendChild(dots);
   try {
     const log = DIARY.log[pid] || (DIARY.log[pid] = (S.page && S.page.diaryLog) || []);
     const subj = subjName(curSubj()[0], S.nb) || 'ทั่วไป';
@@ -20074,7 +20069,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793428929';
+const BUILD = '1793429451';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
