@@ -458,7 +458,10 @@ body.present .top, body.present #pages, body.present #ai, body.present .dock, bo
 body.present #toast { display: none !important; }
 body.present #app { padding: 0; }
 body.present #viewport { border-radius: 0; cursor: default; }
-.pexit { position: absolute; right: 16px; top: 16px; z-index: 9; min-height: 48px; padding: 0 18px; border-radius: 14px; border: 0; background: var(--chrome); color: var(--chrome-fg); font-size: 15px; font-weight: 600; cursor: pointer; box-shadow: var(--shadow); }
+.pexit { position: absolute; right: 16px; top: max(16px, env(safe-area-inset-top, 0px)); z-index: 9; opacity: 0.35; transition: opacity 0.2s; min-height: 48px; padding: 0 18px; border-radius: 14px; border: 0; background: var(--chrome); color: var(--chrome-fg); font-size: 15px; font-weight: 600; cursor: pointer; box-shadow: var(--shadow); }
+.pexit.lit { opacity: 1; }
+.pwait .row2 { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 10px; }
+.pwait b { color: var(--fg); }
 .pwait { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 8; padding: 14px 18px; border-radius: 14px; background: var(--surface); color: var(--muted); font-size: 15px; box-shadow: var(--shadow); text-align: center; line-height: 1.6; }
 body.focus #app { padding-block: 0; padding-left: 0; padding-right: 0; }
 body.focus #viewport { border-radius: 0; }
@@ -1691,7 +1694,7 @@ body.role-student .scnpill .sbtns button[data-s="back"], body.role-student .scnp
 
       <button class="updbar no-ink" id="updBar" hidden>มีเวอร์ชันใหม่ แตะเพื่ออัปเดต</button>
       <button class="pexit no-ink" id="presentExit" hidden>ออกจากจอผู้ชม</button>
-      <div class="pwait no-ink" id="presentWait" hidden>จอผู้ชมพร้อมแล้ว<br>เปิดสมุดบนเครื่องที่ใช้เขียน แล้วหน้านั้นจะขึ้นที่นี่</div>
+      <div class="pwait no-ink" id="presentWait" hidden><b>หน้าต่างนี้เป็นจอผู้ชมแล้ว</b><br>เปิดสมุดแล้วเขียนบนอีกเครื่องที่ใช้บัญชีเดียวกัน หน้านั้นจะขึ้นที่นี่<br><small>ถ้าใช้เครื่องนี้เครื่องเดียวต่อจอใหญ่ ให้ใช้แบบเต็มจอแทน จะเขียนต่อได้</small><span class="row2"><button type="button" class="btn" id="pwFocus">ใช้แบบเต็มจอ เขียนต่อได้</button><button type="button" class="btn solid" id="pwExit">ออกจากจอผู้ชม</button></span></div>
       <button class="exitfull no-ink" id="bExitFull" hidden aria-label="ออกจากเต็มหน้าจอ"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7.5 3v4.5H3 M17 7.5h-4.5V3 M12.5 17v-4.5H17 M3 12.5h4.5V17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
       <div class="exmini no-ink" id="exMini" role="group" aria-label="ชุดโจทย์ที่ย่อไว้" hidden><button id="emPrev" aria-label="ข้อก่อนหน้า">ก่อนหน้า</button><button id="emOpen" class="main"></button><button id="emNext" aria-label="ข้อต่อไป">ต่อไป</button><button id="emPlace">วางข้อนี้ลงหน้า</button></div>
       <div class="pagenav no-ink mini" role="group" aria-label="เปลี่ยนหน้า">
@@ -19894,7 +19897,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793426378';
+const BUILD = '1793426705';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
@@ -20444,9 +20447,13 @@ function presentFit() {
   followView();
 }
 function enterPresent() {
+  if (S.present) return;
+  if (document.body.classList.contains('focus')) setFocus(false);
   S.present = true; document.body.classList.add('present');
-  closeSheets(); setConvMode(false);
-  $('#presentWait').hidden = !!S.live;
+  closeSheets(); setConvMode(false); $('#tabMenu').hidden = true;
+  /* the way out is always on screen (faint until the screen is touched) */
+  const ex = $('#presentExit'); ex.hidden = false; ex.classList.add('lit'); clearTimeout(PV.exitT); PV.exitT = setTimeout(() => ex.classList.remove('lit'), 4000);
+  $('#presentWait').hidden = !!(S.live && S.live.by !== TAB && S.live.nid);
   setTimeout(presentFit, 60);
   if (S.room) S.room.presence({ role: 'present' }).catch(() => {});
 }
@@ -20454,6 +20461,7 @@ function exitPresent() {
   S.present = false; document.body.classList.remove('present');
   $('#presentExit').hidden = true; $('#presentWait').hidden = true;
   store_ls.set('tp-present', '0');
+  try { if ((location.hash || '').replace('#', '') === 'present') history.replaceState(null, '', location.pathname + location.search); } catch (e) { /* fine */ }
   if (S.room) S.room.presence({ role: null }).catch(() => {});
   PV.ink = {}; PV.laser = null; clearLive(); drawPresentLive();
   setTimeout(fit, 60);
@@ -20490,18 +20498,25 @@ function setupRoom(room) {
   if (S.present) room.presence({ role: 'present' }).catch(() => {});
 }
 function presentTap() {
-  const t = now(); PV.taps = PV.taps.filter((x) => t - x < 900); PV.taps.push(t);
-  if (PV.taps.length >= 3) { PV.taps = []; const b = $('#presentExit'); b.hidden = false; clearTimeout(PV.exitT); PV.exitT = setTimeout(() => { b.hidden = true; }, 5000); }
+  const b = $('#presentExit'); b.hidden = false; b.classList.add('lit'); clearTimeout(PV.exitT); PV.exitT = setTimeout(() => b.classList.remove('lit'), 4000);
 }
 $('#presentExit').onclick = exitPresent;
+$('#pwExit').onclick = exitPresent;
+$('#pwFocus').onclick = () => { exitPresent(); setTimeout(() => setFocus(true), 120); };
 $('#bPresent').onclick = () => { store_ls.set('tp-present', '1'); enterPresent(); };
 /* audience screen from the main bar: open it in a new window (drag that window to the TV or share it), or turn this window into it */
 $('#bViewer').onclick = (e) => {
   const ic1 = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="4" width="13" height="10" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.6"/><rect x="9" y="9" width="12.5" height="10" rx="1.5" fill="var(--surface-2)" stroke="currentColor" stroke-width="1.6"/></svg>';
   const ic2 = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="4" width="19" height="13" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M8 20.5h8 M12 17v3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
   popMenu(e.currentTarget, 'ฉายขึ้นจอผู้ชม', [
-    ['เปิดหน้าต่างใหม่', () => { const w = window.open(location.origin + location.pathname + '#present', 'burin-present', 'popup,width=1280,height=760'); if (!w) toast('เบราว์เซอร์กันหน้าต่างใหม่ไว้ ใช้ตัวเลือกล่างแทน', 3500); }, 'เหมาะกับต่อโปรเจกเตอร์หรือทีวีเป็นจอที่สอง ลากหน้าต่างใหม่ไปไว้บนจอนั้น หรือเลือกแชร์หน้าต่างนั้นในโปรแกรมประชุม เครื่องนี้ยังเขียนต่อได้ตามปกติ', ic1],
-    ['ใช้หน้าต่างนี้', () => { store_ls.set('tp-present', '1'); enterPresent(); }, 'เหมาะกับเครื่องที่ต่อจอใหญ่อยู่แล้ว หน้าต่างนี้จะเหลือแต่หน้ากระดาษ ออกได้โดยแตะจอสามครั้งติดกัน หรือกด Esc', ic2]
+    ['เต็มจอ เขียนต่อได้', () => { setFocus(true); }, 'เหมาะกับ iPad หรือโน้ตบุ๊กที่ต่อจอใหญ่ด้วยสายหรือสะท้อนจอ ซ่อนแถบต่าง ๆ ให้เหลือหน้ากระดาษ ยังเขียนได้ตามปกติ', ic2],
+    ['เปิดหน้าต่างใหม่เป็นจอผู้ชม', () => {
+      const standalone = (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone;
+      if (standalone && /iPad|iPhone|Macintosh/.test(navigator.userAgent) && 'ontouchend' in document) { toast('แอปที่ติดตั้งบน iPad เปิดหน้าต่างที่สองไม่ได้ ใช้แบบเต็มจอแทน หรือเปิดสมุดบนคอมพิวเตอร์ที่ต่อจอแล้วเลือกใช้หน้าต่างนั้นเป็นจอผู้ชม', 6000); return; }
+      const w = window.open(location.origin + location.pathname + '#present', 'burin-present', 'popup,width=1280,height=760');
+      if (!w) toast('เบราว์เซอร์กันหน้าต่างใหม่ไว้ อนุญาตป๊อปอัปสำหรับเว็บนี้ แล้วลองอีกครั้ง', 4000); else try { w.focus(); } catch (e) { /* fine */ }
+    }, 'เหมาะกับคอมพิวเตอร์ที่ต่อโปรเจกเตอร์เป็นจอที่สอง ลากหน้าต่างใหม่ไปไว้บนจอนั้น หรือแชร์หน้าต่างนั้นในโปรแกรมประชุม เครื่องนี้ยังเขียนต่อได้', ic1],
+    ['ให้หน้าต่างนี้เป็นจอผู้ชม', () => { store_ls.set('tp-present', '1'); enterPresent(); }, 'เหมาะกับเครื่องที่ต่อจอใหญ่ แล้วเขียนจากอีกเครื่องด้วยบัญชีเดียวกัน หน้าต่างนี้จะดูอย่างเดียว ปุ่มออกอยู่มุมขวาบนเสมอ', ic1]
   ]);
   const m = $('#tabMenu'), n = document.createElement('p'); n.className = 'mnote';
   n.textContent = 'จอผู้ชมเห็นกระดาษ ลายมือ และเลเซอร์ ตรงกับที่จอครูเห็น ทั้งตำแหน่งและการซูม ไม่เห็นแถบเครื่องมือ และไม่เห็นสิ่งที่ตั้งให้ครูเห็นคนเดียว';
