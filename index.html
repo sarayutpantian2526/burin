@@ -1181,6 +1181,12 @@ body.present .peekcard { display: none !important; }
 .qsteps { margin: 0; padding-left: 22px; display: flex; flex-direction: column; gap: 6px; font-size: 15px; line-height: 1.5; }
 .qsteps a { color: var(--accent); font-weight: 600; }
 .mrow input { flex: 1; min-width: 0; }
+.prepopts { display: flex; flex-direction: column; gap: 8px; }
+.prepopt { display: flex; gap: 10px; align-items: flex-start; flex-wrap: wrap; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; }
+.prepopt > span { flex: 1 1 260px; display: flex; flex-direction: column; gap: 2px; }
+.prepopt small { color: var(--muted); }
+.prepopt.off { opacity: 0.55; }
+.prepopt input { width: 20px; height: 20px; margin-top: 2px; }
 .insgrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
 .insb { min-height: 96px; border-radius: 16px; border: 1px solid var(--line); background: var(--surface); cursor: pointer; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 4px; padding: 12px 14px; text-align: left; }
 .insb b { font-size: 16px; }
@@ -1912,6 +1918,7 @@ body.role-student .scnpill .sbtns button[data-s="back"], body.role-student .scnp
   <div class="panel" role="dialog" aria-label="แทรก">
     <div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><h2>แทรกลงหน้านี้</h2><button class="btn" id="bInsClose">ปิด</button></div>
     <div class="insgrid">
+      <button class="insb wide" id="iPrep"><b>เตรียมคาบสอน</b><span>เลือกบทเดียว ได้หน้าเปิดคาบ บทเรียนสรุป แบบจำลอง โจทย์ท้ายคาบ และเฉลยสำหรับครู เรียงเป็นชุดพร้อมสอน</span></button>
       <button class="insb wide" id="iMedia"><b>สื่อประกอบ รูป GIF และวิดีโอ</b><span>จัดชุดให้อัตโนมัติจากสิ่งที่เขียน ค้นจากเว็บ หรือเลือกจากเครื่องนี้</span></button>
       <button class="insb wide" id="iPdf"><b>นำเข้า PDF</b><span>เอกสารประกอบการสอน ใบงาน หรือสไลด์ แต่ละหน้าของ PDF กลายเป็นหน้ากระดาษที่เขียนทับได้ ส่งออกพร้อมลายมือได้</span></button>
       <button class="insb" id="iImg"><b>รูปภาพ</b><span>จากคลังภาพ กล้อง หรือไฟล์ วางจากคลิปบอร์ดหรือลากมาวางก็ได้</span></button>
@@ -12391,6 +12398,128 @@ async function lessonRender() {
   typeset(body).catch(() => {});
 }
 $('#iLesson').onclick = () => { $('#insSheet').hidden = true; openLesson(); };
+/* ---------- prepare a whole lesson from one chapter: title and objectives, the checked chapter summary, matching models,
+   practice questions from the checked bank, and an answer key only the teacher sees ---------- */
+const PREP = { t: null, ch: 0, lesson: true, models: true, quiz: 10, key: true, plan: true };
+function prepTracks() { const st = subjTracks(); return byLevel(Object.keys(BANK_META).filter((t) => st.includes(t) && ((BANK_META[t].lessons || []).length || BANK_META[t].n)), S.nb); }
+function prepGrams(s) { s = String(s || '').replace(/การ|ของ|และ|ใน|กับ|แบบ|อย่าง|ง่าย/g, ' ').replace(/[\s()0-9.,:;\-]/g, ''); const g = new Set(); for (let i = 0; i + 3 <= s.length; i++) g.add(s.slice(i, i + 3)); return g; }
+/* models whose names share the most wording with the chapter */
+const PREP_DOMS = { phys: ['phys', '3d', 'person'], chem: ['chem'], bio: ['bio', 'health'], earth: ['earth', '3d'], sci: ['phys', 'chem', 'bio', 'earth'], math: ['math', '3d'], stat: ['stat'], sport: ['person', 'health'], ph: ['health', 'stat'], med: ['health', 'bio'], nurse: ['health', 'bio'], pharm: ['health', 'chem'] };
+function prepModels(text, max) {
+  const T = prepGrams(text), out = [], sj = curSubj()[0], doms = PREP_DOMS[sj] || Object.keys(SCENE_TPL);
+  const score = (name, hint) => { const G = prepGrams(name), Hh = prepGrams(hint); let a = 0, b = 0; for (const g of G) if (T.has(g)) a++; for (const g of Hh) if (T.has(g)) b++; return { a, sc: a / Math.max(4, G.size) * 3 + b / Math.max(8, Hh.size) }; };
+  for (const d of doms) for (const [name, hint, spec] of SCENE_TPL[d] || []) { const r = score(name, hint); if (r.a >= 2 && r.sc > 0.55) out.push({ sc: r.sc, name, hint, spec }); }
+  if (doms.includes('phys')) for (const [k, S0] of Object.entries(SIMS)) { const r = score(S0.title, S0.hint); if (r.a >= 2 && r.sc > 0.55) out.push({ sc: r.sc + 0.2, name: S0.title, hint: S0.hint, sim: k }); }
+  out.sort((a, b) => b.sc - a.sc);
+  const seen = new Set(); return out.filter((m) => (seen.has(m.name) ? false : seen.add(m.name))).slice(0, max);
+}
+function prepQuestions(t, ch, n) {
+  const pool = bankQs().filter((q) => q.t === t && q.ch === ch); if (!pool.length || !n) return [];
+  const by = (d) => pool.filter((q) => (q.d || 2) === d).sort(() => Math.random() - 0.5);
+  const want = [[1, Math.round(n * 0.3)], [2, Math.round(n * 0.5)], [3, n - Math.round(n * 0.3) - Math.round(n * 0.5)]];
+  let qs = []; for (const [d, k] of want) qs = qs.concat(by(d).slice(0, k));
+  if (qs.length < n) qs = qs.concat(pool.filter((q) => !qs.includes(q)).sort(() => Math.random() - 0.5).slice(0, n - qs.length));
+  return qs.sort((a, b) => (a.d || 2) - (b.d || 2)).map(shuffleChoices);
+}
+function openPrep() {
+  let sh = $('#prepSheet');
+  if (!sh) {
+    sh = document.createElement('div'); sh.className = 'sheet'; sh.id = 'prepSheet'; sh.hidden = true;
+    sh.innerHTML = '<div class="panel wide" role="dialog" aria-label="เตรียมคาบสอน"><div class="lsnhead"><h2>เตรียมคาบสอน</h2><button class="btn" type="button" data-a="close">ปิด</button></div>'
+      + '<div class="note">เลือกบท แล้วแอปจะจัดหน้าสอนให้ครบชุดต่อจากหน้าปัจจุบัน เนื้อหาและโจทย์มาจากคลังที่ตรวจแล้ว แก้ไข ย้าย หรือลบได้ทุกส่วน</div>'
+      + '<div class="row2 lsnpick"><label class="field"><span>วิชาและระดับ</span><select data-f="t"></select></label><label class="field"><span>บท</span><select data-f="ch"></select></label></div>'
+      + '<div class="prepopts"></div><div class="prepsum note small"></div><button class="btn solid" type="button" data-a="go">สร้างหน้าสอน</button></div>';
+    document.body.appendChild(sh);
+    sh.querySelector('[data-a="close"]').onclick = () => { sh.hidden = true; };
+    sh.addEventListener('click', (e) => { if (e.target === sh) sh.hidden = true; });
+    sh.querySelector('[data-f="t"]').onchange = (e) => { PREP.t = e.target.value; PREP.ch = 0; prepPaint(); };
+    sh.querySelector('[data-f="ch"]').onchange = (e) => { PREP.ch = +e.target.value; prepPaint(); };
+    sh.querySelector('[data-a="go"]').onclick = prepRun;
+  }
+  const ts = prepTracks();
+  if (!ts.length) { toast('วิชานี้ยังไม่มีบทเรียนหรือคลังโจทย์ในแอป ใช้ผู้ช่วย AI สร้างจากหน้าที่เขียนแทน', 3500); return; }
+  if (!ts.includes(PREP.t)) { const d = defaultTrack(S.nb); PREP.t = ts.includes(d) ? d : ts[0]; PREP.ch = 0; }
+  const st = sh.querySelector('[data-f="t"]'); st.innerHTML = '';
+  for (const t of ts) { const o = document.createElement('option'); o.value = t; o.textContent = BANK_META[t].th; st.appendChild(o); }
+  closeSheets(); sh.hidden = false; prepPaint();
+  bankEnsure([PREP.t]).then(() => { if (!sh.hidden) prepPaint(); });
+}
+function prepPaint() {
+  const sh = $('#prepSheet'), m = BANK_META[PREP.t]; if (!sh || !m) return;
+  sh.querySelector('[data-f="t"]').value = PREP.t;
+  const sc = sh.querySelector('[data-f="ch"]'); sc.innerHTML = '';
+  m.chapters.forEach((c, i) => { const o = document.createElement('option'); o.value = i; o.textContent = (i + 1) + '. ' + c.th; sc.appendChild(o); });
+  sc.value = PREP.ch;
+  const c = m.chapters[PREP.ch] || {}, hasL = (m.lessons || []).includes(PREP.ch), nq = BANKS[PREP.t] ? BANKS[PREP.t].filter((q) => q.ch === PREP.ch).length : (m.n ? 100 : 0);
+  const models = prepModels(c.th + ' ' + (c.subs || []).map((x) => x[0]).join(' '), 3);
+  const box = sh.querySelector('.prepopts'); box.innerHTML = '';
+  const opt = (key, label, ok, extra) => { const l = document.createElement('label'); l.className = 'prepopt' + (ok ? '' : ' off'); l.innerHTML = '<input type="checkbox"><span><b></b><small></small></span>'; const i = l.querySelector('input'); i.checked = ok && !!PREP[key]; i.disabled = !ok; i.onchange = () => { PREP[key] = i.checked ? (key === 'quiz' ? PREP.quizN || 10 : true) : (key === 'quiz' ? 0 : false); }; l.querySelector('b').textContent = label; l.querySelector('small').textContent = extra; box.appendChild(l); return l; };
+  opt('plan', 'หน้าเปิดคาบ', true, 'ชื่อบท จุดประสงค์การเรียนรู้ หัวข้อย่อย และลำดับการสอนสำหรับครู (ครูเห็นคนเดียว)');
+  opt('lesson', 'บทเรียนสรุป', hasL, hasL ? 'นิยาม สูตร ตัวอย่างพร้อมวิธีทำ ความเข้าใจผิดที่พบบ่อย สรุปท้ายบท' : 'บทนี้ยังไม่มีบทเรียนสรุป');
+  opt('models', 'แบบจำลองที่เกี่ยวข้อง', models.length > 0, models.length ? models.map((x) => x.name).join(', ') : 'ยังไม่พบแบบจำลองที่ตรงกับบทนี้');
+  const q = opt('quiz', 'โจทย์ฝึกท้ายคาบ', nq > 0, nq ? 'เรียงจากง่ายไปยาก จากคลังที่ตรวจเฉลยแล้ว' : 'บทนี้ยังไม่มีโจทย์ในคลัง');
+  if (nq) { const ch2 = exEl('span', 'chips'); for (const n of [5, 10, 20]) { const b = exEl('button', 'chip', n + ' ข้อ'); b.type = 'button'; b.setAttribute('aria-pressed', (PREP.quiz || 0) === n ? 'true' : 'false'); b.onclick = (e) => { e.preventDefault(); PREP.quiz = PREP.quizN = n; prepPaint(); }; ch2.appendChild(b); } q.appendChild(ch2); }
+  opt('key', 'เฉลยสำหรับครู', nq > 0, 'หน้าเฉลยพร้อมคำอธิบาย ซ่อนจากจอผู้ชมและนักเรียน');
+  PREP.foundModels = models;
+}
+async function prepRun() {
+  const t = PREP.t, ch = PREP.ch, m = BANK_META[t]; if (!m || !S.nb) return;
+  const sh = $('#prepSheet'), go = sh.querySelector('[data-a="go"]'); go.disabled = true; go.textContent = 'กำลังจัดหน้า';
+  try {
+    await bankEnsure([t]);
+    const c = m.chapters[ch] || {}, title = c.th || ('บทที่ ' + (ch + 1));
+    const L = PREP.lesson && (m.lessons || []).includes(ch) ? await lessonLoad(t) : null, secs = L && L[ch];
+    sh.hidden = true;
+    const w = Math.min(W - 100, 860), x = Math.round((W - w) / 2);
+    let first = null;
+    const fresh = async () => { const empty = !((S.page && S.page.items) || []).length && !allStrokes().length; if (!empty || first) { const pid = await addPage(); if (!pid) throw new Error('page'); } first = first || S.pid; };
+    if (PREP.plan) {
+      await fresh();
+      const obj = (c.objectives || []).map((o) => '- ' + o.th).join('\n'), subs = (c.subs || []).map((s2) => s2[0]).filter(Boolean);
+      const md = '## ' + title + '\n' + m.th + (subs.length ? '\n\n**หัวข้อในคาบนี้** ' + subs.join(' / ') : '') + (obj ? '\n\n## จุดประสงค์การเรียนรู้\n' + obj : '');
+      const h = estTextH(md, w, 22); addItem({ type: 'text', x, y: 50, w, md, fs: 22 });
+      const steps = ['นำเข้าสู่บทเรียน: ถามคำถามชวนคิดหรือให้ทำนายผลจากแบบจำลอง', 'สอนเนื้อหา: ใช้หน้าบทเรียนสรุป เขียนเพิ่มบนหน้าได้', 'สำรวจ: เปิดแบบจำลอง ให้นักเรียนทำนายก่อนกดเล่น แล้วอธิบายผล', 'ฝึก: ทำโจทย์ท้ายคาบ ส่งให้นักเรียนตอบบนเครื่องได้จากแผงโจทย์', 'สรุป: ทบทวนความเข้าใจผิดที่พบบ่อยจากบทเรียนสรุป'];
+      const pmd = '**ลำดับการสอน (ครูเห็นคนเดียว)**\n' + steps.map((s2, i) => (i + 1) + '. ' + s2).join('\n');
+      let py = 50 + h + 30; if (py + estTextH(pmd, w, 18) > H - 30) { await fresh(); py = 50; }
+      addItem({ type: 'text', x, y: py, w, md: pmd, fs: 18, teacher: true });
+    }
+    if (secs) {
+      await fresh(); let y = 50;
+      for (const [i, sc] of secs.entries()) {
+        const md = (i === 0 && !PREP.plan ? '**' + title + '**\n' : '') + lessonMd(sc), h = estTextH(md, w, 22);
+        if (y > 50 && y + h > H - 30) { await fresh(); y = 50; }
+        addItem({ type: 'text', x, y, w, md, fs: 22 }); y += h + 30;
+      }
+    }
+    if (PREP.models) for (const md0 of PREP.foundModels || []) {
+      await fresh();
+      addItem({ type: 'text', x, y: 40, w, md: '## แบบจำลอง: ' + md0.name + '\n' + md0.hint + '\nให้นักเรียนทำนายก่อนกดเล่น แล้วเปลี่ยนค่าทีละตัว', fs: 20 });
+      if (md0.sim) { addItem({ type: 'sim', kind: md0.sim, params: {}, x: Math.round((W - 560) / 2), y: 200, w: 560 }); }
+      else addItem({ type: 'scene', spec: scClean(JSON.parse(JSON.stringify(md0.spec))), x: Math.round((W - 520) / 2), y: 200, w: 520 });
+    }
+    let qs = [];
+    if (PREP.quiz) {
+      qs = prepQuestions(t, ch, PREP.quiz);
+      if (qs.length) {
+        await fresh();
+        const set = await exSaveSet(qs);
+        const qStart = S.pid;
+        const r = await placeQuestions(qs, [40, 40], { setId: set.id, header: '## แบบฝึกท้ายคาบ: ' + title });
+        if (PREP.key) {
+          const pgs = (S.nb && S.nb.pages) || [], last = pgs[pgs.indexOf(qStart) + ((r && r.pages) || 0)];
+          if (last && last !== S.pid) { openPage(last); await new Promise((res) => setTimeout(res, 150)); }
+          const Lk = 'กขคง', key = '## เฉลย (ครูเห็นคนเดียว)\n' + qs.map((q, i) => (i + 1) + '. **' + Lk[q.a || 0] + '** ' + String(q.e || '').slice(0, 220)).join('\n');
+          const pid = await addPage(); if (pid) addItem({ type: 'text', x, y: 40, w, md: key, fs: 18, teacher: true });
+        }
+      }
+    }
+    if (first) openPage(first);
+    toast('จัดหน้าสอนเรื่อง ' + title + ' แล้ว' + (qs.length ? ' พร้อมโจทย์ ' + qs.length + ' ข้อ' : ''), 3500);
+  } catch (e) { console.warn('prep', e); toast('จัดหน้าไม่ครบ ลองอีกครั้ง', 3000); }
+  go.disabled = false; go.textContent = 'สร้างหน้าสอน';
+}
+$('#iPrep').onclick = () => { $('#insSheet').hidden = true; openPrep(); };
+
 
 $('#cGo').onclick = runCalc;
 $('#cClear').onclick = () => { $('#cIn').value = ''; $('#cOut').innerHTML = ''; };
@@ -19897,7 +20026,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793426817';
+const BUILD = '1793426979';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
