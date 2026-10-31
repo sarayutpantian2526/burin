@@ -1694,7 +1694,7 @@ body.role-student .scnpill .sbtns button[data-s="back"], body.role-student .scnp
 
       <button class="updbar no-ink" id="updBar" hidden>มีเวอร์ชันใหม่ แตะเพื่ออัปเดต</button>
       <button class="pexit no-ink" id="presentExit" hidden>ออกจากจอผู้ชม</button>
-      <div class="pwait no-ink" id="presentWait" hidden><b>หน้าต่างนี้เป็นจอผู้ชมแล้ว</b><br>เปิดสมุดแล้วเขียนบนอีกเครื่องที่ใช้บัญชีเดียวกัน หน้านั้นจะขึ้นที่นี่<br><small>ถ้าใช้เครื่องนี้เครื่องเดียวต่อจอใหญ่ ให้ใช้แบบเต็มจอแทน จะเขียนต่อได้</small><span class="row2"><button type="button" class="btn" id="pwFocus">ใช้แบบเต็มจอ เขียนต่อได้</button><button type="button" class="btn solid" id="pwExit">ออกจากจอผู้ชม</button></span></div>
+      <div class="pwait no-ink" id="presentWait" hidden><b>หน้าต่างนี้เป็นจอผู้ชมแล้ว</b><br>เปิดสมุดแล้วเขียนบนอีกเครื่องที่ใช้บัญชีเดียวกัน หน้านั้นจะขึ้นที่นี่<br><small>ถ้าใช้เครื่องนี้เครื่องเดียวต่อจอใหญ่ ให้ใช้แบบเต็มจอแทน จะเขียนต่อได้</small><span class="row2"><button type="button" class="btn" id="pwFull">ขยายเต็มจอ</button><button type="button" class="btn" id="pwFocus">ใช้แบบเต็มจอ เขียนต่อได้</button><button type="button" class="btn solid" id="pwExit">ออกจากจอผู้ชม</button></span></div>
       <button class="exitfull no-ink" id="bExitFull" hidden aria-label="ออกจากเต็มหน้าจอ"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7.5 3v4.5H3 M17 7.5h-4.5V3 M12.5 17v-4.5H17 M3 12.5h4.5V17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
       <div class="exmini no-ink" id="exMini" role="group" aria-label="ชุดโจทย์ที่ย่อไว้" hidden><button id="emPrev" aria-label="ข้อก่อนหน้า">ก่อนหน้า</button><button id="emOpen" class="main"></button><button id="emNext" aria-label="ข้อต่อไป">ต่อไป</button><button id="emPlace">วางข้อนี้ลงหน้า</button></div>
       <div class="pagenav no-ink mini" role="group" aria-label="เปลี่ยนหน้า">
@@ -19897,7 +19897,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793426705';
+const BUILD = '1793426817';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
@@ -20502,8 +20502,26 @@ function presentTap() {
 }
 $('#presentExit').onclick = exitPresent;
 $('#pwExit').onclick = exitPresent;
+$('#pwFull').onclick = () => { const el = document.documentElement; try { (el.requestFullscreen || el.webkitRequestFullscreen).call(el); } catch (e) { toast('เบราว์เซอร์นี้ขยายเต็มจอเองไม่ได้ ใช้ปุ่มเต็มจอของเบราว์เซอร์แทน', 3000); } };
 $('#pwFocus').onclick = () => { exitPresent(); setTimeout(() => setFocus(true), 120); };
 $('#bPresent').onclick = () => { store_ls.set('tp-present', '1'); enterPresent(); };
+/* the audience window: on a computer with a second screen (projector, TV) and a browser that can see screens (Chrome, Edge),
+   it opens straight onto the other screen; it then asks once to go full screen there */
+async function openAudienceWindow() {
+  const url = location.origin + location.pathname + '#present';
+  let feat = 'popup,width=1280,height=760';
+  try {
+    if ('getScreenDetails' in window) {
+      const sd = await window.getScreenDetails();
+      const other = sd.screens.find((x) => x !== sd.currentScreen) || null;
+      if (other) feat = 'popup,left=' + other.availLeft + ',top=' + other.availTop + ',width=' + other.availWidth + ',height=' + other.availHeight;
+    }
+  } catch (e) { /* permission refused: open a normal window */ }
+  const w = window.open(url, 'burin-present', feat);
+  if (!w) { toast('เบราว์เซอร์กันหน้าต่างใหม่ไว้ อนุญาตป๊อปอัปสำหรับเว็บนี้ แล้วลองอีกครั้ง', 4000); return; }
+  try { w.focus(); } catch (e) { /* fine */ }
+  toast(feat.includes('left=') ? 'เปิดจอผู้ชมบนจอที่สองแล้ว แตะปุ่มเต็มจอบนจอนั้นครั้งเดียว' : 'ลากหน้าต่างใหม่ไปไว้บนจอโปรเจกเตอร์ แล้วแตะปุ่มเต็มจอ', 4000);
+}
 /* audience screen from the main bar: open it in a new window (drag that window to the TV or share it), or turn this window into it */
 $('#bViewer').onclick = (e) => {
   const ic1 = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="4" width="13" height="10" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.6"/><rect x="9" y="9" width="12.5" height="10" rx="1.5" fill="var(--surface-2)" stroke="currentColor" stroke-width="1.6"/></svg>';
@@ -20513,8 +20531,7 @@ $('#bViewer').onclick = (e) => {
     ['เปิดหน้าต่างใหม่เป็นจอผู้ชม', () => {
       const standalone = (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone;
       if (standalone && /iPad|iPhone|Macintosh/.test(navigator.userAgent) && 'ontouchend' in document) { toast('แอปที่ติดตั้งบน iPad เปิดหน้าต่างที่สองไม่ได้ ใช้แบบเต็มจอแทน หรือเปิดสมุดบนคอมพิวเตอร์ที่ต่อจอแล้วเลือกใช้หน้าต่างนั้นเป็นจอผู้ชม', 6000); return; }
-      const w = window.open(location.origin + location.pathname + '#present', 'burin-present', 'popup,width=1280,height=760');
-      if (!w) toast('เบราว์เซอร์กันหน้าต่างใหม่ไว้ อนุญาตป๊อปอัปสำหรับเว็บนี้ แล้วลองอีกครั้ง', 4000); else try { w.focus(); } catch (e) { /* fine */ }
+      openAudienceWindow();
     }, 'เหมาะกับคอมพิวเตอร์ที่ต่อโปรเจกเตอร์เป็นจอที่สอง ลากหน้าต่างใหม่ไปไว้บนจอนั้น หรือแชร์หน้าต่างนั้นในโปรแกรมประชุม เครื่องนี้ยังเขียนต่อได้', ic1],
     ['ให้หน้าต่างนี้เป็นจอผู้ชม', () => { store_ls.set('tp-present', '1'); enterPresent(); }, 'เหมาะกับเครื่องที่ต่อจอใหญ่ แล้วเขียนจากอีกเครื่องด้วยบัญชีเดียวกัน หน้าต่างนี้จะดูอย่างเดียว ปุ่มออกอยู่มุมขวาบนเสมอ', ic1]
   ]);
