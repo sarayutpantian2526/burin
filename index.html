@@ -865,7 +865,7 @@ body.nodesk #tTitle::after { content: ''; }
 .item .dsvg text { stroke-linecap: round; stroke-linejoin: round; }
 .item .dbase { display: inline-block; width: 0; height: 0; vertical-align: baseline; }
 @keyframes dink { 0% { opacity: 0; filter: blur(2px); } 60% { opacity: 0.9; filter: blur(0.4px); } 100% { opacity: 1; filter: none; } }
-.diarydots { position: absolute; pointer-events: none; width: calc(30px * var(--hk, 1)); height: calc(26px * var(--hk, 1)); }
+.diarydots { position: absolute; pointer-events: none; width: calc(37px * var(--hk, 1)); height: calc(32px * var(--hk, 1)); }
 .diarydots svg { width: 100%; height: 100%; overflow: visible; display: block; }
 /* the notebook thinking: one drop of ink breathing slowly in a warm light, and now and then a small smile under it */
 .diarydots .dg { fill: #F2C46B; opacity: 0; transform-box: fill-box; transform-origin: center; filter: blur(2.5px); animation: dqGlow 4.6s ease-in-out infinite; }
@@ -3655,7 +3655,7 @@ async function diaryAsk() {
   if (refs.length < 2) { const st = findStroke(refs[0]), b = st && sbox(st); if (!b || (b[2] - b[0] < 24 && b[3] - b[1] < 24)) return; }
   const img = await inkBlob(refs, 20); if (!img) return;
   DIARY.busy = true; const pid = S.pid, box = img.box;
-  const dots = document.createElement('div'); dots.className = 'diarydots no-ink'; dots.innerHTML = '<svg viewBox="0 0 30 26" aria-hidden="true"><circle class="dg" cx="15" cy="10" r="3.4"/><circle class="dd" cx="15" cy="10" r="2.6"/><path class="ds" pathLength="100" d="M10 15.5 Q 15 21, 20 15.5"/></svg>'; dots.setAttribute('role', 'status'); dots.setAttribute('aria-label', 'สมุดกำลังเขียนตอบ'); dots.style.left = box[0] + 'px'; dots.style.top = (box[3] + 14) + 'px'; itemsEl.appendChild(dots);
+  const dots = document.createElement('div'); dots.className = 'diarydots no-ink'; dots.innerHTML = '<svg viewBox="0 0 30 26" aria-hidden="true"><circle class="dg" cx="15" cy="10" r="3.4"/><circle class="dd" cx="15" cy="10" r="2.6"/><path class="ds" pathLength="100" d="M8.8 15.2 Q 15 22.4, 21.2 15.2"/></svg>'; dots.setAttribute('role', 'status'); dots.setAttribute('aria-label', 'สมุดกำลังเขียนตอบ'); dots.style.left = box[0] + 'px'; dots.style.top = (box[3] + 14) + 'px'; itemsEl.appendChild(dots);
   try {
     const log = DIARY.log[pid] || (DIARY.log[pid] = (S.page && S.page.diaryLog) || []);
     const subj = subjName(curSubj()[0], S.nb) || 'ทั่วไป';
@@ -20263,7 +20263,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793432668';
+const BUILD = '1793433007';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
