@@ -448,7 +448,13 @@ kbd { display: inline-block; min-width: 1.6em; padding: 0 5px; margin: 0 2px; bo
 .wread { margin-top: 8px; font-size: 13px; color: var(--muted); }
 .aibank { margin: 10px 0 14px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface-2); }
 .aibank h3 { margin-top: 0; }
-.aimore { margin: 10px 0; } .aimore > summary { cursor: pointer; font-weight: 700; padding: 6px 0; }
+.exmore { margin: 14px 0 6px; border-top: 1px solid var(--line); }
+.exmore > summary { list-style: none; cursor: pointer; display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 48px; padding: 8px 0; font-weight: 700; color: var(--accent); }
+.exmore > summary::-webkit-details-marker { display: none; }
+.exmore > summary svg { width: 20px; height: 20px; flex: none; transition: transform 0.2s; }
+.exmore[open] > summary svg { transform: rotate(180deg); }
+.exmore .aibank { margin: 0 0 10px; padding: 0; border: 0; background: none; }
+.exmore .aibank h3 { display: none; }
 .tg { width: 54px; height: 32px; flex: none; border-radius: 999px; border: 0; padding: 3px; cursor: pointer; background: var(--line); display: flex; }
 .tg i { width: 26px; height: 26px; border-radius: 999px; background: #FFFFFF; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25); }
 .tg[aria-checked="true"] { background: var(--accent); justify-content: flex-end; }
@@ -1129,7 +1135,12 @@ body.present .peekcard { display: none !important; }
 .exrow .chip { white-space: nowrap; }
 .exrow.exlist > .chips { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
 .exrow.exlist .chip { white-space: normal; text-align: left; border-radius: 10px; padding: 7px 12px; line-height: 1.35; }
-.exsetup > .exgo { margin-top: 10px; }
+.exsetup > .exgo, .exsetup + .exgo { margin-top: 10px; }
+.exrow.exsub { border-top: 0; padding-top: 0; }
+@media (max-width: 600px) { .exrow.exsub > .label { display: none; } }
+.exrow > .exch { grid-column: 2; font-size: 13px; color: var(--muted); }
+.exform .field { min-width: 0; }
+.exform .field select, .exform .field input, .exform .field textarea { width: 100%; box-sizing: border-box; }
 .chip .cnt { margin-left: 6px; font-size: 11.5px; opacity: 0.6; font-variant-numeric: tabular-nums; }
 .exrow.exlist .chip { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .exrow.exlist .chip .cnt { margin-left: 0; flex: 0 0 auto; }
@@ -1140,6 +1151,7 @@ body.present .peekcard { display: none !important; }
   .exrow > .label { padding-top: 0; }
   .exrow > .label small { display: inline; margin: 0 0 0 6px; }
   .exrow > .chips, .exrow > .note, .exrow > div { grid-column: 1; }
+  .exform .row2 > .field { flex: 1 1 100% !important; }
   .exrow:not(.exlist) > .chips { flex-wrap: nowrap; overflow-x: auto; margin: 0 -18px; padding: 0 18px 2px; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
   .exrow:not(.exlist) > .chips::-webkit-scrollbar { display: none; }
   .exrow:not(.exlist) .chip { flex: 0 0 auto; }
@@ -16895,10 +16907,37 @@ function exRenderSetup(body) {
   const go = exEl('button', 'btn solid', 'เริ่มทำ'); go.onclick = exStartFromSetup; gor.appendChild(go);
   const wk = exEl('button', 'btn', 'ฝึกจุดอ่อนของ ' + esc(EX.who)); wk.onclick = exStartWeak; gor.appendChild(wk);
   body.appendChild(gor);
-  if (!isStudentSide() || AI.anyReady()) { const more = document.createElement('details'); more.className = 'aimore'; more.innerHTML = '<summary>สร้างโจทย์เพิ่มด้วย AI</summary>'; more.ontoggle = () => { if (more.open && !more.querySelector('.aibank')) aiBankPanel(more, st.filter((t) => CURRIC[t])); }; body.appendChild(more); }
+  if (!isStudentSide() || AI.anyReady()) { const more = document.createElement('details'); more.className = 'exmore'; more.innerHTML = '<summary><span>สร้างโจทย์เพิ่มด้วย AI</span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6 8l4 4 4-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></summary>'; more.ontoggle = () => { if (more.open && !more.querySelector('.aibank')) aiBankPanel(more, st.filter((t) => CURRIC[t])); }; body.appendChild(more); }
   /* on a phone the short option rows scroll sideways: bring the chosen chip into view and fade the edge while more is hidden */
-  requestAnimationFrame(() => body.querySelectorAll('.exrow:not(.exlist) > .chips').forEach((c) => { const more = c.scrollWidth > c.clientWidth + 2; c.classList.toggle('scrolls', more); if (!more) return; const b = c.querySelector('[aria-pressed="true"]'); if (b && b.offsetLeft + b.offsetWidth > c.clientWidth) c.scrollLeft = b.offsetLeft - 18; const f = () => c.classList.toggle('atend', c.scrollLeft + c.clientWidth >= c.scrollWidth - 4); f(); c.onscroll = f; }));
+  exScrollFix(body);
   body.appendChild(exEl('div', 'note', 'ระบบเลือกข้อที่เคยทำผิดและข้อที่ยังไม่เคยทำก่อน คะแนนทุกชุดเก็บแยกตามผู้ฝึกและซิงก์ข้ามเครื่อง บทที่มีกรอบสีส้มคือบทที่ยังเป็นจุดอ่อน'));
+}
+/* every option sheet uses one layout: a "label then choices" pair becomes a row (label on the left, on top on a phone);
+   short choices scroll sideways on a phone, long lists (chapters, pages, long sentences) become full-width rows */
+function exTidy(root) {
+  let n = 0;
+  for (const lab of [...root.querySelectorAll('span.label')]) {
+    const p = lab.parentElement; if (!p || p.classList.contains('exrow') || p.closest('.exrow')) continue;
+    let nx = lab.nextElementSibling; if (!nx || !nx.classList.contains('chips')) continue;
+    const r = document.createElement('div'); r.className = 'exrow'; p.insertBefore(r, lab); r.appendChild(lab);
+    const groups = [];
+    while (nx && (nx.classList.contains('chips') || (nx.classList.contains('note') && nx.classList.contains('small')))) { const k = nx.nextElementSibling; r.appendChild(nx); if (nx.classList.contains('chips')) groups.push(nx); nx = k; }
+    /* each group of choices is judged on its own: a long one (many long names, or a sentence) becomes full-width rows */
+    const long = (g) => { const L = [...g.children].map((b) => (b.textContent || '').trim().length), mx = Math.max(0, ...L); return mx > 26 || (L.length >= 6 && mx > 12); };
+    if (groups.every(long)) r.classList.add('exlist');
+    else { let at = r; for (const g of groups) if (long(g)) { const r2 = document.createElement('div'); r2.className = 'exrow exlist exsub'; r2.appendChild(document.createElement('span')).className = 'label'; at.after(r2); r2.appendChild(g); at = r2; } }
+    n++;
+  }
+  if (n) exScrollFix(root);
+}
+function exTidyWatch() {
+  let q = null;
+  const run = () => { q = null; document.querySelectorAll('.sheet:not([hidden])').forEach(exTidy); };
+  const mo = new MutationObserver(() => { if (!q) q = requestAnimationFrame(run); });
+  document.querySelectorAll('.sheet').forEach((el) => mo.observe(el, { childList: true, subtree: true }));
+}
+function exScrollFix(root) {
+  requestAnimationFrame(() => root.querySelectorAll('.exrow:not(.exlist) > .chips').forEach((c) => { const more = c.scrollWidth > c.clientWidth + 2; c.classList.toggle('scrolls', more); if (!more) return; const b = c.querySelector('[aria-pressed="true"]'); if (b && b.offsetLeft + b.offsetWidth > c.clientWidth) c.scrollLeft = b.offsetLeft - 18; const f = () => c.classList.toggle('atend', c.scrollLeft + c.clientWidth >= c.scrollWidth - 4); f(); c.onscroll = f; }));
 }
 function exRenderRun(body) {
   const R = EX.run, L = 'กขคง';
@@ -17296,15 +17335,17 @@ function aiBankPanel(body, tracks) {
   const dT = defaultTrack(S.nb), T = { t: tracks.includes(dT) ? dT : tracks.includes(EX.track) ? EX.track : tracks[0], chs: new Set(), n: 10, d: 0 };
   const paint = () => {
     box.innerHTML = '<h3>สร้างคลังโจทย์ของวิชานี้ด้วย AI</h3><div class="note small">AI เขียนโจทย์ปรนัยพร้อมเฉลย เหตุผล และความเข้าใจคลาดเคลื่อนของตัวเลือกผิดทีละบท แล้วให้ AI อีกรอบลองทำโดยไม่เห็นเฉลย เก็บเฉพาะข้อที่คำตอบตรงกัน โจทย์เก็บในบัญชีของคุณ ใช้ฝึก สั่งการบ้าน และห้องเรียนสดได้เหมือนคลังหลัก ควรตรวจก่อนใช้สอบจริง</div>';
-    if (tracks.length > 1) { box.appendChild(exEl('span', 'label', 'ระดับหรือสนาม')); exChips(box, tracks.map((t) => [t, exTrackName(t)]), (v) => v === T.t, (v) => { T.t = v; T.chs.clear(); paint(); }); }
+    /* the same row layout as the practice setup above: label on the left (on top on a phone), choices beside it */
+    const set = exEl('div', 'exsetup'); box.appendChild(set);
+    const rw = (label, cls) => { const r = exEl('div', 'exrow' + (cls ? ' ' + cls : '')); r.appendChild(exEl('span', 'label', label)); set.appendChild(r); return r; };
+    if (tracks.length > 1) exChips(rw('ระดับหรือสนาม'), tracks.slice().sort((a, b) => trackRank(a) - trackRank(b)).map((t) => [t, exTrackName(t)]), (v) => v === T.t, (v) => { T.t = v; T.chs.clear(); paint(); });
     const own = exAllQs().filter((q) => q.t === T.t);
-    box.appendChild(exEl('span', 'label', 'บทที่จะสร้าง แตะเลือกได้หลายบท'));
-    exChips(box, CURRIC[T.t][1].map((c, i) => [i, c[0] + ' (' + own.filter((q) => q.ch === i).length + ')']), (v) => T.chs.has(v), (v) => { if (T.chs.has(v)) T.chs.delete(v); else T.chs.add(v); paint(); });
-    box.appendChild(exEl('span', 'label', 'จำนวนต่อบท'));
-    exChips(box, [[5, '5 ข้อ'], [10, '10 ข้อ'], [20, '20 ข้อ']], (v) => v === T.n, (v) => { T.n = v; paint(); });
-    box.appendChild(exEl('span', 'label', 'ความยาก'));
-    exChips(box, [[0, 'คละ'], [1, 'ง่าย'], [2, 'กลาง'], [3, 'ยาก']], (v) => v === T.d, (v) => { T.d = v; paint(); });
-    const row = exEl('div', 'row2'); const go = exEl('button', 'btn solid', T.chs.size ? 'สร้าง ' + (T.chs.size * T.n) + ' ข้อ' : 'เลือกบทก่อน'); go.type = 'button'; go.disabled = !T.chs.size;
+    const cr = rw('บท', 'exlist'); cr.querySelector('.label').innerHTML = 'บทที่จะสร้าง<small>แตะเลือกได้หลายบท</small>';
+    exChips(cr, CURRIC[T.t][1].map((c, i) => [i, c[0] + ' (' + own.filter((q) => q.ch === i).length + ')']), (v) => T.chs.has(v), (v) => { if (T.chs.has(v)) T.chs.delete(v); else T.chs.add(v); paint(); });
+    exChips(rw('จำนวนต่อบท'), [[5, '5 ข้อ'], [10, '10 ข้อ'], [20, '20 ข้อ']], (v) => v === T.n, (v) => { T.n = v; paint(); });
+    exChips(rw('ความยาก'), [[0, 'คละ'], [1, 'ง่าย'], [2, 'กลาง'], [3, 'ยาก']], (v) => v === T.d, (v) => { T.d = v; paint(); });
+    exScrollFix(box);
+    const row = exEl('div', 'row2 exgo'); const go = exEl('button', 'btn solid', T.chs.size ? 'สร้าง ' + (T.chs.size * T.n) + ' ข้อ' : 'เลือกบทก่อน'); go.type = 'button'; go.disabled = !T.chs.size;
     const all = exEl('button', 'btn', 'เลือกทุกบท'); all.type = 'button'; all.onclick = () => { CURRIC[T.t][1].forEach((_, i) => T.chs.add(i)); paint(); };
     row.append(go, all); box.appendChild(row); const msg = exEl('div', ''); box.appendChild(msg);
     go.onclick = async () => {
@@ -17456,19 +17497,21 @@ function exRenderBuild(body) {
   const det = detectTopics();
   if (!GB.inited) { GB.inited = true; GB.picks = det.chs.map((c) => [det.track, c]); }
   body.appendChild(exEl('div', 'note', det.chs.length ? 'หน้านี้น่าจะเกี่ยวกับ ' + det.chs.map((c) => esc(exChName(det.track, c))).join(', ') + ' (อ่านจากชื่อสมุด ข้อความ สมการ กราฟ และแบบจำลองบนหน้า ถ้ามีลายมือ แปลงเป็นตัวพิมพ์ก่อนจะจับหัวข้อได้แม่นขึ้น)' : 'ยังจับหัวข้อจากหน้านี้ไม่ได้ เลือกบทเองด้านล่าง หรือแปลงลายมือเป็นตัวพิมพ์ก่อน'));
-  body.appendChild(exEl('span', 'label', 'บทที่ใช้ แตะเพื่อเพิ่มหรือเอาออก ผสมหลายบทได้'));
+  /* the same row layout as the practice setup */
+  const set = exEl('div', 'exsetup'); body.appendChild(set);
+  const rw = (label, cls) => { const r = exEl('div', 'exrow' + (cls ? ' ' + cls : '')); r.appendChild(exEl('span', 'label', label)); set.appendChild(r); return r; };
   const tr = GB.tr || det.track;
-  exChips(body, ['olymp', 'ijso'].map((t) => [t, exTrackName(t)]), (v) => v === tr, (v) => { GB.tr = v; exRender(); });
-  exChips(body, CURRIC[tr][1].map((c, i) => [i, c[0]]), (v) => GB.picks.some(([t, ch]) => t === tr && ch === v), (v) => { const k = GB.picks.findIndex(([t, ch]) => t === tr && ch === v); if (k >= 0) GB.picks.splice(k, 1); else GB.picks.push([tr, v]); exRender(); });
-  if (GB.picks.length) body.appendChild(exEl('div', 'exch', 'เลือกแล้ว: ' + GB.picks.map(([t, c]) => esc(exChName(t, c))).join(', ')));
-  body.appendChild(exEl('span', 'label', 'ระดับความยาก'));
-  exChips(body, [['easy', 'ง่าย'], ['mid', 'กลาง'], ['hard', 'ยาก'], ['mix', 'คละ ง่าย 40 กลาง 40 ยาก 20']], (v) => v === GB.level, (v) => { GB.level = v; exRender(); });
-  body.appendChild(exEl('span', 'label', 'จำนวนข้อและลำดับ'));
-  exChips(body, [[5, '5 ข้อ'], [10, '10 ข้อ'], [15, '15 ข้อ'], [20, '20 ข้อ']], (v) => v === GB.n, (v) => { GB.n = v; exRender(); });
-  exChips(body, [['easy', 'เรียงจากง่ายไปยาก'], ['rand', 'สุ่มลำดับ']], (v) => v === GB.order, (v) => { GB.order = v; exRender(); });
-  body.appendChild(exEl('span', 'label', 'แหล่งโจทย์'));
-  exChips(body, [['useBank', 'คลังโจทย์'], ['useGen', 'สุ่มตัวเลขใหม่ทุกครั้ง'], ['useAI', 'AI เขียนเพิ่มตามที่บรรยาย']], (v) => GB[v], (v) => { GB[v] = !GB[v]; exRender(); });
-  const row = exEl('div', 'row2');
+  exChips(rw('สนาม'), ['olymp', 'ijso'].map((t) => [t, exTrackName(t)]), (v) => v === tr, (v) => { GB.tr = v; exRender(); });
+  const cr = rw('บท', 'exlist'); cr.querySelector('.label').innerHTML = 'บทที่ใช้<small>แตะเพื่อเพิ่มหรือเอาออก ผสมหลายบทได้</small>';
+  exChips(cr, CURRIC[tr][1].map((c, i) => [i, c[0]]), (v) => GB.picks.some(([t, ch]) => t === tr && ch === v), (v) => { const k = GB.picks.findIndex(([t, ch]) => t === tr && ch === v); if (k >= 0) GB.picks.splice(k, 1); else GB.picks.push([tr, v]); exRender(); });
+  if (GB.picks.length) cr.appendChild(exEl('div', 'exch', 'เลือกแล้ว: ' + GB.picks.map(([t, c]) => esc(exChName(t, c))).join(', ')));
+  exChips(rw('ความยาก'), [['easy', 'ง่าย'], ['mid', 'กลาง'], ['hard', 'ยาก'], ['mix', 'คละ ง่าย 40 กลาง 40 ยาก 20']], (v) => v === GB.level, (v) => { GB.level = v; exRender(); });
+  exChips(rw('จำนวนข้อ'), [[5, '5 ข้อ'], [10, '10 ข้อ'], [15, '15 ข้อ'], [20, '20 ข้อ']], (v) => v === GB.n, (v) => { GB.n = v; exRender(); });
+  exChips(rw('ลำดับ'), [['easy', 'เรียงจากง่ายไปยาก'], ['rand', 'สุ่มลำดับ']], (v) => v === GB.order, (v) => { GB.order = v; exRender(); });
+  const sr = rw('แหล่งโจทย์'); sr.querySelector('.label').innerHTML = 'แหล่งโจทย์<small>เลือกได้หลายแหล่ง</small>';
+  exChips(sr, [['useBank', 'คลังโจทย์'], ['useGen', 'สุ่มตัวเลขใหม่ทุกครั้ง'], ['useAI', 'AI เขียนเพิ่มตามที่บรรยาย']], (v) => GB[v], (v) => { GB[v] = !GB[v]; exRender(); });
+  exScrollFix(set);
+  const row = exEl('div', 'row2 exgo');
   const go = exEl('button', 'btn solid', 'สร้างชุดแบบฝึก'); go.onclick = () => { GB.built = buildSet(); exRender(); if (GB.built && GB.useAI) exAIFromPage(); }; row.appendChild(go);
   body.appendChild(row);
   body.appendChild(exEl('div', 'note', 'คลังโจทย์และโจทย์สุ่มตัวเลขสร้างในเครื่องทันที ไม่ต้องรอเน็ตหรือ AI ส่วน AI จะส่งโจทย์ที่ตรงกับสิ่งที่บรรยายมาเพิ่มภายหลัง ระดับความยากใช้ค่าที่ตั้งไว้ก่อน เมื่อมีผู้ตอบข้อนั้นครบ 5 คนขึ้นไป ระบบใช้ค่าความยากจริง (สัดส่วนผู้ตอบถูก) แทน'));
@@ -20264,7 +20307,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793433533';
+const BUILD = '1793439092';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
@@ -21264,6 +21307,7 @@ async function boot() {
   else if (!S.student && !S.present && !store_ls.get('tp-role') && CLOUD.state === 'on') setTimeout(() => { if (!store_ls.get('tp-role')) { closeSheets(); $('#roleSheet').hidden = false; } }, 900);
   setTimeout(() => { if (!S.pid) { const l = $('#loading'); l.querySelector('span').textContent = 'ยังเชื่อมต่อไม่ได้ ตรวจอินเทอร์เน็ตแล้วเปิดหน้านี้ใหม่'; } }, 12000);
 }
+exTidyWatch();
 boot();
 })();
 </script>
