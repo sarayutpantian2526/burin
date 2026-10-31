@@ -902,7 +902,14 @@ body.navleft .dvoice { bottom: 124px; }
 .diarybar button { flex: 0 0 auto; border: 0; border-radius: 999px; padding: 6px 12px; min-height: 30px; background: #F6E7C1; color: #2B3A67; font: inherit; font-weight: 700; cursor: pointer; }
 body.diary #viewport { box-shadow: inset 0 0 0 2px rgba(201,168,106,0.22); }
 body.focus .diarybar, body.present .diarybar { display: none; }
-@media (max-width: 700px) { .diarybar span { display: none; } .diarybar { bottom: 70px; left: 8px; } }
+@media (max-width: 700px) { .diarybar span { display: none; } .diarybar { bottom: 70px; left: 8px; max-width: calc(100% - 16px); } }
+/* a narrow phone: the pen alone stands for the mode name, and the buttons wrap onto a second line instead of running off the screen */
+@media (max-width: 520px) {
+  .diarybar:not(.mini) { flex-wrap: wrap; border-radius: 22px; gap: 6px; padding: 6px 8px; }
+  .diarybar:not(.mini) b { display: none; }
+  .diarybar button { padding: 6px 10px; font-size: 14px; }
+  .diarybar button.dfold { padding: 4px 4px; }
+}
 @media (min-width: 701px) and (max-width: 1100px) { .diarybar span { display: none; } }
 #bDiary[aria-pressed="true"] { background: #2B3A67; color: #F6E7C1; border-color: #2B3A67; }
 .scoreb th.c0 { background: #EEF2FC; } .scoreb th.c1 { background: #FDF1E8; } .scoreb th.c2 { background: #EAF6EF; } .scoreb th.c3 { background: #F4EEFB; }
@@ -20327,7 +20334,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793440583';
+const BUILD = '1793462323';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
