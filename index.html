@@ -4793,7 +4793,15 @@ function deleteSel() {
 }
 
 /* ---------- notebooks & pages ---------- */
-function levelName(k) { const f = LEVELS.find((l) => l[0] === k); return f ? f[1] : ''; }
+/* the levels each subject is actually taught at in Thailand: general science up to lower secondary (and IJSO), chemistry,
+   biology and earth science as separate subjects from upper secondary, statistics and the professional fields at university */
+const SUBJ_LV = { phys: ['p', 'mt', 'mp', 'olymp', 'u', 'grad'], chem: ['mp', 'olymp', 'u', 'grad'], bio: ['mp', 'olymp', 'u', 'grad'], earth: ['mp', 'olymp', 'u', 'grad'], sci: ['p', 'mt', 'olymp'], math: ['p', 'mt', 'mp', 'olymp', 'u', 'grad'], stat: ['u', 'grad', 'pro'], cs: ['p', 'mt', 'mp', 'olymp', 'u', 'grad', 'pro'] };
+const LV_RANK = { p: 0, mt: 1, mp: 2, olymp: 2.4, u: 3, pro: 3.5, grad: 4 };
+function olympName(sj) { return sj === 'sci' ? 'IJSO' : ['phys', 'chem', 'bio'].includes(sj) ? 'สอวน. และ IJSO' : 'สอวน.'; }
+function levelsFor(sj) { const ks = SUBJ_LV[sj] || (sj === 'other' || !sj ? LEVELS.map((l) => l[0]) : ['u', 'grad', 'pro']); return LEVELS.filter((l) => ks.includes(l[0])).map(([k, n]) => [k, k === 'olymp' && sj ? olympName(sj) : n]); }
+function fitLevel(sj, lv) { const ks = levelsFor(sj).map((l) => l[0]); if (ks.includes(lv)) return lv; const r = LV_RANK[lv] != null ? LV_RANK[lv] : 2, c = ks.filter((k) => k !== 'olymp'); return (c.length ? c : ks).slice().sort((a, b) => Math.abs(LV_RANK[a] - r) - Math.abs(LV_RANK[b] - r))[0]; }
+function fillLevels(sel, sj, lv) { const cur = lv || sel.value || 'mp'; sel.innerHTML = ''; for (const [k, n] of levelsFor(sj)) { const o = document.createElement('option'); o.value = k; o.textContent = n; sel.appendChild(o); } sel.value = fitLevel(sj, cur); }
+function levelName(k, sj) { if (sj === undefined && S.nb) sj = curSubj()[0]; if (k === 'olymp' && sj) return olympName(sj); const f = LEVELS.find((l) => l[0] === k); return f ? f[1] : ''; }
 async function createNotebook(title, level, subject, subjectName, paperKind, paperBg, orient, color, pattern) {
   const nid = 'n' + uid(), pid = 'p' + uid();
   await S.store.set('pages/' + pid, Object.assign({ nb: nid, paper: paperKind || 'grid', items: [], rev: now() }, orient === 'land' ? { orient: 'land' } : {}));
@@ -5259,7 +5267,7 @@ function aiErr(e) {
   if (code === 'prompt_too_large') return 'เนื้อหาในหน้ายาวเกินไป วงเฉพาะส่วนที่ต้องการแล้วลองใหม่';
   return 'เชื่อมต่อ AI ไม่สำเร็จ ลองอีกครั้ง' + (code ? ' (รหัส ' + code + ')' : (e && e.message ? ' (' + String(e.message).slice(0, 80) + ')' : ''));
 }
-function openAI() { $('#calc').hidden = true; $('#ai').hidden = false; $('#bAI').setAttribute('aria-pressed', 'true'); renderAIPages(); }
+function openAI() { $('#calc').hidden = true; $('#ai').hidden = false; $('#bAI').setAttribute('aria-pressed', 'true'); renderLevels(); renderAIPages(); }
 function aiCard(html) { const d = document.createElement('div'); d.className = 'card'; d.innerHTML = html; $('#aiOut').prepend(d); return d; }
 function busyCard(title) {
   const ctl = new AbortController();
@@ -6445,7 +6453,7 @@ function renderTitle() {
   $('#tTitle').textContent = (S.nb && S.nb.title) || 'สมุด';
   const pages = (S.nb && S.nb.pages) || [];
   const i = pages.indexOf(S.pid);
-  $('#tSub').textContent = (i >= 0 ? 'หน้า ' + (i + 1) + ' จาก ' + pages.length : '') + (S.nb && S.nb.level ? ' : ' + levelName(S.nb.level) : '') + (S.nb && S.nb.subject && S.nb.subject !== 'phys' ? ' : ' + subjName(S.nb.subject, S.nb) : '');
+  $('#tSub').textContent = (i >= 0 ? 'หน้า ' + (i + 1) + ' จาก ' + pages.length : '') + (S.nb && S.nb.level ? ' : ' + levelName(fitLevel(curSubj()[0], S.nb.level)) : '') + (S.nb && S.nb.subject && S.nb.subject !== 'phys' ? ' : ' + subjName(S.nb.subject, S.nb) : '');
   $('#pgNum').textContent = (i >= 0 ? i + 1 : 1) + ' / ' + Math.max(1, pages.length);
   $('#pgPrev').disabled = i <= 0;
   const last = i >= pages.length - 1;
@@ -6908,7 +6916,7 @@ function coverEl(nb, big) {
   const lab = nb.label || 'plate';
   if (lab !== 'none') {
     const t = document.createElement('span'); t.className = 'blabel ' + lab;
-    t.innerHTML = '<b></b><small></small>'; t.querySelector('b').textContent = nb.title || 'สมุด'; t.querySelector('small').textContent = levelName(nb.level) + (nb.subject && nb.subject !== 'phys' ? ' : ' + subjName(nb.subject, nb) : '');
+    t.innerHTML = '<b></b><small></small>'; t.querySelector('b').textContent = nb.title || 'สมุด'; t.querySelector('small').textContent = levelName(nb.level, nb.subject || 'phys') + (nb.subject && nb.subject !== 'phys' ? ' : ' + subjName(nb.subject, nb) : '');
     d.appendChild(t);
   }
   return d;
@@ -7120,9 +7128,9 @@ function editNotebookRow(row, nb) {
     + '<div class="row2"><button class="btn solid" type="button" data-a="save">บันทึก</button><button class="btn" type="button" data-a="cancel">ยกเลิก</button><button class="btn danger" type="button" data-a="del">ลบสมุดเล่มนี้</button></div><div class="nbmsg"></div></div>';
   const $f = (q) => f.querySelector(q), inp = $f('input'), sel = $f('select');
   inp.value = st.title;
-  for (const [k, n] of LEVELS) { const o = document.createElement('option'); o.value = k; o.textContent = n; sel.appendChild(o); }
-  sel.value = st.level;
   const subjP = subjPicker(nb.subject, nb.subjectName), subjSel = subjP.sel; $f('.subjslot').appendChild(subjP);
+  fillLevels(sel, subjSel.value, st.level);
+  subjSel.addEventListener('change', () => { fillLevels(sel, subjSel.value); if (sel.onchange) sel.onchange(); });
   st.bg = nb.paperBg || 'white'; const paintBg = () => bgSwatches($f('.pbg'), st.bg, (k) => { st.bg = k; paintBg(); }); paintBg();
   const prev = () => { const p = $f('.nbprev'); p.innerHTML = ''; p.appendChild(coverEl(Object.assign({}, st, { title: inp.value || 'สมุด', level: sel.value }), true)); $f('[data-a="nophoto"]').hidden = !st.coverAsset; };
   inp.oninput = prev; sel.onchange = prev;
@@ -7355,14 +7363,17 @@ function useColor(c, fromPalette) {
 function setTool(t) { if (editing) commitEdit(); if (t !== 'lasso' && S.sel) clearSel(); S.tool = t; renderTools(); }
 function renderLevels() {
   const el = $('#levelChips'); el.innerHTML = '';
-  for (const [k, n] of LEVELS) {
+  const sj = S.nb ? curSubj()[0] : null;
+  if (S.nb && S.levelFor !== S.nid) { S.levelFor = S.nid; S.level = fitLevel(sj, S.nb.level || S.level); }
+  if (sj) S.level = fitLevel(sj, S.level);
+  for (const [k, n] of levelsFor(sj)) {
     const b = document.createElement('button'); b.className = 'chip'; b.type = 'button'; b.textContent = n;
     b.setAttribute('aria-pressed', k === S.level ? 'true' : 'false');
     b.onclick = () => { S.level = k; store_ls.set('tp-level', k); renderLevels(); };
     el.appendChild(b);
   }
-  const sb = $('#nbSubjBox'); if (sb && !sb.firstChild) { const p = subjPicker(store_ls.get('tp-subject') || 'phys', store_ls.get('tp-subjname') || ''); p.sel.id = 'nbSubject'; p.inp.id = 'nbSubjName'; sb.appendChild(p); }
-  const sel = $('#nbLevel'); if (!sel.options.length) for (const [k, n] of LEVELS) { const o = document.createElement('option'); o.value = k; o.textContent = n; if (k === 'mp') o.selected = true; sel.appendChild(o); }
+  const sb = $('#nbSubjBox'); if (sb && !sb.firstChild) { const p = subjPicker(store_ls.get('tp-subject') || 'phys', store_ls.get('tp-subjname') || ''); p.sel.id = 'nbSubject'; p.inp.id = 'nbSubjName'; sb.appendChild(p); p.sel.addEventListener('change', () => { fillLevels($('#nbLevel'), p.sel.value); $('#nbLevel').dispatchEvent(new Event('change')); }); }
+  const sel = $('#nbLevel'); if (!sel.options.length) fillLevels(sel, ($('#nbSubject') || {}).value || 'phys', store_ls.get('tp-newlevel') || 'mp');
 }
 const AI_INFO = 'อ่านหน้าที่กำลังสอน แล้วสร้างตัวอย่าง โจทย์ฝึก และข้อสอบที่ใช้สถานการณ์และตัวเลขเดียวกัน ทุกคำตอบคำนวณซ้ำด้วยเครื่องคำนวณก่อนแสดง ครั้งแรกที่ใช้ ระบบจะขออนุญาตใช้ Claude ในบัญชีของผู้ใช้';
 function renderAIAvail(state) {
@@ -12506,7 +12517,7 @@ async function libSearch() {
   if (AI.ready('gen') && imgs.length + gifs.length + vids.length > 3) {
     out.innerHTML = '<div class="note">กำลังคัดสื่อให้ตรงกับเนื้อหาและระดับชั้น</div>';
     const lvName = (CURRIC[LIB.level] && CURRIC[LIB.level][0]) || '';
-    const pick = await aiPickMedia(imgs.concat(gifs, vids), topic, lvName + ' (' + levelName((S.nb && S.nb.level) || 'mp') + ')');
+    const pick = await aiPickMedia(imgs.concat(gifs, vids), topic, lvName + ' (' + levelName(nbLv(S.nb)) + ')');
     if (my !== MD.busy) return;
     if (pick) { byAI = true; imgs = pick.filter((m) => m.kind === 'drawing' || m.kind === 'bitmap'); gifs = pick.filter((m) => m.kind === 'gif'); vids = pick.filter((m) => m.kind === 'video'); }
   }
@@ -16201,16 +16212,17 @@ function trackRank(t) { if (TRACK_RANK[t] != null) return TRACK_RANK[t]; const e
 const BANDS = ['p', 'mt', 'mp', 'u'];
 const BAND_NAME = { p: 'ประถม', mt: 'ม.ต้น', mp: 'ม.ปลาย', u: 'มหาวิทยาลัย' };
 function trackBand(t) { const r = trackRank(t); return r < 0.5 ? 'p' : r < 1.8 ? 'mt' : r < 2.95 ? 'mp' : 'u'; }
-function nbBand(nb) { const lv = (nb && nb.level) || 'mp'; return ({ p: 'p', mt: 'mt', mp: 'mp', olymp: 'mp', u: 'u', grad: 'u', pro: 'u' })[lv] || 'mp'; }
+function nbLv(nb) { return fitLevel(subjOf(nb)[0], (nb && nb.level) || 'mp'); }
+function nbBand(nb) { const lv = nbLv(nb); return ({ p: 'p', mt: 'mt', mp: 'mp', olymp: 'mp', u: 'u', grad: 'u', pro: 'u' })[lv] || 'mp'; }
 function examName(e, band) { if (e === 'normal') return band === 'u' ? 'ปกติ (สอบในรายวิชา)' : band === 'mp' ? 'ปกติ (สอบในโรงเรียนและ TCAS)' : 'ปกติ (สอบในโรงเรียน)'; return EXAM_NAME[e]; }
-function nbRank(nb) { const lv = (nb && nb.level) || 'mp'; return LEVEL_RANK[lv] != null ? LEVEL_RANK[lv] : 2; }
+function nbRank(nb) { const lv = nbLv(nb); return LEVEL_RANK[lv] != null ? LEVEL_RANK[lv] : 2; }
 /* closest first; at equal distance the harder track wins for olympiad and university notebooks, the easier one otherwise */
 function byLevel(tracks, nb) {
   const r = nbRank(nb), up = r >= 2.6;
   return tracks.map((t, i) => [t, i]).sort((a, b) => { const da = Math.abs(trackRank(a[0]) - r), db = Math.abs(trackRank(b[0]) - r); if (Math.abs(da - db) > 1e-9) return da - db; const ha = trackRank(a[0]), hb = trackRank(b[0]); if (ha !== hb) return up ? hb - ha : ha - hb; return a[1] - b[1]; }).map((x) => x[0]);
 }
 function defaultTrack(nb) {
-  const sj = subjOf(nb)[0], lv = (nb && nb.level) || 'mp', mine = subjTracks();
+  const sj = subjOf(nb)[0], lv = nbLv(nb), mine = subjTracks();
   if (sj === 'phys') return ({ p: 'p', mt: 'mt', mp: 'mp', olymp: 'olymp', u: 'u', grad: 'u', pro: 'u' })[lv] || 'mp';
   if (sj === 'sci') return lv === 'p' ? 'scip' : lv === 'olymp' && mine.includes('ijso') ? 'ijso' : 'sci';
   const pool = mine.filter((t) => (lv === 'olymp' ? trackExam(t) !== 'normal' : trackExam(t) === 'normal'));
@@ -16419,7 +16431,7 @@ function exRenderSetup(body) {
     (v) => (v === '_own' ? !EX.otherSubj : EX.otherSubj && v === EX.osj), (v) => { if (v === '_own') EX.otherSubj = false; else { EX.otherSubj = true; if (v !== '_more') EX.osj = v; } EX.examKey = null; EX.trackKey = null; exRender(); });
   /* level first (ประถม, ม.ต้น, ม.ปลาย, มหาวิทยาลัย), then only the kinds of exam that exist at that level, then the sets */
   const bands = BANDS.filter((b) => tracks0.some((t) => trackBand(t) === b));
-  { const k = S.nid + ':' + ((S.nb && S.nb.level) || '') + ':' + curSubj().join('/') + ':' + (EX.otherSubj ? EX.osj : 0); if (EX.examKey !== k || !bands.includes(EX.band)) { EX.examKey = k; const lv = (S.nb && S.nb.level) || 'mp'; let b = nbBand(S.nb), ex = 'normal';
+  { const k = S.nid + ':' + ((S.nb && S.nb.level) || '') + ':' + curSubj().join('/') + ':' + (EX.otherSubj ? EX.osj : 0); if (EX.examKey !== k || !bands.includes(EX.band)) { EX.examKey = k; const lv = nbLv(S.nb); let b = nbBand(S.nb), ex = 'normal';
       if (lv === 'olymp') { const hasPosn = tracks0.some((t) => trackBand(t) === 'mp' && trackExam(t) === 'posn'), hasIjso = tracks0.some((t) => trackExam(t) === 'ijso'); if (hasPosn) ex = 'posn'; else if (hasIjso) { b = 'mt'; ex = 'ijso'; } }
       if (!bands.includes(b)) { const bi = BANDS.indexOf(b); b = bands.slice().sort((x, y) => Math.abs(BANDS.indexOf(x) - bi) - Math.abs(BANDS.indexOf(y) - bi))[0]; }
       EX.band = b; EX.exam = ex; } }
@@ -16436,7 +16448,7 @@ function exRenderSetup(body) {
     return;
   }
   if (!tracks.includes(EX.track)) EX.track = tracks[0];
-  if (EX.band !== nbBand(S.nb) && !EX.otherSubj && ((S.nb && S.nb.level) || 'mp') !== 'olymp') { const lvn = (LEVELS.find((x) => x[0] === ((S.nb && S.nb.level) || 'mp')) || [0, ''])[1]; body.appendChild(exEl('div', 'note small', 'สมุดนี้ตั้งระดับ' + esc(lvn) + ' แต่คลังวิชานี้ยังไม่มีโจทย์ระดับนั้น จึงเปิดระดับ' + BAND_NAME[EX.band] + 'ซึ่งใกล้ที่สุดให้ก่อน เลือกระดับอื่นได้ด้านล่าง หรือสร้างโจทย์ระดับนี้ด้วย AI ที่แท็บคลังโจทย์')); }
+  if (EX.band !== nbBand(S.nb) && !EX.otherSubj && nbLv(S.nb) !== 'olymp') { const lvn = levelName(nbLv(S.nb)); body.appendChild(exEl('div', 'note small', 'สมุดนี้ตั้งระดับ' + esc(lvn) + ' แต่คลังวิชานี้ยังไม่มีโจทย์ระดับนั้น จึงเปิดระดับ' + BAND_NAME[EX.band] + 'ซึ่งใกล้ที่สุดให้ก่อน เลือกระดับอื่นได้ด้านล่าง หรือสร้างโจทย์ระดับนี้ด้วย AI ที่แท็บคลังโจทย์')); }
   if (bands.length > 1) {
     exChips(row('ระดับ'), bands.map((b) => [b, BAND_NAME[b]]), (v) => v === EX.band, (v) => { EX.band = v; const ex = ['normal', 'posn', 'ijso'].filter((e) => tracks0.some((t) => trackBand(t) === v && trackExam(t) === e)); if (!ex.includes(EX.exam)) EX.exam = ex.includes('normal') ? 'normal' : ex[0]; pickTrack(); exRender(); });
   }
@@ -19827,7 +19839,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793425331';
+const BUILD = '1793425813';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
