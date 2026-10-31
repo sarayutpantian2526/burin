@@ -3939,7 +3939,25 @@ function onDown(e) {
     if (S.penDown > 0 || t - S.lastPen < 650) { pt.mode = 'ignore'; return; }
     const touches = [...P.values()].filter((p) => p.type === 'touch' && p.mode !== 'ignore' && p.mode !== 'palm');
     if (touches.length >= 2) { startGesture(touches); return; }
-    if (!S.finger) { pt.mode = 'pan'; return; }
+    if (!S.finger) {
+      /* the finger moves things as in other notebook apps: tap a box or picture to select it, drag the frame to move it,
+         or press and hold on it for half a second and drag straight away; anywhere else the finger slides the page */
+      const [x, y] = toLogical(e.clientX, e.clientY);
+      if (S.sel && S.sel.box && nearHandle(S.sel.box, x, y) >= 0) { startScale(pt, nearHandle(S.sel.box, x, y)); return; }
+      if (S.sel && S.sel.box && inBox(S.sel.box, x, y)) { pt.mode = 'move'; pt.last = [x, y]; pt.dx = 0; pt.dy = 0; return; }
+      pt.mode = 'pan';
+      const hit0 = itemAt(x, y), hit = hit0 && !hit0.diary && !hit0.lock && !(isStudentSide() && hit0.by === 'teacher') ? hit0 : null;
+      if (hit) {
+        pt.tapItem = hit;
+        pt.itemT = setTimeout(() => {
+          if (P.get(pt.id) !== pt || pt.mode !== 'pan' || pt.moved > 10) return;
+          selectItem(hit); pt.mode = 'move'; pt.last = [x, y]; pt.dx = 0; pt.dy = 0;
+          try { if (navigator.vibrate) navigator.vibrate(12); } catch (er) { /* fine */ }
+          toast('เลือกแล้ว ลากเพื่อย้าย', 1400);
+        }, 450);
+      }
+      return;
+    }
   }
   if (e.pointerType === 'mouse' && e.button !== 0) { pt.mode = 'pan'; return; }
   beginTool(pt, e);
@@ -4070,6 +4088,11 @@ function onUp(e) {
   if (pt.type === 'pen') S.penDown = Math.max(0, S.penDown - 1);
   if (G && G.ids.includes(e.pointerId)) { endGesture(); return; }
   const tap = pt.moved < 10 && now() - pt.t0 < 380;
+  if (pt.itemT) clearTimeout(pt.itemT);
+  if (pt.mode === 'pan' && tap && e.type !== 'pointercancel' && !S.convMode && pt.type === 'touch') {
+    if (pt.tapItem) { selectItem(pt.tapItem); toast('เลือกแล้ว ลากกรอบเพื่อย้าย ลากมุมเพื่อปรับขนาด', 1800); return; }
+    if (S.sel) { clearSel(); return; }
+  }
   if (pt.mode === 'pan') {
     if (!S.pull && !tap && e.type !== 'pointercancel') glideStart(pt);
     if (S.pull) releasePull();
@@ -20033,7 +20056,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793427449';
+const BUILD = '1793428116';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
