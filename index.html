@@ -3544,7 +3544,8 @@ function buildItemEl(it, forExport) {
 }
 itemsEl.addEventListener('pointerdown', (e) => {
   if (S.tool !== 'text') return;
-  const d = e.target.closest('.item'); if (!d || e.target.closest('.x')) return;
+  /* the move and resize handles do their own job, they do not open the box for typing */
+  const d = e.target.closest('.item'); if (!d || e.target.closest('.x,.tgrab,.tsize')) return;
   e.stopPropagation();
   const it = ((S.page && S.page.items) || []).find((x) => x.id === d.dataset.id);
   if (it && it.type !== 'svg') startEdit(it, d);
@@ -4058,7 +4059,7 @@ function onDown(e) {
       if (S.sel && S.sel.box && nearHandle(S.sel.box, x, y) >= 0) { startScale(pt, nearHandle(S.sel.box, x, y)); return; }
       if (S.sel && S.sel.box && inBox(S.sel.box, x, y)) { pt.mode = 'move'; pt.last = [x, y]; pt.dx = 0; pt.dy = 0; return; }
       pt.mode = 'pan';
-      const hit0 = itemAt(x, y), hit = hit0 && !hit0.diary && !hit0.lock && !(isStudentSide() && hit0.by === 'teacher') ? hit0 : null;
+      const hit0 = itemAt(x, y), hit = hit0 && !hit0.lock && !(isStudentSide() && hit0.by === 'teacher') ? hit0 : null;
       if (hit) {
         pt.tapItem = hit;
         pt.itemT = setTimeout(() => {
@@ -20168,7 +20169,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793430044';
+const BUILD = '1793430311';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
