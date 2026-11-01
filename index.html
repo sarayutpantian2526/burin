@@ -20030,6 +20030,15 @@ function brsRow(q, B, sync) {
     dt.ontoggle = () => { const im = dt.querySelector('img'); if (dt.open && !im.src) setAssetSrc(im, q.img.asset); }; r.appendChild(dt);
   }
   const act = exEl('div', 'pqacts'); act.appendChild(keyToggle(q));
+  /* pull this one question onto the page, without making a set: as the picture cut from the PDF, or typed */
+  const putOne = async (typed) => {
+    if (!S.page) { toast('เปิดหน้าสมุดที่จะวางโจทย์ก่อน', 2800); return; }
+    $('#examSheet').hidden = true;
+    const res = await placeQuestions([q], null, typed ? { typed: true } : {});
+    toast(placedMsg(res, 1) + ' เปิดแท็บเปิดดูและเลือกข้อใหม่เพื่อดึงข้อต่อไป', 3200);
+  };
+  const p1 = exEl('button', 'btn sm solid', q.img ? 'วางภาพข้อนี้ลงหน้า' : 'วางข้อนี้ลงหน้า'); p1.type = 'button'; p1.onclick = () => putOne(false); act.appendChild(p1);
+  if (q.img && q.q && !/^\[ภาพโจทย์/.test(q.q)) { const p2 = exEl('button', 'btn sm', 'วางเป็นข้อความพิมพ์'); p2.type = 'button'; p2.onclick = () => putOne(true); act.appendChild(p2); }
   if (own) {
     const me = () => EX.own.find((x) => x.id === q.oid);
     if (q.src === 'pdf') {
