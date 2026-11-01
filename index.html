@@ -864,7 +864,9 @@ details.qsopt[open] { gap: 10px; }
 .sonly { display: none; }
 body.role-student .sonly { display: inline-flex; }
 body.role-student #bLive, body.role-student #bAI, body.role-student #bPresent, body.role-student #fqAI,
-body.role-student #exTabs button[data-t="build"], body.role-student #exTabs button[data-t="sets"], body.role-student #bTray, body.role-student #sKey, body.role-student #exTabs button[data-t="analysis"], body.role-student #exTabs button[data-t="bank"], body.role-student #exTabs button[data-t="grades"], body.role-student #exTabs button[data-t="hw"], body.role-student #exTabs button[data-t="cls"], body.role-student #iPrep, body.role-student #sGen { display: none !important; }
+body.role-student #exTabs button[data-t="build"], body.role-student #exTabs button[data-t="sets"], body.role-student #bTray, body.role-student #sKey, body.role-student #exTabs button[data-t="analysis"], body.role-student #exTabs button[data-t="bank"], body.role-student #exTabs button[data-t="grades"], body.role-student #exTabs button[data-t="hw"], body.role-student #exTabs button[data-t="cls"], body.role-student #iPrep { display: none !important; }
+/* one way to make questions from a selection: the question maker (the older direct button made the same thing) */
+#sGen { display: none !important; }
 body.guest #roleSeg, body.guest #bJoin { display: none !important; }
 .gwrap { overflow-x: auto; }
 .extab.grades td, .extab.grades th { text-align: center; white-space: nowrap; }
@@ -1197,8 +1199,9 @@ body.present .peekcard { display: none !important; }
   .exrow.exlist > .chips { grid-template-columns: minmax(0, 1fr); }
   .exrow > .chips.scrolls { -webkit-mask-image: linear-gradient(90deg, #000 82%, transparent); mask-image: linear-gradient(90deg, #000 82%, transparent); }
   .exrow > .chips.scrolls.atend { -webkit-mask-image: none; mask-image: none; }
+  /* every tab stays in sight on a phone: the row wraps instead of hiding tabs off the edge */
   #examSheet .exgroups button, #examSheet #exTabs button { white-space: nowrap; font-size: 13px; padding-left: 8px; padding-right: 8px; flex: 0 0 auto; }
-  #examSheet .exgroups, #examSheet #exTabs { flex-shrink: 0; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; max-width: 100%; box-sizing: border-box; }
+  #examSheet .exgroups, #examSheet #exTabs { flex-shrink: 0; flex-wrap: wrap; overflow-x: visible; scrollbar-width: none; max-width: 100%; box-sizing: border-box; }
   #examSheet .exgroups::-webkit-scrollbar, #examSheet #exTabs::-webkit-scrollbar { display: none; }
 }
 .exrow > .chips { position: relative; }
@@ -1827,7 +1830,7 @@ body.role-student .scnpill .sbtns button[data-s="back"], body.role-student .scnp
       <div class="body" id="trayBody"></div>
     </aside>
     <aside class="drawer wide" id="ai" hidden aria-label="ผู้ช่วยสร้างโจทย์">
-      <header><span>ผู้ช่วยในห้องเรียน</span><button class="btn icon" id="bAIClose" aria-label="ปิด"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 5l10 10 M15 5L5 15" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button></header>
+      <header><span>สร้างโจทย์ด้วย AI</span><button class="btn icon" id="bAIClose" aria-label="ปิด"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 5l10 10 M15 5L5 15" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button></header>
       <div class="body" id="aiBody">
         <div class="note" id="aiAvail">อ่านหน้าที่กำลังสอน แล้วสร้างตัวอย่าง โจทย์ฝึก และข้อสอบที่ใช้สถานการณ์และตัวเลขเดียวกัน ทุกคำตอบคำนวณซ้ำด้วยเครื่องคำนวณก่อนแสดง</div>
         <span class="label">ระดับ</span>
@@ -17779,20 +17782,31 @@ function exRenderWho() {
   const o = document.createElement('option'); o.value = '+'; o.textContent = 'เพิ่มผู้ฝึก'; sel.appendChild(o);
   sel.value = EX.who;
 }
-const EX_GROUPS = [['class', 'ห้องเรียนและงาน', ['cls', 'hw']], ['sets', 'ชุดโจทย์', ['sets', 'build', 'bank', 'analysis']], ['train', 'ฝึกและสอบ', ['practice', 'stats', 'grades']]];
-const exGroupOf = (t) => (EX_GROUPS.find((g) => g[2].includes(t)) || EX_GROUPS[2]);
+/* the sections by side.
+   Teacher: the class (rooms and gradebook, homework, practice scores, each learner's weak points) and the question sets
+   (my sets, picked from the bank, made from this page, my own questions, item analysis).
+   Student: practising and their own results. Tabs show in the order listed here. */
+const EX_GROUPS_T = [['class', 'ห้องเรียนและคะแนน', ['cls', 'hw', 'grades', 'stats']], ['sets', 'ชุดโจทย์', ['sets', 'practice', 'build', 'bank', 'analysis']]];
+const EX_GROUPS_S = [['train', 'ฝึก', ['practice', 'stats']]];
+const EX_TAB_T = { cls: 'ห้องและสมุดคะแนน', hw: 'การบ้าน', grades: 'คะแนนแบบฝึก', stats: 'จุดอ่อนรายคน', sets: 'ชุดโจทย์ของฉัน', practice: 'เลือกจากคลัง', build: 'จากหน้านี้', bank: 'เพิ่มโจทย์เอง', analysis: 'วิเคราะห์ข้อสอบ' };
+const EX_TAB_S = { practice: 'ทำแบบฝึก', stats: 'ผลและสิ่งที่ต้องพัฒนา' };
+const exGroups = () => (isStudentSide() ? EX_GROUPS_S : EX_GROUPS_T);
+const exGroupOf = (t) => { const G = exGroups(); return G.find((g) => g[2].includes(t)) || G[G.length - 1]; };
 function exRenderNav() {
   $('#exMinBtn').hidden = !(EX.run && !EX.run.done) || isStudentSide();
-  const g = exGroupOf(EX.tab), gb = $('#exGroups'), stu = isStudentSide();
+  const stu = isStudentSide(), G = exGroups();
+  if (!G.some((g) => g[2].includes(EX.tab))) EX.tab = G[G.length - 1][2][0];
+  const g = exGroupOf(EX.tab), gb = $('#exGroups');
   EX.lastTab = EX.lastTab || {}; EX.lastTab[g[0]] = EX.tab;
-  gb.innerHTML = ''; gb.hidden = !!EX.run || stu;
-  for (const [k, name, tabs] of EX_GROUPS) { const b = document.createElement('button'); b.type = 'button'; b.textContent = k === 'train' && !stu ? 'จัดชุดฝึกและสอบ' : name; b.setAttribute('aria-pressed', k === g[0] ? 'true' : 'false'); b.onclick = () => { EX.tab = EX.lastTab[k] || tabs[0]; exRender(); }; gb.appendChild(b); }
+  gb.innerHTML = ''; gb.hidden = !!EX.run || G.length < 2;
+  for (const [k, name, tabs] of G) { const b = document.createElement('button'); b.type = 'button'; b.textContent = name; b.setAttribute('aria-pressed', k === g[0] ? 'true' : 'false'); b.onclick = () => { EX.tab = EX.lastTab[k] || tabs[0]; exRender(); }; gb.appendChild(b); }
   $('#exTabs').hidden = !!EX.run;
-  $('#exTabs').querySelectorAll('button').forEach((b) => { b.hidden = !g[2].includes(b.dataset.t); b.setAttribute('aria-pressed', b.dataset.t === EX.tab ? 'true' : 'false'); });
-  /* the teacher picks questions for a class: the tab says so, and "who is practising" only matters for a try-out or the scores kept on this device */
-  { const tp = document.querySelector('#exTabs [data-t="practice"]'); if (tp) { tp.dataset.l0 = tp.dataset.l0 || tp.textContent; tp.textContent = stu ? 'ทำแบบฝึก' : 'เลือกโจทย์จากคลัง'; } }
-  const who = document.querySelector('#examSheet .exwho'); if (who) who.hidden = g[0] !== 'train' || (!stu && EX.tab === 'practice' && EX.use !== 'try');
-  if (g[0] !== 'train') $('#exAdd').hidden = true;
+  const L = stu ? EX_TAB_S : EX_TAB_T;
+  $('#exTabs').querySelectorAll('button').forEach((b) => { const k = g[2].indexOf(b.dataset.t); b.hidden = k < 0; b.style.order = k; if (L[b.dataset.t]) b.textContent = L[b.dataset.t]; b.setAttribute('aria-pressed', b.dataset.t === EX.tab ? 'true' : 'false'); });
+  /* "who is practising" matters for practising, a teacher's try-out, and one learner's weak points */
+  const who = document.querySelector('#examSheet .exwho'), showWho = stu ? ['practice', 'stats'].includes(EX.tab) : (EX.tab === 'stats' || (EX.tab === 'practice' && EX.use === 'try'));
+  if (who) who.hidden = !showWho;
+  if (!showWho) $('#exAdd').hidden = true;
 }
 function exRender() {
   const body = $('#exBody'); body.innerHTML = '';
@@ -17849,7 +17863,7 @@ function exRenderSetup(body) {
   if (exams.length > 1 || EX.exam !== 'normal') {
     exChips(row('ประเภทการสอบ'), exams.map((e) => [e, examName(e, EX.band)]), (v) => v === EX.exam, (v) => { EX.exam = v; pickTrack(); exRender(); });
   }
-  if (tracks.length > 1) exChips(row('ชุดโจทย์'), tracks.slice().sort((a, b) => (st.includes(a) ? 0 : 1) - (st.includes(b) ? 0 : 1) || trackRank(a) - trackRank(b)).map((t) => [t, trackShort(t, tracks.every((x) => st.includes(x)))]), (v) => v === EX.track, (v) => { EX.track = v; EX.chs.clear(); store_ls.set('tp-extrack', v); exRender(); });
+  if (tracks.length > 1) exChips(row('หลักสูตร'), tracks.slice().sort((a, b) => (st.includes(a) ? 0 : 1) - (st.includes(b) ? 0 : 1) || trackRank(a) - trackRank(b)).map((t) => [t, trackShort(t, tracks.every((x) => st.includes(x)))]), (v) => v === EX.track, (v) => { EX.track = v; EX.chs.clear(); store_ls.set('tp-extrack', v); exRender(); });
   const { by } = exStats(EX.who);
   const chr = row('บท', 'exlist'); chr.querySelector('.label').innerHTML = 'บทที่จะฝึก<small>เลือกได้หลายบท ไม่เลือกคือทุกบท</small>';
   const chs = [...new Set(all.filter((q) => q.t === EX.track).map((q) => q.ch))].sort((a, b) => a - b);
@@ -18137,7 +18151,7 @@ function exSpark(vals) {
 }
 function exRenderStats(body) {
   const mine = EX.att.filter((a) => a.who === EX.who);
-  if (!mine.length) { body.appendChild(exEl('div', 'note', 'ยังไม่มีคะแนนของ ' + esc(EX.who) + ' ไปที่แท็บฝึกแล้วทำสักชุด')); return; }
+  if (!mine.length) { body.appendChild(exEl('div', 'note', 'ยังไม่มีคะแนนของ ' + esc(EX.who) + ' ' + (isStudentSide() ? 'ไปที่แท็บ ทำแบบฝึก แล้วทำสัก' : 'เลือก ลองทำเองก่อน ในแท็บ เลือกจากคลัง หรือให้ผู้เรียนทำบนเครื่องนี้ แล้วทำสัก')+'ชุด')); return; }
   const n = mine.reduce((s, a) => s + a.n, 0), ok = mine.reduce((s, a) => s + a.ok, 0);
   body.appendChild(exEl('div', 'exsum', '<div><b>' + mine.length + '</b><span>ชุดที่ทำ</span></div><div><b>' + n + '</b><span>ข้อที่ตอบ</span></div><div><b>' + Math.round(ok / n * 100) + '%</b><span>ตอบถูก</span></div><div>' + exSpark(mine.slice(-12).map((a) => a.ok / a.n)) + '<span>12 ชุดล่าสุด เส้นจางคือ 60%</span></div>'));
   const { by } = exStats(EX.who);
@@ -18470,7 +18484,7 @@ function exRenderBuild(body) {
   const set = exEl('div', 'exsetup'); body.appendChild(set);
   const rw = (label, cls) => { const r = exEl('div', 'exrow' + (cls ? ' ' + cls : '')); r.appendChild(exEl('span', 'label', label)); set.appendChild(r); return r; };
   const tr = GB.tr || det.track;
-  exChips(rw('สนาม'), ['olymp', 'ijso'].map((t) => [t, exTrackName(t)]), (v) => v === tr, (v) => { GB.tr = v; exRender(); });
+  exChips(rw('หลักสูตร'), ['olymp', 'ijso'].map((t) => [t, exTrackName(t)]), (v) => v === tr, (v) => { GB.tr = v; exRender(); });
   const cr = rw('บท', 'exlist'); cr.querySelector('.label').innerHTML = 'บทที่ใช้<small>แตะเพื่อเพิ่มหรือเอาออก ผสมหลายบทได้</small>';
   exChips(cr, CURRIC[tr][1].map((c, i) => [i, c[0]]), (v) => GB.picks.some(([t, ch]) => t === tr && ch === v), (v) => { const k = GB.picks.findIndex(([t, ch]) => t === tr && ch === v); if (k >= 0) GB.picks.splice(k, 1); else GB.picks.push([tr, v]); exRender(); });
   if (GB.picks.length) cr.appendChild(exEl('div', 'exch', 'เลือกแล้ว: ' + GB.picks.map(([t, c]) => esc(exChName(t, c))).join(', ')));
@@ -18645,9 +18659,9 @@ function applyRole() {
   document.body.classList.toggle('guest', !!S.student);
   const seg = $('#roleSeg'); if (seg) seg.querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', b.dataset.r === (isStudentSide() ? 'student' : 'teacher') ? 'true' : 'false'));
   if (EX && isStudentSide() && !['practice', 'stats'].includes(EX.tab)) EX.tab = 'practice';
-  const st = isStudentSide(); $('#examSheet h2').textContent = st ? 'ทำแบบฝึก ตรวจให้ทันที' : 'โจทย์ ห้องเรียน และคะแนน'; $('#bExam .lbl').textContent = st ? 'ทำแบบฝึก' : 'โจทย์และคะแนน'; $('#bExam').title = st ? 'ทำแบบฝึก ตรวจให้ทันที' : 'โจทย์ ห้องเรียน และคะแนน';
+  const st = isStudentSide(); $('#examSheet h2').textContent = st ? 'ทำแบบฝึก ตรวจให้ทันที' : 'ห้องเรียน ชุดโจทย์ และคะแนน'; $('#bExam .lbl').textContent = st ? 'ทำแบบฝึก' : 'ห้องเรียนและโจทย์'; { const be = $('#bExam'); if (be) { const t = st ? 'ทำแบบฝึก ตรวจให้ทันที' : 'ห้องเรียน ชุดโจทย์ และคะแนน'; be.title = t; be.setAttribute('aria-label', t); } } $('#bExam').title = st ? 'ทำแบบฝึก ตรวจให้ทันที' : 'โจทย์ ห้องเรียน และคะแนน';
   { const sq = $('#sQuiz'), sl = sq && sq.querySelector('span'); if (sl) { sl.dataset.l0 = sl.dataset.l0 || sl.textContent; sl.textContent = st ? 'ทำโจทย์ทบทวน' : sl.dataset.l0; } }
-  { const tp = document.querySelector('#exTabs [data-t="practice"]'), ts = document.querySelector('#exTabs [data-t="stats"]'); if (tp) { tp.dataset.l0 = tp.dataset.l0 || tp.textContent; tp.textContent = st ? 'ทำแบบฝึก' : tp.dataset.l0; } if (ts) { ts.dataset.l0 = ts.dataset.l0 || ts.textContent; ts.textContent = st ? 'ผลและสิ่งที่ต้องพัฒนา' : ts.dataset.l0; } }
+  { const tp = document.querySelector('#exTabs [data-t="practice"]'), ts = document.querySelector('#exTabs [data-t="stats"]'); if (tp) { tp.dataset.l0 = tp.dataset.l0 || tp.textContent; tp.textContent = st ? 'ทำแบบฝึก' : tp.dataset.l0; }  }
 }
 function setRole(r) {
   if (S.student) return; /* guests from a QR code stay students */
@@ -21336,7 +21350,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793520952';
+const BUILD = '1793532169';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
