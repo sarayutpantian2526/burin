@@ -3823,6 +3823,10 @@ async function diaryAsk() {
     const p75 = hs.length ? hs[Math.floor(hs.length * 0.75)] : 0, body = hs.filter((v) => v >= p75 * 0.45);
     const hMid = body.length ? body[Math.floor(body.length / 2)] : 16;
     let fs = Math.round(clamp(hMid / 0.6, 14, 140));
+    /* a drawing is not handwriting: its lines are tall, but the reply is written at their usual letter size (the last
+       handwriting it answered, or a normal size), not as big as the picture */
+    const drew = /^\s*[\[(]/.test((read && read.text) || '') || hMid > 70 || refs.length <= 3 && hMid > 40;
+    if (drew) fs = Math.round(clamp(DIARY.lastFs || 26, 18, 34)); else DIARY.lastFs = fs;
     /* the reply starts at the left edge of what they wrote and runs to the page margin (from the margin when that is too narrow) */
     let w = Math.round(W - PAGE_M - clamp(box[0], PAGE_M, W)); if (w < 420) w = W - 2 * PAGE_M; w = Math.min(w, 1100, Math.max(420, fs * 30));
     /* a long reply in big handwriting still fits on one sheet: the letters get a little smaller */
@@ -4234,6 +4238,13 @@ vp.addEventListener('pointermove', onMove);
 vp.addEventListener('pointerup', onUp);
 vp.addEventListener('pointercancel', onUp);
 vp.addEventListener('contextmenu', (e) => e.preventDefault());
+/* iPad: a pen (or a drawing finger) resting still is otherwise taken by the system as a long press and cancelled, which
+   would stop "hold to make a shape"; buttons and fields inside the page still get their taps */
+vp.addEventListener('touchstart', (e) => {
+  const t = e.touches[0]; if (!t || e.target.closest('button,input,select,textarea,a,label,[contenteditable="true"],.item.editing')) return;
+  const stylus = [...e.changedTouches].some((x) => x.touchType === 'stylus');
+  if (stylus || (S.finger && (S.tool === 'pen' || S.tool === 'hl'))) e.preventDefault();
+}, { passive: false });
 
 /* the page keeps sliding after a flick and slows down by itself, like paper pushed across a desk */
 const GLIDE = { raf: 0 };
@@ -4681,7 +4692,8 @@ function drawLasers() {
 /* draw and hold: turn the stroke into a clean shape */
 function armHold(pt, x, y) {
   if (!S.shapeSnap || pt.stroke.k !== 'p' || pt.snapped) return;
-  if (pt.holdRef && Math.hypot(x - pt.holdRef[0], y - pt.holdRef[1]) < 3.5) return;
+  /* a resting pen still trembles a little: only a real move (about 6 screen pixels) restarts the wait */
+  if (pt.holdRef && Math.hypot(x - pt.holdRef[0], y - pt.holdRef[1]) < Math.max(3.5, 6 / Math.max(0.2, (S.base || 1) * (S.zoom || 1)))) return;
   pt.holdRef = [x, y];
   clearTimeout(pt.holdT);
   const f = pt.stroke.p; let L = 0;
@@ -21103,7 +21115,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793514144';
+const BUILD = '1793514362';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
