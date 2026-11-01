@@ -3814,15 +3814,16 @@ async function diaryAsk() {
     /* small strokes are vowel and tone marks: leave them out, the letter bodies set the size; a Thai letter body is about 0.6 of the font size */
     const p75 = hs.length ? hs[Math.floor(hs.length * 0.75)] : 0, body = hs.filter((v) => v >= p75 * 0.45);
     const hMid = body.length ? body[Math.floor(body.length / 2)] : 16;
-    let fs = Math.round(clamp(hMid / 0.6, 14, 140)); const w = Math.round(clamp(W - 80, 320, 1100));
+    let fs = Math.round(clamp(hMid / 0.6, 14, 140));
+    /* the reply starts at the left edge of what they wrote and runs to the page margin (from the margin when that is too narrow) */
+    let w = Math.round(W - PAGE_M - clamp(box[0], PAGE_M, W)); if (w < 420) w = W - 2 * PAGE_M; w = Math.min(w, 1100);
     /* a long reply in big handwriting still fits on one sheet: the letters get a little smaller */
     while (text && fs > 16 && estTextH(text, w, fs) * 1.25 + 10 > H - 140) fs -= 2;
     const h = text ? estTextH(text, w, fs) * 1.25 + 10 : 0;
-    let at = [Math.round((W - w) / 2), box[3] + 16];
-    const hit = (x, y) => occupiedBoxes().some((b) => x < b[2] + 10 && x + w > b[0] - 10 && y < b[3] + 10 && y + h > b[1] - 10);
-    /* a person never writes past the edge of the paper: find room on this page, or turn to a new page */
-    let apid = pid;
-    if (at[1] + h > H - 20 || hit(at[0], at[1])) { const f = freeSpot(w, h, [at[0], box[3] + 16], true); if (f) at = f; else { const np = await addPage(); if (!np) return; apid = np; at = [Math.round((W - w) / 2), 50]; toast('หน้าเต็มแล้ว สมุดเขียนตอบในหน้าถัดไป', 2400); } }
+    /* under what they wrote, at its left edge, about half a line below (placeNear); never past the edge of the paper:
+       when this page has no room the reply starts at the top of the next page, at the same left edge */
+    let apid = pid, at = h ? placeNear(box, w, h, { fs }) : [clamp(box[0], PAGE_M, W - w - PAGE_M), box[3]];
+    if (!at) { const np = await addPage(); if (!np) return; apid = np; at = [W - PAGE_M - w, PAGE_M + 16]; toast('หน้าเต็มแล้ว สมุดเขียนตอบในหน้าถัดไป', 2400); }
     const ink = '#2B3A67', id = 'i' + uid();
     if (text) addItem({ id, type: 'text', x: Math.round(at[0]), y: Math.round(at[1]), w: Math.round(w), md: text, fs, hand: DIARY_HAND(), ink, diary: true, dv: 2 });
     S.page = Object.assign({}, S.page, { diaryLog: log }); savePage();
@@ -3850,10 +3851,12 @@ async function diaryAsk() {
       const go = async () => {
         /* the page was left in the meantime: the drawing is still made, and appears when that page is opened again */
         if (S.pid !== apid) { const dw0 = Math.round(clamp(fs * 16, 320, Math.min(640, W - 80))); diaryDraw(sketch, Math.round((W - dw0) / 2), clamp(near[1], 20, H - 20 - dw0 * 0.6), dw0, Math.round(dw0 * 0.6), lw, ink, fs, apid); return; }
-        let dw = Math.round(clamp(fs * 16, 320, Math.min(640, W - 80))), spot = null;
-        while (!spot && dw >= 240) { const dh0 = Math.round(dw * 0.6); spot = freeSpot(dw, dh0, [Math.round((W - dw) / 2), near[1]], true); if (!spot) dw = Math.round(dw * 0.85); }
+        /* under the words, at the same left edge (or under the writing when there are no words) */
+        const src = text ? [at[0], at[1], at[0] + w, at[1] + estTextH(text, w, fs)] : box;
+        let dw = Math.round(clamp(fs * 16, 320, Math.min(640, W - 2 * PAGE_M))), spot = null;
+        while (!spot && dw >= 240) { const dh0 = Math.round(dw * 0.6); spot = placeNear(src, dw, dh0, { fs }); if (!spot) dw = Math.round(dw * 0.85); }
         let pg = apid;
-        if (!spot) { dw = Math.round(clamp(fs * 16, 320, Math.min(640, W - 80))); const np = await addPage(); if (!np) return; pg = np; spot = [Math.round((W - dw) / 2), 60]; toast('หน้าเต็มแล้ว สมุดวาดต่อในหน้าถัดไป', 2400); }
+        if (!spot) { dw = Math.round(clamp(fs * 16, 320, Math.min(640, W - 2 * PAGE_M))); const np = await addPage(); if (!np) return; pg = np; spot = [clamp(src[0], PAGE_M, W - dw - PAGE_M), PAGE_M + 16]; toast('หน้าเต็มแล้ว สมุดวาดต่อในหน้าถัดไป', 2400); }
         diaryDraw(sketch, spot[0], spot[1], dw, Math.round(dw * 0.6), lw, ink, fs, pg);
       };
       /* a hand writes first, then draws */
@@ -5901,7 +5904,8 @@ async function readSelectionPanel() {
       clearSel(); toast('แทนที่ด้วยตัวพิมพ์แล้ว ย้อนกลับได้');
     };
     B.d.querySelector('[data-a="below"]').onclick = () => {
-      addItem({ type: 'text', x: Math.round(box[0]), y: Math.round(Math.min(box[3] + 6, H - 80)), w: Math.round(clamp(box[2] - box[0] + 120, 260, W - box[0] - 10)), md: text });
+      const tw = Math.round(clamp(box[2] - box[0] + 120, 320, W - 2 * PAGE_M)), fs0 = inkSize(box), at = placeNear(box, tw, estTextH(text, tw, 20) + 10, { fs: fs0 }) || [clamp(box[0], PAGE_M, W - tw - PAGE_M), Math.min(box[3] + 16, H - 80)];
+      addItem({ type: 'text', x: Math.round(at[0]), y: Math.round(at[1]), w: tw, md: text });
       toast('วางตัวพิมพ์ใต้ลายมือแล้ว');
     };
     const cp = B.d.querySelector('[data-a="copy"]');
@@ -5946,9 +5950,8 @@ async function tidySelection() {
       clearSel(); toast('แทนที่ด้วยภาพที่วาดใหม่แล้ว ย้อนกลับได้');
     };
     B.d.querySelector('[data-a="beside"]').onclick = () => {
-      const x = box[2] + 20 + w < W ? box[2] + 20 : Math.max(10, box[0]);
-      const y = box[2] + 20 + w < W ? box[1] : Math.min(box[3] + 10, H - 200);
-      addItem({ type: 'svg', x: Math.round(x), y: Math.round(y), w, svg });
+      const at = placeNear(box, w, w * 0.75, { side: true }) || [clamp(box[0], PAGE_M, W - w - PAGE_M), Math.min(box[3] + 16, H - 200)];
+      addItem({ type: 'svg', x: Math.round(at[0]), y: Math.round(at[1]), w, svg });
       toast('วางภาพที่วาดใหม่แล้ว');
     };
   } catch (e) { B.d.innerHTML = '<span class="k">วาดใหม่ตามหลักฟิสิกส์</span><div class="note err">' + esc(aiErr(e)) + '</div>'; }
@@ -6591,9 +6594,8 @@ async function moleculeSvg(mols) {
   return s + '</svg>';
 }
 function figPlace(svg, box, w, note, extra) {
-  const h = w * 0.82, x = box[2] + 20 + w <= W - 10 ? box[2] + 20 : clamp(box[0], 10, W - w - 10);
-  const y = box[2] + 20 + w <= W - 10 ? box[1] : Math.min(box[3] + 12, H - h - 10);
-  addItem(Object.assign({ type: 'svg', x: Math.round(x), y: Math.round(clamp(y, 10, H - 120)), w: Math.round(w), svg }, extra || {}));
+  const h = w * 0.82, at = placeNear(box, w, h, { side: true }) || [clamp(box[0], PAGE_M, W - w - PAGE_M), clamp(box[3] + 16, PAGE_M, H - 120)];
+  addItem(Object.assign({ type: 'svg', x: Math.round(at[0]), y: Math.round(at[1]), w: Math.round(w), svg }, extra || {}));
   toast(note || 'สร้างรูปแล้ว ย่อขยายหรือย้ายได้', 2600);
 }
 function placeVecFig(vecs, box, note) {
@@ -6611,8 +6613,7 @@ function placeGraph(g, box) {
     for (const e of g.exprs) { const code = compileExpr(e).code; for (let i = 0; i <= 20; i++) { scope[g.xvar] = g.x0 + (g.x1 - g.x0) * i / 20; if (isFinite(evalAt(code, scope))) ok++; } }
   } catch (e) { ok = 0; }
   const w = 560;
-  const x = box[2] + 20 + w <= W - 10 ? box[2] + 20 : clamp(box[0], 10, W - w - 10);
-  const y = box[2] + 20 + w <= W - 10 ? box[1] : Math.min(box[3] + 12, H - 300);
+  const at = placeNear(box, w, 300, { side: true }) || [clamp(box[0], PAGE_M, W - w - PAGE_M), Math.min(box[3] + 16, H - 300)], x = at[0], y = at[1];
   if (!ok) {
     openGraphSheet(null);
     $('#gExpr').value = g.exprs.map((e) => 'y = ' + e).join('\n'); $('#gX').value = g.xvar; $('#gX0').value = g.x0; $('#gX1').value = g.x1;
@@ -11225,10 +11226,11 @@ function solveLines(r) {
 }
 function solvePut(r) {
   const lines = solveLines(r), w = 520, fs = 26, h = lines.length * fs * 1.8 + 16, b = SOLVE.box || viewSpot(w, h).concat([0, 0]);
-  let at = [clamp(b[0], 10, W - w - 10), (b[3] || b[1]) + 14];
-  const f = typeof freeSpot === 'function' ? freeSpot(w, h, at) : null; if (f) at = f;
+  /* the answer continues the writing: under it, from its left edge (placeNear); its graph beside or under the answer */
+  const src = b[3] ? b : [b[0], b[1], b[0] + w, b[1]];
+  const at = placeNear(src, w, h) || [clamp(src[0], PAGE_M, W - w - PAGE_M), Math.min(src[3] + 16, H - h - PAGE_M)];
   addItem({ type: 'text', x: Math.round(at[0]), y: Math.round(at[1]), w, fs, md: lines.join('\n\n') });
-  if (r.svg) { const gw = 520, gh = Math.round(gw * 340 / 560); let g = [at[0], at[1] + h + 10]; const f2 = freeSpot(gw, gh, g); if (f2) g = f2; addItem({ type: 'svg', x: Math.round(g[0]), y: Math.round(g[1]), w: gw, svg: r.svg }); }
+  if (r.svg) { const gw = 520, gh = Math.round(gw * 340 / 560), tb = [at[0], at[1], at[0] + w, at[1] + h]; const g = placeNear(tb, gw, gh, { side: true, fs: 22 }) || [at[0], Math.min(tb[3] + 16, H - gh - PAGE_M)]; addItem({ type: 'svg', x: Math.round(g[0]), y: Math.round(g[1]), w: gw, svg: r.svg }); }
   toast('วางคำตอบลงหน้าแล้ว', 1500);
 }
 /* a graph straight from the expression: y = f(x), or the expression itself, with any other letters as sliders */
@@ -11258,7 +11260,7 @@ async function solveWhy(r, out) {
     const res = await AI.run('gen', 'A teacher wants the worked steps for this problem: ' + r.input.join('; ') + '\nThe correct final answer, already checked by a computer algebra system, is: ' + ans + '\nWrite the steps in Thai, short and clear, the way a teacher writes them on the board, one step per line, math as LaTeX between $ signs. End with the same final answer. No headings.', { maxTokens: 900, onPartial });
     out.innerHTML = '<div class="spsteps">' + mdToHtml(String(res.text || '').trim()) + '</div><div class="row2"><button type="button" class="btn" data-a="putw">วางวิธีทำลงหน้า</button></div>';
     typeset(out);
-    out.querySelector('[data-a="putw"]').onclick = () => { const w = 620, b = SOLVE.box || [40, 200, 40, 200]; let at = [clamp(b[0], 10, W - w - 10), b[3] + 14]; const f = freeSpot(w, 300, at); if (f) at = f; addItem({ type: 'text', x: Math.round(at[0]), y: Math.round(at[1]), w, fs: 22, md: String(res.text || '').trim() }); toast('วางวิธีทำลงหน้าแล้ว', 1500); };
+    out.querySelector('[data-a="putw"]').onclick = () => { const w = 620, b = SOLVE.box || [40, 200, 40, 200], md0 = String(res.text || '').trim(), at = placeNear(b, w, estTextH(md0, w, 22) + 10) || [clamp(b[0], PAGE_M, W - w - PAGE_M), Math.min(b[3] + 16, H - 300)]; addItem({ type: 'text', x: Math.round(at[0]), y: Math.round(at[1]), w, fs: 22, md: String(res.text || '').trim() }); toast('วางวิธีทำลงหน้าแล้ว', 1500); };
   } catch (e) { out.innerHTML = '<div class="note err">' + esc(aiErr(e)) + '</div>'; }
 }
 
@@ -18468,6 +18470,41 @@ function occupiedBoxes() {
   for (const r of allStrokes()) { const b = sbox(r.s); out.push([b[0], b[1], b[2], b[3]]); }
   return out;
 }
+/* ---------- where a result of the AI goes on the paper ----------
+   A result continues the writing it came from, the way a person carries on in a notebook:
+   - words go under the source, starting at the same left edge, a little more than half a line below it;
+   - a figure made from a short piece of writing goes beside it, level with its top, about one letter-width away,
+     and under it when there is no room at the side;
+   - every distance follows the size of the writing (bigger writing, more air), within sensible limits;
+   - it never goes above the source, never covers anything, and keeps a clear band around other things;
+   - the paper keeps a margin; when this page has no room the caller turns to a new page. */
+const PAGE_M = 32;
+function inkSize(box) {
+  /* the letter size of the writing in a box: the typical height of its letter bodies (small marks left out) */
+  const hs = [];
+  if (box) for (const r of allStrokes()) { const b = sbox(r.s); if (b[0] >= box[0] - 4 && b[2] <= box[2] + 4 && b[1] >= box[1] - 4 && b[3] <= box[3] + 4 && b[3] - b[1] > 4) hs.push(b[3] - b[1]); }
+  hs.sort((a, b) => a - b);
+  if (!hs.length) return 24;
+  const p75 = hs[Math.floor(hs.length * 0.75)], body = hs.filter((v) => v >= p75 * 0.45);
+  return clamp((body[Math.floor(body.length / 2)] || 16) / 0.6, 14, 120);
+}
+function placeNear(src, w, h, opt) {
+  opt = opt || {};
+  const fs = opt.fs || inkSize(src), lh = fs * 1.4;
+  const gapV = Math.round(clamp(lh * 0.5, 14, 40)), gapH = Math.round(clamp(lh * 0.8, 20, 56)), clr = Math.round(clamp(lh * 0.35, 10, 24)), M = PAGE_M;
+  w = Math.min(w, W - 2 * M); h = Math.min(h, H - 2 * M);
+  const occ = occupiedBoxes().filter((b) => !(opt.skip && opt.skip(b)));
+  const fits = (x, y) => x >= M - 1 && y >= M - 1 && x + w <= W - M + 1 && y + h <= H - M + 1 && !occ.some((b) => x < b[2] + clr && x + w > b[0] - clr && y < b[3] + clr && y + h > b[1] - clr);
+  /* beside: a figure next to a short piece of writing, level with it */
+  if (opt.side && src[2] - src[0] <= W * 0.55) {
+    const x = Math.round(src[2] + gapH);
+    if (x + w <= W - M) for (let y = Math.round(Math.max(M, src[1])); y <= Math.max(src[1], src[3] - h * 0.3); y += 8) if (fits(x, y)) return [x, y];
+  }
+  /* under: same left edge as the writing, then the page margin */
+  const xs = [Math.round(clamp(src[0], M, W - M - w))]; if (xs[0] !== M) xs.push(M);
+  for (const x of xs) for (let y = Math.round(Math.max(M, src[3] + gapV)); y + h <= H - M; y += 8) if (fits(x, y)) return [x, y];
+  return null;
+}
 function freeSpot(w, h, near, below) {
   const occ = occupiedBoxes(), m = 14;
   const fits = (x, y) => x >= 6 && y >= 6 && x + w <= W - 6 && y + h <= H - 6 && !occ.some((b) => x < b[2] + m && x + w > b[0] - m && y < b[3] + m && y + h > b[1] - m);
@@ -19393,13 +19430,14 @@ async function solPlace(steps, itemId) {
   for (const b of blocks) { const md = cur ? cur + '\n\n' + b : b; if (cur && (await measureMd(md, w, fs)) + 34 > maxH) { chunks.push(cur); cur = b; } else cur = md; }
   if (cur) chunks.push(cur);
   const waitPage = async (pid) => { for (let k = 0; k < 40 && !(S.pid === pid && S.page && Array.isArray(S.page.items)); k++) await new Promise((r) => setTimeout(r, 50)); };
-  let near = ib ? [ib[0], ib[3] + 12] : null, newPages = 0;
+  let near = ib ? [ib[0], ib[3] + 12] : null, newPages = 0, src = ib;
   const put = async (item, h) => {
-    let at = freeSpot(item.w, h, near);
+    /* under the question, from its left edge; each further part under the one before */
+    let at = src ? placeNear(src, item.w, h, { fs: 20 }) : freeSpot(item.w, h, near);
     if (!at) { const pid = await addPage(); if (!pid) return false; await waitPage(pid); newPages++; at = [40, 40]; }
     const before = clone(S.page.items || []);
     setItems(before.concat([Object.assign({ id: 'i' + uid(), by: DEV, teacher: true, x: at[0], y: at[1] }, item)]), before);
-    near = [at[0], at[1] + h + 10]; return true;
+    near = [at[0], at[1] + h + 10]; src = [at[0], at[1], at[0] + item.w, at[1] + h]; return true;
   };
   for (const md of chunks) { const h = Math.min(maxH, (await measureMd(md, w, fs)) + 34); if (!(await put({ type: 'text', w, fs, md }, h))) return; }
   const fig = steps.find((p) => p.svg);
@@ -20510,7 +20548,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793509939';
+const BUILD = '1793510450';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
