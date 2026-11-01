@@ -3254,7 +3254,7 @@ function resizeCanvases(force) {
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
   /* three page-size canvases take a lot of memory on iPad; keep them only as sharp as the screen needs.
      The paper pattern is drawn at lower resolution: thin grid lines still look the same. */
-  const res = Math.min(W * S.base * dpr * clamp(S.zoom, 1, 2), 2800) / W;
+  const res = Math.min(W * S.base * dpr, 2400) / W; /* zoomed in, the sharp layer (drawSharp) does the work: growing three page canvases too would run iPad out of canvas memory, and then nothing is sharp */
   if (!force && Math.abs(res - S.res) / (S.res || 1) < 0.08) return;
   /* the paper is drawn as sharp as the ink: soft grid lines made the whole page look blurred next to apps like GoodNotes */
   S.res = res; S.bgRes = res;
@@ -3317,11 +3317,13 @@ function drawSharp() {
   const sc = pr.width / (pageEl.offsetWidth || 1);
   cSharp.style.left = (x0 - pr.left) / sc + 'px'; cSharp.style.top = (y0 - pr.top) / sc + 'px';
   cSharp.style.width = (x1 - x0) / sc + 'px'; cSharp.style.height = (y1 - y0) / sc + 'px';
-  const bw = Math.round((x1 - x0) * dpr), bh = Math.round((y1 - y0) * dpr);
+  /* within the canvas memory an iPad allows */
+  const dq = Math.min(dpr, Math.sqrt(7e6 / Math.max(1, (x1 - x0) * (y1 - y0))));
+  const bw = Math.round((x1 - x0) * dq), bh = Math.round((y1 - y0) * dq);
   if (cSharp.width !== bw || cSharp.height !== bh) { cSharp.width = bw; cSharp.height = bh; }
-  const c = cSharp.getContext('2d'), k = pr.width / W * dpr;
+  const c = cSharp.getContext('2d'), k = pr.width / W * dq; if (!c) { cSharp.hidden = true; return; }
   c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, bw, bh);
-  c.setTransform(k, 0, 0, k, -(x0 - pr.left) * dpr, -(y0 - pr.top) * dpr);
+  c.setTransform(k, 0, 0, k, -(x0 - pr.left) * dq, -(y0 - pr.top) * dq);
   c.fillStyle = '#FFFFFF'; c.fillRect(0, 0, W, H); paper(c, (S.page && S.page.paper) || 'grid');
   drawInto(c, allStrokes(), S.sel ? new Set(S.sel.strokes.map((r) => r.id)) : null);
   cSharp.hidden = false;
@@ -4766,9 +4768,25 @@ function recognize(flat) {
   }
   const closed = d < Math.max(24, 0.22 * L, 0.2 * size);
   if (closed && w > 12 && h > 12) {
-    const N = 72, r = shResample(p0, N, true), k = 3, cs = shCorners(r, true, k);
-    /* every side between corners must be nearly straight to be a polygon */
-    const straight = cs.length >= 3 && cs.every((c, q) => shLineDev(r, c, cs[(q + 1) % cs.length], true) < Math.max(4, 0.07 * size));
+    const N = 72, r = shResample(p0, N, true);
+    /* corners where the line turns sharply; a hand rounds some corners and bows some sides, so a wider look and the
+       simplest outline (fewest points that stay close to the line) are tried as well */
+    const okSides = (ix, tol) => ix.length >= 3 && ix.every((c, q) => shLineDev(r, c, ix[(q + 1) % ix.length], true) < tol);
+    let cs = shCorners(r, true, 3);
+    /* round with no sharp corner: a circle or an ellipse, before any looser look for corners */
+    { const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2, rx = w / 2, ry = h / 2; let s1 = 0, s2 = 0; for (const q of r) { const rr = Math.hypot((q[0] - cx) / rx, (q[1] - cy) / ry); s1 += rr; s2 += rr * rr; }
+      const mean = s1 / r.length, sd = Math.sqrt(Math.max(0, s2 / r.length - mean * mean));
+      if (cs.length < 3 && sd < 0.16) { if (Math.abs(rx - ry) / Math.max(rx, ry) < 0.16) { const rr = (rx + ry) / 2; return { type: 'ellipse', cx, cy, rx: rr, ry: rr, name: 'วงกลม' }; } return { type: 'ellipse', cx, cy, rx, ry, name: 'วงรี' }; } }
+    /* the looser looks only ever find a triangle or a four-sided shape */
+    if (!okSides(cs, Math.max(4, 0.08 * size))) { const c5 = shCorners(r, true, 6); if (c5.length >= 3 && c5.length <= 4 && okSides(c5, Math.max(4, 0.1 * size))) cs = c5; }
+    if (!okSides(cs, Math.max(4, 0.1 * size))) {
+      /* the outline from the point farthest from the middle, simplified until each side is within a tenth of the size */
+      const mx = r.reduce((s0, q) => s0 + q[0], 0) / N, my = r.reduce((s0, q) => s0 + q[1], 0) / N; let f = 0, fd = -1; r.forEach((q, i) => { const dd = Math.hypot(q[0] - mx, q[1] - my); if (dd > fd) { fd = dd; f = i; } });
+      const rot = r.slice(f).concat(r.slice(0, f + 1)), vs = rdp(rot, 0.1 * size);
+      const ids = vs.slice(0, -1).map((q) => r.findIndex((z) => z[0] === q[0] && z[1] === q[1])).filter((i) => i >= 0);
+      if (ids.length >= 3 && ids.length <= 4 && okSides(ids, Math.max(5, 0.12 * size))) cs = ids;
+    }
+    const straight = okSides(cs, cs.length <= 4 ? Math.max(5, 0.12 * size) : Math.max(4, 0.07 * size));
     if (straight && cs.length <= 8) {
       let v = cs.map((c) => r[c].slice());
       const n = v.length, ang = (q) => { const pv = v[(q - 1 + n) % n], cv = v[q], nv = v[(q + 1) % n]; return Math.abs(shWrap(shAng(cv, pv) - shAng(cv, nv))); };
@@ -21211,7 +21229,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793514748';
+const BUILD = '1793515232';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
