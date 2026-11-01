@@ -4119,9 +4119,10 @@ function inkSimplify(st) {
   const stack = [[0, n - 1]];
   while (stack.length) {
     const [a, b] = stack.pop(); if (b - a < 2) continue;
-    const ax = p[a * 3], ay = p[a * 3 + 1], bx = p[b * 3], by = p[b * 3 + 1], dx = bx - ax, dy = by - ay, L = Math.hypot(dx, dy) || 1;
+    const ax = p[a * 3], ay = p[a * 3 + 1], bx = p[b * 3], by = p[b * 3 + 1], dx = bx - ax, dy = by - ay, L = Math.hypot(dx, dy), closed = L < 1;
     let mi = -1, md = 0;
-    for (let i = a + 1; i < b; i++) { const d = Math.abs((p[i * 3] - ax) * dy - (p[i * 3 + 1] - ay) * dx) / L + Math.abs(p[i * 3 + 2] - p[a * 3 + 2]) * 0; if (d > md) { md = d; mi = i; } }
+    /* a closed shape (circle, square) starts and ends at one point: measure from that point, not from a line through it */
+    for (let i = a + 1; i < b; i++) { const d = closed ? Math.hypot(p[i * 3] - ax, p[i * 3 + 1] - ay) : Math.abs((p[i * 3] - ax) * dy - (p[i * 3 + 1] - ay) * dx) / L; if (d > md) { md = d; mi = i; } }
     if (md > eps) { keep[mi] = 1; stack.push([a, mi], [mi, b]); }
   }
   const out = []; for (let i = 0; i < n; i++) if (keep[i]) out.push(p[i * 3], p[i * 3 + 1], p[i * 3 + 2]);
@@ -4465,13 +4466,15 @@ function onUp(e) {
     else if (S.convMode && tap && e.type !== 'pointercancel') { const [x, y] = toLogical(e.clientX, e.clientY); convertAt(x, y); }
     return;
   }
-  if (e.type === 'pointercancel' && pt.mode === 'draw') { clearLive(); return; }
+  /* the system can cancel a pen that rests still on the glass (holding to make a shape is exactly that): keep what was
+     drawn, the snapped shape included, instead of throwing it away; only a tiny accidental mark is dropped */
+  if (e.type === 'pointercancel' && pt.mode === 'draw') { const sp = pt.stroke && pt.stroke.p || []; let L = 0; for (let i = 3; i < sp.length; i += 3) L += Math.hypot(sp[i] - sp[i - 3], sp[i + 1] - sp[i - 2]) / 10; if (!pt.snapped && L < 12) { clearLive(); return; } }
   if (pt.mode === 'draw' && S.convMode && tap) {
     clearLive(); const [x, y] = toLogical(e.clientX, e.clientY); convertAt(x, y); return;
   }
   if (pt.mode === 'draw') clearTimeout(pt.holdT);
   if (pt.mode === 'laser') { if (S.laserMode === 'line') lzKeep(pt.lz); drawLasers(); const l = pt.lz[pt.lz.length - 1]; emitLaserPt(l[0], l[1], false); return; }
-  if (pt.mode === 'shape') { if (e.type === 'pointercancel') clearLive(); else commitShape(pt); return; }
+  if (pt.mode === 'shape') { commitShape(pt); return; }
   if (pt.mode === 'scale') { endScale(pt); return; }
   if (pt.mode === 'draw' && !pt.snapped && tryScribble(pt.stroke)) { clearLive(); return; }
   if (pt.mode === 'draw') {
@@ -4513,6 +4516,8 @@ function onUp(e) {
 /* gestures */
 function startGesture(touches) {
   for (const p of touches) {
+    /* a second finger arriving while a finger drawing rests still (holding to make a shape) keeps that drawing */
+    if (p.mode === 'draw' && p.stroke) { clearTimeout(p.holdT); const sp = p.stroke.p || []; let L = 0; for (let i = 3; i < sp.length; i += 3) L += Math.hypot(sp[i] - sp[i - 3], sp[i + 1] - sp[i - 2]) / 10; if (p.snapped || L >= 30) { inkSimplify(p.stroke); S.mine.push(p.stroke); drawInk(); pushUndo({ t: 'add', stroke: p.stroke }); saveMine(); diaryStroke(p.stroke); } }
     if (p.mode === 'draw') clearLive();
     p.mode = 'gesture';
   }
@@ -21098,7 +21103,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793513905';
+const BUILD = '1793514144';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
