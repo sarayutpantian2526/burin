@@ -99,6 +99,9 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .panel select, .panel input, .panel textarea { max-width: 100%; box-sizing: border-box; }
 .panel .field { min-width: 0; max-width: 100%; }
 .lshort { display: none; }
+.sidenote { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; margin: 2px 0 8px; font-size: 14px; }
+.sidenote span { color: var(--muted); font-size: 13px; flex: 1 1 200px; }
+.sidenote .btn { min-height: 36px; font-size: 13px; }
 .mhead { display: flex; align-items: center; gap: 8px 10px; flex-wrap: wrap; }
 .mhead h2 { margin: 0; flex: 1 1 auto; }
 .mhead #bMenuClose { order: 2; }
@@ -861,7 +864,7 @@ details.qsopt[open] { gap: 10px; }
 .sonly { display: none; }
 body.role-student .sonly { display: inline-flex; }
 body.role-student #bLive, body.role-student #bAI, body.role-student #bPresent, body.role-student #fqAI,
-body.role-student #exTabs button[data-t="build"], body.role-student #exTabs button[data-t="sets"], body.role-student #bTray, body.role-student #sKey, body.role-student #exTabs button[data-t="analysis"], body.role-student #exTabs button[data-t="bank"], body.role-student #exTabs button[data-t="grades"], body.role-student #exTabs button[data-t="hw"], body.role-student #exTabs button[data-t="cls"] { display: none !important; }
+body.role-student #exTabs button[data-t="build"], body.role-student #exTabs button[data-t="sets"], body.role-student #bTray, body.role-student #sKey, body.role-student #exTabs button[data-t="analysis"], body.role-student #exTabs button[data-t="bank"], body.role-student #exTabs button[data-t="grades"], body.role-student #exTabs button[data-t="hw"], body.role-student #exTabs button[data-t="cls"], body.role-student #iPrep, body.role-student #sGen { display: none !important; }
 body.guest #roleSeg, body.guest #bJoin { display: none !important; }
 .gwrap { overflow-x: auto; }
 .extab.grades td, .extab.grades th { text-align: center; white-space: nowrap; }
@@ -3732,7 +3735,7 @@ const DIARY_VOICES = [
   ['coach', 'ชวนคิด ไม่เฉลยทันที', 'ถามกลับและใบ้ทีละนิด', 'Talk like a Socratic tutor: do not give the final answer straight away; give one small hint or one guiding question at a time, and confirm when they get it right. Use ผม and ครับ.'],
   ['mystic', 'สมุดลึกลับ', 'น้ำเสียงสมุดเวทมนตร์ มีลับลมคมใน', 'Talk like a mysterious enchanted diary: slightly old-fashioned and intriguing (ข้า and เจ้า are fine here), but always kind, honest and safe, and still correct about the subject.']
 ];
-function diaryVoice() { const v = (S.nb && S.nb.diaryVoice) || {}; return { p: DIARY_VOICES.some((x) => x[0] === v.p) ? v.p : 'teacher', c: String(v.c || '') }; }
+function diaryVoice() { const v = (S.nb && S.nb.diaryVoice) || {}; return { p: DIARY_VOICES.some((x) => x[0] === v.p) ? v.p : (isStudentSide() ? 'coach' : 'teacher'), c: String(v.c || '') }; } /* a student's notebook guides with hints instead of handing over answers, unless they choose otherwise */
 function diaryVoiceSet(v) { if (!S.nb) return; S.nb = Object.assign({}, S.nb, { diaryVoice: v }); S.store.update('notebooks/' + S.nid, { diaryVoice: v }).catch(() => {}); diaryVoiceSync(); }
 function diaryVoiceSync() { const b = $('#bDiaryVoice'); if (!b) return; const v = diaryVoice(); b.textContent = v.c ? 'ตอบแบบที่กำหนด' : (DIARY_VOICES.find((x) => x[0] === v.p) || DIARY_VOICES[1])[1]; }
 function diaryVoicePanel() {
@@ -7600,11 +7603,21 @@ function askDelete(anchor, nb) {
   popMenu(anchor, 'ลบ ' + (nb.title || 'สมุด') + ' ทั้ง ' + (nb.pages || []).length + ' หน้า ลบแล้วกู้คืนไม่ได้', [['ยืนยันลบสมุดเล่มนี้', () => deleteNotebook(nb)], ['ยกเลิก', () => {}]]);
   const b = $('#tabMenu').querySelector('button'); if (b) b.classList.add('danger');
 }
+/* a notebook moves to the other side: it leaves this side's shelf (and its tab), and opens there when that side is used */
+function nbMoveSide(nb) {
+  const toStudent = nb.side !== 'student';
+  nbSet(nb, { side: toStudent ? 'student' : '' });
+  S.nbs = (S.nbsAll || []).filter(sideMatch); S.tabs = (S.tabs || []).filter((id) => S.nbs.some((n) => n.id === id));
+  toast('ย้ายไป' + (toStudent ? 'ฝั่งนักเรียน' : 'ฝั่งครู') + 'แล้ว ดูได้เมื่อสลับไปฝั่งนั้น', 2600);
+  if (S.nid === nb.id) { const pick = S.nbs[0]; if (pick) openNotebook(pick.id); }
+  renderLibrary();
+}
 function nbMenu(anchor, nb, card) {
   popMenu(anchor, nb.title || 'สมุด', [
     ['เปิดสมุด', () => { openNotebook(nb.id); closeSheets(); }],
     [nb.fav ? 'เอาออกจากรายการโปรด' : 'เพิ่มในรายการโปรด', () => nbSet(nb, { fav: !nb.fav })],
     ['ย้ายไปโฟลเดอร์', () => moveToFolderMenu(anchor, nb)],
+    ...(S.student ? [] : [[nb.side === 'student' ? 'ย้ายไปฝั่งครู' : 'ย้ายไปฝั่งนักเรียน', () => nbMoveSide(nb)]]),
     ['แชร์', () => shareNb(nb)],
     ['แต่งปก แก้ชื่อ', () => editNotebookRow(card, nb)],
     ['ดูคู่กับหน้าที่เขียนอยู่', () => { closeSheets(); openPeek(nb.id); }],
@@ -7644,6 +7657,12 @@ function renderLibrary() {
     if (fo && LIBV.view === 'all' && !q) { const bk = document.createElement('button'); bk.type = 'button'; bk.className = 'btn'; bk.textContent = 'กลับไปที่เอกสาร'; bk.onclick = () => { LIBV.folder = null; renderLibrary(); }; const t = document.createElement('b'); t.textContent = fo.name; path.append(bk, t); }
     else { const t = document.createElement('b'); t.textContent = q ? 'ผลการค้นหา' : LIBV.view === 'fav' ? 'รายการโปรด' : LIBV.view === 'shared' ? 'แชร์แล้ว' : 'เอกสาร'; path.appendChild(t); }
   }
+  /* the notebooks of this side only; the other side's are counted, one tap away */
+  { let sn = $('#sideNote'); if (!sn && path) { sn = document.createElement('div'); sn.id = 'sideNote'; sn.className = 'sidenote'; path.parentNode.after(sn); }
+    if (sn) { const st = isStudentSide(), other = (S.nbsAll || []).filter((n) => !sideMatch(n)).length; sn.innerHTML = '';
+      const b = document.createElement('b'); b.textContent = (st ? 'สมุดฝั่งนักเรียน ' : 'สมุดฝั่งครู ') + S.nbs.length + ' เล่ม'; sn.appendChild(b);
+      const t = document.createElement('span'); t.textContent = st ? 'ใช้จด ฝึกทำโจทย์ และเข้าห้องเรียน' : 'ใช้สอน เตรียมคาบ ห้องเรียน และคะแนน'; sn.appendChild(t);
+      if (other && !S.student) { const sw = document.createElement('button'); sw.type = 'button'; sw.className = 'btn'; sw.textContent = (st ? 'ฝั่งครูมีอีก ' : 'ฝั่งนักเรียนมีอีก ') + other + ' เล่ม ดู'; sw.onclick = () => setRole(st ? 'teacher' : 'student'); sn.appendChild(sw); } } }
   const nf = $('#bNewFolder'); if (nf) nf.hidden = LIBV.view !== 'all' || !!LIBV.folder || !!q;
   let shown, folders = [], groups = null;
   if (q) shown = S.nbs.filter((n) => (n.title || '').toLowerCase().includes(q) || (FOLDERS.list.find((f) => f.id === n.folder) || { name: '' }).name.toLowerCase().includes(q));
@@ -21289,7 +21308,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793520107';
+const BUILD = '1793520643';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
