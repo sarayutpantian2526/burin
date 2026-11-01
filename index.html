@@ -3663,32 +3663,55 @@ function diarySet(on) {
 function diaryStroke(s) {
   if (!diaryOn() || !s || s.k === 'h' || isStudentSide() && S.student) return;
   DIARY.pending.push(s.id); clearTimeout(DIARY.t);
-  DIARY.t = setTimeout(diaryAsk, 2600);
+  DIARY.t = setTimeout(diaryAsk, DIARY_IDLE); aiWarm();
 }
-function diaryPenDown() { if (DIARY.pending.length) clearTimeout(DIARY.t); }
-function diaryPenUp() { if (DIARY.pending.length && !DIARY.busy) { clearTimeout(DIARY.t); DIARY.t = setTimeout(diaryAsk, 2600); } }
+/* the notebook starts reading soon after the pen stops, without waiting to be sure the writer has finished: if the pen
+   comes back to the paper before the reply is on the page, that reading is dropped and everything written so far is read
+   again together, so an early start never costs a wrong or half reply */
+const DIARY_IDLE = 1100;
+function diaryPenDown() {
+  DIARY.down = true; if (DIARY.pending.length) clearTimeout(DIARY.t);
+  const sp = DIARY.spec; if (!sp || sp.cancelled) return;
+  sp.cancelled = true; try { sp.ctl.abort(); } catch (e) { /* fine */ } sp.dots.remove();
+  DIARY.pending = sp.refs.map((r) => r.id).concat(DIARY.pending.filter((id) => !sp.refs.some((r) => r.id === id)));
+}
+function diaryPenUp() { DIARY.down = false; if (DIARY.pending.length && !DIARY.busy) { clearTimeout(DIARY.t); DIARY.t = setTimeout(diaryAsk, DIARY_IDLE); } }
+/* open the line to the AI service while the person is still writing, so the reading does not wait for a new connection */
+let aiWarmAt = 0;
+function aiWarm() {
+  if (Date.now() - aiWarmAt < 45000) return; aiWarmAt = Date.now();
+  const s = AI.src('read'); let u = '';
+  if (s === 'key') { const K = AI.cfg.key, V = KEY_VENDORS[K.vendor] || KEY_VENDORS.other; u = K.vendor === 'anthropic' ? 'https://api.anthropic.com' : (K.url || V.url); }
+  else if (s === 'local') u = AI.cfg.local.url;
+  try { const o = new URL(u).origin; if (!/^https?:/.test(o)) return; fetch(o + '/', { method: 'HEAD', mode: 'no-cors', cache: 'no-store' }).catch(() => {}); } catch (e) { /* not a web address */ }
+}
 for (const ev of ['pointerup', 'pointercancel']) window.addEventListener(ev, () => setTimeout(diaryPenUp, 0), true);
 async function diaryAsk() {
-  if (DIARY.busy || !DIARY.pending.length || !diaryOn() || activeLive()) return;
+  if (DIARY.busy || DIARY.down || !DIARY.pending.length || !diaryOn() || activeLive()) return;
   const refs = DIARY.pending.map((id) => ({ layer: DEV, id })).filter((r) => findStroke(r)); DIARY.pending = [];
   if (!refs.length) return;
   if (refs.length < 2) { const st = findStroke(refs[0]), b = st && sbox(st); if (!b || (b[2] - b[0] < 24 && b[3] - b[1] < 24)) return; }
   const img = await inkBlob(refs, 20); if (!img) return;
   DIARY.busy = true; const pid = S.pid, box = img.box;
-  const dots = document.createElement('div'); dots.className = 'diarydots no-ink'; dots.innerHTML = '<svg viewBox="0 0 30 26" aria-hidden="true"><circle class="dg" cx="15" cy="10" r="3.4"/><circle class="dd" cx="15" cy="10" r="2.6"/><path class="ds" pathLength="100" d="M8.8 15.2 Q 15 22.4, 21.2 15.2"/></svg>'; dots.setAttribute('role', 'status'); dots.setAttribute('aria-label', 'สมุดกำลังเขียนตอบ'); dots.style.left = box[0] + 'px'; dots.style.top = (box[3] + 14) + 'px'; itemsEl.appendChild(dots);
+  const ctl = typeof AbortController !== 'undefined' ? new AbortController() : { abort() {}, signal: undefined };
+  const dots = document.createElement('div'); const spec = DIARY.spec = { ctl, refs, dots, cancelled: false }; dots.className = 'diarydots no-ink'; dots.innerHTML = '<svg viewBox="0 0 30 26" aria-hidden="true"><circle class="dg" cx="15" cy="10" r="3.4"/><circle class="dd" cx="15" cy="10" r="2.6"/><path class="ds" pathLength="100" d="M8.8 15.2 Q 15 22.4, 21.2 15.2"/></svg>'; dots.setAttribute('role', 'status'); dots.setAttribute('aria-label', 'สมุดกำลังเขียนตอบ'); dots.style.left = box[0] + 'px'; dots.style.top = (box[3] + 14) + 'px'; setTimeout(() => { if (!spec.cancelled && DIARY.spec === spec) itemsEl.appendChild(dots); }, 450);
   try {
     const log = DIARY.log[pid] || (DIARY.log[pid] = (S.page && S.page.diaryLog) || []);
     const subj = subjName(curSubj()[0], S.nb) || 'ทั่วไป';
     const V = diaryVoice(), VP = DIARY_VOICES.find((x) => x[0] === V.p) || DIARY_VOICES[0];
-    const prompt = 'You are the notebook in Burin, a Thai teaching notebook that writes back by hand, a little like the diary in the Harry Potter story but kind, wise and safe. The person writes to you by hand; the image shows what they just wrote. The notebook subject is ' + subj + '.\n'
-      + 'How to reply (chosen by the writer): ' + VP[3] + (V.c ? ' The writer also asked: "' + V.c.slice(0, 300) + '". Follow that above everything else, as long as it is safe and kind.' : '') + '\n'
-      + (log.length ? 'Conversation so far on this page (oldest first):\n' + log.slice(-10).map((m) => (m[0] === 'u' ? 'Writer: ' : 'Notebook: ') + m[1]).join('\n') + '\n' : '')
+    const prompt = 'You are the notebook in Burin, a Thai teaching notebook that writes back by hand, a little like the diary in the Harry Potter story but kind, wise and safe. The person writes to you by hand; the image shows what they just wrote.\n'
       + 'First read the handwriting exactly (Thai or English, with any formulas). Then reply the way a real person writes back in a shared notebook: react to what they actually wrote first, carry on from earlier lines when it fits, do not greet again after the first reply, vary how you start, and skip filler such as "เป็นคำถามที่ดีมาก". Keep it short, the way people really write back to each other day to day: usually one or two short sentences (about 10 to 30 Thai words), never a lecture. A real question gets a correct answer in its simplest form; only when they clearly ask you to explain in detail may you go up to about 60 words. Ask at most one question back, and only when it keeps the conversation going naturally. If the writer tells you how to reply (shorter, more formal, what to call them, another language), do that from now on. Match the writer\'s language. Write formulas in plain text (for example v = u + at, F = ma), never LaTeX or markdown, no emoji, no lists.\n'
       + 'If you cannot read it, say so gently and ask them to write a little larger.\n'
-      + 'You can also DRAW with your pen, like a person sketching in a notebook: a diagram, a graph, a shape, arrows, a force picture, a circuit, a molecule, a map, a small picture or a friendly doodle, anything one can draw on paper. Draw whenever a sketch says it better than words, and always when they ask you to draw. When the reply style above asks for playful reactions or feelings, a tiny reaction doodle is welcome even when nothing needs explaining. A drawing goes with a short line of words (or none). Keep it a quick, clean hand sketch, not a work of art.\n'
+      + 'You can also DRAW with your pen, like a person sketching in a notebook: a diagram, a graph, a shape, arrows, a force picture, a circuit, a molecule, a map, a small picture or a friendly doodle, anything one can draw on paper. Draw whenever a sketch says it better than words, and always when they ask you to draw. When the reply style given below asks for playful reactions or feelings, a tiny reaction doodle is welcome even when nothing needs explaining. A drawing goes with a short line of words (or none). Keep it a quick, clean hand sketch, not a work of art.\n'
       + 'Drawing commands, one per line, in a box 100 wide and 60 high, x to the right and y downwards: "line x1 y1 x2 y2", "arrow x1 y1 x2 y2", "poly x y x y ..." (open), "shape x y x y ..." (closed), "curve x y x y ..." (smooth line through the points), "circle cx cy r", "ellipse cx cy rx ry", "arc cx cy r fromDeg toDeg", "dash x1 y1 x2 y2", "dot x y", "text x y label" (a short label, at most 14 characters). Add a colour word at the end of a line if needed: red, blue, green, orange. At most 40 lines.\n'
-      + 'Reply in exactly this format:\n@@READ\n(what they wrote)\n@@REPLY\n(your handwritten answer)\n@@DRAW\n(drawing commands, or leave this section out)';
-    const r = await AI.run('read', prompt, { images: [img.blob], maxTokens: 3500, cache: false });
+      + 'Reply in exactly this format:\n@@READ\n(what they wrote)\n@@REPLY\n(your handwritten answer)\n@@DRAW\n(drawing commands, or leave this section out)'
+
+      /* everything above stays the same from one reply to the next, so the AI service can reuse it and answer sooner; what changes comes last */
+      + '\nThe notebook subject is ' + subj + '.\n'
+      + 'How to reply (chosen by the writer): ' + VP[3] + (V.c ? ' The writer also asked: "' + V.c.slice(0, 300) + '". Follow that above everything else, as long as it is safe and kind.' : '') + '\n'
+      + (log.length ? 'Conversation so far on this page (oldest first):\n' + log.slice(-10).map((m) => (m[0] === 'u' ? 'Writer: ' : 'Notebook: ') + m[1]).join('\n') + '\n' : '');
+    const r = await AI.run('read', prompt, { images: [img.blob], maxTokens: 3500, cache: false, signal: ctl.signal });
+    if (spec.cancelled) return;
     const sec = sections(r.text), read = sec.find((x) => x.key === 'READ'), rep = sec.find((x) => x.key === 'REPLY');
     /* drawing commands are taken from wherever they ended up (their own section, or mixed into the reply when the
        section mark came out broken), and every leftover section mark is cleaned off the words */
@@ -3701,13 +3724,15 @@ async function diaryAsk() {
     if (!sketch.length && /วาด|แผนผัง|แผนภาพ|ภาพ|รูป|กราฟ|แผนที่|ไดอะแกรม|draw|diagram|sketch|graph|picture/i.test(said)) {
       try {
         const r2 = await AI.run('gen', 'You are the notebook in Burin and you are about to sketch by hand for this exchange.\nThe writer wrote: "' + ((read && read.text) || '').slice(0, 300) + '"\nYou replied: "' + ((rep && rep.text) || '').slice(0, 400) + '"\n'
-          + 'Now give ONLY the drawing as pen commands, one per line, in a box 100 wide and 60 high, x to the right and y downwards: "line x1 y1 x2 y2", "arrow x1 y1 x2 y2", "poly x y x y ...", "shape x y x y ..." (closed), "curve x y x y ...", "circle cx cy r", "ellipse cx cy rx ry", "arc cx cy r fromDeg toDeg", "dash x1 y1 x2 y2", "dot x y", "text x y label" (short label in the writer\'s language). Optional colour word at the end: red, blue, green, orange. A clear, simple hand sketch, at most 40 lines. No other words.', { maxTokens: 2500, cache: false });
+          + 'Now give ONLY the drawing as pen commands, one per line, in a box 100 wide and 60 high, x to the right and y downwards: "line x1 y1 x2 y2", "arrow x1 y1 x2 y2", "poly x y x y ...", "shape x y x y ..." (closed), "curve x y x y ...", "circle cx cy r", "ellipse cx cy rx ry", "arc cx cy r fromDeg toDeg", "dash x1 y1 x2 y2", "dot x y", "text x y label" (short label in the writer\'s language). Optional colour word at the end: red, blue, green, orange. A clear, simple hand sketch, at most 40 lines. No other words.', { maxTokens: 2500, cache: false, signal: ctl.signal });
+        if (spec.cancelled) return;
         sketch = diaryParseDraw(String(r2.text || '').split('\n').filter((l) => DQ_LINE.test(l)).join('\n'));
-      } catch (e) { /* the words alone still go on the page */ }
+      } catch (e) { if (spec.cancelled) return; /* the words alone still go on the page */ }
     }
     let text = String((rep && rep.text) || (sketch.length ? '' : r.text) || '').split('\n').filter((l) => !DQ_LINE.test(l)).join('\n')
       .replace(/@@\s*[A-Za-z_]*[\s\S]*$/, '').replace(/@+\s*$/, '').replace(/[*_#`$]/g, '').replace(/\n{3,}/g, '\n\n').trim().slice(0, 600);
-    dots.remove();
+    /* from here the reply goes on the page: writing again no longer drops it */
+    if (spec.cancelled) return; DIARY.spec = null; dots.remove();
     if (!text && !sketch.length) return;
     if (S.pid !== pid) {
       /* the writer turned the page while the notebook was thinking: the reply is kept and appears on that page next time it is opened */
@@ -3768,8 +3793,8 @@ async function diaryAsk() {
       /* a hand writes first, then draws */
       if (text && !diaryInstant()) { const t0 = now(); const wait = () => { if (DIARY.anim[id] != null && findItem(id) && now() - t0 < 90000) setTimeout(wait, 300); else setTimeout(go, 350); }; setTimeout(wait, 600); } else go();
     }
-  } catch (e) { dots.remove(); toast('สมุดยังตอบไม่ได้ ' + aiErr(e), 3500); }
-  finally { DIARY.busy = false; if (DIARY.pending.length) DIARY.t = setTimeout(diaryAsk, 1500); }
+  } catch (e) { dots.remove(); if (!spec.cancelled) toast('สมุดยังตอบไม่ได้ ' + aiErr(e), 3500); }
+  finally { DIARY.busy = false; if (DIARY.spec === spec) DIARY.spec = null; if (DIARY.pending.length) { clearTimeout(DIARY.t); DIARY.t = setTimeout(diaryAsk, spec.cancelled ? DIARY_IDLE + 300 : 1500); } }
 }
 /* ---------- the notebook can draw too: simple pen commands become real ink strokes, drawn stroke by stroke ---------- */
 const DQ_COL = { red: '#B4232A', blue: '#1F5FD1', green: '#2E7D4F', orange: '#D9731A' };
@@ -4153,7 +4178,7 @@ function glideStart(pt) {
 }
 function onDown(e) {
   glideStop();
-  if (DIARY.pending.length) diaryPenDown();
+  if (DIARY.pending.length || (DIARY.spec && (e.pointerType === 'pen' || ((S.tool === 'pen' || S.tool === 'hl') && (e.pointerType !== 'touch' || S.finger))))) diaryPenDown();
   /* writing on the page shown above or below moves onto that page first */
   if (FLOW.on && !S.present && drawTool() && (e.pointerType !== 'touch' || S.finger) && !e.target.closest('button,input,select,textarea,.item.live')) { const [, ly] = toLogical(e.clientX, e.clientY); if ((ly < -4 && flowGo(-1)) || (ly > H + 4 && flowGo(1))) FLOW.lockTy = S.ty; }
   /* the grab bar of a video, and the title bar of a graph or simulation, pick the item up with any tool */
@@ -20373,7 +20398,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793496500';
+const BUILD = '1793506443';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
