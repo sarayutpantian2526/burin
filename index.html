@@ -4116,6 +4116,22 @@ function diaryWriteIn(id, from) {
   svg.style.fontFamily = cs.fontFamily; svg.style.fontSize = fsz + 'px'; svg.style.fontWeight = cs.fontWeight;
   el.appendChild(svg);
   const ink = cs.color, L = Math.round(fsz * 7);
+  /* a pen point, as when the notebook draws: it moves through each letter as the ink is laid down, lifts a little and
+     glides to the next letter, and is put away when the writing ends */
+  const nib = document.createElementNS(NS, 'g'); nib.setAttribute('class', 'dnib');
+  const halo = document.createElementNS(NS, 'circle'), dot = document.createElementNS(NS, 'circle');
+  halo.setAttribute('r', Math.max(4, fsz * 0.2)); halo.style.fill = ink; halo.style.opacity = 0.15; dot.setAttribute('r', Math.max(1.8, fsz * 0.075)); dot.style.fill = ink; dot.style.opacity = 0.85;
+  nib.append(halo, dot); nib.style.opacity = 0; svg.appendChild(nib);
+  const NB = { cur: null, from: null, at: null, raf: 0 };
+  const nibAt = (x, y, air) => { NB.at = [x, y]; nib.setAttribute('transform', 'translate(' + x.toFixed(1) + ' ' + y.toFixed(1) + ')'); dot.style.opacity = air ? 0.35 : 0.85; halo.style.opacity = air ? 0.08 : 0.15; };
+  const nibTick = () => {
+    NB.raf = 0; if (!el.isConnected || !NB.cur) return;
+    const q = NB.cur, tn = performance.now();
+    if (tn < q.t0) { /* lifted, gliding from the last letter to this one */ const f = NB.from ? clamp(1 - (q.t0 - tn) / Math.max(1, q.t0 - q.ts), 0, 1) : 1; const a = NB.from || [q.x, q.y + q.h * 0.5]; nibAt(a[0] + (q.x - a[0]) * f, a[1] + (q.y + q.h * 0.5 - a[1]) * f, true); }
+    else { const u = clamp((tn - q.t0) / q.d, 0, 1), k = Math.max(1.5, q.w / Math.max(4, q.h * 0.45)); nibAt(q.x + q.w * u, q.y + q.h * (0.5 + 0.36 * Math.sin(u * Math.PI * 2 * k)), false); }
+    NB.raf = requestAnimationFrame(nibTick);
+  };
+  const nibLetter = (t, dur) => { let b; try { b = t.getBBox(); } catch (e) { b = null; } if (!b || !b.width) return; NB.from = NB.at; const tn = performance.now(); NB.cur = { x: b.x, y: b.y, w: b.width, h: b.height, ts: tn, t0: tn + (NB.from ? 90 : 0), d: dur * 0.7 }; nib.style.opacity = 1; if (!NB.raf) NB.raf = requestAnimationFrame(nibTick); };
   /* where the baseline sits inside a line box, measured once on a copy outside the text: putting a marker inside the
      text itself would add a place to break the line, and a Thai line could then wrap differently from the real text */
   let base = fsz * 0.8;
@@ -4133,11 +4149,12 @@ function diaryWriteIn(id, from) {
   let i = from; for (let k = 0; k < from && k < marks.length; k++) marks[k].classList.add('on');
   const step = () => {
     if (!el.isConnected) return;
-    if (i >= marks.length) { delete DIARY.anim[id]; setTimeout(() => { svg.remove(); el.classList.remove('writing'); }, 900); return; }
+    if (i >= marks.length) { delete DIARY.anim[id]; NB.cur = null; nib.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 400, fill: 'forwards' }); setTimeout(() => { svg.remove(); el.classList.remove('writing'); }, 900); return; }
     DIARY.anim[id] = i;
     const g = marks[i++], c = g.textContent, t = place(g);
     const dur = t ? 520 + Math.random() * 260 + (c.length > 1 ? 220 : 0) : 0;
     if (t) {
+      nibLetter(t, dur);
       /* the outline is traced first, then the ink fills in, then the real letter takes over */
       t.animate([{ strokeDashoffset: L, fillOpacity: 0, strokeOpacity: 1 }, { strokeDashoffset: 0, fillOpacity: 0, strokeOpacity: 1, offset: 0.7 }, { strokeDashoffset: 0, fillOpacity: 1, strokeOpacity: 0 }], { duration: dur, easing: 'ease-in-out', fill: 'forwards' })
         .finished.then(() => { g.classList.add('on'); t.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 300, fill: 'forwards' }); }).catch(() => { g.classList.add('on'); });
@@ -21350,7 +21367,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793532169';
+const BUILD = '1793532273';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
