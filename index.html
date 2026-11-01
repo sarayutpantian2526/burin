@@ -765,6 +765,10 @@ body.tv .pagenav.left { left: 14px; }
 .busy .bhint { font-size: 13px; color: var(--warn); }
 .busy .bhint:empty { display: none; }
 .busy .bcancel { align-self: flex-start; }
+.busy.mini { padding: 9px 12px; background: var(--surface-2, var(--accent-soft)); }
+.busy.mini .bh b { font-weight: 600; font-size: 14px; color: var(--muted); }
+.busy.mini .spin { width: 16px; height: 16px; border-width: 2.5px; }
+.card > .busy { margin: 0; padding: 0; border: 0; background: none; }
 @media (prefers-reduced-motion: reduce) { .busy .spin, .busy .bar i, .busy .bs li.now::before { animation: none; } }
 .kadv summary { cursor: pointer; font-size: 14px; padding: 6px 0; }
 .kadv summary small { color: var(--muted); margin-left: 6px; }
@@ -807,6 +811,7 @@ body.tv .pagenav.left { left: 14px; }
 #tTitle { cursor: pointer; }
 #aiFloat { position: fixed; left: 50%; bottom: max(76px, env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); z-index: 55; display: flex; flex-direction: column; gap: 8px; width: min(420px, calc(100% - 24px)); }
 #aiFloat .busy { background: var(--surface); box-shadow: var(--shadow); }
+#aiFloat .busy.mini { width: fit-content; max-width: 100%; margin: 0 auto; box-sizing: border-box; }
 body.present #aiFloat { display: none; }
 .consent { display: flex; gap: 10px; align-items: flex-start; padding: 12px; border-radius: 14px; border: 1.5px solid var(--warn); background: var(--warn-soft); cursor: pointer; }
 .consent input { width: 22px; height: 22px; flex: none; margin-top: 2px; }
@@ -5392,9 +5397,31 @@ function waitCard(el, title, steps, opt) {
   function stop() { dead = true; clearInterval(tick); }
   return { step(i) { cur = i; paint(); }, stop, get cancelled() { return cancelled; }, get dead() { return dead; } };
 }
-function floatWait(title, steps, onCancel) {
+/* a short wait (opening, loading): one compact line in the same style; the seconds show only if it takes a while */
+function waitLine(el, text) {
+  if (!el) return;
+  el.innerHTML = '<div class="busy mini" role="status"><div class="bh"><span class="spin" aria-hidden="true"></span><b></b><span class="bt"></span></div></div>';
+  el.querySelector('b').textContent = text;
+  const t0 = now(), bt = el.querySelector('.bt'), box = el.querySelector('.busy');
+  const tk = setInterval(() => { if (!box.isConnected) { clearInterval(tk); return; } const sec = Math.round((now() - t0) / 1000); bt.textContent = sec >= 3 ? sec + ' วินาที' : ''; }, 500);
+}
+/* a wait started from the page itself (no panel to show it in): the same card, floating above the page */
+/* the same compact line floating above the page, for work started from the page (inserting a picture, opening a file); returns close() */
+/* floating waits sit over the middle of the paper, not over a side panel */
+function floatHost() {
   let host = document.getElementById('aiFloat');
   if (!host) { host = document.createElement('div'); host.id = 'aiFloat'; host.className = 'no-ink'; document.body.appendChild(host); }
+  const r = vp.getBoundingClientRect();
+  if (r.width > 200) { host.style.left = Math.round(r.left + r.width / 2) + 'px'; host.style.width = Math.round(Math.min(420, r.width - 24)) + 'px'; }
+  return host;
+}
+function floatLine(text) {
+  const host = floatHost();
+  const slot = document.createElement('div'); host.appendChild(slot); waitLine(slot, text);
+  return () => slot.remove();
+}
+function floatWait(title, steps, onCancel) {
+  const host = floatHost();
   const slot = document.createElement('div'); host.appendChild(slot);
   const B = waitCard(slot, title, steps, { cancelText: 'ยกเลิก', onCancel: () => { if (onCancel) onCancel(); setTimeout(() => slot.remove(), 900); } });
   B.close = () => { B.stop(); slot.remove(); };
@@ -5657,9 +5684,9 @@ function openAI() { $('#calc').hidden = true; $('#ai').hidden = false; $('#bAI')
 function aiCard(html) { const d = document.createElement('div'); d.className = 'card'; d.innerHTML = html; $('#aiOut').prepend(d); return d; }
 function busyCard(title) {
   const ctl = new AbortController();
-  const d = aiCard('<span class="k">' + esc(title) + '</span><span class="meta" data-s>กำลังคิด อาจใช้เวลาครึ่งนาทีถึงหนึ่งนาที</span><div class="row"><button class="btn" data-stop>หยุด</button></div>');
-  d.querySelector('[data-stop]').onclick = () => ctl.abort();
-  return { d, ctl, status: (t) => { const s = d.querySelector('[data-s]'); if (s) s.textContent = t; } };
+  /* the same waiting card as everywhere else: what is happening, seconds so far, and a way to stop */
+  const d = aiCard(''), W8 = waitCard(d, 'AI กำลัง' + title, null, { cancelText: 'หยุด', onCancel: () => ctl.abort() });
+  return { d, ctl, status: (t) => { const b = d.querySelector('.busy .bh b'); if (b) b.textContent = t; } };
 }
 
 /* ---------- handwriting to type ---------- */
@@ -6605,7 +6632,8 @@ async function graphFromSelection() {
   const img = refs.length ? await inkBlob(refs) : null;
   if (!img && !typed) { toast('วงสมการที่ต้องการสร้างรูป'); return; }
   clearSel(); S.pending.push(box); drawSelBox();
-  toast('กำลังอ่านสมการเพื่อสร้างรูป', 9000);
+  const FW = floatWait('AI กำลังอ่านสมการเพื่อสร้างรูป', ['อ่านสมการ', 'สร้างรูป']);
+  try {
   try { await loadLib('math'); } catch (e) { /* checked below */ }
   const prompt = 'Make the most useful figure for teaching from the equation or expression a Thai teacher wrote' + (img ? ' (handwriting in the attached image)' : '') + '.' + (typed ? '\nTyped text:\n' + typed : '') + '\n'
     + 'Choose ONE kind:\n'
@@ -6658,6 +6686,7 @@ async function graphFromSelection() {
     }
   } catch (e) { toast(aiErr(e), 4500); }
   finally { S.pending = S.pending.filter((b) => b !== box); drawSelBox(); }
+  } finally { FW.close(); }
 }
 
 /* ---------- images and video ---------- */
@@ -6707,7 +6736,8 @@ async function insertImage(file) {
   const A = await getAssets();
   if (!A) { toast('มุมมองนี้แทรกรูปไม่ได้ เปิดแอปใน claude.ai ด้วยบัญชีเจ้าของสมุด', 4500); return; }
   if (!S.page) return;
-  toast('กำลังแทรกรูป', 9000);
+  const FL = floatLine('กำลังแทรกรูป');
+  try {
   try {
     const p = await prepImage(file);
     const r = await A.upload(p.blob, { type: p.type });
@@ -6716,6 +6746,7 @@ async function insertImage(file) {
     addItem({ type: 'img', asset: r.id, x, y, w, ar: Math.round(p.ar * 1000) / 1000 });
     toast(r.queued ? 'แทรกรูปแล้ว แต่ยังส่งขึ้นคลาวด์ไม่ได้ เครื่องอื่นจะเห็นเมื่อส่งสำเร็จ (' + String(r.message || '').slice(0, 60) + ')' : 'แทรกรูปแล้ว ใช้บ่วงเลือกเพื่อย้าย ขยาย หรือย่อ', r.queued ? 6000 : 3000);
   } catch (e) { toast(assetErr(e), 4500); }
+  } finally { FL(); }
 }
 async function insertVideo(file) {
   const A = await getAssets();
@@ -6725,7 +6756,8 @@ async function insertVideo(file) {
   let type = file.type;
   if (type === 'video/quicktime' || /\.mov$/i.test(file.name || '')) type = 'video/mp4';
   if (type !== 'video/mp4' && type !== 'video/webm') { toast('รองรับวิดีโอ MP4 หรือ WebM', 4000); return; }
-  toast('กำลังอัปโหลดวิดีโอ', 20000);
+  const FL = floatLine('กำลังอัปโหลดวิดีโอ');
+  try {
   try {
     const ar = await new Promise((res) => {
       const v = document.createElement('video'); const u = URL.createObjectURL(file); let done = false;
@@ -6740,6 +6772,7 @@ async function insertVideo(file) {
     addItem({ type: 'video', asset: r.id, x, y, w, ar: Math.round(ar * 1000) / 1000 });
     toast(r.queued ? 'แทรกวิดีโอแล้ว แต่ยังส่งขึ้นคลาวด์ไม่ได้ เครื่องอื่นจะเห็นเมื่อส่งสำเร็จ' : 'แทรกวิดีโอแล้ว', r.queued ? 6000 : 2500);
   } catch (e) { toast(assetErr(e), 5000); }
+  } finally { FL(); }
 }
 
 /* ---------- export ---------- */
@@ -7533,7 +7566,7 @@ function editNotebookRow(row, nb) {
     fi.onchange = async () => {
       const file = fi.files && fi.files[0]; if (!file) return;
       const A = await getAssets(); if (!A) { toast('มุมมองนี้ใส่รูปปกไม่ได้', 2400); return; }
-      $f('.nbmsg').innerHTML = '<div class="note">กำลังใส่รูปปก</div>';
+      waitLine($f('.nbmsg'), 'กำลังใส่รูปปก');
       try { const p = await prepImage(file); const r = await A.upload(p.blob, { type: p.type }); st.coverAsset = r.id; $f('.nbmsg').innerHTML = ''; prev(); }
       catch (e) { $f('.nbmsg').innerHTML = '<div class="note err">' + esc(assetErr(e)) + '</div>'; }
     };
@@ -8120,7 +8153,7 @@ function renderMediaTab() {
   if (MD.tab === 'auto' && !MD.lastAuto) autoMedia();
 }
 async function loadMine() {
-  const box = $('#mMine'); box.innerHTML = '<div class="note">กำลังโหลด</div>';
+  const box = $('#mMine'); waitLine(box, 'กำลังโหลด');
   const list = await myMedia();
   box.innerHTML = ''; box.appendChild(mediaGrid(list, 'ยังไม่มีรูปหรือวิดีโอที่เคยแทรก'));
 }
@@ -8128,7 +8161,7 @@ async function webMedia() {
   const q = $('#mQuery').value.trim(); const out = $('#mWebOut');
   if (!q) { out.innerHTML = '<div class="note">พิมพ์คำค้นก่อน</div>'; return; }
   if (webBlocked()) { out.innerHTML = '<div class="note warn">ขณะเปิดใน claude.ai หน้านี้ค้นรูปจากเว็บไม่ได้ ใช้ได้เมื่อเปิดแอปจากเว็บของคุณเอง</div>'; return; }
-  const my = ++MD.busy; out.innerHTML = '<div class="note">กำลังค้นใน Wikimedia Commons</div>';
+  const my = ++MD.busy; waitLine(out, 'กำลังค้นใน Wikimedia Commons');
   const qs = [q].concat(guessQueries(q).filter((x) => x.toLowerCase() !== q.toLowerCase())).slice(0, 2);
   const list = await searchMedia(qs, kindsFor(MD.kind), MD.kind === 'all' ? 6 : 14);
   if (my !== MD.busy) return;
@@ -8138,7 +8171,7 @@ async function autoMedia() {
   const out = $('#mAutoOut'), head = $('#mTopic');
   if (webBlocked()) { out.innerHTML = '<div class="note warn">ขณะเปิดใน claude.ai หน้านี้ดึงสื่อจากเว็บไม่ได้ ใช้ได้เมื่อเปิดแอปจากเว็บของคุณเอง</div>'; return; }
   const my = ++MD.busy;
-  out.innerHTML = '<div class="note">กำลังอ่านหน้าที่เขียนและจัดชุดสื่อ</div>'; head.textContent = '';
+  waitCard(out, 'AI กำลังอ่านหน้าที่เขียนและจัดชุดสื่อ', ['อ่านเนื้อหาบนหน้า', 'เลือกสื่อที่ตรงกับเนื้อหา'], { cancel: false }); head.textContent = '';
   let topic = '', q = { img: [], gif: [], video: [] };
   const typed = pageText();
   const sel = S.sel && S.sel.strokes.length ? S.sel.strokes : null;
@@ -10084,9 +10117,10 @@ function renderScenePicker(box, dom, q) {
   ai.innerHTML = '<label class="field"><span>ไม่มีแบบที่ต้องการ อธิบายสิ่งที่อยากให้ขยับ แล้วให้ AI สร้าง</span><textarea rows="2" placeholder="เช่น กล่อง 2 kg ถูกดึงด้วยแรง 10 N ทำมุม 30 องศา บนพื้นที่มีแรงเสียดทาน 0.2"></textarea></label><button class="btn solid" type="button">สร้างแบบจำลอง</button><div class="note small">หรือวาดภาพบนหน้า วงรอบด้วยบ่วงเลือก แล้วกด "ขยับได้"</div>';
   ai.querySelector('button').onclick = async () => {
     const t = ai.querySelector('textarea').value.trim(); if (!t) return; if (!needAI('gen')) return;
-    const bt = ai.querySelector('button'); bt.disabled = true; bt.textContent = 'กำลังสร้าง';
+    const bt = ai.querySelector('button'); bt.disabled = true;
+    const wt = document.createElement('div'); bt.after(wt); waitCard(wt, 'AI กำลังสร้างแบบจำลอง', ['อ่านคำอธิบาย', 'สร้างตามหลักวิชา'], { cancel: false });
     try { const spec = await sceneFromAI(t, null); $('#simSheet').hidden = true; insertScene(spec); } catch (e) { toast('สร้างไม่สำเร็จ ลองอธิบายให้ชัดขึ้น', 3000); }
-    bt.disabled = false; bt.textContent = 'สร้างแบบจำลอง';
+    wt.remove(); bt.disabled = false;
   };
   const doms = q ? SCENE_SUBJ.map((x) => x[0]) : [dom];
   let shown = 0;
@@ -11135,7 +11169,7 @@ async function solveSelection() {
   if (!src && refs.length) {
     if (!needAI('read')) return;
     const img = await inkBlob(refs); if (!img) return;
-    const P = solvePanel(); P.body.innerHTML = '<div class="note">กำลังอ่านลายมือ</div>';
+    const P = solvePanel(); waitCard(P.body, 'AI กำลังอ่านลายมือ', ['อ่านสมการ', 'คำนวณ'], { cancel: false });
     try {
       const r = await AI.run('read', 'The image is handwritten math from a teacher\'s notebook: one equation, several equations (a system), or an expression to work out (derivative, integral, limit, factor and so on). Transcribe it exactly as written, do not solve it. Reply with LaTeX only, one equation per line, no $ signs and no words.', { images: [img.blob], maxTokens: 400 });
       src = String(r.text || '').replace(/```[a-z]*|```/g, '').trim();
@@ -11161,7 +11195,7 @@ function solvePanel() {
 }
 async function solveShow() {
   const P = solvePanel(); P.inp.value = SOLVE.src;
-  P.body.innerHTML = '<div class="note">กำลังคำนวณ</div>';
+  waitLine(P.body, 'กำลังคำนวณ');
   let r;
   try { r = await casRun(SOLVE.src, SOLVE.opt); }
   catch (e) { P.body.innerHTML = '<div class="note err">' + (e && e.message === 'cas' || /load/.test(String(e && e.message)) ? 'โหลดตัวแก้สมการไม่สำเร็จ ตรวจอินเทอร์เน็ต' : 'อ่านสมการนี้ไม่ได้ ตรวจรูปแบบในช่องด้านบน') + '</div>'; return; }
@@ -11215,7 +11249,7 @@ function solveGraph(r) {
   loadLib('math').then(() => placeGraph(g, SOLVE.box || [W / 2 - 280, 200, W / 2 + 280, 260])).catch(() => toast('โหลดตัววาดกราฟไม่สำเร็จ', 2500));
 }
 async function solveWhy(r, out) {
-  out.innerHTML = '<div class="note">AI กำลังเขียนวิธีทำ</div>';
+  waitCard(out, 'AI กำลังเขียนวิธีทำ', null, { cancel: false });
   try {
     const ans = solveLines(r).join('  ');
     /* the steps appear line by line as the AI writes them */
@@ -12010,7 +12044,8 @@ async function cutSave() {
   const full = document.createElement('canvas'); full.width = W0; full.height = H0; full.getContext('2d').putImageData(CUT.cur, 0, 0);
   out.getContext('2d').drawImage(full, x0, y0, cw, ch, 0, 0, cw, ch);
   const blob = await new Promise((res) => out.toBlob(res, 'image/png')); if (!blob) { toast('บันทึกรูปไม่สำเร็จ', 3000); return; }
-  toast('กำลังบันทึกรูป', 8000);
+  const FL = floatLine('กำลังบันทึกรูป');
+  try {
   try {
     const r = await A.upload(blob, { type: 'image/png' });
     const sc = (it.w || 480) / W0, before = clone(S.page.items || []);
@@ -12018,6 +12053,7 @@ async function cutSave() {
     setItems(items, before);
     $('#cutSheet').hidden = true; cutFree(); toast('ตัดพื้นหลังแล้ว กดย้อนกลับบนหน้าได้ถ้าต้องการรูปเดิม', 3000);
   } catch (e) { toast(assetErr(e), 4500); }
+  } finally { FL(); }
 }
 
 
@@ -12763,7 +12799,7 @@ function lessonPaint() {
   sc.value = LSN.ch; lessonRender();
 }
 async function lessonRender() {
-  const body = $('#lsnBody'); body.innerHTML = '<div class="note">กำลังเปิดบทเรียน</div>';
+  const body = $('#lsnBody'); waitLine(body, 'กำลังเปิดบทเรียน');
   const t = LSN.t, ch = LSN.ch, L = await lessonLoad(t);
   if (t !== LSN.t || ch !== LSN.ch) return;
   const secs = L && L[ch];
@@ -13105,7 +13141,7 @@ async function libSearch() {
   const topic = libTopicName();
   let byAI = false;
   if (AI.ready('gen') && imgs.length + gifs.length + vids.length > 3) {
-    out.innerHTML = '<div class="note">กำลังคัดสื่อให้ตรงกับเนื้อหาและระดับชั้น</div>';
+    waitCard(out, 'AI กำลังคัดสื่อให้ตรงกับเนื้อหาและระดับชั้น', null, { cancel: false });
     const lvName = (CURRIC[LIB.level] && CURRIC[LIB.level][0]) || '';
     const pick = await aiPickMedia(imgs.concat(gifs, vids), topic, lvName + ' (' + levelName(nbLv(S.nb)) + ')');
     if (my !== MD.busy) return;
@@ -17557,7 +17593,7 @@ async function exAIDraft(t, ch, d) {
 async function openExam() {
   closeSheets();
   $('#examSheet').hidden = false; $('#exMini').hidden = true;
-  if (!EX.loaded) { $('#exBody').innerHTML = '<div class="note">กำลังโหลดคะแนน</div>'; await exLoad(); }
+  if (!EX.loaded) { waitLine($('#exBody'), 'กำลังโหลดคะแนน'); await exLoad(); }
   else exLoad().then(() => { if (!EX.run) exRender(); });
   exRenderWho(); exRender();
 }
@@ -18130,7 +18166,7 @@ async function liveQRToPage() {
 }
 async function shareLecture(out, nbIn) {
   out = out && out.nodeType ? out : $('#shareOut'); const NB = nbIn || S.nb, NID = nbIn ? nbIn.id : S.nid; if (!NB || CLOUD.state !== 'on') return;
-  out.innerHTML = '<div class="note">กำลังรวมทุกหน้า</div>';
+  waitLine(out, 'กำลังรวมทุกหน้า');
   try {
     const pages = [];
     for (const pid of NB.pages || []) {
@@ -18567,7 +18603,8 @@ const PDFI = { doc: null, name: '' };
 async function openPdfFile(file) {
   closeSheets();
   if (!(await getAssets())) { toast('มุมมองนี้นำเข้า PDF ไม่ได้', 3000); return; }
-  toast('กำลังเปิด PDF', 8000);
+  const FL = floatLine('กำลังเปิด PDF');
+  try {
   try {
     await loadLib('pdfjs'); window.pdfjsLib.GlobalWorkerOptions.workerSrc = LIBS.pdfw;
     PDFI.doc = await window.pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise; PDFI.name = String(file.name || 'เอกสาร').replace(/\.pdf$/i, '');
@@ -18578,6 +18615,7 @@ async function openPdfFile(file) {
   pdfRangeUI();
   $('#pdfMsg').innerHTML = ''; $('#pdfHere').disabled = $('#pdfNew').disabled = $('#pdfSplit').disabled = false; $('#pdfSheet .panel').classList.remove('wide');
   $('#toast').hidden = true; $('#pdfSheet').hidden = false;
+  } finally { FL(); }
 }
 /* pick the pages to use: tap a first and a last page, or a block of 20; pages with examples or exercises are marked */
 function pdfRangeUI() {
@@ -19841,7 +19879,7 @@ function showTermLink(c) {
 async function openTermPage(clsId) {
   let sb; try { sb = await cloudClient(); } catch (e) { toast('เชื่อมต่อไม่ได้', 3000); return; }
   $('#loading').hidden = true;
-  const box = $('#hwStudent'); box.hidden = false; const b = $('#hwsBody'); b.innerHTML = '<div class="note">กำลังโหลดงาน</div>';
+  const box = $('#hwStudent'); box.hidden = false; const b = $('#hwsBody'); waitLine(b, 'กำลังโหลดงาน');
   const { data, error } = await sb.from('assignments').select('id,title,data,due,open,created_at').eq('data->>clsId', clsId).order('created_at', { ascending: true });
   b.innerHTML = '';
   if (error) { b.appendChild(exEl('div', 'note err', 'โหลดงานไม่ได้ ลองอีกครั้ง')); return; }
@@ -19927,7 +19965,7 @@ function myGradesForm(host, clsId) {
   f.querySelector('#mgGo').onclick = async () => {
     const sid = f.querySelector('#mgSid').value.trim(), pin = f.querySelector('#mgPin').value.trim().toUpperCase(), out = f.querySelector('#mgOut');
     if (!sid || pin.length < 6) { out.innerHTML = '<div class="note err">ใส่รหัสนักเรียนและรหัสดูคะแนนให้ครบ</div>'; return; }
-    out.innerHTML = '<div class="note">กำลังเปิดคะแนน</div>';
+    waitLine(out, 'กำลังเปิดคะแนน');
     try {
       const r = await fetchMyGrades(clsId, sid, pin);
       if (r.none) { out.innerHTML = '<div class="note">ครูยังไม่ได้เผยแพร่คะแนนของห้องนี้</div>'; return; }
@@ -20167,7 +20205,7 @@ async function hwDetail(a, s) {
   if (files.length) {
     const g = exEl('div', 'hwfiles'); box.appendChild(g);
     for (const p of files) { const { data } = await CLOUD.client.storage.from('burin-sub').createSignedUrl(p, 3600); if (!data) continue; const u = data.signedUrl; g.appendChild(exEl('a', '', /\.pdf$/i.test(p) ? '<span class="pdfchip">เปิดไฟล์ PDF</span>' : '<img alt="งานที่ส่ง" src="' + esc(u) + '">')).href = u; g.lastChild.target = '_blank'; }
-    if (!s.data.ai) { const b = exEl('button', 'btn solid', 'ให้ AI ตรวจงานนี้'); b.onclick = async () => { b.disabled = true; b.textContent = 'กำลังตรวจ'; try { await hwCheckOne(a, s); hwDetail(a, s); } catch (e) { b.disabled = false; b.textContent = 'ให้ AI ตรวจงานนี้'; toast(aiErr(e), 4000); } }; box.appendChild(b); }
+    if (!s.data.ai) { const b = exEl('button', 'btn solid', 'ให้ AI ตรวจงานนี้'); b.onclick = async () => { b.disabled = true; const wt = document.createElement('div'); b.after(wt); waitCard(wt, 'AI กำลังตรวจงานนี้', ['อ่านคำตอบ', 'ให้คะแนนและคำแนะนำ'], { cancel: false }); try { await hwCheckOne(a, s); wt.remove(); hwDetail(a, s); } catch (e) { wt.remove(); b.disabled = false; b.textContent = 'ให้ AI ตรวจงานนี้'; toast(aiErr(e), 4000); } }; box.appendChild(b); }
   }
   for (const r of sc.res) {
     const i = sc.res.indexOf(r);
@@ -20445,7 +20483,8 @@ async function deckExportHtml() {
 const latexPlain = (s) => String(s || '').replace(/\$([^$]+)\$/g, (m, x) => x.replace(/\\frac\{([^}]*)\}\{([^}]*)\}/g, '($1)/($2)').replace(/\\sqrt\{([^}]*)\}/g, '√($1)').replace(/\\(times|cdot)/g, '×').replace(/\\theta/g, 'θ').replace(/\\omega/g, 'ω').replace(/\\lambda/g, 'λ').replace(/\\mu/g, 'μ').replace(/\\Delta/g, 'Δ').replace(/\\pi/g, 'π').replace(/\\alpha/g, 'α').replace(/\\(text|mathrm)\{([^}]*)\}/g, '$2').replace(/[{}]/g, '').replace(/\^2/g, '²').replace(/\^3/g, '³').replace(/\\,/g, ' ').replace(/\\/g, '')).replace(/\*\*/g, '');
 async function deckExportPptx() {
   const d = DK.deck, t = themeOf(d.theme), hex = (c) => c.replace('#', '');
-  toast('กำลังสร้างไฟล์ PowerPoint', 4000);
+  const FL = floatLine('กำลังสร้างไฟล์ PowerPoint');
+  try {
   try { await loadScript('https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js'); } catch (e) { toast('โหลดตัวสร้าง PowerPoint ไม่ได้ ใช้ไฟล์ HTML แทน', 3000); return; }
   const P = new window.PptxGenJS(); P.layout = 'LAYOUT_WIDE';
   const imgs = []; for (const im of d.imgs || []) imgs.push(await assetDataUrl(im.asset));
@@ -20467,10 +20506,11 @@ async function deckExportPptx() {
   });
   const blob = await P.write({ outputType: 'blob' });
   saveFile((d.title || 'slides') + '.pptx', blob);
+  } finally { FL(); }
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793506860';
+const BUILD = '1793509939';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
@@ -20648,7 +20688,7 @@ function renderCloud() {
   const add = (t, f, solid) => { const b = document.createElement('button'); b.className = 'btn' + (solid ? ' solid' : ''); b.textContent = t; b.onclick = f; btns.appendChild(b); };
   if (st === 'on') {
     $('#cloudNote').textContent = 'เข้าระบบอยู่ในชื่อ ' + ((CLOUD.user && CLOUD.user.email) || '') + ' สมุดซิงก์กับทุกเครื่องที่เข้าระบบด้วยบัญชีนี้';
-    add('ย้ายสมุดในเครื่องขึ้นคลาวด์', async () => { toast('กำลังย้ายสมุดขึ้นคลาวด์', 9000); const n = await migrateLocalToCloud(); toast(n ? 'ย้ายสมุด ' + n + ' เล่มขึ้นคลาวด์แล้ว' : 'ไม่มีสมุดในเครื่องที่ต้องย้าย', 3500); });
+    add('ย้ายสมุดในเครื่องขึ้นคลาวด์', async () => { const FL = floatLine('กำลังย้ายสมุดขึ้นคลาวด์'); let n = 0; try { n = await migrateLocalToCloud(); } finally { FL(); } toast(n ? 'ย้ายสมุด ' + n + ' เล่มขึ้นคลาวด์แล้ว' : 'ไม่มีสมุดในเครื่องที่ต้องย้าย', 3500); });
     add('ตรวจการเชื่อมต่อ', runDiag, true);
     add('สลับบัญชี', openAcct);
     add('ออกจากระบบ', () => acctSwitch(null));
