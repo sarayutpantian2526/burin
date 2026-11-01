@@ -911,7 +911,8 @@ body.focus .diarybar, body.present .diarybar { display: none; }
   .diarybar button.dfold { padding: 4px 4px; }
 }
 @media (min-width: 701px) and (max-width: 1100px) { .diarybar span { display: none; } }
-#bDiary[aria-pressed="true"] { background: #2B3A67; color: #F6E7C1; border-color: #2B3A67; }
+/* the notebook-writes-back mode has one switch only, the quill among the writing tools, on every screen */
+#bDiary { display: none !important; }
 .scoreb th.c0 { background: #EEF2FC; } .scoreb th.c1 { background: #FDF1E8; } .scoreb th.c2 { background: #EAF6EF; } .scoreb th.c3 { background: #F4EEFB; }
 .scoreb td.sub { font-weight: 600; background: rgba(47,75,184,0.04); }
 .scoreb input.sc.late { background: #FDEBD3; }
@@ -3161,7 +3162,7 @@ function releasePull() {
 const wheelRelease = debounce(releasePull, 220);
 /* the top bar stays on one line: when it runs out of room, buttons show icons only */
 /* the main bar never runs off the screen: first labels go, then the least used buttons move into a "more" menu */
-const TOP_OVERFLOW = ['bViewer', 'bDiary', 'bExport', 'bExam', 'bLive', 'bTray', 'bScan', 'bJoin', 'bConvert', 'bInsert', 'bAI', 'bPages', 'bFull', 'bRedo'];
+const TOP_OVERFLOW = ['bViewer', 'bExport', 'bExam', 'bLive', 'bTray', 'bScan', 'bJoin', 'bConvert', 'bInsert', 'bAI', 'bPages', 'bFull', 'bRedo'];
 function fitTop() {
   const t = document.querySelector('.top'); if (!t) return;
   t.classList.remove('compact'); t.querySelectorAll('.ovf').forEach((x) => x.classList.remove('ovf'));
@@ -20334,7 +20335,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793462323';
+const BUILD = '1793496190';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
