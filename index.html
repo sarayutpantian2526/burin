@@ -10462,9 +10462,10 @@ function lifeRegion(B, beh) {
     return [Math.max(0, Math.round(x0 - 20)), Math.max(0, Math.round(y0 - 20)), Math.min(W, Math.round(x1 + 20)), H]; /* down to the bottom of the page, where its shadow can fall */
   }
   const bw = B[2] - B[0], bh = B[3] - B[1], mv = beh.move && beh.edge !== 'stay';
-  const up = beh.k === 'hop' ? bh * 1.3 : beh.k === 'flap' ? bh * 0.8 : beh.k === 'bob' ? bh * 0.35 : beh.k === 'roll' ? bw * 0.3 : bh * 0.3;
+  const up = beh.k === 'hop' ? bh * 1.3 : beh.k === 'flap' ? bh * 0.8 : beh.k === 'bob' ? bh * 0.35 : beh.k === 'roll' ? bw * 0.3 : beh.k === 'flicker' ? bh * 1.2 + 30 : beh.k === 'swim' ? bh * 0.9 : bh * 0.3; /* room above for sparks, smoke and bubbles */
   const y0 = Math.max(0, Math.round(B[1] - up - 20 - (lifeTouch(beh) ? Math.max(bh * 2, 120) : 0))), y1 = Math.min(H, Math.round(B[3] + bh * 0.25 + 20));
-  return mv ? [0, y0, W, y1] : [Math.max(0, Math.round(B[0] - bw * 0.4 - 20)), y0, Math.min(W, Math.round(B[2] + bw * 0.4 + 20)), y1];
+  const sx = beh.k === 'beat' || beh.k === 'flicker' || beh.k === 'spin' ? 0.65 : 0.4;
+  return mv ? [0, y0, W, y1] : [Math.max(0, Math.round(B[0] - bw * sx - 20)), y0, Math.min(W, Math.round(B[2] + bw * sx + 20)), y1];
 }
 async function placeLife(sp, kind, edge, face, extra) {
   const body = sp.refs.map((r) => { const s = findStroke(r); return s ? { r, s: clone(s) } : null; }).filter(Boolean);
@@ -10522,7 +10523,9 @@ function lifePanel(d, it, dot) {
   p.appendChild(fc);
   { const tc = document.createElement('div'); tc.className = 'chips'; const b = document.createElement('button'); b.type = 'button'; b.className = 'chip'; b.textContent = 'โต้ตอบกับสิ่งอื่นบนหน้า';
     b.title = 'เดินบนเส้นที่วาด หันกลับเมื่อชนลายมือ รูป หรือภาพเคลื่อนไหวอื่น กระโดดข้ามสิ่งที่เตี้ย'; b.setAttribute('aria-pressed', lifeTouch(live.beh) ? 'true' : 'false');
-    b.onclick = () => lifeSet(it, { touch: lifeTouch(live.beh) ? 0 : 1 }); tc.appendChild(b); p.appendChild(tc); }
+    b.onclick = () => lifeSet(it, { touch: lifeTouch(live.beh) ? 0 : 1 }); tc.appendChild(b);
+    const fb = document.createElement('button'); fb.type = 'button'; fb.className = 'chip'; fb.textContent = 'รายละเอียดให้สมจริง'; fb.title = 'ประกายไฟและควัน ฟองน้ำ ฝุ่นตอนลงพื้น ควันท่อ ลม คลื่นชีพจร และท่าทางตกใจ';
+    fb.setAttribute('aria-pressed', live.beh.fx !== 0 ? 'true' : 'false'); fb.onclick = () => lifeSet(it, { fx: live.beh.fx !== 0 ? 0 : 1 }); tc.appendChild(fb); p.appendChild(tc); }
   const sl = (label, key, min, max) => { const l = document.createElement('label'); l.className = 'lifesl'; l.innerHTML = '<span>' + label + '</span>'; const r = document.createElement('input'); r.type = 'range'; r.min = min; r.max = max; r.step = 0.05; r.value = live.beh[key]; r.oninput = () => { const L = findItem(it.id); if (L) L.beh[key] = +r.value; }; r.onchange = () => savePage(); l.appendChild(r); p.appendChild(l); };
   sl('ความเร็ว', 'sp', 0.2, 3); sl('ความแรงของท่าทาง', 'amp', 0.2, 2.5);
   const row = document.createElement('div'); row.className = 'row2';
@@ -10801,8 +10804,77 @@ function lifeDraw(it, rt) {
   });
   if ((it.wheels || []).length) { for (const wl of it.wheels) { c.save(); c.translate(wl.cx, wl.cy); c.rotate((k === 'drive' || moving ? rt.dx * (flip ? -1 : 1) : T0 * 60) / Math.max(4, wl.r)); c.translate(-wl.cx, -wl.cy); wl.i.forEach((i) => it.ink[i] && drawStroke(c, it.ink[i])); c.restore(); } }
   c.restore();
+  /* what the real thing would bring with it, drawn around the picture in the same light hand: sparks and smoke over a flame,
+     bubbles from a fish, dust where feet land, exhaust and speed lines behind a car, pulse rings round a beating heart,
+     wind through a tree, and a startled "!" with a drop of sweat when something rushes at it */
+  if (b.fx !== 0) { c.setTransform(cap, 0, 0, cap, 0, 0); c.translate(-it.x, -it.y); lifeFx(c, it, rt, { k, t, T0, A, B, bw, bh, cx, cy, ox, oy, face: flip ? -face : face, moving, vr }); }
 }
 
+/* ----- extra touches that make a moving picture feel real (see lifeDraw): small particles living for a moment ----- */
+function lifeFx(c, it, rt, o) {
+  const { k, t, T0, A, B, bw, bh, cx, cy, ox, oy, face, moving, vr } = o;
+  const now0 = T0, dt = clamp(now0 - (rt.fxT == null ? now0 : rt.fxT), 0, 0.1); rt.fxT = now0;
+  const P = rt.fx || (rt.fx = []), X = cx + ox, Y = cy + oy, top = B[1] + oy, bot = B[3] + oy, sz = Math.max(bw, bh), u0 = Math.max(4, sz / 40);
+  const emit = (rate, make) => { rt['fxa' + k] = (rt['fxa' + k] || 0) + rate * dt; while (rt['fxa' + k] >= 1) { rt['fxa' + k] -= 1; if (P.length < 80) P.push(Object.assign({ age: 0 }, make())); } };
+  const R = Math.random;
+  if (k === 'flicker') {
+    /* a warm glow on the paper, embers rising and a thin smoke over the tip */
+    const gl = 0.16 + 0.05 * Math.sin(t * 13) + 0.03 * Math.sin(t * 7.7), g = c.createRadialGradient(X, bot - bh * 0.35, 0, X, bot - bh * 0.35, sz * 0.95);
+    g.addColorStop(0, 'rgba(255,170,70,' + gl.toFixed(3) + ')'); g.addColorStop(1, 'rgba(255,170,70,0)'); c.fillStyle = g; c.fillRect(X - sz, bot - bh * 0.35 - sz, sz * 2, sz * 2);
+    emit(7 * A, () => ({ ty: 'ember', x: X + (R() - 0.5) * bw * 0.4, y: top + bh * 0.15, vx: (R() - 0.5) * 18, vy: -(40 + R() * 40) * Math.max(0.6, u0 / 6), life: 0.9 + R() * 0.6, r: 1.2 + R() * 1.4 }));
+    emit(1.6, () => ({ ty: 'smoke', x: X + (R() - 0.5) * bw * 0.15, y: top, vx: (R() - 0.5) * 8, vy: -22 - R() * 10, life: 2.4, r: u0 * 1.2 }));
+  } else if (k === 'swim') {
+    emit(0.9, () => ({ ty: 'bubble', x: X + face * bw * 0.46, y: Y - bh * 0.12, vx: face * 6, vy: -26 - R() * 12, life: 2.2 + R(), r: 1.6 + R() * 2.4 * Math.max(1, u0 / 6) }));
+  } else if (k === 'drive' && moving) {
+    emit(2.6 * Math.max(0.3, vr), () => ({ ty: 'puff', x: X - face * bw * 0.52, y: bot - bh * 0.18, vx: -face * (14 + R() * 10), vy: -6 - R() * 8, life: 0.9, r: u0 * 0.9 }));
+    if (vr > 0.55) { c.save(); c.strokeStyle = 'rgba(43,58,103,' + (0.22 * Math.min(1, vr - 0.4)).toFixed(3) + ')'; c.lineWidth = 1.6; c.lineCap = 'round'; for (let q = 0; q < 3; q++) { const yy = top + bh * (0.3 + q * 0.18), x0 = X - face * (bw * 0.58 + (q % 2) * 8), L = bw * (0.18 + 0.08 * Math.sin(t * 9 + q)); c.beginPath(); c.moveTo(x0, yy); c.lineTo(x0 - face * L, yy); c.stroke(); } c.restore(); }
+  } else if (k === 'hop') {
+    const u = (rt.hp == null ? T0 / 0.95 : rt.hp) % 1;
+    if (rt.fxU != null && u < rt.fxU) for (let q = 0; q < 6; q++) { const sd = q % 2 ? 1 : -1; P.push({ ty: 'dust', x: X + sd * bw * (0.25 + R() * 0.15), y: B[3] + (rt.gy || 0) - 1, vx: sd * (20 + R() * 25), vy: -(8 + R() * 10), life: 0.5, r: u0 * 0.7, age: 0 }); }
+    rt.fxU = u;
+  } else if ((k === 'roll' || k === 'walk4') && moving) {
+    emit((k === 'roll' ? 3 : 1.6) * Math.max(0.3, vr), () => ({ ty: 'dust', x: X - face * bw * 0.3, y: B[3] + (rt.gy || 0) - 1, vx: -face * (10 + R() * 12), vy: -(4 + R() * 8), life: 0.45, r: u0 * 0.55 }));
+  } else if (k === 'flap') {
+    if ((t % 3.4) < 2.3) emit(2.2, () => ({ ty: 'air', x: X - face * bw * 0.45, y: Y + (R() - 0.5) * bh * 0.5, vx: -face * 40, vy: 0, life: 0.45, r: bw * 0.16 }));
+  } else if (k === 'beat') {
+    const u = (T0 % 1.05) / 1.05;
+    if (rt.fxU != null && rt.fxU < 0.12 && u >= 0.12) P.push({ ty: 'ring', x: X, y: Y, vx: 0, vy: 0, life: 0.7, r: sz * 0.5, age: 0 });
+    rt.fxU = u;
+  } else if (k === 'shake') {
+    if ((t % 2.4) < 1.3) { c.save(); c.strokeStyle = 'rgba(43,58,103,0.45)'; c.lineWidth = 1.8; c.lineCap = 'round'; const j = Math.sin(t * 40) > 0 ? 1 : 0; for (const sd of [-1, 1]) for (let q = 0; q < 2; q++) { const rr = bh * (0.22 + q * 0.12); c.beginPath(); c.arc(X + sd * (bw * 0.5 + 6 + q * 7 + j), Y - bh * 0.1, rr, sd > 0 ? -0.6 : Math.PI - 0.6, sd > 0 ? 0.6 : Math.PI + 0.6); c.stroke(); } c.restore(); }
+  } else if (k === 'sway' || k === 'flutter') {
+    emit(0.45, () => ({ ty: 'wind', x: B[0] - bw * 0.2, y: top + bh * (0.15 + R() * 0.5), vx: 60 + R() * 30, vy: 0, life: 1.4, r: bw * 0.22 }));
+  } else if (k === 'spin') {
+    c.save(); c.strokeStyle = 'rgba(43,58,103,0.25)'; c.lineWidth = 1.8; c.lineCap = 'round'; const rr = sz * 0.62, a0 = T0 * 2.2 * face; for (let q = 0; q < 2; q++) { c.beginPath(); c.arc(X, Y, rr, a0 + q * Math.PI - face * 0.9, a0 + q * Math.PI, face < 0); c.stroke(); } c.restore();
+  } else if (k === 'wiggle') {
+    emit(0.5, () => ({ ty: 'spark', x: X + (R() - 0.5) * bw * 1.1, y: top + R() * bh * 0.4, vx: 0, vy: -10, life: 0.9, r: u0 * 0.9 }));
+  }
+  /* feelings: startled by something rushing at it */
+  const fr = Math.max(rt.flinch || 0, (rt.scare || 0) * 0.8);
+  if (fr > 0.15 && k !== 'phys') {
+    c.save(); c.globalAlpha = Math.min(1, fr * 1.4); c.strokeStyle = '#2B3A67'; c.fillStyle = '#2B3A67'; c.lineWidth = 2; c.lineCap = 'round';
+    const hx = X, hy = top - Math.max(10, bh * 0.12);
+    for (const a of [-0.5, 0, 0.5]) { const L = Math.max(8, bh * 0.12); c.beginPath(); c.moveTo(hx + Math.sin(a) * L * 0.6, hy - Math.cos(a) * L * 0.6); c.lineTo(hx + Math.sin(a) * L * 1.5, hy - Math.cos(a) * L * 1.5); c.stroke(); }
+    const sx0 = X + face * bw * 0.32, sy0 = top + bh * 0.12, d = Math.max(3, bh * 0.05); c.fillStyle = 'rgba(80,150,230,0.85)'; c.beginPath(); c.moveTo(sx0, sy0 - d * 1.6); c.quadraticCurveTo(sx0 + d, sy0, sx0, sy0 + d * 0.6); c.quadraticCurveTo(sx0 - d, sy0, sx0, sy0 - d * 1.6); c.fill();
+    c.restore();
+  }
+  /* move and draw the particles */
+  for (let q = P.length - 1; q >= 0; q--) {
+    const p = P[q]; p.age += dt; if (p.age >= p.life) { P.splice(q, 1); continue; }
+    const f = p.age / p.life; p.x += p.vx * dt; p.y += p.vy * dt;
+    if (p.ty === 'bubble') p.x += Math.sin((p.age + q) * 6) * 0.4;
+    if (p.ty === 'dust') p.vy += 60 * dt;
+    c.save();
+    if (p.ty === 'ember') { c.globalAlpha = (1 - f) * 0.9; c.fillStyle = f < 0.4 ? '#F4A23B' : '#D9602A'; c.beginPath(); c.arc(p.x + Math.sin(p.age * 9 + q) * 2, p.y, p.r * (1 - f * 0.5), 0, 6.2832); c.fill(); }
+    else if (p.ty === 'smoke') { c.globalAlpha = 0.08 * Math.sin(Math.PI * f); c.fillStyle = '#6B7280'; c.beginPath(); c.arc(p.x + Math.sin(p.age * 2 + q) * 5, p.y, p.r * (1 + f * 2.8), 0, 6.2832); c.fill(); }
+    else if (p.ty === 'bubble') { c.globalAlpha = 0.75 * (1 - f * 0.6); c.strokeStyle = '#3B82C4'; c.lineWidth = 1.3; c.beginPath(); c.arc(p.x, p.y, p.r * (1 + f * 0.4), 0, 6.2832); c.stroke(); c.beginPath(); c.arc(p.x - p.r * 0.35, p.y - p.r * 0.35, p.r * 0.22, 0, 6.2832); c.stroke(); }
+    else if (p.ty === 'puff' || p.ty === 'dust') { c.globalAlpha = (p.ty === 'puff' ? 0.28 : 0.35) * (1 - f); c.strokeStyle = '#6B7280'; c.lineWidth = 1.4; c.beginPath(); c.arc(p.x, p.y, p.r * (1 + f * (p.ty === 'puff' ? 1.6 : 0.8)), 0, 6.2832); c.stroke(); }
+    else if (p.ty === 'air' || p.ty === 'wind') { c.globalAlpha = (p.ty === 'air' ? 0.35 : 0.22) * Math.sin(Math.PI * f); c.strokeStyle = '#2B3A67'; c.lineWidth = 1.5; c.lineCap = 'round'; const dir = Math.sign(p.vx) || 1; c.beginPath(); c.moveTo(p.x, p.y); c.quadraticCurveTo(p.x - dir * p.r * 0.5, p.y - p.r * 0.18, p.x - dir * p.r, p.y); c.stroke(); }
+    else if (p.ty === 'ring') { c.globalAlpha = 0.4 * (1 - f); c.strokeStyle = '#C8323C'; c.lineWidth = 2; c.beginPath(); c.arc(p.x, p.y, p.r * (1 + f * 0.7), 0, 6.2832); c.stroke(); }
+    else if (p.ty === 'spark') { c.globalAlpha = Math.sin(Math.PI * f) * 0.8; c.strokeStyle = '#E0A526'; c.lineWidth = 1.5; c.lineCap = 'round'; const r = p.r * (0.6 + 0.4 * Math.sin(Math.PI * f)); c.beginPath(); c.moveTo(p.x - r, p.y); c.lineTo(p.x + r, p.y); c.moveTo(p.x, p.y - r); c.lineTo(p.x, p.y + r); c.stroke(); }
+    c.restore();
+  }
+}
 /* ----- a path the AI wrote for any movement the teacher described: key frames of offset, turn and size, eased between ----- */
 function lifePathAt(it, t) {
   const P = it.beh.path || {}, K = (Array.isArray(P.keys) ? P.keys : []).map((k) => ({ t: Math.max(0, +k.t || 0), dx: +k.dx || 0, dy: +k.dy || 0, rot: (+k.rot || 0) * Math.PI / 180, s: clamp(+k.scale || +k.s || 1, 0.1, 5) })).sort((a, b) => a.t - b.t);
@@ -20548,7 +20620,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793510450';
+const BUILD = '1793510617';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
