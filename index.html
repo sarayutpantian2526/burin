@@ -3126,7 +3126,27 @@ const widthsLater = debounce(() => { if (typeof renderWidths === 'function') ren
 /* ----- continuous pages: the page before and after are shown above and below, scrolling past the edge of a page
    simply carries on into the next one, and that page becomes the one you write on ----- */
 const FLOW = { gap: 28, on: store_ls.get('tp-flow') === '1', ver: 0, dims: { prev: null, next: null }, busy: false };
+const PEEKS = new Map();
 function flowNb() { const pages = (S.nb && S.nb.pages) || [], i = pages.indexOf(S.pid); return { prev: i > 0 ? pages[i - 1] : null, next: i >= 0 && i < pages.length - 1 ? pages[i + 1] : null }; }
+/* a neighbouring page drawn as a picture with its boxes on top; kept for reuse while unchanged, and the pages two away are
+   drawn ahead while nothing else is happening, so scrolling quickly through a notebook finds them ready */
+async function peekBuild(pid) {
+  const { page, strokes } = await pageData(pid);
+  const [pw, ph] = pageDims(page);
+  const sig = [pid, strokes.length, JSON.stringify((page && page.items) || []).length, (page && page.paper) || '', pw, ph, S.base.toFixed(3), clamp(S.zoom, 1, 1.6).toFixed(1), curBg()].join('|');
+  const hit = PEEKS.get(pid); if (hit && hit.sig === sig) { PEEKS.delete(pid); PEEKS.set(pid, hit); return hit; }
+  /* a picture as sharp as the screen needs, but no more: these are kept in memory (iPad) */
+  const cv = document.createElement('canvas'), dpr = Math.min(2, window.devicePixelRatio || 1), k = Math.min(pw * S.base * dpr * clamp(S.zoom, 1, 1.6), 1500) / pw;
+  cv.width = Math.round(pw * k); cv.height = Math.round(ph * k);
+  const c = cv.getContext('2d'); c.setTransform(k, 0, 0, k, 0, 0); const keep = [W, H]; W = pw; H = ph; c.fillStyle = '#FFFFFF'; c.fillRect(0, 0, W, H); try { paper(c, (page && page.paper) || 'grid'); } catch (e) { /* plain */ } [W, H] = keep;
+  drawInto(c, strokes, null);
+  const lay = document.createElement('div'); lay.className = 'fitems'; lay.style.width = pw + 'px'; lay.style.height = ph + 'px'; lay.style.transform = 'scale(' + S.base + ')';
+  for (const it of (page && page.items) || []) { if (it.teacher && isStudentSide()) continue; try { lay.appendChild(buildItemEl(it, true)); } catch (e) { /* skip */ } }
+  const lb = document.createElement('div'); lb.className = 'plabel'; lb.textContent = 'หน้า ' + ((S.nb.pages || []).indexOf(pid) + 1);
+  const out = { sig, dims: [pw, ph], nodes: [cv, lay, lb], lay, typeset: false };
+  PEEKS.set(pid, out); while (PEEKS.size > 4) PEEKS.delete(PEEKS.keys().next().value);
+  return out;
+}
 async function renderPeeks() {
   const P1 = $('#peekPrev'), P2 = $('#peekNext'); if (!P1) return; const v = ++FLOW.ver;
   const off = !FLOW.on || S.present || !S.nb;
@@ -3135,34 +3155,33 @@ async function renderPeeks() {
   const nb = flowNb(); document.body.classList.toggle('flowlast', !nb.next);
   for (const [el, pid, which] of [[P1, nb.prev, 'prev'], [P2, nb.next, 'next']]) {
     if (!pid) { el.hidden = true; el.innerHTML = ''; el.dataset.pid = ''; FLOW.dims[which] = null; continue; }
-    const { page, strokes } = await pageData(pid); if (v !== FLOW.ver) return;
-    const [pw, ph] = pageDims(page); FLOW.dims[which] = [pw, ph];
+    const pk = await peekBuild(pid); if (v !== FLOW.ver) return;
+    const [pw, ph] = pk.dims; FLOW.dims[which] = [pw, ph];
     el.dataset.pid = pid; el.style.width = pw * S.base + 'px'; el.style.height = ph * S.base + 'px';
     el.style.top = (which === 'prev' ? -(ph * S.base + FLOW.gap) : H * S.base + FLOW.gap) + 'px';
-    el.innerHTML = '';
-    const cv = document.createElement('canvas'), dpr = Math.min(2, window.devicePixelRatio || 1), k = Math.min(pw * S.base * dpr * clamp(S.zoom, 1, 1.6), 2000) / pw;
-    cv.width = Math.round(pw * k); cv.height = Math.round(ph * k);
-    const c = cv.getContext('2d'); c.setTransform(k, 0, 0, k, 0, 0); const keep = [W, H]; W = pw; H = ph; c.fillStyle = '#FFFFFF'; c.fillRect(0, 0, W, H); try { paper(c, (page && page.paper) || 'grid'); } catch (e) { /* plain */ } [W, H] = keep;
-    drawInto(c, strokes, null); el.appendChild(cv);
-    const lay = document.createElement('div'); lay.className = 'fitems'; lay.style.width = pw + 'px'; lay.style.height = ph + 'px'; lay.style.transform = 'scale(' + S.base + ')';
-    for (const it of (page && page.items) || []) { if (it.teacher && isStudentSide()) continue; try { lay.appendChild(buildItemEl(it, true)); } catch (e) { /* skip */ } }
-    el.appendChild(lay); lay.querySelectorAll('.item').forEach((x) => { try { typeset(x); } catch (e) { /* plain */ } });
-    const lb = document.createElement('div'); lb.className = 'plabel'; lb.textContent = 'หน้า ' + ((S.nb.pages || []).indexOf(pid) + 1); el.appendChild(lb);
+    if (el.firstChild !== pk.nodes[0]) { el.innerHTML = ''; el.append(...pk.nodes); }
+    if (!pk.typeset) { pk.typeset = true; pk.lay.querySelectorAll('.item').forEach((x) => { try { typeset(x); } catch (e) { /* plain */ } }); }
     el.hidden = false;
   }
   clampT(); applyT();
+  /* draw ahead the pages two away, one at a time, while the pen and fingers are off the glass */
+  clearTimeout(FLOW.ahead);
+  const pages = S.nb.pages || [], i = pages.indexOf(S.pid), ahead = [pages[i + 2], pages[i - 2]].filter(Boolean);
+  const step = () => { if (v !== FLOW.ver || !ahead.length) return; if (P.size) { FLOW.ahead = setTimeout(step, 300); return; } peekBuild(ahead.shift()).catch(() => {}).finally(() => { FLOW.ahead = setTimeout(step, 250); }); };
+  FLOW.ahead = setTimeout(step, 400);
 }
 const renderPeeksLater = debounce(() => { renderPeeks().catch(() => {}); }, 120);
 /* move onto the neighbouring page without the view jumping: its position on screen stays where it was */
 function flowGo(d) {
-  const nb = flowNb(), pid = d < 0 ? nb.prev : nb.next; if (!pid || FLOW.busy) return false;
+  const nb = flowNb(), pid = d < 0 ? nb.prev : nb.next; if (!pid) return false;
+  if (FLOW.busy) { FLOW.again = true; return false; }
   const dimPrev = FLOW.dims.prev, cur = [W, H];
   if (d < 0 && !dimPrev) return false;
   FLOW.busy = true;
   S.ty += d < 0 ? -(dimPrev[1] * S.base + FLOW.gap) * S.zoom : (cur[1] * S.base + FLOW.gap) * S.zoom;
   FLOW.dims = d < 0 ? { prev: null, next: cur } : { prev: cur, next: null };
   openPage(pid); applyT();
-  renderPeeks().catch(() => {}).finally(() => { FLOW.busy = false; });
+  renderPeeks().catch(() => {}).finally(() => { FLOW.busy = false; if (FLOW.again) { FLOW.again = false; flowCheck(); } });
   return true;
 }
 function flowCheck() {
@@ -3335,9 +3354,14 @@ function sharpLater() { clearTimeout(sharpT); sharpT = setTimeout(() => { if (!P
 function drawBg() {
   if (!cSharp.hidden) sharpLater();
   const c = cBg.getContext('2d');
-  c.setTransform(S.bgRes || S.res, 0, 0, S.bgRes || S.res, 0, 0);
-  c.fillStyle = '#FFFFFF'; c.fillRect(0, 0, W, H);
-  paper(c, (S.page && S.page.paper) || 'grid');
+  /* turning to a page with the same paper: it is already drawn (a full-page redraw is slow on iPad) */
+  const key = [(S.page && S.page.paper) || 'grid', curBg(), W, H, cBg.width, cBg.height, S.bgRes || S.res].join('|');
+  if (key !== S.bgKey) {
+    S.bgKey = key;
+    c.setTransform(S.bgRes || S.res, 0, 0, S.bgRes || S.res, 0, 0);
+    c.fillStyle = '#FFFFFF'; c.fillRect(0, 0, W, H);
+    paper(c, (S.page && S.page.paper) || 'grid');
+  }
   const dark = (S.page && S.page.paper === 'board') || darkBg(curBg());
   $('#page').classList.toggle('darkpaper', !!dark);
   /* dark paper: start with a light ink once per notebook so the first stroke is visible */
@@ -5378,7 +5402,9 @@ function openNotebook(nid, pidWanted) {
     if (!doc) return;
     const bgChanged = !S.nb || (S.nb.paperBg || '') !== (doc.paperBg || '');
     S.nb = doc;
-    renderTitle(); renderPageList(); renderLibrary();
+    /* a save of the notebook comes back often while turning pages: the page list waits for the turning to stop, and the
+       library is only redrawn when it is open (opening the menu draws it anyway) */
+    renderTitle(); renderPageListLater(); if (!$('#menu').hidden) renderLibrary();
     if (bgChanged && S.page) drawBg();
     const pages = doc.pages || [];
     const lastP = store_ls.get('tp-last-page-' + nid);
@@ -5396,11 +5422,14 @@ function pageFlip(pid) {
     const pages = (S.nb && S.nb.pages) || [], a = pages.indexOf(S.pid), b = pages.indexOf(pid);
     if (a < 0 || b < 0) return;
     const pg = $('#page'), bg = $('#cBg'), ink = $('#cInk'); if (!pg || !bg || !pg.offsetWidth) return;
+    /* flipping quickly through pages: no turning leaf, every page simply shows (the leaf of each flip would pile up work) */
+    const tn = now(); if (tn - (S.lastFlip || 0) < 450) { S.lastFlip = tn; for (const old of document.querySelectorAll('.pleaf')) old.remove(); return; } S.lastFlip = tn;
     for (const old of document.querySelectorAll('.pleaf')) old.remove();
     const leaf = document.createElement('div'); leaf.className = 'pleaf ' + (b > a ? 'fwd' : 'back'); leaf.setAttribute('aria-hidden', 'true');
     leaf.style.left = pg.offsetLeft + 'px'; leaf.style.top = pg.offsetTop + 'px'; leaf.style.width = pg.offsetWidth + 'px'; leaf.style.height = pg.offsetHeight + 'px';
-    const c = document.createElement('canvas'); c.width = bg.width; c.height = bg.height; const x = c.getContext('2d');
-    x.drawImage(bg, 0, 0); if (ink.width) x.drawImage(ink, 0, 0, c.width, c.height);
+    /* the turning leaf is in motion: half the pixels are plenty and copy four times faster */
+    const c = document.createElement('canvas'); c.width = Math.round(bg.width / 2); c.height = Math.round(bg.height / 2); const x = c.getContext('2d');
+    x.drawImage(bg, 0, 0, c.width, c.height); if (ink.width) x.drawImage(ink, 0, 0, c.width, c.height);
     leaf.appendChild(c);
     const it = $('#items'); if (it) { const k = it.cloneNode(true); k.removeAttribute('id'); k.className = 'pleafitems'; k.style.cssText = it.style.cssText; k.querySelectorAll('[id]').forEach((n) => n.removeAttribute('id')); leaf.appendChild(k); }
     const sh = document.createElement('i'); sh.className = 'pshade'; leaf.appendChild(sh);
@@ -5422,7 +5451,8 @@ function openPage(pid) {
   S.undo = []; S.redo = []; updUndo(); clearSel();
   if (S.unsub.page) S.unsub.page();
   if (S.unsub.layers) S.unsub.layers();
-  drawBg(); drawInk(); renderItems(); renderTitle(); renderPageList(); if (FLOW.on && !FLOW.busy) renderPeeksLater();
+  /* the page list (thumbnails) is rebuilt once the turning stops; its page number right away */
+  drawBg(); drawInk(); renderItems(); renderTitle(); { const pages = (S.nb && S.nb.pages) || [], cur = pages.indexOf(pid), cl = $('#curPageLabel'); if (cl) cl.textContent = cur >= 0 ? 'หน้า ' + (cur + 1) : 'หน้านี้'; } renderPageListLater(); if (FLOW.on && !FLOW.busy) renderPeeksLater();
   S.unsub.page = S.store.watchDoc('pages/' + pid, (doc, meta) => {
     if (pid !== S.pid || !doc) return;
     if (savePage.pending() || (meta && meta.hasPendingWrites)) return;
@@ -7078,6 +7108,7 @@ function thumbObserver() {
   TH.io = new IntersectionObserver((ents) => { for (const e of ents) if (e.isIntersecting) { const cv = e.target; TH.io.unobserve(cv); drawThumb(cv.dataset.pid, cv).catch(() => {}); } }, { root: $('#pageList').parentNode, rootMargin: '200px' });
   return TH.io;
 }
+const renderPageListLater = debounce(() => renderPageList(), 280);
 function renderPageList() {
   const el = $('#pageList'); el.innerHTML = '';
   const pages = (S.nb && S.nb.pages) || [];
@@ -7114,16 +7145,27 @@ const refreshCurThumb = debounce(() => {
   const cv = $('#pageList').querySelector('[aria-current="true"] canvas'); if (cv) drawThumb(S.pid, cv).catch(() => {});
 }, 900);
 function renderPaperChips() {
-  const el = $('#paperChips'); el.innerHTML = '';
+  const el = $('#paperChips');
+  /* the eight paper samples are drawn once per paper colour: opening each page only moves the mark to the paper in use
+     (redrawing them, the chalkboard and art paper above all, made turning pages stutter) */
+  const ck = curBg() + '|' + ((S.page && S.page.orient) || '') + '|' + ((S.page && S.page.paper) || 'grid');
+  if (S.chipsKey && S.chipsKey.split('|')[0] === ck.split('|')[0] && el.children.length) {
+    const cur = (S.page && S.page.paper) || 'grid';
+    el.querySelectorAll('.pap').forEach((b) => b.setAttribute('aria-pressed', b.dataset.k === cur ? 'true' : 'false'));
+    const oc = $('#orientChips'); if (oc) oc.querySelectorAll('.chip').forEach((b) => b.setAttribute('aria-pressed', b.dataset.k === ((S.page && S.page.orient === 'land') ? 'land' : 'port') ? 'true' : 'false'));
+    const pn = (PAPERS.find((x) => x[0] === cur) || [0, ''])[1], sm = $('#pfSum'); if (sm) sm.textContent = 'กระดาษ' + pn + ' ' + ((S.page && S.page.orient === 'land') ? 'แนวนอน' : 'แนวตั้ง');
+    S.chipsKey = ck; return;
+  }
+  S.chipsKey = ck; el.innerHTML = '';
   let oc = $('#orientChips'); if (!oc) { oc = document.createElement('div'); oc.id = 'orientChips'; oc.className = 'orient chips'; el.parentNode.insertBefore(oc, el.nextSibling); }
   oc.innerHTML = '';
-  for (const [k, n] of [['port', 'แนวตั้ง'], ['land', 'แนวนอน']]) { const b = document.createElement('button'); b.type = 'button'; b.className = 'chip'; b.textContent = n; b.setAttribute('aria-pressed', ((S.page && S.page.orient === 'land') ? 'land' : 'port') === k ? 'true' : 'false'); b.onclick = () => setOrient(k); oc.appendChild(b); }
+  for (const [k, n] of [['port', 'แนวตั้ง'], ['land', 'แนวนอน']]) { const b = document.createElement('button'); b.type = 'button'; b.className = 'chip'; b.dataset.k = k; b.textContent = n; b.setAttribute('aria-pressed', ((S.page && S.page.orient === 'land') ? 'land' : 'port') === k ? 'true' : 'false'); b.onclick = () => setOrient(k); oc.appendChild(b); }
   const cur = (S.page && S.page.paper) || 'grid';
   const rank = ['grid', 'lined', 'blank', 'dot', 'mm', 'cornell', 'art', 'board'];
   const list = PAPERS.slice().sort((a, b) => rank.indexOf(a[0]) - rank.indexOf(b[0]));
   { const pn = (PAPERS.find((x) => x[0] === cur) || [0, ''])[1]; const sm = $('#pfSum'); if (sm) sm.textContent = 'กระดาษ' + pn + ' ' + ((S.page && S.page.orient === 'land') ? 'แนวนอน' : 'แนวตั้ง'); }
   for (const [k, n] of list) {
-    const b = document.createElement('button'); b.className = 'pap'; b.type = 'button';
+    const b = document.createElement('button'); b.className = 'pap'; b.type = 'button'; b.dataset.k = k;
     b.setAttribute('aria-pressed', k === cur ? 'true' : 'false'); b.setAttribute('aria-label', 'กระดาษ' + n);
     b.innerHTML = '<canvas width="80" height="104"></canvas><span></span>';
     b.querySelector('span').textContent = n;
@@ -21230,7 +21272,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793515950';
+const BUILD = '1793519806';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
