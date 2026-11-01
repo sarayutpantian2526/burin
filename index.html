@@ -4492,7 +4492,8 @@ function onUp(e) {
   if (pt.mode === 'draw' && !pt.snapped && tryScribble(pt.stroke)) { clearLive(); return; }
   if (pt.mode === 'draw') {
     if (S.watchers || liveOn()) emitInkDone(pt);
-    inkSimplify(pt.stroke); S.mine.push(pt.stroke); clearLive(); drawInk();
+    /* a snapped shape keeps all its points: thinned to its corners, the smooth pen would round them off */
+    if (!pt.snapped) inkSimplify(pt.stroke); S.mine.push(pt.stroke); clearLive(); drawInk();
     pushUndo({ t: 'add', stroke: pt.stroke }); saveMine(); diaryStroke(pt.stroke);
     if (S.convMode && S.autoConv && pt.stroke.k !== 'h') { S.autoQueue.add(pt.stroke.id); autoConvert(); }
   } else if (pt.mode === 'erase' && pt.snap && Object.keys(pt.snap).length) {
@@ -4530,7 +4531,7 @@ function onUp(e) {
 function startGesture(touches) {
   for (const p of touches) {
     /* a second finger arriving while a finger drawing rests still (holding to make a shape) keeps that drawing */
-    if (p.mode === 'draw' && p.stroke) { clearTimeout(p.holdT); const sp = p.stroke.p || []; let L = 0; for (let i = 3; i < sp.length; i += 3) L += Math.hypot(sp[i] - sp[i - 3], sp[i + 1] - sp[i - 2]) / 10; if (p.snapped || L >= 30) { inkSimplify(p.stroke); S.mine.push(p.stroke); drawInk(); pushUndo({ t: 'add', stroke: p.stroke }); saveMine(); diaryStroke(p.stroke); } }
+    if (p.mode === 'draw' && p.stroke) { clearTimeout(p.holdT); const sp = p.stroke.p || []; let L = 0; for (let i = 3; i < sp.length; i += 3) L += Math.hypot(sp[i] - sp[i - 3], sp[i + 1] - sp[i - 2]) / 10; if (p.snapped || L >= 30) { if (!p.snapped) inkSimplify(p.stroke); S.mine.push(p.stroke); drawInk(); pushUndo({ t: 'add', stroke: p.stroke }); saveMine(); diaryStroke(p.stroke); } }
     if (p.mode === 'draw') clearLive();
     p.mode = 'gesture';
   }
@@ -21229,7 +21230,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793515232';
+const BUILD = '1793515950';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
