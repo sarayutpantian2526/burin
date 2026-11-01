@@ -4698,10 +4698,12 @@ function armHold(pt, x, y) {
   clearTimeout(pt.holdT);
   const f = pt.stroke.p; let L = 0;
   for (let i = 3; i < f.length && L < 400; i += 3) L += Math.hypot(f[i] - f[i - 3], f[i + 1] - f[i - 2]) / 10;
-  if (L < 40) return; /* a dot or the tail of a small letter is never a shape */
+  /* sizes are judged on the screen as well as on the paper, so zoomed in a shape the size of the hand still snaps */
+  const sc = Math.max(0.2, (S.base || 1) * (S.zoom || 1));
+  if (L < 40 && L * sc < 40) return; /* a dot or the tail of a small letter is never a shape */
   /* a letter or a word is never a shape: only drawings bigger than handwriting snap, and only after a clear pause */
   let bx0 = 1e9, by0 = 1e9, bx1 = -1e9, by1 = -1e9; for (let i = 0; i < f.length; i += 3) { const qx = f[i] / 10, qy = f[i + 1] / 10; if (qx < bx0) bx0 = qx; if (qx > bx1) bx1 = qx; if (qy < by0) by0 = qy; if (qy > by1) by1 = qy; }
-  if (Math.max(bx1 - bx0, by1 - by0) < 70) return;
+  if (Math.max(bx1 - bx0, by1 - by0) < 70 && Math.max(bx1 - bx0, by1 - by0) * sc < 70) return;
   pt.holdT = setTimeout(() => trySnap(pt), 1200);
 }
 function strokePts(flat) { const out = []; for (let i = 0; i < flat.length; i += 3) out.push([flat[i] / 10, flat[i + 1] / 10]); return out; }
@@ -4718,46 +4720,138 @@ function rdp(pts, eps) {
   const l = rdp(pts.slice(0, idx + 1), eps), r = rdp(pts.slice(idx), eps);
   return l.slice(0, -1).concat(r);
 }
-function recognize(flat) {
-  const p = strokePts(flat); if (p.length < 5) return null;
-  let L = 0; for (let i = 1; i < p.length; i++) L += Math.hypot(p[i][0] - p[i - 1][0], p[i][1] - p[i - 1][1]);
-  if (L < 28) return null;
-  const a = p[0], b = p[p.length - 1], d = Math.hypot(b[0] - a[0], b[1] - a[1]);
-  let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
-  for (const q of p) { x0 = Math.min(x0, q[0]); y0 = Math.min(y0, q[1]); x1 = Math.max(x1, q[0]); y1 = Math.max(y1, q[1]); }
-  const w = x1 - x0, h = y1 - y0, size = Math.max(w, h);
-  if (d > 0.82 * L) {
-    let dev = 0; const dx = b[0] - a[0], dy = b[1] - a[1];
-    for (const q of p) dev = Math.max(dev, Math.abs(dy * q[0] - dx * q[1] + b[0] * a[1] - b[1] * a[0]) / (d || 1));
-    if (dev < Math.max(5, 0.06 * d)) {
-      let ex = b[0], ey = b[1];
-      const ang = Math.atan2(ey - a[1], ex - a[0]), snap = Math.round(ang / (Math.PI / 4)) * (Math.PI / 4);
-      if (Math.abs(ang - snap) < 0.07) { ex = a[0] + d * Math.cos(snap); ey = a[1] + d * Math.sin(snap); }
-      return { type: 'line', a: a.slice(), b: [ex, ey], name: 'เส้นตรง' };
-    }
+/* ---------- hand-drawn shape to a clean shape ----------
+   The line is resampled evenly, corners are where it turns sharply, and the shape is named from its corners:
+   triangles (right-angled, equilateral), quadrilaterals (square, rectangle, parallelogram, trapezium), regular
+   polygons up to octagons, circles and ellipses, arcs, straight lines and bent lines. Nearly right angles become right,
+   nearly level or upright sides become level or upright, nearly parallel sides become parallel. */
+function shResample(p, n, closed) {
+  const pts = closed ? p.concat([p[0]]) : p, L = []; let t = 0; L.push(0);
+  for (let i = 1; i < pts.length; i++) { t += Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]); L.push(t); }
+  const out = []; let k = 1;
+  for (let q = 0; q < n; q++) { const d = t * q / (closed ? n : n - 1); while (k < pts.length - 1 && L[k] < d) k++; const a = pts[k - 1], b = pts[k], u = (d - L[k - 1]) / Math.max(1e-9, L[k] - L[k - 1]); out.push([a[0] + (b[0] - a[0]) * clamp(u, 0, 1), a[1] + (b[1] - a[1]) * clamp(u, 0, 1)]); }
+  return out;
+}
+const shAng = (a, b) => Math.atan2(b[1] - a[1], b[0] - a[0]);
+const shWrap = (a) => { while (a > Math.PI) a -= 2 * Math.PI; while (a < -Math.PI) a += 2 * Math.PI; return a; };
+/* an angle close to level or upright becomes exactly so */
+const shAxis = (a, tol) => { const s = Math.round(a / (Math.PI / 2)) * (Math.PI / 2); return Math.abs(shWrap(a - s)) < (tol || 0.14) ? s : a; };
+function shCorners(r, closed, k) {
+  const n = r.length, th = new Array(n).fill(0);
+  for (let i = 0; i < n; i++) {
+    const a = closed ? r[(i - k + n) % n] : r[Math.max(0, i - k)], b = r[i], c = closed ? r[(i + k) % n] : r[Math.min(n - 1, i + k)];
+    if (!closed && (i < k || i > n - 1 - k)) continue; th[i] = Math.abs(shWrap(shAng(b, c) - shAng(a, b)));
   }
-  const closed = d < Math.max(26, 0.2 * L);
-  if (closed && w > 14 && h > 14) {
-    let v = rdp(p, 0.075 * size);
-    if (v.length > 2 && Math.hypot(v[0][0] - v[v.length - 1][0], v[0][1] - v[v.length - 1][1]) < 0.25 * size) v = v.slice(0, -1);
-    const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2, rx = w / 2, ry = h / 2;
-    let s = 0, s2 = 0;
-    for (const q of p) { const r = Math.hypot((q[0] - cx) / rx, (q[1] - cy) / ry); s += r; s2 += r * r; }
-    const mean = s / p.length, sd = Math.sqrt(Math.max(0, s2 / p.length - mean * mean));
-    if (v.length === 3) return { type: 'poly', pts: v, closed: true, name: 'สามเหลี่ยม' };
-    if (v.length === 4) {
-      const axis = v.every((q, i) => { const n = v[(i + 1) % 4]; const ang = Math.abs(Math.atan2(n[1] - q[1], n[0] - q[0])) % (Math.PI / 2); return Math.min(ang, Math.PI / 2 - ang) < 0.22; });
-      if (axis) return { type: 'poly', pts: [[x0, y0], [x1, y0], [x1, y1], [x0, y1]], closed: true, name: 'สี่เหลี่ยม' };
-      return { type: 'poly', pts: v, closed: true, name: 'สี่เหลี่ยม' };
+  const cs = [];
+  for (let i = 0; i < n; i++) { if (th[i] < 0.55) continue; let mx = true; for (let d = 1; d <= k; d++) { const j1 = closed ? (i + d) % n : i + d, j0 = closed ? (i - d + n) % n : i - d; if ((j1 < n && th[j1] > th[i]) || (j0 >= 0 && th[j0] >= th[i])) { mx = false; break; } } if (mx) cs.push(i); }
+  return cs;
+}
+function shLineDev(r, i0, i1, closed) {
+  const n = r.length, a = r[i0], b = r[i1]; let m = 0, j = i0;
+  while (j !== i1) { m = Math.max(m, ipSegD(r[j], a, b)); j = closed ? (j + 1) % n : j + 1; if (!closed && j > i1) break; }
+  return m;
+}
+function recognize(flat) {
+  const p0 = strokePts(flat); if (p0.length < 5) return null;
+  let L = 0; for (let i = 1; i < p0.length; i++) L += Math.hypot(p0[i][0] - p0[i - 1][0], p0[i][1] - p0[i - 1][1]);
+  if (L < 12) return null;
+  const a = p0[0], b = p0[p0.length - 1], d = Math.hypot(b[0] - a[0], b[1] - a[1]);
+  let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+  for (const q of p0) { x0 = Math.min(x0, q[0]); y0 = Math.min(y0, q[1]); x1 = Math.max(x1, q[0]); y1 = Math.max(y1, q[1]); }
+  const w = x1 - x0, h = y1 - y0, size = Math.max(w, h), diag = Math.hypot(w, h);
+  /* a straight line */
+  if (d > 0.85 * L) {
+    let dev = 0; for (const q of p0) dev = Math.max(dev, ipSegD(q, a, b));
+    if (dev < Math.max(5, 0.07 * d)) { const ang = shAng(a, b), sn = Math.round(ang / (Math.PI / 4)) * (Math.PI / 4), A = Math.abs(ang - sn) < 0.08 ? sn : ang; return { type: 'line', a: a.slice(), b: [a[0] + d * Math.cos(A), a[1] + d * Math.sin(A)], name: 'เส้นตรง' }; }
+  }
+  const closed = d < Math.max(24, 0.22 * L, 0.2 * size);
+  if (closed && w > 12 && h > 12) {
+    const N = 72, r = shResample(p0, N, true), k = 3, cs = shCorners(r, true, k);
+    /* every side between corners must be nearly straight to be a polygon */
+    const straight = cs.length >= 3 && cs.every((c, q) => shLineDev(r, c, cs[(q + 1) % cs.length], true) < Math.max(4, 0.07 * size));
+    if (straight && cs.length <= 8) {
+      let v = cs.map((c) => r[c].slice());
+      const n = v.length, ang = (q) => { const pv = v[(q - 1 + n) % n], cv = v[q], nv = v[(q + 1) % n]; return Math.abs(shWrap(shAng(cv, pv) - shAng(cv, nv))); };
+      const side = (q) => Math.hypot(v[(q + 1) % n][0] - v[q][0], v[(q + 1) % n][1] - v[q][1]);
+      if (n === 3) {
+        const A = [0, 1, 2].map(ang), S3 = [0, 1, 2].map(side), ri = A.findIndex((x) => Math.abs(x - Math.PI / 2) < 0.26);
+        if (A.every((x) => Math.abs(x - Math.PI / 3) < 0.2) && Math.max(...S3) / Math.min(...S3) < 1.18) {
+          const cx = (v[0][0] + v[1][0] + v[2][0]) / 3, cy = (v[0][1] + v[1][1] + v[2][1]) / 3, s = (S3[0] + S3[1] + S3[2]) / 3, R = s / Math.sqrt(3);
+          let a0 = shAng([cx, cy], v[0]); a0 = Math.round((a0 + Math.PI / 2) / (Math.PI / 3)) * (Math.PI / 3) - Math.PI / 2;
+          return { type: 'poly', closed: true, pts: [0, 1, 2].map((q) => [cx + R * Math.cos(a0 + q * 2 * Math.PI / 3), cy + R * Math.sin(a0 + q * 2 * Math.PI / 3)]), name: 'สามเหลี่ยมด้านเท่า' };
+        }
+        if (ri >= 0) {
+          /* the right angle made exact: one leg keeps (or snaps to) its direction, the other is set square to it */
+          const V = v[ri], P1 = v[(ri + 1) % 3], P2 = v[(ri + 2) % 3], l1 = Math.hypot(P1[0] - V[0], P1[1] - V[1]), l2 = Math.hypot(P2[0] - V[0], P2[1] - V[1]);
+          const t1 = shAxis(shAng(V, P1)), sgn = Math.sign(shWrap(shAng(V, P2) - t1)) || 1, t2 = t1 + sgn * Math.PI / 2;
+          return { type: 'poly', closed: true, pts: [V.slice(), [V[0] + l1 * Math.cos(t1), V[1] + l1 * Math.sin(t1)], [V[0] + l2 * Math.cos(t2), V[1] + l2 * Math.sin(t2)]], name: 'สามเหลี่ยมมุมฉาก' };
+        }
+        /* level base made level */
+        for (let q = 0; q < 3; q++) { const A0 = shAng(v[q], v[(q + 1) % 3]), S = shAxis(A0, 0.1); if (S !== A0) { const l = side(q); v[(q + 1) % 3] = [v[q][0] + l * Math.cos(S), v[q][1] + l * Math.sin(S)]; break; } }
+        return { type: 'poly', closed: true, pts: v, name: 'สามเหลี่ยม' };
+      }
+      if (n === 4) {
+        const A = [0, 1, 2, 3].map(ang), S4 = [0, 1, 2, 3].map(side);
+        if (A.every((x) => Math.abs(x - Math.PI / 2) < 0.28)) {
+          /* a rectangle: its first side gives the direction (level or upright when close) */
+          const t = shAxis(shAng(v[0], v[1])), ww = (S4[0] + S4[2]) / 2, hh = (S4[1] + S4[3]) / 2, sq = Math.abs(ww - hh) / Math.max(ww, hh) < 0.12, W2 = sq ? (ww + hh) / 2 : ww, H2 = sq ? (ww + hh) / 2 : hh;
+          const sgn = Math.sign(shWrap(shAng(v[1], v[2]) - shAng(v[0], v[1]))) || 1, u = [Math.cos(t), Math.sin(t)], nv = [Math.cos(t + sgn * Math.PI / 2), Math.sin(t + sgn * Math.PI / 2)];
+          const cx = (v[0][0] + v[1][0] + v[2][0] + v[3][0]) / 4, cy = (v[0][1] + v[1][1] + v[2][1] + v[3][1]) / 4, o = [cx - u[0] * W2 / 2 - nv[0] * H2 / 2, cy - u[1] * W2 / 2 - nv[1] * H2 / 2];
+          return { type: 'poly', closed: true, pts: [o, [o[0] + u[0] * W2, o[1] + u[1] * W2], [o[0] + u[0] * W2 + nv[0] * H2, o[1] + u[1] * W2 + nv[1] * H2], [o[0] + nv[0] * H2, o[1] + nv[1] * H2]], name: sq ? 'สี่เหลี่ยมจัตุรัส' : 'สี่เหลี่ยมผืนผ้า' };
+        }
+        const par = (q) => { const a1 = shAng(v[q], v[(q + 1) % 4]), a2 = shAng(v[(q + 3) % 4], v[(q + 2) % 4]); return Math.abs(shWrap(a1 - a2)) < 0.18; };
+        const p0p = par(0), p1p = par(1);
+        if (p0p && p1p) { const t = shAxis(shAng(v[0], v[1]), 0.1), l = S4[0], v1 = [v[0][0] + l * Math.cos(t), v[0][1] + l * Math.sin(t)], v3 = v[3]; const rh = Math.max(...S4) / Math.min(...S4) < 1.15; return { type: 'poly', closed: true, pts: [v[0], v1, [v1[0] + v3[0] - v[0][0], v1[1] + v3[1] - v[0][1]], v3], name: rh ? 'สี่เหลี่ยมขนมเปียกปูน' : 'สี่เหลี่ยมด้านขนาน' }; }
+        if (p0p || p1p) {
+          /* a trapezium: its two parallel sides made exactly parallel (and level when close) */
+          const q = p0p ? 0 : 1, t = shAxis(shAng(v[q], v[(q + 1) % 4]), 0.12), A1 = v[q], l1 = side(q), B1 = [A1[0] + l1 * Math.cos(t), A1[1] + l1 * Math.sin(t)], C0 = v[(q + 3) % 4], l2 = Math.hypot(v[(q + 2) % 4][0] - C0[0], v[(q + 2) % 4][1] - C0[1]), D0 = [C0[0] + l2 * Math.cos(t), C0[1] + l2 * Math.sin(t)];
+          const out = []; out[q] = A1; out[(q + 1) % 4] = B1; out[(q + 2) % 4] = D0; out[(q + 3) % 4] = C0;
+          return { type: 'poly', closed: true, pts: out, name: 'สี่เหลี่ยมคางหมู' };
+        }
+        return { type: 'poly', closed: true, pts: v, name: 'สี่เหลี่ยม' };
+      }
+      /* five to eight corners: a regular polygon when the sides and angles are about equal */
+      const Sn = v.map((_, q) => side(q)), An = v.map((_, q) => ang(q)), reg = Math.PI * (n - 2) / n;
+      const names = { 5: 'ห้าเหลี่ยม', 6: 'หกเหลี่ยม', 7: 'เจ็ดเหลี่ยม', 8: 'แปดเหลี่ยม' };
+      if (Math.max(...Sn) / Math.min(...Sn) < 1.4 && An.every((x) => Math.abs(x - reg) < 0.35)) {
+        const cx = v.reduce((s0, q) => s0 + q[0], 0) / n, cy = v.reduce((s0, q) => s0 + q[1], 0) / n, R = v.reduce((s0, q) => s0 + Math.hypot(q[0] - cx, q[1] - cy), 0) / n;
+        let a0 = shAng([cx, cy], v[0]); const st = 2 * Math.PI / n, base = -Math.PI / 2; a0 = base + Math.round((a0 - base) / (st / 2)) * (st / 2);
+        return { type: 'poly', closed: true, pts: v.map((_, q) => [cx + R * Math.cos(a0 + q * st), cy + R * Math.sin(a0 + q * st)]), name: names[n] + 'ด้านเท่า' };
+      }
+      return { type: 'poly', closed: true, pts: v, name: names[n] || 'รูปหลายเหลี่ยม' };
     }
-    if (sd < 0.14) {
-      if (Math.abs(rx - ry) / Math.max(rx, ry) < 0.16) { const r = (rx + ry) / 2; return { type: 'ellipse', cx, cy, rx: r, ry: r, name: 'วงกลม' }; }
+    /* round: circle or ellipse */
+    const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2, rx = w / 2, ry = h / 2;
+    let s = 0, s2 = 0; for (const q of r) { const rr = Math.hypot((q[0] - cx) / rx, (q[1] - cy) / ry); s += rr; s2 += rr * rr; }
+    const mean = s / r.length, sd = Math.sqrt(Math.max(0, s2 / r.length - mean * mean));
+    if (sd < 0.16 && cs.length <= 2) {
+      if (Math.abs(rx - ry) / Math.max(rx, ry) < 0.16) { const rr = (rx + ry) / 2; return { type: 'ellipse', cx, cy, rx: rr, ry: rr, name: 'วงกลม' }; }
       return { type: 'ellipse', cx, cy, rx, ry, name: 'วงรี' };
     }
     return null;
   }
-  const v = rdp(p, 0.06 * Math.hypot(w, h));
-  if (v.length >= 3 && v.length <= 4) return { type: 'poly', pts: v, closed: false, name: 'เส้นหักมุม' };
+  /* open: an arc of a circle, or a line bent at a few corners */
+  const r = shResample(p0, 48, false), m = r[24];
+  { const ax = a[0], ay = a[1], bx = m[0], by = m[1], cxp = b[0], cyp = b[1], D = 2 * (ax * (by - cyp) + bx * (cyp - ay) + cxp * (ay - by));
+    if (Math.abs(D) > 1e-6) { const ux = ((ax * ax + ay * ay) * (by - cyp) + (bx * bx + by * by) * (cyp - ay) + (cxp * cxp + cyp * cyp) * (ay - by)) / D, uy = ((ax * ax + ay * ay) * (cxp - bx) + (bx * bx + by * by) * (ax - cxp) + (cxp * cxp + cyp * cyp) * (bx - ax)) / D, R = Math.hypot(ax - ux, ay - uy);
+      let dev = 0; for (const q of r) dev = Math.max(dev, Math.abs(Math.hypot(q[0] - ux, q[1] - uy) - R));
+      const cs0 = shCorners(r, false, 3);
+      if (dev < Math.max(4, 0.06 * diag) && cs0.length === 0 && R < 4 * diag) {
+        const a0 = shAng([ux, uy], a), am = shAng([ux, uy], m), a1 = shAng([ux, uy], b); let sw = shWrap(a1 - a0); const toM = shWrap(am - a0); if (Math.sign(toM) !== Math.sign(sw) || Math.abs(toM) > Math.abs(sw)) sw = sw > 0 ? sw - 2 * Math.PI : sw + 2 * Math.PI;
+        return { type: 'arc', cx: ux, cy: uy, r: R, a0, a1: a0 + sw, name: 'ส่วนโค้ง' };
+      }
+    }
+  }
+  const cs = shCorners(r, false, 3);
+  if (cs.length >= 1 && cs.length <= 3) {
+    const idx = [0].concat(cs, [r.length - 1]);
+    if (idx.every((c, q) => q === 0 || shLineDev(r, idx[q - 1], c, false) < Math.max(4, 0.07 * diag))) {
+      const v = idx.map((c) => r[c].slice());
+      /* each side level or upright when close, keeping its length */
+      for (let q = 1; q < v.length; q++) { const l = Math.hypot(v[q][0] - v[q - 1][0], v[q][1] - v[q - 1][1]), t = shAxis(shAng(v[q - 1], v[q]), 0.1); v[q] = [v[q - 1][0] + l * Math.cos(t), v[q - 1][1] + l * Math.sin(t)]; }
+      return { type: 'poly', pts: v, closed: false, name: cs.length === 1 ? 'มุม' : 'เส้นหักมุม' };
+    }
+  }
   return null;
 }
 function shapePts(sh, pr) {
@@ -4770,6 +4864,8 @@ function shapePts(sh, pr) {
     const end = sh.closed ? v[0] : v[v.length - 1]; push(end[0], end[1]);
   } else if (sh.type === 'ellipse') {
     const n = 96; for (let i = 0; i <= n; i++) { const t = i / n * Math.PI * 2; push(sh.cx + sh.rx * Math.cos(t), sh.cy + sh.ry * Math.sin(t)); }
+  } else if (sh.type === 'arc') {
+    const n = Math.max(12, Math.ceil(Math.abs(sh.a1 - sh.a0) * sh.r / 4)); for (let i = 0; i <= n; i++) { const t = sh.a0 + (sh.a1 - sh.a0) * i / n; push(sh.cx + sh.r * Math.cos(t), sh.cy + sh.r * Math.sin(t)); }
   }
   return out;
 }
@@ -21115,7 +21211,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793514362';
+const BUILD = '1793514748';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
