@@ -765,6 +765,12 @@ body.tv .pagenav.left { left: 14px; }
 .busy .bhint { font-size: 13px; color: var(--warn); }
 .busy .bhint:empty { display: none; }
 .busy .bcancel { align-self: flex-start; }
+.skgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 8px; margin-top: 8px; }
+.skpick { padding: 0; border: 2px solid transparent; border-radius: 10px; overflow: hidden; background: var(--surface-2, #F3F5F8); aspect-ratio: 1; cursor: pointer; }
+.skpick img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.skpick.on { border-color: var(--accent); }
+.skpair { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-start; justify-content: center; margin-top: 6px; }
+.skpair > * { max-width: calc(50% - 6px); height: auto; border-radius: 8px; border: 1px solid var(--line); background: #FFFFFF; }
 .busy.mini { padding: 9px 12px; background: var(--surface-2, var(--accent-soft)); }
 .busy.mini .bh b { font-weight: 600; font-size: 14px; color: var(--muted); }
 .busy.mini .spin { width: 16px; height: 16px; border-width: 2.5px; }
@@ -1751,7 +1757,7 @@ body.role-student .scnpill .sbtns button[data-s="back"], body.role-student .scnp
 
       <div class="selbar no-ink" id="selbar" role="toolbar" aria-label="ส่วนที่เลือก" hidden>
         <span class="count" id="selCount"></span>
-        <span class="sg" id="sgInk"><button id="sJoin"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M3 6h16 M3 11h10 M3 16h7 M14 13.5l3 2.5-3 2.5 M10 16h7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span>ต่อบรรทัด</span></button><button id="sQuiz" class="main"><svg viewBox="0 0 22 22" aria-hidden="true"><rect x="3.5" y="3" width="15" height="16" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M7 8h8 M7 11.5h8 M7 15h5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span>สร้างโจทย์</span></button><button id="sRead" class="main"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M3 15c2-3 3-7 4.5-7s.5 5 2 5 2-6 3.5-6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M13 4.5h6 M16 4.5v8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span>เป็นตัวพิมพ์</span></button><button id="sHand" class="main"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M3 16c2.5-1 3.5-9 6-9 1.6 0 .4 6 2.4 6 1.8 0 2.4-4 4.1-4 1.2 0 1 3 2.5 3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M3 19h16" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg><span>ลายมือสวย</span></button><button id="sEq"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M3.5 8h6 M3.5 12.5h6 M13 6.5l5 7 M18 6.5l-5 7" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg><span>เป็นสมการ</span></button><button id="sGraph" title="สร้างรูปจากสมการ: เวกเตอร์ 2 และ 3 มิติ กราฟ เส้นโค้งพาราเมตริกและเชิงขั้ว โครงสร้างโมเลกุล หรือแผนภาพ"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M4 3.5v14h14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M5.5 14c3-1 4-8 7-8s3 4 5 4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span>สร้างรูป</span></button><button id="sAns" class="main" hidden title="ผลการคำนวณ แตะเพื่อเขียนต่อท้าย"><span id="sAnsT"></span></button><button id="sOrig" hidden title="เปลี่ยนกลับเป็นลายมือเดิม"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M4 15c2-4 4-7 6-7s1 6 3 6 3-4 5-6 M6 6L3.5 8.5 6 11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span>ลายมือเดิม</span></button><button id="sCut" title="ตัดพื้นหลังของรูป"><svg viewBox="0 0 22 22" aria-hidden="true"><circle cx="6" cy="6" r="2.6" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="6" cy="16" r="2.6" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M8.2 7.4L18 15 M8.2 14.6L18 7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span>ตัดพื้นหลัง</span></button><button id="sSolve" title="แก้สมการ ระบบสมการ อนุพันธ์ อินทิเกรต ลิมิต แยกตัวประกอบ"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M4 8h6 M4 12h6 M13 6l5 6 M18 6l-5 6 M13 16h5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span>แก้สมการ</span></button><button id="sAnim"><svg viewBox="0 0 22 22" aria-hidden="true"><circle cx="7" cy="14" r="3.2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M11 14h7 M15.5 11.5L18 14l-2.5 2.5 M7 10.5V4 M4.5 6.5L7 4l2.5 2.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span>ขยับได้</span></button><button id="sTidy"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M4 17l4-1 9-9-3-3-9 9z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M15.5 13.5l1 2 2 1-2 1-1 2-1-2-2-1 2-1z" fill="currentColor"/></svg><span>วาดใหม่</span></button><button id="sGen"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M11 3l1.8 4.6 4.7 1.9-4.7 1.9L11 16l-1.8-4.6L4.5 9.5l4.7-1.9z" fill="currentColor"/></svg><span>สร้างโจทย์</span></button><button id="sMedia"><svg viewBox="0 0 22 22" aria-hidden="true"><rect x="3" y="4.5" width="16" height="13" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M3.5 15l4.5-4.5 3.5 3.5 2-2 5 4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg><span>หาสื่อ</span></button></span>
+        <span class="sg" id="sgInk"><button id="sJoin"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M3 6h16 M3 11h10 M3 16h7 M14 13.5l3 2.5-3 2.5 M10 16h7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span>ต่อบรรทัด</span></button><button id="sQuiz" class="main"><svg viewBox="0 0 22 22" aria-hidden="true"><rect x="3.5" y="3" width="15" height="16" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M7 8h8 M7 11.5h8 M7 15h5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span>สร้างโจทย์</span></button><button id="sRead" class="main"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M3 15c2-3 3-7 4.5-7s.5 5 2 5 2-6 3.5-6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M13 4.5h6 M16 4.5v8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span>เป็นตัวพิมพ์</span></button><button id="sHand" class="main"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M3 16c2.5-1 3.5-9 6-9 1.6 0 .4 6 2.4 6 1.8 0 2.4-4 4.1-4 1.2 0 1 3 2.5 3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M3 19h16" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg><span>ลายมือสวย</span></button><button id="sEq"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M3.5 8h6 M3.5 12.5h6 M13 6.5l5 7 M18 6.5l-5 7" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg><span>เป็นสมการ</span></button><button id="sGraph" title="สร้างรูปจากสมการ: เวกเตอร์ 2 และ 3 มิติ กราฟ เส้นโค้งพาราเมตริกและเชิงขั้ว โครงสร้างโมเลกุล หรือแผนภาพ"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M4 3.5v14h14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M5.5 14c3-1 4-8 7-8s3 4 5 4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span>สร้างรูป</span></button><button id="sAns" class="main" hidden title="ผลการคำนวณ แตะเพื่อเขียนต่อท้าย"><span id="sAnsT"></span></button><button id="sOrig" hidden title="เปลี่ยนกลับเป็นลายมือเดิม"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M4 15c2-4 4-7 6-7s1 6 3 6 3-4 5-6 M6 6L3.5 8.5 6 11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span>ลายมือเดิม</span></button><button id="sTrace" title="ให้สมุดวาดตามรูปนี้ทีละเส้น"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M4 17c3-1 4-6 7-7s4 3 7 1 M15 4l3 3-8 8-4 1 1-4z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span>วาดตาม</span></button><button id="sCut" title="ตัดพื้นหลังของรูป"><svg viewBox="0 0 22 22" aria-hidden="true"><circle cx="6" cy="6" r="2.6" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="6" cy="16" r="2.6" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M8.2 7.4L18 15 M8.2 14.6L18 7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span>ตัดพื้นหลัง</span></button><button id="sSolve" title="แก้สมการ ระบบสมการ อนุพันธ์ อินทิเกรต ลิมิต แยกตัวประกอบ"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M4 8h6 M4 12h6 M13 6l5 6 M18 6l-5 6 M13 16h5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span>แก้สมการ</span></button><button id="sAnim"><svg viewBox="0 0 22 22" aria-hidden="true"><circle cx="7" cy="14" r="3.2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M11 14h7 M15.5 11.5L18 14l-2.5 2.5 M7 10.5V4 M4.5 6.5L7 4l2.5 2.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span>ขยับได้</span></button><button id="sTidy"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M4 17l4-1 9-9-3-3-9 9z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M15.5 13.5l1 2 2 1-2 1-1 2-1-2-2-1 2-1z" fill="currentColor"/></svg><span>วาดใหม่</span></button><button id="sGen"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M11 3l1.8 4.6 4.7 1.9-4.7 1.9L11 16l-1.8-4.6L4.5 9.5l4.7-1.9z" fill="currentColor"/></svg><span>สร้างโจทย์</span></button><button id="sMedia"><svg viewBox="0 0 22 22" aria-hidden="true"><rect x="3" y="4.5" width="16" height="13" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M3.5 15l4.5-4.5 3.5 3.5 2-2 5 4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg><span>หาสื่อ</span></button></span>
         <span class="sg" id="sgOrder"><button id="sFront"><svg viewBox="0 0 22 22" aria-hidden="true"><rect x="7" y="7" width="11" height="11" rx="2" fill="currentColor"/><rect x="3.5" y="3.5" width="11" height="11" rx="2" fill="none" stroke="currentColor" stroke-width="1.5" stroke-dasharray="2.5 2"/></svg><span>ขึ้นหน้าสุด</span></button><button id="sBack"><svg viewBox="0 0 22 22" aria-hidden="true"><rect x="3.5" y="3.5" width="11" height="11" rx="2" fill="currentColor"/><rect x="7" y="7" width="11" height="11" rx="2" fill="var(--chrome)" stroke="currentColor" stroke-width="1.5"/></svg><span>ไปหลังสุด</span></button></span>
         <span class="sg"><button id="sKey"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M2.5 11s3-6 8.5-6 8.5 6 8.5 6-3 6-8.5 6-8.5-6-8.5-6z" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="11" cy="11" r="2.6" fill="currentColor"/></svg><span>เฉลย</span></button><button id="sDup"><svg viewBox="0 0 22 22" aria-hidden="true"><rect x="7" y="7" width="11" height="11" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M4 14V5a1 1 0 0 1 1-1h9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span>ทำสำเนา</span></button><button id="sDel" class="danger"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M5 6.5h12 M9 6.5V4.5h4v2 M6.5 6.5l.8 11h7.4l.8-11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span>ลบ</span></button><button id="sClose"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M5 11.5l4 4 8-9" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg><span>เสร็จ</span></button></span>
         <button id="sBig" hidden>ขยาย</button><button id="sSmall" hidden>ย่อ</button>
@@ -1966,6 +1972,7 @@ body.role-student .scnpill .sbtns button[data-s="back"], body.role-student .scnp
       <button class="insb" id="iCalc"><b>เครื่องคิดเลขและแก้สมการ</b><span>คิดพร้อมหน่วย แก้สมการ อนุพันธ์ อินทิเกรต เมทริกซ์ สมการเชิงอนุพันธ์</span></button>
       <button class="insb" id="iLesson"><b>บทเรียนสรุป</b><span>สรุปเนื้อหาทุกบท นิยาม สูตร ตัวอย่างพร้อมวิธีทำ วางลงหน้าเพื่อใช้สอนได้</span></button>
       <button class="insb" id="iStats"><b>สถิติ</b><span>สถิติเชิงพรรณนา ทดสอบสมมติฐาน ถดถอย การแจกแจงความน่าจะเป็น พร้อมแผนภาพ</span></button>
+      <button class="insb wide" id="iSketch"><b>วาดจากภาพอ้างอิง</b><span>ค้นหาภาพหรือเลือกรูป แล้วสมุดวาดตามทีละเส้น แบบการ์ตูนหรือเหมือนจริง ลงสีได้</span></button>
       <button class="insb" id="iText"><b>กล่องข้อความ</b><span>แตะบนหน้าแล้วพิมพ์ เขียนสมการใน $...$ ได้</span></button>
     </div>
     <div class="note">มีสมการที่เขียนด้วยมือแล้ว ใช้บ่วงวงสมการนั้น แล้วกด "สร้างกราฟ" ระบบจะอ่านสมการและตั้งแถบเลื่อนให้เอง</div>
@@ -5119,7 +5126,7 @@ function showSelbar() {
   $('#sSolve').hidden = !(n || textSel);
   { const one = m === 1 && !n ? findItem(S.sel.items[0]) : null; $('#sOrig').hidden = !(one && Array.isArray(one.orig) && one.orig.length); }
   selCalc();
-  { const one = m === 1 && !n ? findItem(S.sel.items[0]) : null; $('#sCut').hidden = !(one && one.type === 'img' && !isStudentSide()); }
+  { const one = m === 1 && !n ? findItem(S.sel.items[0]) : null; $('#sCut').hidden = !(one && one.type === 'img' && !isStudentSide()); $('#sTrace').hidden = $('#sCut').hidden; }
   $('#sQuiz').hidden = !(n || textSel);
   { const one = m === 1 && !n ? findItem(S.sel.items[0]) : null; $('#sKey').hidden = !(one && one.qref && !isStudentSide()); }
   $('#sJoin').hidden = !(textSel && !n);
@@ -12570,6 +12577,292 @@ function stGo(p) {
     if (R.svg) setTimeout(() => { const f = freeSpot(500, 300, [x, y]); const at = f || [x, y + 400]; addItem({ type: 'svg', x: Math.round(at[0]), y: Math.round(at[1]), w: 500, svg: R.svg }); }, 120);
   };
   const pg = out.querySelector('[data-a="putg"]'); if (pg) pg.onclick = () => { const w = 520, [x, y] = viewSpot(w, 320); addItem({ type: 'svg', x, y, w, svg: R.svg }); p.hidden = true; toast('วางแผนภาพลงหน้าแล้ว', 1500); };
+}
+
+/* ---------- draw a picture from a reference: our own line finding and colouring, drawn stroke by stroke like a hand ----------
+   A reference picture (from the device, a picture on the page, or a search of Wikimedia Commons) becomes real ink:
+   - "realistic": the edges of the picture (found with our own Canny edge finder) plus pencil hatching in the dark parts;
+   - "cartoon": the picture is simplified into a few flat colour areas first, and the lines are the borders between them,
+     so the outlines are clean and closed like a cartoon;
+   - with colour: each colour area is filled in with felt-pen strokes (cartoon) or light marker strokes (realistic).
+   The lines are drawn first, long outlines before small details, then the colour, all as ordinary strokes you can erase or move. */
+const SK = { src: null, style: 'cartoon', color: true, name: '', credit: '' };
+
+function skGray(d, w, h) { const g = new Float32Array(w * h); for (let i = 0; i < w * h; i++) g[i] = (0.299 * d[i * 4] + 0.587 * d[i * 4 + 1] + 0.114 * d[i * 4 + 2]) / 255; return g; }
+function skBlur(a, w, h, sig) {
+  const r = Math.max(1, Math.ceil(sig * 2.5)), k = []; let s = 0; for (let i = -r; i <= r; i++) { const v = Math.exp(-i * i / (2 * sig * sig)); k.push(v); s += v; } for (let i = 0; i < k.length; i++) k[i] /= s;
+  const t = new Float32Array(w * h), o = new Float32Array(w * h);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { let v = 0; for (let i = -r; i <= r; i++) v += a[y * w + clamp(x + i, 0, w - 1)] * k[i + r]; t[y * w + x] = v; }
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { let v = 0; for (let i = -r; i <= r; i++) v += t[clamp(y + i, 0, h - 1) * w + x] * k[i + r]; o[y * w + x] = v; }
+  return o;
+}
+/* Canny: gradient, thin to one pixel along the gradient, keep strong edges and the weak ones joined to them */
+function skCanny(g, w, h, lo, hi) {
+  const mag = new Float32Array(w * h), dir = new Uint8Array(w * h);
+  for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) {
+    const i = y * w + x, gx = (g[i - w + 1] + 2 * g[i + 1] + g[i + w + 1]) - (g[i - w - 1] + 2 * g[i - 1] + g[i + w - 1]), gy = (g[i + w - 1] + 2 * g[i + w] + g[i + w + 1]) - (g[i - w - 1] + 2 * g[i - w] + g[i - w + 1]);
+    mag[i] = Math.hypot(gx, gy); let a = Math.atan2(gy, gx) * 180 / Math.PI; if (a < 0) a += 180; dir[i] = a < 22.5 || a >= 157.5 ? 0 : a < 67.5 ? 1 : a < 112.5 ? 2 : 3;
+  }
+  const nms = new Float32Array(w * h), off = [[1, 0], [1, 1], [0, 1], [-1, 1]];
+  for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) { const i = y * w + x, [dx, dy] = off[dir[i]], m = mag[i]; if (m >= mag[i + dy * w + dx] && m >= mag[i - dy * w - dx]) nms[i] = m; }
+  /* thresholds from the picture itself: a share of the strongest edges */
+  const vals = []; for (let i = 0; i < w * h; i += 3) if (nms[i] > 0) vals.push(nms[i]); vals.sort((a, b) => a - b);
+  const H = vals.length ? vals[Math.floor(vals.length * hi)] : 1, L = H * lo;
+  const e = new Uint8Array(w * h), st = [];
+  for (let i = 0; i < w * h; i++) if (nms[i] >= H) { e[i] = 1; st.push(i); }
+  while (st.length) { const i = st.pop(), x = i % w, y = (i / w) | 0; for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const xx = x + dx, yy = y + dy; if (xx < 0 || yy < 0 || xx >= w || yy >= h) continue; const j = yy * w + xx; if (!e[j] && nms[j] >= L) { e[j] = 1; st.push(j); } } }
+  return e;
+}
+/* k-means colours (a few passes over a sample), then each pixel takes its nearest colour; small specks join their neighbours */
+function skQuant(d, w, h, K) {
+  const n = w * h, sample = []; for (let i = 0; i < n; i += 7) sample.push([d[i * 4], d[i * 4 + 1], d[i * 4 + 2]]);
+  let C = []; for (let k = 0; k < K; k++) C.push(sample[Math.floor((k + 0.5) / K * sample.length)].slice());
+  /* spread the starting colours by brightness so dark and light parts both get one */
+  sample.sort((a, b) => a[0] + a[1] + a[2] - b[0] - b[1] - b[2]); C = C.map((_, k) => sample[Math.floor((k + 0.5) / K * sample.length)].slice());
+  for (let it = 0; it < 8; it++) {
+    const S = C.map(() => [0, 0, 0, 0]);
+    for (const p of sample) { let bi = 0, bd = 1e12; for (let k = 0; k < K; k++) { const c = C[k], dd = (p[0] - c[0]) ** 2 + (p[1] - c[1]) ** 2 + (p[2] - c[2]) ** 2; if (dd < bd) { bd = dd; bi = k; } } const s = S[bi]; s[0] += p[0]; s[1] += p[1]; s[2] += p[2]; s[3]++; }
+    C = C.map((c, k) => (S[k][3] ? [S[k][0] / S[k][3], S[k][1] / S[k][3], S[k][2] / S[k][3]] : c));
+  }
+  const lab = new Uint8Array(n);
+  for (let i = 0; i < n; i++) { let bi = 0, bd = 1e12; for (let k = 0; k < K; k++) { const c = C[k], dd = (d[i * 4] - c[0]) ** 2 + (d[i * 4 + 1] - c[1]) ** 2 + (d[i * 4 + 2] - c[2]) ** 2; if (dd < bd) { bd = dd; bi = k; } } lab[i] = bi; }
+  /* majority filter twice: removes specks and jagged borders */
+  for (let pass = 0; pass < 2; pass++) { const o = lab.slice(); for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) { const cnt = new Uint8Array(K); for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) cnt[lab[(y + dy) * w + x + dx]]++; let bk = lab[y * w + x]; for (let k = 0; k < K; k++) if (cnt[k] > cnt[bk]) bk = k; if (cnt[bk] >= 5) o[y * w + x] = bk; } lab.set(o); }
+  return { lab, C };
+}
+/* smoothing that keeps edges: each pixel is averaged with neighbours of a similar colour only (a simple bilateral filter) */
+function skSmooth(d, w, h, passes) {
+  let a = new Float32Array(w * h * 3); for (let i = 0; i < w * h; i++) { a[i * 3] = d[i * 4]; a[i * 3 + 1] = d[i * 4 + 1]; a[i * 3 + 2] = d[i * 4 + 2]; }
+  const s2 = 2 * 28 * 28;
+  for (let p = 0; p < passes; p++) {
+    const o = new Float32Array(w * h * 3);
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      const i = (y * w + x) * 3; let r = 0, g = 0, b = 0, ws = 0;
+      for (let dy = -2; dy <= 2; dy++) { const yy = clamp(y + dy, 0, h - 1); for (let dx = -2; dx <= 2; dx++) { const j = (yy * w + clamp(x + dx, 0, w - 1)) * 3, dc = (a[j] - a[i]) ** 2 + (a[j + 1] - a[i + 1]) ** 2 + (a[j + 2] - a[i + 2]) ** 2, wt = Math.exp(-dc / s2 - (dx * dx + dy * dy) / 8); r += a[j] * wt; g += a[j + 1] * wt; b += a[j + 2] * wt; ws += wt; } }
+      o[i] = r / ws; o[i + 1] = g / ws; o[i + 2] = b / ws;
+    }
+    a = o;
+  }
+  const out = new Uint8ClampedArray(w * h * 4); for (let i = 0; i < w * h; i++) { out[i * 4] = a[i * 3]; out[i * 4 + 1] = a[i * 3 + 1]; out[i * 4 + 2] = a[i * 3 + 2]; out[i * 4 + 3] = 255; }
+  return out;
+}
+/* small patches of one colour join the colour around them, so a cartoon has a few clear shapes instead of many specks */
+function skMerge(lab, w, h, minA) {
+  const comp = new Int32Array(w * h).fill(-1); let id = 0;
+  for (let s = 0; s < w * h; s++) {
+    if (comp[s] >= 0) continue; const k = lab[s], st = [s], px = []; comp[s] = id;
+    while (st.length) { const i = st.pop(); px.push(i); const x = i % w, y = (i / w) | 0; for (const j of [x > 0 ? i - 1 : -1, x < w - 1 ? i + 1 : -1, y > 0 ? i - w : -1, y < h - 1 ? i + w : -1]) if (j >= 0 && comp[j] < 0 && lab[j] === k) { comp[j] = id; st.push(j); } }
+    if (px.length < minA) { const cnt = {}; for (const i of px) { const x = i % w, y = (i / w) | 0; for (const j of [x > 0 ? i - 1 : -1, x < w - 1 ? i + 1 : -1, y > 0 ? i - w : -1, y < h - 1 ? i + w : -1]) if (j >= 0 && lab[j] !== k) cnt[lab[j]] = (cnt[lab[j]] || 0) + 1; } let bk = k, bc = 0; for (const q in cnt) if (cnt[q] > bc) { bc = cnt[q]; bk = +q; } if (bk !== k) for (const i of px) lab[i] = bk; }
+    id++;
+  }
+}
+/* edge pixels into lines: follow each chain of touching pixels from its loose end */
+function skTrace(e, w, h, minLen) {
+  const seen = new Uint8Array(w * h), lines = [];
+  const nb = (i) => { const x = i % w, y = (i / w) | 0, o = []; for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { if (!dx && !dy) continue; const xx = x + dx, yy = y + dy; if (xx < 0 || yy < 0 || xx >= w || yy >= h) continue; const j = yy * w + xx; if (e[j] && !seen[j]) o.push(j); } return o; };
+  const follow = (s) => { const P = []; let i = s; seen[i] = 1; P.push([i % w, (i / w) | 0]); for (;;) { const o = nb(i); if (!o.length) break; let best = o[0]; if (P.length > 1) { const a = P[P.length - 1], b = P[P.length - 2], vx = a[0] - b[0], vy = a[1] - b[1]; let bd = -9; for (const j of o) { const d = (j % w - a[0]) * vx + (((j / w) | 0) - a[1]) * vy; if (d > bd) { bd = d; best = j; } } } i = best; seen[i] = 1; P.push([i % w, (i / w) | 0]); } return P; };
+  const deg = (i) => { const x = i % w, y = (i / w) | 0; let c = 0; for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { if (!dx && !dy) continue; const xx = x + dx, yy = y + dy; if (xx >= 0 && yy >= 0 && xx < w && yy < h && e[yy * w + xx]) c++; } return c; };
+  for (let i = 0; i < w * h; i++) if (e[i] && !seen[i] && deg(i) === 1) { const P = follow(i); if (P.length >= minLen) lines.push(P); }
+  for (let i = 0; i < w * h; i++) if (e[i] && !seen[i]) { const P = follow(i); if (P.length >= minLen) lines.push(P); }
+  return lines;
+}
+function skRdp(P, eps) {
+  if (P.length < 3) return P.slice(); const a = P[0], z = P[P.length - 1]; let id = -1, md = 0;
+  for (let i = 1; i < P.length - 1; i++) { const d = ipSegD(P[i], a, z); if (d > md) { md = d; id = i; } }
+  if (md <= eps) return [a, z]; return skRdp(P.slice(0, id + 1), eps).slice(0, -1).concat(skRdp(P.slice(id), eps));
+}
+function skChaikin(P) { if (P.length < 3) return P; const o = [P[0]]; for (let i = 0; i < P.length - 1; i++) { const a = P[i], b = P[i + 1]; o.push([a[0] * 0.75 + b[0] * 0.25, a[1] * 0.75 + b[1] * 0.25], [a[0] * 0.25 + b[0] * 0.75, a[1] * 0.25 + b[1] * 0.75]); } o.push(P[P.length - 1]); return o; }
+/* the order a person draws in: the long outlines first, then the middle-sized lines, then small details; within each, the
+   next line is the one starting nearest to where the pen is */
+function skOrder(lines) {
+  const len = (P) => { let s = 0; for (let i = 1; i < P.length; i++) s += Math.hypot(P[i][0] - P[i - 1][0], P[i][1] - P[i - 1][1]); return s; };
+  const L = lines.map((P) => ({ P, l: len(P) })).sort((a, b) => b.l - a.l), n = L.length, tiers = [L.slice(0, Math.ceil(n * 0.15)), L.slice(Math.ceil(n * 0.15), Math.ceil(n * 0.5)), L.slice(Math.ceil(n * 0.5))], out = [];
+  let pen = [0, 0];
+  for (const tier of tiers) { const rest = tier.slice(); while (rest.length) { let bi = 0, bd = 1e12, rev = false; rest.forEach((q, k) => { const a = q.P[0], z = q.P[q.P.length - 1], da = Math.hypot(a[0] - pen[0], a[1] - pen[1]), dz = Math.hypot(z[0] - pen[0], z[1] - pen[1]); if (da < bd) { bd = da; bi = k; rev = false; } if (dz < bd) { bd = dz; bi = k; rev = true; } }); const q = rest.splice(bi, 1)[0], P = rev ? q.P.slice().reverse() : q.P; out.push(P); pen = P[P.length - 1]; } }
+  return out;
+}
+/* filling one colour area by hand: parallel strokes across it, each run of the area becomes one stroke, joined in a zigzag */
+function skHatch(lab, w, h, k, step, ang) {
+  const ca = Math.cos(ang), sa = Math.sin(ang), diag = Math.hypot(w, h), out = [];
+  for (let s = -diag; s <= diag; s += step) {
+    let run = null; const runs = [];
+    for (let u = -diag; u <= diag; u += 1) { const x = Math.round(w / 2 + u * ca - s * sa), y = Math.round(h / 2 + u * sa + s * ca), inside = x >= 0 && y >= 0 && x < w && y < h && lab[y * w + x] === k; if (inside) { if (!run) run = [[x, y], [x, y]]; else run[1] = [x, y]; } else if (run) { runs.push(run); run = null; } }
+    if (run) runs.push(run);
+    for (const r of runs) if (Math.hypot(r[1][0] - r[0][0], r[1][1] - r[0][1]) >= step * 0.8) out.push(out.length % 2 ? [r[1], r[0]] : r);
+  }
+  return out;
+}
+/* the whole drawing from a picture, in the picture's own pixel units */
+function skMake(im, style, color) {
+  const N = style === 'real' ? 440 : 380, k0 = Math.min(1, N / Math.max(im.naturalWidth || im.width, im.naturalHeight || im.height));
+  const w = Math.max(8, Math.round((im.naturalWidth || im.width) * k0)), h = Math.max(8, Math.round((im.naturalHeight || im.height) * k0));
+  const cv = document.createElement('canvas'); cv.width = w; cv.height = h; const c = cv.getContext('2d', { willReadFrequently: true });
+  c.fillStyle = '#FFFFFF'; c.fillRect(0, 0, w, h); c.drawImage(im, 0, 0, w, h);
+  const d = c.getImageData(0, 0, w, h).data;
+  const res = { w, h, lines: [], hatch: [], fills: [] };
+  let Q = null;
+  if (style === 'cartoon') {
+    /* simplify into flat colour areas; their borders are the outlines */
+    const sm = skSmooth(d, w, h, 2);
+    Q = skQuant(sm, w, h, 7);
+    skMerge(Q.lab, w, h, Math.round(w * h * 0.0012)); skMerge(Q.lab, w, h, Math.round(w * h * 0.0012));
+    const e = new Uint8Array(w * h);
+    for (let y = 0; y < h - 1; y++) for (let x = 0; x < w - 1; x++) { const i = y * w + x; if (Q.lab[i] !== Q.lab[i + 1] || Q.lab[i] !== Q.lab[i + w]) e[i] = 1; }
+    /* also the strong edges inside an area (eyes, mouth lines), so faces keep their features */
+    const g = skBlur(skGray(d, w, h), w, h, 1.6), ce = skCanny(g, w, h, 0.5, 0.88), fe = skTrace(ce, w, h, 12);
+    for (const P of fe) for (const [x, y] of P) e[y * w + x] = 1;
+    res.lines = skTrace(e, w, h, 14).map((P) => skChaikin(skChaikin(skRdp(P, 1.4))));
+  } else {
+    const g = skBlur(skGray(d, w, h), w, h, 1.4), e = skCanny(g, w, h, 0.38, 0.84);
+    res.lines = skTrace(e, w, h, 10).map((P) => skChaikin(skRdp(P, 0.9)));
+    /* pencil shading: hatching where the picture is dark, cross-hatching where it is darker still */
+    const gs = skBlur(g, w, h, 2.5), lv = new Uint8Array(w * h); for (let i = 0; i < w * h; i++) lv[i] = gs[i] < 0.22 ? 2 : gs[i] < 0.42 ? 1 : 0;
+    const dk = new Uint8Array(w * h); for (let i = 0; i < w * h; i++) dk[i] = lv[i] >= 1 ? 1 : 0;
+    const dk2 = new Uint8Array(w * h); for (let i = 0; i < w * h; i++) dk2[i] = lv[i] >= 2 ? 1 : 0;
+    res.hatch = skHatch(dk, w, h, 1, 6, -0.75).concat(skHatch(dk2, w, h, 1, 8, 0.75));
+    if (color) Q = skQuant(d, w, h, 8);
+  }
+  res.lines = skOrder(res.lines);
+  if (color && Q) {
+    /* colour areas from the largest; the paper-white one is left as paper */
+    const area = new Array(Q.C.length).fill(0); for (let i = 0; i < w * h; i++) area[Q.lab[i]]++;
+    const order = Q.C.map((c, k) => k).sort((a, b) => area[b] - area[a]);
+    for (const k of order) {
+      const c = Q.C[k], lum = (0.299 * c[0] + 0.587 * c[1] + 0.114 * c[2]) / 255; if (lum > 0.9 || area[k] < w * h * 0.004) continue;
+      /* a cartoon gets a touch more colour */
+      let [r, gg, b] = c; if (style === 'cartoon') { const m = (r + gg + b) / 3; r = clamp(m + (r - m) * 1.25, 0, 255); gg = clamp(m + (gg - m) * 1.25, 0, 255); b = clamp(m + (b - m) * 1.25, 0, 255); }
+      const col = '#' + [r, gg, b].map((v) => Math.round(v).toString(16).padStart(2, '0')).join('');
+      res.fills.push({ col, segs: skHatch(Q.lab, w, h, k, style === 'cartoon' ? 3 : 4, style === 'cartoon' ? 0.5 : -0.5 + k * 0.2) });
+    }
+  }
+  return res;
+}
+/* the drawing as strokes on the page, in a box at x0,y0 of width dw */
+function skStrokes(res, x0, y0, dw, style) {
+  const k = dw / res.w, P = (p) => [Math.round((x0 + p[0] * k) * 10), Math.round((y0 + p[1] * k) * 10)];
+  const lw = style === 'real' ? clamp(1.1 * k, 1.2, 2.4) : clamp(1.6 * k, 1.8, 3.4), lines = [], hatch = [], fills = [], g = 'g' + uid();
+  let seed = 3; const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+  for (const L of res.lines) { const p = [], wL = style === 'cartoon' && L.length > 60 ? lw * 1.25 : lw; L.forEach((q, i) => { const [x, y] = P(q), t = L.length > 1 ? i / (L.length - 1) : 0; p.push(x, y, Math.round(42 + 22 * Math.sin(Math.PI * t) + 6 * rnd())); }); lines.push({ id: 's' + uid(), k: 'p', c: style === 'real' ? '#2A2E36' : '#1F2533', w: wL, p, g }); }
+  for (const s of res.hatch) { const a = P(s[0]), b = P(s[1]); hatch.push({ id: 's' + uid(), k: 'p', c: '#7A8191', w: Math.max(0.7, lw * 0.45), p: [a[0], a[1], 30, b[0], b[1], 30], g }); }
+  for (const f of res.fills) {
+    /* cartoon: felt pen, solid; realistic: marker, see-through so it layers like real colouring */
+    const fw = style === 'cartoon' ? Math.max(2, 3 * k * 1.35) : Math.max(3, 4 * k * 1.6);
+    /* the zigzag of each area is one continuous stroke per few rows, the way a hand colours without lifting */
+    let cur = null, n = 0;
+    for (const s of f.segs) { const a = P(s[0]), b = P(s[1]); if (!cur || n >= 6 || Math.hypot(a[0] - cur.p[cur.p.length - 3], a[1] - cur.p[cur.p.length - 2]) > fw * 30) { cur = { id: 's' + uid(), k: style === 'cartoon' ? 'p' : 'h', c: f.col, w: fw, p: [], g }; fills.push(cur); n = 0; } cur.p.push(a[0], a[1], 50, b[0], b[1], 50); n++; }
+  }
+  return { lines, hatch, fills };
+}
+/* drawn by hand on the page: the pen traces each line with a hand's rhythm, then the shading, then the colouring under it.
+   Long drawings are sped up to finish in about half a minute */
+function skAnimate(parts, pid, done) {
+  const lines = parts.lines.concat(parts.hatch), fills = parts.fills, all = fills.concat(lines);
+  const commit = () => {
+    if (!all.length) return; const before = { [DEV]: clone(S.mine) };
+    /* colour goes under the lines on the page */
+    for (const st of all) S.mine.push(st); pushUndo({ t: 'layers', before, after: { [DEV]: clone(S.mine) } }); saveMine(); drawInk(); if (done) done();
+  };
+  if (diaryInstant() || S.pid !== pid) { commit(); return; }
+  let bx0 = 1e9, by0 = 1e9, bx1 = -1e9, by1 = -1e9; for (const s of all) for (let i = 0; i < s.p.length; i += 3) { bx0 = Math.min(bx0, s.p[i] / 10); by0 = Math.min(by0, s.p[i + 1] / 10); bx1 = Math.max(bx1, s.p[i] / 10); by1 = Math.max(by1, s.p[i + 1] / 10); }
+  const pad = 12; bx0 -= pad; by0 -= pad; bx1 += pad; by1 += pad;
+  const kk = Math.min(2.5, (window.devicePixelRatio || 1) * Math.max(1, (S.base || 1) * (S.zoom || 1)));
+  const mk = (z) => { const cv = document.createElement('canvas'); cv.className = 'dqdraw no-ink'; cv.style.cssText = 'position:absolute;left:' + bx0 + 'px;top:' + by0 + 'px;width:' + (bx1 - bx0) + 'px;height:' + (by1 - by0) + 'px;pointer-events:none;z-index:' + z; cv.width = Math.max(1, Math.round((bx1 - bx0) * kk)); cv.height = Math.max(1, Math.round((by1 - by0) * kk)); const c = cv.getContext('2d'); c.setTransform(kk, 0, 0, kk, -bx0 * kk, -by0 * kk); return { cv, c }; };
+  const F = mk(1), L = mk(2), T = mk(3), layers = [F, L, T]; for (const q of layers) itemsEl.appendChild(q.cv);
+  const len = (s) => { let t = 0; for (let i = 3; i < s.p.length; i += 3) t += Math.hypot(s.p[i] - s.p[i - 3], s.p[i + 1] - s.p[i - 2]) / 10; return t; };
+  const seq = lines.map((s) => ({ s, layer: L, len: len(s), fill: false })).concat(fills.map((s) => ({ s, layer: F, len: len(s), fill: true })));
+  const natural = seq.reduce((a, q) => a + clamp(120 + Math.sqrt(q.len) * 40, 140, 1400) + 90, 0), budget = 9000 + Math.min(26000, seq.length * 45);
+  const speed = Math.max(1, natural / budget);
+  const ease = (t) => t * t * t * (10 - 15 * t + 6 * t * t);
+  const part = (s, d) => { const p = s.p, out = [p[0], p[1], p[2]]; let acc = 0; for (let i = 3; i < p.length; i += 3) { const L0 = Math.hypot(p[i] - p[i - 3], p[i + 1] - p[i - 2]) / 10; if (acc + L0 >= d) { const a = (d - acc) / Math.max(1e-6, L0); out.push(Math.round(p[i - 3] + (p[i] - p[i - 3]) * a), Math.round(p[i - 2] + (p[i + 1] - p[i - 2]) * a), p[i + 2]); return out; } acc += L0; out.push(p[i], p[i + 1], p[i + 2]); } return out; };
+  let i = 0, t0 = 0, cancelled = false;
+  const nib = (x, y, col) => { const c = T.c; c.globalAlpha = 0.85; c.fillStyle = col; c.beginPath(); c.arc(x, y, 2.4, 0, 6.2832); c.fill(); c.globalAlpha = 0.16; c.beginPath(); c.arc(x, y, 6, 0, 6.2832); c.fill(); c.globalAlpha = 1; };
+  const finish = () => { for (const q of layers) q.cv.remove(); commit(); };
+  const frame = (ts) => {
+    if (cancelled) return;
+    if (S.pid !== pid) { for (const q of layers) q.cv.remove(); commit(); return; }
+    for (const q of layers) if (!q.cv.isConnected) itemsEl.appendChild(q.cv);
+    /* several short strokes may finish within one frame when the drawing is long */
+    let guard = 0;
+    while (i < seq.length && guard++ < 40) {
+      const q = seq[i]; if (!t0) t0 = ts;
+      const T0 = clamp(120 + Math.sqrt(q.len) * 40, 140, 1400) / speed, u = Math.min(1, (ts - t0) / T0);
+      if (u < 1) { const pp = part(q.s, q.len * ease(u)), n = pp.length; T.c.clearRect(bx0, by0, bx1 - bx0, by1 - by0); drawStroke(T.c, Object.assign({}, q.s, { p: pp })); nib(pp[n - 3] / 10, pp[n - 2] / 10, q.s.c); break; }
+      drawStroke(q.layer.c, q.s); i++; t0 = ts + 70 / speed;
+    }
+    if (i >= seq.length) { T.c.clearRect(bx0, by0, bx1 - bx0, by1 - by0); setTimeout(finish, 150); return; }
+    requestAnimationFrame(frame);
+  };
+  requestAnimationFrame(frame);
+  return () => { cancelled = true; finish(); };
+}
+/* the sheet: where the picture comes from, which style, colour or not */
+async function skLoadUrl(u) { return new Promise((res, rej) => { const im = new Image(); im.crossOrigin = 'anonymous'; im.onload = () => res(im); im.onerror = rej; im.src = u; }); }
+async function skLoadBlob(b) { const u = URL.createObjectURL(b); try { return await skLoadUrl(u); } finally { setTimeout(() => URL.revokeObjectURL(u), 3000); } }
+function openSketch(fromItem) {
+  closeSheets();
+  let sh = $('#sketchSheet');
+  if (!sh) {
+    sh = document.createElement('div'); sh.className = 'sheet'; sh.id = 'sketchSheet';
+    sh.innerHTML = '<div class="panel wide" role="dialog" aria-label="วาดจากภาพอ้างอิง"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><h2>วาดจากภาพอ้างอิง</h2><button class="btn" type="button" data-a="close">ปิด</button></div>'
+      + '<div class="note small">เลือกภาพต้นแบบ แล้วสมุดจะวาดตามทีละเส้นด้วยลายมือ ลงสีให้ด้วยถ้าต้องการ ทุกเส้นเป็นหมึกปกติ ลบหรือย้ายได้ ภาพจากการค้นหามาจาก Wikimedia Commons ซึ่งใช้ซ้ำได้ตามสัญญาอนุญาตที่ระบุ</div>'
+      + '<div class="exsetup"><div class="exrow"><span class="label">ภาพต้นแบบ</span><span class="chips"><button class="chip" type="button" data-a="file">เลือกรูปจากเครื่อง</button><button class="chip" type="button" data-a="page" hidden>ใช้รูปที่เลือกบนหน้า</button></span></div>'
+      + '<div class="exrow"><span class="label">ค้นหาภาพ</span><div><span class="mrow"><input data-a="q" placeholder="เช่น ไอน์สไตน์ แมว ดอกกุหลาบ" maxlength="80"><button class="btn" type="button" data-a="search">ค้นหา</button></span><div class="skres"></div></div></div>'
+      + '<div class="exrow"><span class="label">แบบ</span><span class="chips" data-a="style"><button class="chip" type="button" data-v="cartoon">การ์ตูน เส้นสะอาด</button><button class="chip" type="button" data-v="real">เหมือนจริง แรเงาดินสอ</button></span></div>'
+      + '<div class="exrow"><span class="label">สี</span><span class="chips" data-a="color"><button class="chip" type="button" data-v="1">ลงสีด้วย</button><button class="chip" type="button" data-v="0">ลายเส้นอย่างเดียว</button></span></div></div>'
+      + '<div class="skprev"></div><div class="row2 exgo"><button class="btn solid" type="button" data-a="go" disabled>เลือกภาพต้นแบบก่อน</button></div><input type="file" accept="image/*" hidden data-a="fi"></div>';
+    document.body.appendChild(sh);
+    const q = (a) => sh.querySelector('[data-a="' + a + '"]');
+    q('close').onclick = () => { sh.hidden = true; };
+    q('file').onclick = () => q('fi').click();
+    q('fi').onchange = async () => { const f = q('fi').files[0]; q('fi').value = ''; if (!f) return; try { SK.src = await skLoadBlob(f); SK.name = f.name; SK.credit = ''; skPaint(); } catch (e) { toast('เปิดรูปนี้ไม่ได้', 2500); } };
+    const search = async () => {
+      const t = q('q').value.trim(); if (!t) return; const box = sh.querySelector('.skres'); waitLine(box, 'กำลังค้นใน Wikimedia Commons');
+      let res = []; try { res = await commonsSearch(t, 'bitmap', 12); } catch (e) { res = []; }
+      if (!res.length && /[฀-๿]/.test(t) && AI.anyReady()) { try { const r = await AI.run('gen', 'Translate this picture search to short English keywords only: ' + t, { maxTokens: 60 }); const en = String(r.text || '').trim().split('\n')[0].slice(0, 60); if (en) res = await commonsSearch(en, 'bitmap', 12); } catch (e) { /* keep empty */ } }
+      box.innerHTML = res.length ? '' : '<div class="note small">ไม่พบภาพ ลองคำค้นภาษาอังกฤษ หรือเลือกรูปจากเครื่อง</div>';
+      const grid = document.createElement('div'); grid.className = 'skgrid'; box.appendChild(grid);
+      for (const m of res) { const b = document.createElement('button'); b.type = 'button'; b.className = 'skpick'; b.innerHTML = '<img alt="" loading="lazy">'; b.querySelector('img').src = m.thumb; b.title = m.name;
+        b.onclick = async () => { grid.querySelectorAll('.skpick').forEach((x) => x.classList.toggle('on', x === b)); try { SK.src = await skLoadUrl(m.thumb); SK.name = m.name; SK.credit = m.credit || ''; skPaint(); } catch (e) { toast('โหลดภาพนี้ไม่ได้ ลองภาพอื่น', 2500); } };
+        grid.appendChild(b); }
+    };
+    q('search').onclick = search; q('q').onkeydown = (e) => { if (e.key === 'Enter') search(); };
+    sh.querySelectorAll('[data-a="style"] .chip').forEach((b) => { b.onclick = () => { SK.style = b.dataset.v; skPaint(); }; });
+    sh.querySelectorAll('[data-a="color"] .chip').forEach((b) => { b.onclick = () => { SK.color = b.dataset.v === '1'; skPaint(); }; });
+    q('go').onclick = skGo;
+  }
+  const pageBtn = sh.querySelector('[data-a="page"]'), one = fromItem || (S.sel && S.sel.items.length === 1 ? findItem(S.sel.items[0]) : null);
+  pageBtn.hidden = !(one && one.type === 'img');
+  pageBtn.onclick = async () => { const im = await cutLoad(one); if (!im) { toast('เปิดรูปนี้ไม่ได้', 2500); return; } SK.src = im; SK.name = 'รูปบนหน้า'; SK.credit = one.credit || ''; SK.from = itemBox(one); skPaint(); };
+  if (one && one.type === 'img') pageBtn.onclick();
+  sh.hidden = false; skPaint();
+}
+function skPaint() {
+  const sh = $('#sketchSheet'); if (!sh) return;
+  sh.querySelectorAll('[data-a="style"] .chip').forEach((b) => b.setAttribute('aria-pressed', b.dataset.v === SK.style ? 'true' : 'false'));
+  sh.querySelectorAll('[data-a="color"] .chip').forEach((b) => b.setAttribute('aria-pressed', (b.dataset.v === '1') === SK.color ? 'true' : 'false'));
+  const pv = sh.querySelector('.skprev'), go = sh.querySelector('[data-a="go"]');
+  if (!SK.src) { pv.innerHTML = ''; go.disabled = true; go.textContent = 'เลือกภาพต้นแบบก่อน'; return; }
+  go.disabled = true; go.textContent = 'วาดลงหน้า'; waitLine(pv, 'กำลังหาเส้นและสีจากภาพ');
+  /* a quick look at the result before drawing it (worked out just after the waiting line shows) */
+  setTimeout(() => {
+  try {
+    const res = skMake(SK.src, SK.style, SK.color), k = Math.min(1, 300 / res.w), cv = document.createElement('canvas'); cv.width = Math.round(res.w * k * 2); cv.height = Math.round(res.h * k * 2); cv.style.width = Math.round(res.w * k) + 'px';
+    const c = cv.getContext('2d'); c.scale(2, 2); c.fillStyle = '#FFFFFF'; c.fillRect(0, 0, res.w * k, res.h * k); const st = skStrokes(res, 0, 0, res.w * k, SK.style);
+    for (const s of st.fills) drawStroke(c, s); for (const s of st.hatch.concat(st.lines)) drawStroke(c, s);
+    pv.innerHTML = '<div class="skpair"></div>'; const pair = pv.firstChild; const o = SK.src.cloneNode(); o.style.width = Math.round(res.w * k) + 'px'; pair.append(o, cv);
+    SK.res = res;
+    go.disabled = false;
+  } catch (e) { pv.innerHTML = '<div class="note err small">ภาพนี้อ่านไม่ได้ (เว็บต้นทางอาจไม่อนุญาต) ลองภาพอื่นหรือเลือกรูปจากเครื่อง</div>'; SK.res = null; go.disabled = true; }
+  }, 40);
+}
+function skGo() {
+  const sh = $('#sketchSheet'); if (!SK.res || !S.page) return; sh.hidden = true;
+  const res = SK.res, dw = Math.round(clamp(res.w >= res.h ? 520 : 420, 240, W - 2 * PAGE_M)), dh = Math.round(dw * res.h / res.w);
+  const at = (SK.from && placeNear(SK.from, dw, dh, { side: true })) || viewSpot(dw, dh);
+  const parts = skStrokes(res, at[0], at[1], dw, SK.style), pid = S.pid;
+  const FL = floatLine('สมุดกำลังวาดตามภาพต้นแบบ');
+  skAnimate(parts, pid, () => { FL(); if (SK.credit) addItem({ type: 'text', x: at[0], y: Math.min(H - 40, at[1] + dh + 8), w: dw, md: 'ภาพต้นแบบ: ' + SK.credit, fs: 12 }); toast('วาดเสร็จแล้ว ทุกเส้นลบหรือย้ายได้', 2500); });
+  SK.from = null;
 }
 
 function insertSim(kind) {
@@ -20713,7 +21006,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793512988';
+const BUILD = '1793513338';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
@@ -21073,6 +21366,8 @@ $('#bGSave').onclick = () => { if (!window.math) { loadLib('math').then(saveGrap
 $('#sGraph').onclick = graphFromSelection;
 $('#sSolve').onclick = solveSelection;
 $('#sCut').onclick = openBgCut;
+$('#sTrace').onclick = () => openSketch();
+$('#iSketch').onclick = () => { $('#insSheet').hidden = true; openSketch(); };
 /* ---------- a converted box back to the handwriting it came from ---------- */
 function restoreConvInk() {
   const it = S.sel && S.sel.items.length === 1 ? findItem(S.sel.items[0]) : null; if (!it || !Array.isArray(it.orig) || !S.page) return;
