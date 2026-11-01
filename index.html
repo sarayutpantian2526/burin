@@ -18833,7 +18833,7 @@ async function rkFromTeacher(ev, p) {
   if (!rkOn()) return true;
   if (!p || typeof p !== 'object') return false;
   if (typeof p._s !== 'string') { if (!RK.tpub) await rkLoadTeacher(LIVE.code); return !RK.tpub; }
-  if (!RK.tpub) await rkLoadTeacher(LIVE.code, true);
+  if (!RK.tpub) await rkLoadTeacher(LIVE.code, now() - RK.tload > 2000); /* at most one fetch every 2 s while the key is missing */
   let ok = await rkCheck(RK.tpub, ev, p);
   if (!ok && now() - RK.tload > 8000) { await rkLoadTeacher(LIVE.code, true); ok = await rkCheck(RK.tpub, ev, p); }
   if (!ok || p._t < RK.tmax - 120000) return false;
@@ -21483,7 +21483,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793547223';
+const BUILD = '1793547336';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
