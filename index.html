@@ -11218,7 +11218,10 @@ async function solveWhy(r, out) {
   out.innerHTML = '<div class="note">AI กำลังเขียนวิธีทำ</div>';
   try {
     const ans = solveLines(r).join('  ');
-    const res = await AI.run('gen', 'A teacher wants the worked steps for this problem: ' + r.input.join('; ') + '\nThe correct final answer, already checked by a computer algebra system, is: ' + ans + '\nWrite the steps in Thai, short and clear, the way a teacher writes them on the board, one step per line, math as LaTeX between $ signs. End with the same final answer. No headings.', { maxTokens: 900 });
+    /* the steps appear line by line as the AI writes them */
+    let shownP = 0;
+    const onPartial = (t) => { const paras = String(t).split('\n'), ready = paras.slice(0, -1).join('\n').trim(); const n = paras.length - 1; if (n <= shownP || !ready || !out.isConnected) return; shownP = n; out.innerHTML = '<div class="spsteps">' + mdToHtml(ready) + '</div><div class="note small">AI กำลังเขียนต่อ</div>'; typeset(out); };
+    const res = await AI.run('gen', 'A teacher wants the worked steps for this problem: ' + r.input.join('; ') + '\nThe correct final answer, already checked by a computer algebra system, is: ' + ans + '\nWrite the steps in Thai, short and clear, the way a teacher writes them on the board, one step per line, math as LaTeX between $ signs. End with the same final answer. No headings.', { maxTokens: 900, onPartial });
     out.innerHTML = '<div class="spsteps">' + mdToHtml(String(res.text || '').trim()) + '</div><div class="row2"><button type="button" class="btn" data-a="putw">วางวิธีทำลงหน้า</button></div>';
     typeset(out);
     out.querySelector('[data-a="putw"]').onclick = () => { const w = 620, b = SOLVE.box || [40, 200, 40, 200]; let at = [clamp(b[0], 10, W - w - 10), b[3] + 14]; const f = freeSpot(w, 300, at); if (f) at = f; addItem({ type: 'text', x: Math.round(at[0]), y: Math.round(at[1]), w, fs: 22, md: String(res.text || '').trim() }); toast('วางวิธีทำลงหน้าแล้ว', 1500); };
@@ -19307,10 +19310,13 @@ async function showSolution(q, itemId, box, opt) {
   let raw = opt.fresh ? null : await solGet(q);
   if (!raw) {
     if (!needAI('gen')) { host.innerHTML = '<div class="note">เฉลยละเอียดสร้างด้วย AI ต่อ AI ที่เมนู แท็บบัญชี ซิงก์ และ AI ก่อน สร้างครั้งเดียวแล้วเก็บไว้ใช้ซ้ำได้ทุกเครื่อง</div>'; return; }
-    const B = waitCard(host, 'กำลังเขียนเฉลยละเอียด 5 ขั้น', SOL_STEPS, { cancel: false });
-    let i = 0; const tk = setInterval(() => { if (i < 4) B.step(++i); }, 4000);
-    try { raw = await solMake(q, opt.fresh); } catch (e) { raw = null; }
-    clearInterval(tk); B.stop();
+    /* each step shows as soon as the AI has finished writing it, so the teacher can read step 1 while the rest is written */
+    host.innerHTML = '<div class="solsteps solpre"></div><div class="solwait"></div>';
+    const pre = host.querySelector('.solpre'), B = waitCard(host.querySelector('.solwait'), 'กำลังเขียนเฉลยละเอียด 5 ขั้น', SOL_STEPS, { cancel: false });
+    let shown = 0;
+    const onPart = (t) => { const st = solParse(t), ready = st.slice(0, Math.max(0, st.length - 1)); if (ready.length <= shown || !pre.isConnected) return; shown = ready.length; pre.innerHTML = solHtml(ready); typeset(pre); B.step(Math.min(4, ready.filter((x) => x.n).length)); };
+    try { raw = await solMake(q, opt.fresh, onPart); } catch (e) { raw = null; }
+    B.stop();
     if (!raw) { host.innerHTML = '<div class="note err">เขียนเฉลยละเอียดไม่สำเร็จ ลองอีกครั้ง</div>'; return; }
     renderTrayLater();
   }
@@ -19322,15 +19328,19 @@ async function showSolution(q, itemId, box, opt) {
 }
 /* one AI call per question, shared when the background writer and the teacher ask at the same time */
 const SOLP = {};
-function solMake(q, fresh) {
-  const k = solKey(q); if (SOLP[k] && !fresh) return SOLP[k];
+const SOLL = {};
+function solMake(q, fresh, onPart) {
+  const k = solKey(q);
+  /* whoever is waiting for this solution (the teacher's card, or the writer in the background) sees it grow */
+  if (onPart) (SOLL[k] = SOLL[k] || []).push(onPart);
+  if (SOLP[k] && !fresh) return SOLP[k];
   const job = (async () => {
     const img = q.img ? await qImgBlob(q) : null;
-    const r = await AI.run('gen', solPrompt(q, { img: !!img }), { cache: false, maxTokens: 3500, images: img ? [img] : undefined });
+    const r = await AI.run('gen', solPrompt(q, { img: !!img }), { cache: false, maxTokens: 3500, images: img ? [img] : undefined, onPartial: (t) => { for (const f of SOLL[k] || []) { try { f(t); } catch (e) { /* fine */ } } } });
     const raw = String(r.text || ''); if (!solParse(raw).length) throw { code: 'empty_text' };
     solPut(q, raw); return raw;
   })();
-  SOLP[k] = job; job.then(() => { delete SOLP[k]; }, () => { delete SOLP[k]; });
+  SOLP[k] = job; job.then(() => { delete SOLP[k]; delete SOLL[k]; }, () => { delete SOLP[k]; delete SOLL[k]; });
   return job;
 }
 /* on the page as teacher-only boxes: hidden from students, the projector and shared copies */
@@ -20460,7 +20470,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793506590';
+const BUILD = '1793506860';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
