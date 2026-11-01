@@ -3816,13 +3816,14 @@ async function diaryAsk() {
     const hMid = body.length ? body[Math.floor(body.length / 2)] : 16;
     let fs = Math.round(clamp(hMid / 0.6, 14, 140));
     /* the reply starts at the left edge of what they wrote and runs to the page margin (from the margin when that is too narrow) */
-    let w = Math.round(W - PAGE_M - clamp(box[0], PAGE_M, W)); if (w < 420) w = W - 2 * PAGE_M; w = Math.min(w, 1100);
+    let w = Math.round(W - PAGE_M - clamp(box[0], PAGE_M, W)); if (w < 420) w = W - 2 * PAGE_M; w = Math.min(w, 1100, Math.max(420, fs * 30));
     /* a long reply in big handwriting still fits on one sheet: the letters get a little smaller */
     while (text && fs > 16 && estTextH(text, w, fs) * 1.25 + 10 > H - 140) fs -= 2;
     const h = text ? estTextH(text, w, fs) * 1.25 + 10 : 0;
     /* under what they wrote, at its left edge, about half a line below (placeNear); never past the edge of the paper:
        when this page has no room the reply starts at the top of the next page, at the same left edge */
-    let apid = pid, at = h ? placeNear(box, w, h, { fs }) : [clamp(box[0], PAGE_M, W - w - PAGE_M), box[3]];
+    let apid = pid, at = h ? placeNear(box, w, h, { fs, minW: Math.min(w, Math.max(360, fs * 14)), measure: (ww) => estTextH(text, ww, fs) * 1.25 + 10 }) : [clamp(box[0], PAGE_M, W - w - PAGE_M), box[3]];
+    if (at && at[2]) w = at[2];
     if (!at) { const np = await addPage(); if (!np) return; apid = np; at = [W - PAGE_M - w, PAGE_M + 16]; toast('หน้าเต็มแล้ว สมุดเขียนตอบในหน้าถัดไป', 2400); }
     const ink = '#2B3A67', id = 'i' + uid();
     if (text) addItem({ id, type: 'text', x: Math.round(at[0]), y: Math.round(at[1]), w: Math.round(w), md: text, fs, hand: DIARY_HAND(), ink, diary: true, dv: 2 });
@@ -5904,8 +5905,8 @@ async function readSelectionPanel() {
       clearSel(); toast('แทนที่ด้วยตัวพิมพ์แล้ว ย้อนกลับได้');
     };
     B.d.querySelector('[data-a="below"]').onclick = () => {
-      const tw = Math.round(clamp(box[2] - box[0] + 120, 320, W - 2 * PAGE_M)), fs0 = inkSize(box), at = placeNear(box, tw, estTextH(text, tw, 20) + 10, { fs: fs0 }) || [clamp(box[0], PAGE_M, W - tw - PAGE_M), Math.min(box[3] + 16, H - 80)];
-      addItem({ type: 'text', x: Math.round(at[0]), y: Math.round(at[1]), w: tw, md: text });
+      const tw = Math.round(clamp(box[2] - box[0] + 120, 320, W - 2 * PAGE_M)), fs0 = inkSize(box), at = placeNear(box, tw, estTextH(text, tw, 20) + 10, { fs: fs0, minW: 320, measure: (ww) => estTextH(text, ww, 20) + 10 }) || [clamp(box[0], PAGE_M, W - tw - PAGE_M), Math.min(box[3] + 16, H - 80)];
+      addItem({ type: 'text', x: Math.round(at[0]), y: Math.round(at[1]), w: at[2] || tw, md: text });
       toast('วางตัวพิมพ์ใต้ลายมือแล้ว');
     };
     const cp = B.d.querySelector('[data-a="copy"]');
@@ -18563,18 +18564,28 @@ function inkSize(box) {
 function placeNear(src, w, h, opt) {
   opt = opt || {};
   const fs = opt.fs || inkSize(src), lh = fs * 1.4;
-  const gapV = Math.round(clamp(lh * 0.5, 14, 40)), gapH = Math.round(clamp(lh * 0.8, 20, 56)), clr = Math.round(clamp(lh * 0.35, 10, 24)), M = PAGE_M;
-  w = Math.min(w, W - 2 * M); h = Math.min(h, H - 2 * M);
+  const gapV = Math.round(clamp(lh * 0.5, 14, 40)), gapH = Math.round(clamp(lh * 0.8, 20, 56)), clr = Math.round(clamp(lh * 0.35, 10, 24));
+  const paper = (S.page && S.page.paper) || 'grid', M = paper === 'cornell' && src[0] >= 250 ? 262 : PAGE_M;
+  /* it sits on the paper the way a careful hand would: on the grid or dot lines, between the rules of lined paper */
+  const snapX = (x) => (paper === 'grid' || paper === 'dot') && Math.abs(x - Math.round(x / 25) * 25) <= 12 ? Math.round(x / 25) * 25 : x;
+  const snapY = (y) => paper === 'grid' || paper === 'dot' ? Math.ceil(y / 25) * 25 : paper === 'lined' || paper === 'cornell' ? (y <= 126 ? y : 120 + Math.ceil((y - 126) / 38) * 38 + 6) : y;
+  /* words keep a comfortable reading width, and may narrow (down to opt.minW) to stay close under the writing
+     instead of dropping far down below something beside it */
+  const meas = opt.measure || (() => h), ws = [];
+  { const w0 = Math.min(w, W - 2 * PAGE_M); ws.push(w0); if (opt.minW) for (let q = 0.85; w0 * q >= opt.minW; q -= 0.15) ws.push(Math.round(w0 * q)); }
   const occ = occupiedBoxes().filter((b) => !(opt.skip && opt.skip(b)));
-  const fits = (x, y) => x >= M - 1 && y >= M - 1 && x + w <= W - M + 1 && y + h <= H - M + 1 && !occ.some((b) => x < b[2] + clr && x + w > b[0] - clr && y < b[3] + clr && y + h > b[1] - clr);
+  const fits = (x, y, ww, hh) => x >= M - 1 && y >= PAGE_M - 1 && x + ww <= W - PAGE_M + 1 && y + hh <= H - PAGE_M + 1 && !occ.some((b) => x < b[2] + clr && x + ww > b[0] - clr && y < b[3] + clr && y + hh > b[1] - clr);
   /* beside: a figure next to a short piece of writing, level with it */
   if (opt.side && src[2] - src[0] <= W * 0.55) {
-    const x = Math.round(src[2] + gapH);
-    if (x + w <= W - M) for (let y = Math.round(Math.max(M, src[1])); y <= Math.max(src[1], src[3] - h * 0.3); y += 8) if (fits(x, y)) return [x, y];
+    const x = snapX(Math.round(src[2] + gapH)), ww = ws[0], hh = meas(ww);
+    if (x + ww <= W - PAGE_M) for (let y = snapY(Math.round(Math.max(PAGE_M, src[1]))); y <= Math.max(src[1], src[3] - hh * 0.3); y += 8) if (fits(x, y, ww, hh)) return [x, y, ww, hh];
   }
-  /* under: same left edge as the writing, then the page margin */
-  const xs = [Math.round(clamp(src[0], M, W - M - w))]; if (xs[0] !== M) xs.push(M);
-  for (const x of xs) for (let y = Math.round(Math.max(M, src[3] + gapV)); y + h <= H - M; y += 8) if (fits(x, y)) return [x, y];
+  /* under: same left edge as the writing, then the page margin; the nearest row that has room wins */
+  const xs = [snapX(Math.round(clamp(src[0], M, W - PAGE_M - ws[ws.length - 1])))]; if (xs[0] !== M) xs.push(M);
+  for (let y0 = Math.round(Math.max(PAGE_M, src[3] + gapV)); y0 <= H - PAGE_M; y0 += 8) {
+    const y = snapY(y0);
+    for (const x of xs) for (const ww0 of ws) { const ww = Math.min(ww0, W - PAGE_M - x), hh = meas(ww); if (ww >= (opt.minW || ws[0] * 0.98) && y + hh <= H - PAGE_M && fits(x, y, ww, hh)) return [x, y, ww, hh]; }
+  }
   return null;
 }
 function freeSpot(w, h, near, below) {
@@ -20620,7 +20631,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793510617';
+const BUILD = '1793510769';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
