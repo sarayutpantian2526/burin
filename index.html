@@ -9615,6 +9615,9 @@ function motionWords(t) {
   /* falling, dropping, bouncing, rolling down a slope, being thrown or knocked: real physics on the page */
   if (/ตก|ร่วง|หล่น|กระเด้ง|กระดอน|กลิ้งลง|ไหลลง|ไถล|เอียง|ลาด|ขว้าง|โยน|ปา|ปล่อย|ชนแล้ว|กระเด็น|แรงโน้มถ่วง/.test(t)) { o.k = 'phys'; o.phys = {}; if (/กลิ้ง|ลูกบอล|วงกลม|ล้อ/.test(t)) o.phys.round = 1; if (/ขว้าง|โยน|ปา/.test(t)) { o.phys.vx = /ซ้าย/.test(t) ? -500 : 500; o.phys.vy = -600; } if (/กระเด้ง|ลูกบอล|ยาง/.test(t)) o.phys.e = 0.72; }
   if (/นิ่ง|อยู่กับที่|ไม่ขยับ/.test(t)) o.k = 'none';
+  /* faces and voices: shouting, talking, laughing, smiling, sad, crying, surprised, angry */
+  for (const [re, e] of [[/ตะโกน|ร้องเรียก|แผดเสียง|ตวาด|เชียร์/, 'shout'], [/หัวเราะ|ขำ/, 'laugh'], [/ร้องไห้|น้ำตา/, 'cry'], [/ตกใจ|อึ้ง|ประหลาดใจ/, 'surprise'], [/โกรธ|โมโห|หงุดหงิด/, 'angry'], [/เศร้า|เสียใจ|ผิดหวัง/, 'sad'], [/ยิ้ม|ดีใจ|มีความสุข/, 'happy'], [/พูด|คุย|บอก|อธิบาย|เล่า/, 'talk']]) if (re.test(t)) { o.expr = e; break; }
+  if (o.expr && !o.k) o.k = 'breathe';
   if (/ซ้าย/.test(t)) o.face = -1; else if (/ขวา/.test(t)) o.face = 1;
   if (/เร็วมาก/.test(t)) o.sp = 2.4; else if (/เร็ว/.test(t)) o.sp = 1.7; else if (/ช้ามาก/.test(t)) o.sp = 0.35; else if (/ช้า/.test(t)) o.sp = 0.6;
   if (/วน|ทะลุ|อีกฝั่ง/.test(t)) o.edge = 'wrap'; else if (/แอบ|โผล่/.test(t)) o.edge = 'peek'; else if (/ไม่ไปไหน|ที่เดิม/.test(t)) o.edge = 'stay'; else if (/หันกลับ|เดินกลับ|กลับไปกลับมา/.test(t)) o.edge = 'bounce';
@@ -9673,12 +9676,13 @@ async function motionPlan(text, sp, pieces) {
         + '- "preset": one of these behaviours when it fits well: ' + kinds + '.\n'
         + '- "path": any other movement described (circle around, climb up then come down, jump onto something, wave, spin three times, grow, shrink, go to a place). Give path.keys as a list of key frames {t seconds from start, dx, dy offset in page units from where it is drawn, rot degrees, scale}, first key t 0 with dx 0 dy 0, and loop true or false; path.anim is the behaviour the body keeps doing while it follows the path (flap for a bird beating its wings, walk4, swim, wiggle, or none). To go to another piece (swoop at it, run to it, chase it), aim the keys at that piece using the boxes above. Use enough keys (6 to 20) for a smooth natural motion and keep it on the page.\n'
         + 'Only the pieces the teacher asks to move should move; every other piece gets mode "none" (it may still react when something hits it).\n'
+        + 'A drawn person or face can also show a feeling or make a sound: give "expr" one of shout, talk, laugh, happy, sad, cry, surprise, angry when the teacher asks for it or it clearly fits (shouting, calling out, cheering = shout). The app then redraws the mouth, eyes and eyebrows to match and adds sound lines, tears or the like, so the face really changes; pick a body motion that suits it (breathe or wiggle when standing, a path when it goes somewhere). Put all pieces of one person in one group.\n'
         + 'Also give "plan": one short Thai sentence saying what will happen, written for the teacher (mention anything you added to make it natural).\n'
         + 'Reply with JSON only: {"plan":"...","pieces":[{"n":1,"group":1,"what":"ball","mode":"physics","k":"","face":"right","speed":1,"edge":"bounce","touch":true,"phys":{"vx":0,"vy":0,"bounce":0.6,"friction":0.3,"gravity":1,"round":true,"spin":0},"path":null}]}\nface is left or right, speed 0.3 to 3, edge is wrap, bounce, peek or stay, touch true when it should walk on or bump into other things.', { images: [blob], maxTokens: 2200 });
       const j = JSON.parse(String(r.text || '').replace(/^[^{]*/, '').replace(/[^}]*$/, ''));
       if (j && typeof j.plan === 'string' && j.plan.trim()) MV_LAST.plan = j.plan.trim().slice(0, 200);
       if (j && Array.isArray(j.pieces) && j.pieces.length) return j.pieces.map((q) => {
-        const o = { n: +q.n, group: +q.group || +q.n, what: String(q.what || '').slice(0, 40), k: q.k, face: q.face === 'left' ? -1 : q.face === 'right' ? 1 : 0, sp: +q.speed || 1, edge: q.edge, touch: q.touch ? 1 : 0 };
+        const o = { n: +q.n, group: +q.group || +q.n, what: String(q.what || '').slice(0, 40), k: q.k, face: q.face === 'left' ? -1 : q.face === 'right' ? 1 : 0, sp: +q.speed || 1, edge: q.edge, touch: q.touch ? 1 : 0, expr: ['shout', 'talk', 'laugh', 'happy', 'sad', 'cry', 'surprise', 'angry'].includes(q.expr) ? q.expr : undefined };
         if (q.mode === 'none') o.k = 'none';
         else if (q.mode === 'physics' || q.k === 'phys') { const f = q.phys || {}; o.k = 'phys'; o.phys = { vx: clamp(+f.vx || 0, -2500, 2500), vy: clamp(+f.vy || 0, -2500, 2500), e: clamp(f.bounce == null ? 0.5 : +f.bounce, 0, 0.95), mu: clamp(f.friction == null ? 0.35 : +f.friction, 0, 1.5), g: clamp(f.gravity == null ? 1 : +f.gravity, 0, 3), spin: clamp(+f.spin || 0, -40, 40) }; if (f.round != null) o.phys.round = f.round ? 1 : 0; }
         else if (q.mode === 'path' && q.path && Array.isArray(q.path.keys) && q.path.keys.length >= 2) { o.k = 'path'; o.sub = LIFE_KINDS.some((x) => x[0] === q.path.anim) ? q.path.anim : (/bird|นก|butterfly|bat/i.test(o.what) ? 'flap' : undefined); o.path = { loop: q.path.loop !== false, keys: q.path.keys.slice(0, 40).map((k) => ({ t: clamp(+k.t || 0, 0, 60), dx: clamp(+k.dx || 0, -W, W), dy: clamp(+k.dy || 0, -H, H), rot: clamp(+k.rot || 0, -3600, 3600), scale: clamp(+k.scale || 1, 0.1, 5) })) }; }
@@ -9701,10 +9705,11 @@ async function motionDo(text, sp, pieces) {
     const q = g.plan; if (q.k === 'none') continue;
     const sub = { refs: g.refs, items: g.items, box: g.box };
     let k = q.k, f = q.face || 0;
-    if (k === 'phys' || k === 'path') { await placeLife(sub, k, 'stay', f, k === 'phys' ? Object.assign({ touch: 1 }, q.phys || {}) : Object.assign({ path: q.path }, q.sub ? { sub: q.sub } : {})); made++; continue; }
-    if (!k || k === 'auto' || !LIFE_KINDS.some((x) => x[0] === k)) { const a = await lifeAuto(Object.assign({}, sp, sub)); if (Array.isArray(a)) { k = a[0]; f = f || a[1]; } else k = a; if (k === 'person') k = 'wiggle'; }
+    const ex = q.expr ? { expr: q.expr } : {};
+    if (k === 'phys' || k === 'path') { await placeLife(sub, k, 'stay', f, k === 'phys' ? Object.assign({ touch: 1 }, q.phys || {}, ex) : Object.assign({ path: q.path }, q.sub ? { sub: q.sub } : {}, ex)); made++; continue; }
+    if (!k || k === 'auto' || !LIFE_KINDS.some((x) => x[0] === k)) { const a = await lifeAuto(Object.assign({}, sp, sub)); if (Array.isArray(a)) { k = a[0]; f = f || a[1]; } else k = a; if (k === 'person') k = q.expr ? 'breathe' : 'wiggle'; }
     const before = new Set((S.page.items || []).map((x) => x.id));
-    await placeLife(sub, k, q.edge || 'bounce', f);
+    await placeLife(sub, k, q.expr && !LIFE_KINDS.find((x) => x[0] === k)[3] ? 'stay' : (q.edge || 'bounce'), f, ex);
     const it = (S.page.items || []).find((x) => x.type === 'life' && !before.has(x.id));
     if (it && (q.sp && q.sp !== 1 || q.touch)) lifeSet(it, Object.assign({}, q.sp && q.sp !== 1 ? { sp: clamp(q.sp, 0.2, 3) } : {}, q.touch ? { touch: 1 } : {}));
     made++;
@@ -10523,6 +10528,8 @@ function lifePanel(d, it, dot) {
   const fc = document.createElement('div'); fc.className = 'chips';
   for (const [f, n] of [[-1, 'หันหน้าไปทางซ้าย'], [1, 'หันหน้าไปทางขวา']]) { const b = document.createElement('button'); b.type = 'button'; b.className = 'chip'; b.textContent = n; b.setAttribute('aria-pressed', (live.beh.face || 1) === f ? 'true' : 'false'); b.title = 'บอกว่าภาพที่วาดหันหน้าไปทางไหน หัวจะนำเวลาเคลื่อนที่ หางหรือขาหลังตามหลัง'; b.onclick = () => lifeSet(it, { face: f }); fc.appendChild(b); }
   p.appendChild(fc);
+  { const es = document.createElement('select'); es.className = 'traysel'; es.title = 'สีหน้าและเสียงของภาพคนหรือหน้าที่วาด'; for (const [k, n] of LIFE_EXPR) { const o = document.createElement('option'); o.value = k; o.textContent = 'สีหน้า: ' + n; es.appendChild(o); } es.value = live.beh.expr || 'none';
+    es.onchange = () => { const R = LIFE.get(it.id); if (R) R.face = undefined; lifeSet(it, { expr: es.value }); }; p.appendChild(es); }
   { const tc = document.createElement('div'); tc.className = 'chips'; const b = document.createElement('button'); b.type = 'button'; b.className = 'chip'; b.textContent = 'โต้ตอบกับสิ่งอื่นบนหน้า';
     b.title = 'เดินบนเส้นที่วาด หันกลับเมื่อชนลายมือ รูป หรือภาพเคลื่อนไหวอื่น กระโดดข้ามสิ่งที่เตี้ย'; b.setAttribute('aria-pressed', lifeTouch(live.beh) ? 'true' : 'false');
     b.onclick = () => lifeSet(it, { touch: lifeTouch(live.beh) ? 0 : 1 }); tc.appendChild(b);
@@ -10669,7 +10676,7 @@ function lifeThreat(it, rt, dt) {
     const seen = rt.seen || (rt.seen = {}), prev = seen[id2]; seen[id2] = [ox, oy];
     if (d > sz * 0.7 || !prev) continue;
     const closing = Math.hypot(prev[0] - cx, prev[1] - cy) - Math.hypot(ox - cx, oy - cy);
-    if (closing > 0.3 || d < 0) { rt.flinch = 1; rt.flinchDir = ox > cx ? -1 : 1; rt.flinchUp = oy < cy; }
+    if (closing > 0.3 || (d < 0 && closing > 0.05)) { rt.flinch = 1; rt.flinchDir = ox > cx ? -1 : 1; rt.flinchUp = oy < cy; }
   }
 }
 function lifeMove(it, rt, dt) {
@@ -10744,6 +10751,17 @@ function lifeDraw(it, rt) {
   if (isPath) { const q = lifePathAt(it, T0), q2 = lifePathAt(it, T0 + 0.06); pathDir = Math.abs(q2.dx - q.dx) > 0.2 ? Math.sign(q2.dx - q.dx) : (rt.pathDir || 0); rt.pathDir = pathDir; const wob = k === 'flap' ? Math.sin(t * 9 + Math.PI) * bh * 0.05 * A : 0; ox = q.dx; oy = q.dy + wob; rot = q.rot + (k === 'flap' ? -(pathDir || face) * clamp((q2.dy - q.dy) * 0.02, -0.35, 0.35) : 0); sx = sy = q.s; px = cx; py = cy; }
   if (lifeTouch(b) && LIFE_GROUND.includes(k)) oy += rt.gy || 0;
   if (rt.bump) { const q = rt.bump; sx *= 1 - 0.12 * q; sy *= 1 + 0.08 * q; }
+  /* the body goes with the face: leaning in to shout, shaking with laughter, slumping when sad, jumping back when surprised */
+  const ex = b.expr && b.expr !== 'none' ? b.expr : null;
+  if (ex) { const bu = lifeBurst(T0);
+    if (ex === 'shout') { rot += face * 0.07 * bu; oy -= bh * 0.015 * bu; sy *= 1 + 0.02 * bu; }
+    else if (ex === 'laugh') { rot += Math.sin(T0 * 15) * 0.035; oy -= Math.abs(Math.sin(T0 * 15)) * bh * 0.012; }
+    else if (ex === 'sad' || ex === 'cry') { sy *= 0.985 + 0.01 * Math.sin(T0 * 1.6); rot += face * 0.025; if (ex === 'cry') rot += Math.sin(T0 * 9) * 0.01 * (Math.sin(T0 * 1.3) > 0 ? 1 : 0); }
+    else if (ex === 'surprise') { const q = (T0 % 3.2) < 0.35 ? Math.sin(Math.PI * (T0 % 3.2) / 0.35) : 0; oy -= q * bh * 0.05; rot -= face * q * 0.05; }
+    else if (ex === 'angry') { rot += Math.sin(T0 * 30) * 0.012 * (Math.sin(T0 * 1.7) > 0.2 ? 1 : 0); }
+    else if (ex === 'happy') { oy -= Math.abs(Math.sin(T0 * 3)) * bh * 0.01; }
+    else if (ex === 'talk') { rot += Math.sin(T0 * 2.1) * 0.02; }
+  }
   if (rt.jolt) { oy -= Math.sin(Math.PI * rt.jolt) * bh * 0.18; rot += rt.dir * 0.08 * rt.jolt; }
   if (rt.scare && k !== 'flap' && k !== 'phys' && k !== 'path') rot += Math.sin(T0 * 40) * 0.02 * rt.scare;
   /* turning back: the drawing turns on the spot like a page flipping, instead of jumping to face the other way */
@@ -10795,8 +10813,9 @@ function lifeDraw(it, rt) {
     if (R) { const Hd = Math.max(20, B[3] - B[1]), f = Math.sin(Math.min(1, rt.flinch) * Math.PI / 2), tx = (y) => R.neck[0] + (R.hip[0] - R.neck[0]) * clamp((y - R.neck[1]) / ((R.hip[1] - R.neck[1]) || 1), 0, 1);
       armUp = (x, y) => { if (y <= R.neck[1] || y >= R.hip[1] + 0.1 * Hd || Math.abs(x - tx(y)) <= 0.07 * Hd || Math.hypot(x - R.headC[0], y - R.headC[1]) <= R.headR * 1.2) return [x, y]; const left = x < tx(y), a = (left ? 1 : -1) * 1.9 * f, dx = x - R.sh[0], dy = y - R.sh[1], ca = Math.cos(a), sa = Math.sin(a); return [R.sh[0] + dx * ca - dy * sa, R.sh[1] + dx * sa + dy * ca]; }; }
   }
+  const fc = ex ? lifeFaceParts(it, rt) : null, hide = new Set(fc ? (['laugh', 'surprise'].includes(ex) ? fc.eyes.concat([fc.mouth]) : [fc.mouth]).filter((q) => q != null) : []);
   it.ink.forEach((s, i) => {
-    if (inW.has(i)) return;
+    if (inW.has(i) || hide.has(i)) return;
     if (legOf.has(i)) { const g = legOf.get(i), ph = gait.ph0 + g.ph, th = -face * 0.38 * A * gait.a * Math.sin(ph), lift = Math.max(0, Math.cos(ph)) * 0.12 * gait.L * A * gait.a; c.save(); c.translate(g.px, g.top - lift * 0.5); c.rotate(th); c.translate(-g.px, -g.top); drawStroke(c, s); c.restore(); return; }
     if (wingSet.has(i)) { const wg = wings.find((q) => q.i === i), fl = (t % 3.4) < 2.3, a = -face * (fl ? Math.sin(t * 9) * 0.6 : -0.15) * A; c.save(); c.translate(wg.pv[0], wg.pv[1]); c.rotate(a); c.translate(-wg.pv[0], -wg.pv[1]); drawStroke(c, s); c.restore(); return; }
     if (armUp) { const p = s.p.slice(); for (let j = 0; j + 1 < p.length; j += 3) { let x = p[j] / 10, y = p[j + 1] / 10; if (deforms) { const n = deform(x, y); if (n) { x = n[0]; y = n[1]; } } const n2 = armUp(x, y); p[j] = n2[0] * 10; p[j + 1] = n2[1] * 10; } drawStroke(c, Object.assign({}, s, { p })); return; }
@@ -10805,6 +10824,7 @@ function lifeDraw(it, rt) {
     drawStroke(c, Object.assign({}, s, { p }));
   });
   if ((it.wheels || []).length) { for (const wl of it.wheels) { c.save(); c.translate(wl.cx, wl.cy); c.rotate((k === 'drive' || moving ? rt.dx * (flip ? -1 : 1) : T0 * 60) / Math.max(4, wl.r)); c.translate(-wl.cx, -wl.cy); wl.i.forEach((i) => it.ink[i] && drawStroke(c, it.ink[i])); c.restore(); } }
+  if (fc) lifeExpr(c, it, rt, fc, ex, T0, face, A);
   c.restore();
   /* what the real thing would bring with it, drawn around the picture in the same light hand: sparks and smoke over a flame,
      bubbles from a fish, dust where feet land, exhaust and speed lines behind a car, pulse rings round a beating heart,
@@ -10812,6 +10832,67 @@ function lifeDraw(it, rt) {
   if (b.fx !== 0) { c.setTransform(cap, 0, 0, cap, 0, 0); c.translate(-it.x, -it.y); lifeFx(c, it, rt, { k, t, T0, A, B, bw, bh, cx, cy, ox, oy, face: flip ? -face : face, moving, vr }); }
 }
 
+/* ----- faces: a drawn person can shout, talk, laugh, smile, be sad, cry, be surprised or angry; the drawn mouth (and for
+   laughing or surprise the eyes) is redrawn by hand to match, eyebrows and tears and sound lines are added ----- */
+const LIFE_EXPR = [['none', 'ปกติ'], ['shout', 'ตะโกน'], ['talk', 'พูด'], ['laugh', 'หัวเราะ'], ['happy', 'ยิ้ม ดีใจ'], ['sad', 'เศร้า'], ['cry', 'ร้องไห้'], ['surprise', 'ตกใจ'], ['angry', 'โกรธ']];
+/* shouting comes in bursts, a few syllables at a time, with a breath between */
+function lifeBurst(t) { const u = t % 2.3; return u < 1.35 ? 0.55 + 0.45 * Math.abs(Math.sin(u * 7.2)) : Math.max(0, 1 - (u - 1.35) * 6) * 0.3; }
+function lifeFaceParts(it, rt) {
+  if (rt.face !== undefined) return rt.face;
+  let R = null; try { R = typeof ipRig === 'function' && it.ink.length >= 2 ? ipRig(it.ink) : null; } catch (e) { R = null; }
+  if (!R || !R.headC) { /* a face drawn on its own: the biggest closed line is the head */
+    let bi = -1, ba = 0; it.ink.forEach((s, i) => { const b = ipBox([s]), a = (b[2] - b[0]) * (b[3] - b[1]); if (a > ba) { ba = a; bi = i; } });
+    if (bi < 0) return (rt.face = null); const b = ipBox([it.ink[bi]]); R = { headC: [(b[0] + b[2]) / 2, (b[1] + b[3]) / 2], headR: Math.max(b[2] - b[0], b[3] - b[1]) / 2 };
+  }
+  const hc = R.headC, r = R.headR, parts = [];
+  it.ink.forEach((s, i) => { const P = ipPts(s); if (!P.length) return; if (P.every((p) => Math.hypot(p[0] - hc[0], p[1] - hc[1]) < r * 0.92)) { const b = ipBox([s]); parts.push({ i, b, cy: (b[1] + b[3]) / 2, cx: (b[0] + b[2]) / 2 }); } });
+  let mouth = null; for (const q of parts) if (q.cy > hc[1] + 0.12 * r && (!mouth || q.b[2] - q.b[0] > mouth.b[2] - mouth.b[0])) mouth = q;
+  const eyes = parts.filter((q) => q !== mouth && q.cy < hc[1] + 0.12 * r);
+  const mw = mouth ? Math.max(0.25 * r, mouth.b[2] - mouth.b[0]) : 0.55 * r, m = mouth ? [mouth.cx, mouth.cy] : [hc[0], hc[1] + 0.42 * r];
+  const ep = eyes.length ? eyes.map((q) => [q.cx, q.cy]) : [[hc[0] - 0.35 * r, hc[1] - 0.12 * r], [hc[0] + 0.35 * r, hc[1] - 0.12 * r]];
+  return (rt.face = { hc, r, mouth: mouth ? mouth.i : null, eyes: eyes.map((q) => q.i), m, mw, ep, ink: (it.ink[0] && it.ink[0].c) || '#2B3A67', lw: (it.ink[0] && it.ink[0].w) || 3 });
+}
+function lifeExpr(c, it, rt, F, ex, t, face, A) {
+  const { hc, r, m, mw, ep } = F, ink = F.ink, lw = Math.max(1.6, F.lw * 0.9);
+  c.save(); c.strokeStyle = ink; c.fillStyle = ink; c.lineWidth = lw; c.lineCap = 'round'; c.lineJoin = 'round';
+  const line = (pts) => { c.beginPath(); pts.forEach((p, q) => (q ? c.lineTo(p[0], p[1]) : c.moveTo(p[0], p[1]))); c.stroke(); };
+  const brows = (inner, outer) => { for (const e of ep) { const sd = e[0] < hc[0] ? -1 : 1, y = e[1] - 0.28 * r; line([[e[0] - sd * 0.02 * r, y + inner * r], [e[0] + sd * 0.24 * r, y + outer * r]]); } };
+  const arc = (cx, cy, rx, ry, a0, a1, fill) => { c.beginPath(); c.ellipse(cx, cy, Math.max(0.5, rx), Math.max(0.5, ry), 0, a0, a1); if (fill) c.fill(); else c.stroke(); };
+  if (ex === 'shout') {
+    const bu = lifeBurst(t), open = 0.26 + 0.44 * bu;
+    arc(m[0], m[1] + 0.04 * r, mw * 0.42 * (1 + 0.2 * bu), r * open * 0.42, 0, 6.2832, true);
+    if (open > 0.3) { c.fillStyle = 'rgba(214,92,92,0.9)'; arc(m[0], m[1] + 0.04 * r + r * open * 0.24, mw * 0.24, r * open * 0.14, 0, 6.2832, true); c.fillStyle = ink; }
+    brows(0.1, -0.06);
+    /* the voice going out in front of the mouth */
+    c.globalAlpha = 0.25 + 0.6 * bu; const ox = m[0] + face * (mw * 0.5 + 0.25 * r);
+    for (let q = 0; q < 3; q++) { const ph = ((t * 2.2 + q / 3) % 1), rr = r * (0.3 + 0.9 * ph); c.globalAlpha = (0.2 + 0.7 * bu) * (1 - ph); c.beginPath(); c.arc(ox, m[1], rr, face > 0 ? -0.6 : Math.PI - 0.6, face > 0 ? 0.6 : Math.PI + 0.6); c.stroke(); }
+  } else if (ex === 'talk') {
+    const o = (Math.sin(t * 1.4) > -0.4 ? Math.abs(Math.sin(t * 9.5)) : 0) * 0.22 + 0.04;
+    arc(m[0], m[1], mw * 0.32, r * o * 0.45, 0, 6.2832, true);
+  } else if (ex === 'laugh') {
+    const o = 0.3 + 0.12 * Math.abs(Math.sin(t * 15));
+    c.beginPath(); c.moveTo(m[0] - mw * 0.5, m[1] - 0.04 * r); c.quadraticCurveTo(m[0], m[1] + r * o * 1.4, m[0] + mw * 0.5, m[1] - 0.04 * r); c.closePath(); c.fill();
+    for (const e of ep) arc(e[0], e[1] + 0.05 * r, 0.14 * r, 0.12 * r, Math.PI * 1.1, Math.PI * 1.9);
+    c.globalAlpha = 0.7; c.font = Math.round(r * 0.5) + 'px sans-serif'; c.fillText('ฮ่า', hc[0] + face * r * 1.15, hc[1] - r * (0.6 + 0.15 * Math.sin(t * 6)));
+  } else if (ex === 'happy') {
+    c.beginPath(); c.moveTo(m[0] - mw * 0.55, m[1] - 0.06 * r); c.quadraticCurveTo(m[0], m[1] + 0.32 * r, m[0] + mw * 0.55, m[1] - 0.06 * r); c.stroke();
+    c.fillStyle = 'rgba(240,120,140,0.35)'; for (const e of ep) arc(e[0] + (e[0] < hc[0] ? -0.08 : 0.08) * r, e[1] + 0.3 * r, 0.13 * r, 0.08 * r, 0, 6.2832, true);
+  } else if (ex === 'sad' || ex === 'cry') {
+    c.beginPath(); c.moveTo(m[0] - mw * 0.45, m[1] + 0.1 * r); c.quadraticCurveTo(m[0], m[1] - 0.16 * r, m[0] + mw * 0.45, m[1] + 0.1 * r); c.stroke();
+    brows(-0.08, 0.06);
+    if (ex === 'cry') { c.fillStyle = 'rgba(70,140,225,0.85)'; for (const [q, e] of ep.entries()) { const u = ((t * 0.9 + q * 0.45) % 1), x = e[0] + (e[0] < hc[0] ? -0.04 : 0.04) * r, y = e[1] + 0.12 * r + u * 0.9 * r, d = 0.06 * r; c.globalAlpha = 1 - u * 0.7; c.beginPath(); c.moveTo(x, y - d * 1.8); c.quadraticCurveTo(x + d, y, x, y + d * 0.7); c.quadraticCurveTo(x - d, y, x, y - d * 1.8); c.fill(); } }
+  } else if (ex === 'surprise') {
+    arc(m[0], m[1] + 0.02 * r, 0.13 * r, 0.2 * r, 0, 6.2832);
+    for (const e of ep) { arc(e[0], e[1], 0.13 * r, 0.15 * r, 0, 6.2832); arc(e[0], e[1], 0.04 * r, 0.04 * r, 0, 6.2832, true); }
+    brows(-0.14, -0.14);
+    c.globalAlpha = (t % 3.2) < 1.2 ? 1 : 0.4; line([[hc[0] + face * r * 1.1, hc[1] - r * 1.05], [hc[0] + face * r * 1.1, hc[1] - r * 0.7]]); arc(hc[0] + face * r * 1.1, hc[1] - r * 0.55, lw * 0.6, lw * 0.6, 0, 6.2832, true);
+  } else if (ex === 'angry') {
+    line([[m[0] - mw * 0.4, m[1] + 0.02 * r], [m[0] - mw * 0.13, m[1] - 0.03 * r], [m[0] + mw * 0.13, m[1] + 0.03 * r], [m[0] + mw * 0.4, m[1] - 0.02 * r]]);
+    brows(0.12, -0.1);
+    c.strokeStyle = 'rgba(107,114,128,0.5)'; for (let q = 0; q < 2; q++) { const u = (t * 0.8 + q * 0.5) % 1, x = hc[0] + (q ? 1 : -1) * r * 0.75, y = hc[1] - r * (1 + u * 0.8); c.globalAlpha = 1 - u; arc(x, y, r * (0.12 + u * 0.15), r * (0.1 + u * 0.12), 0, 6.2832); }
+  }
+  c.restore();
+}
 /* ----- extra touches that make a moving picture feel real (see lifeDraw): small particles living for a moment ----- */
 function lifeFx(c, it, rt, o) {
   const { k, t, T0, A, B, bw, bh, cx, cy, ox, oy, face, moving, vr } = o;
@@ -20632,7 +20713,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793511070';
+const BUILD = '1793512988';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
