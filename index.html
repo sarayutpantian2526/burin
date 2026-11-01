@@ -1008,6 +1008,23 @@ body.role-student .qkeybox { display: none; }
 .pqacts { display: flex; flex-wrap: wrap; gap: 4px; }
 .pqacts .btn { font-size: 12px; padding: 4px 8px; min-height: 30px; }
 .pqsave { position: sticky; bottom: 0; background: var(--surface); padding-top: 6px; }
+.vb { display: inline-block; font-size: 11px; padding: 1px 8px; border-radius: 999px; background: var(--bg); color: var(--muted); }
+.vb.ok { background: var(--ok-soft); color: var(--fg); }
+.vb.wait { background: var(--accent-soft); color: var(--accent); }
+.vb.bad { background: var(--warn-soft); color: var(--warn); }
+.pqmeta { display: flex; flex-wrap: wrap; gap: 6px; }
+.pqsel { display: flex; align-items: center; gap: 4px; font-size: 12px; color: var(--muted); }
+.pqsel select { font-size: 13px; padding: 3px 6px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--fg); max-width: 190px; }
+.pqchk { display: flex; align-items: center; gap: 6px; font-size: 13px; }
+.pqchk input { width: 20px; height: 20px; }
+.pqtxt { font-size: 13px; }
+.pqtxt summary { cursor: pointer; color: var(--muted); font-size: 12px; }
+.brshead { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; cursor: pointer; }
+.brshead input { width: 22px; height: 22px; flex: 0 0 auto; }
+.brsc { font-size: 15px; padding: 1px 0; }
+.brslist { display: flex; flex-direction: column; gap: 10px; margin: 10px 0; }
+.brsbar { position: sticky; bottom: 0; z-index: 2; background: var(--surface); border-top: 1px solid var(--line); padding: 8px 0; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.brsbar .brsnm { flex: 1 1 160px; min-width: 0; }
 .tqq { font-size: 14px; line-height: 1.55; }
 .tqa { display: flex; gap: 6px; flex-wrap: wrap; }
 .tqa .btn { min-height: 34px; font-size: 13px; padding: 0 10px; }
@@ -2146,7 +2163,7 @@ body.role-student .scnpill .sbtns button[data-s="back"], body.role-student .scnp
   <div class="panel wide" role="dialog" aria-label="ฝึกโจทย์แข่งขัน">
     <div class="exttl"><h2>ฝึกโจทย์แข่งขัน</h2><label class="field exwho"><span>ผู้ฝึก</span><select id="exWho"></select></label><span id="exAdd" hidden class="mrow"><input id="exNew" placeholder="ชื่อผู้ฝึก" maxlength="40"><button class="btn" id="exAddOk" type="button">เพิ่ม</button></span><button class="btn solid" id="exMinBtn" type="button" hidden>ย่อไว้ก่อน</button><button class="btn" id="exClose">ปิด</button></div>
     <div class="seg exgroups" id="exGroups" role="group" aria-label="หมวด"></div>
-    <div class="seg" id="exTabs" role="group" aria-label="ส่วนในหมวด"><button data-t="cls">ห้องและคะแนน</button><button data-t="hw">การบ้าน</button><button data-t="sets">ชุดโจทย์ของฉัน</button><button data-t="build">จากหน้านี้</button><button data-t="bank">คลังโจทย์</button><button data-t="analysis">วิเคราะห์ข้อสอบ</button><button data-t="practice">ฝึกและสอบ</button><button data-t="stats">ผลและจุดอ่อน</button><button data-t="grades">คะแนนผู้ฝึก</button></div>
+    <div class="seg" id="exTabs" role="group" aria-label="ส่วนในหมวด"><button data-t="cls">ห้องและคะแนน</button><button data-t="hw">การบ้าน</button><button data-t="sets">ชุดโจทย์ของฉัน</button><button data-t="browse">เปิดดูและเลือกข้อ</button><button data-t="build">จากหน้านี้</button><button data-t="bank">คลังโจทย์</button><button data-t="analysis">วิเคราะห์ข้อสอบ</button><button data-t="practice">ฝึกและสอบ</button><button data-t="stats">ผลและจุดอ่อน</button><button data-t="grades">คะแนนผู้ฝึก</button></div>
     <div id="exBody" class="exbody"></div>
   </div>
 </div>
@@ -17659,7 +17676,7 @@ function exAllQs() {
     const seen = {};
     for (const r of list) { const k = r[0]; seen[k] = (seen[k] || 0) + 1; out.push({ id: 'b-' + t + '-' + k + '-' + seen[k], t, ch: r[0], d: r[1], q: r[2], c: r[3], a: 0, e: r[4] || '', src: 'bank' }); }
   }
-  for (const q of EX.own) out.push(Object.assign({ src: 'own' }, q, { id: 'u-' + q.id }));
+  for (const q of EX.own) if (exOk(q)) out.push(Object.assign({ src: 'own' }, q, { id: 'u-' + q.id }));
   out.push(...bankQs());
   return out.filter((q) => CURRIC[q.t] && q.c && q.c.length >= 2);
 }
@@ -17803,9 +17820,9 @@ function exRenderWho() {
    Teacher: the class (rooms and gradebook, homework, practice scores, each learner's weak points) and the question sets
    (my sets, picked from the bank, made from this page, my own questions, item analysis).
    Student: practising and their own results. Tabs show in the order listed here. */
-const EX_GROUPS_T = [['class', 'ห้องเรียนและคะแนน', ['cls', 'hw', 'grades', 'stats']], ['sets', 'ชุดโจทย์', ['sets', 'practice', 'build', 'bank', 'analysis']]];
+const EX_GROUPS_T = [['class', 'ห้องเรียนและคะแนน', ['cls', 'hw', 'grades', 'stats']], ['sets', 'ชุดโจทย์', ['sets', 'practice', 'browse', 'build', 'bank', 'analysis']]];
 const EX_GROUPS_S = [['train', 'ฝึก', ['practice', 'stats']]];
-const EX_TAB_T = { cls: 'ห้องและสมุดคะแนน', hw: 'การบ้าน', grades: 'คะแนนแบบฝึก', stats: 'จุดอ่อนรายคน', sets: 'ชุดโจทย์ของฉัน', practice: 'เลือกจากคลัง', build: 'จากหน้านี้', bank: 'เพิ่มโจทย์เอง', analysis: 'วิเคราะห์ข้อสอบ' };
+const EX_TAB_T = { cls: 'ห้องและสมุดคะแนน', hw: 'การบ้าน', grades: 'คะแนนแบบฝึก', stats: 'จุดอ่อนรายคน', sets: 'ชุดโจทย์ของฉัน', practice: 'สุ่มจากคลัง', browse: 'เปิดดูและเลือกข้อ', build: 'จากหน้านี้', bank: 'เพิ่มโจทย์เอง', analysis: 'วิเคราะห์ข้อสอบ' };
 const EX_TAB_S = { practice: 'ทำแบบฝึก', stats: 'ผลและสิ่งที่ต้องพัฒนา' };
 const exGroups = () => (isStudentSide() ? EX_GROUPS_S : EX_GROUPS_T);
 const exGroupOf = (t) => { const G = exGroups(); return G.find((g) => g[2].includes(t)) || G[G.length - 1]; };
@@ -17833,6 +17850,7 @@ function exRender() {
   if (EX.tab === 'sets') exRenderSets(body);
   else if (EX.tab === 'build') exRenderBuild(body);
   else if (EX.tab === 'practice') exRenderSetup(body);
+  else if (EX.tab === 'browse') exRenderBrowse(body);
   else if (EX.tab === 'stats') exRenderStats(body);
   else if (EX.tab === 'analysis') exRenderAnalysis(body);
   else if (EX.tab === 'grades') exRenderGrades(body);
@@ -17952,6 +17970,7 @@ function exRenderRun(body) {
   if (R.items.length > 1) { const nums = exEl('div', 'exnums'); R.items.forEach((it, k) => { const b = exEl('button', k === R.i ? 'cur' : it.pick >= 0 ? (R.mode === 'practice' ? (it.pick === it.key ? 'ok' : 'no') : 'did') : '', String(k + 1)); b.type = 'button'; b.setAttribute('aria-label', 'ข้อ ' + (k + 1)); b.onclick = () => exGo(k - R.i); nums.appendChild(b); }); body.appendChild(nums); }
   body.appendChild(exEl('div', 'exch', esc(exTrackName(x.q.t) + ' : ' + exChName(x.q.t, x.q.ch)) + ' ' + '<span>' + ['', 'พื้นฐาน', 'กลาง', 'ท้าทาย'][x.q.d || 1] + '</span>'));
   if (x.q.fig) body.appendChild(exEl('div', '', figHtml(x.q, 360)));
+  if (x.q.img && okAsset(x.q.img.asset) && /\[รูป|\[ภาพ/.test(x.q.q || '')) { const iw = exEl('div', 'tqimg'), im = document.createElement('img'); im.alt = 'รูปประกอบโจทย์'; iw.appendChild(im); body.appendChild(iw); setAssetSrc(im, x.q.img.asset); }
   const qd = exEl('div', 'exq', mdToHtml(x.q.q)); body.appendChild(qd);
   if (R.mode === 'work') { workPad(body, x); body.appendChild(exEl('span', 'label', 'คำตอบสุดท้าย (เลือกหรือไม่เลือกก็ได้)')); }
   const opts = exEl('div', 'exopts');
@@ -18268,7 +18287,7 @@ function exRenderOwnList() {
   const ol = $('#exOwn'); if (!ol) return; ol.innerHTML = '';
   if (!EX.own.length) { ol.appendChild(exEl('div', 'note', 'ยังไม่มีโจทย์ที่เพิ่มเอง')); return; }
   for (const q of EX.own.slice().sort((a, b) => (b.at || 0) - (a.at || 0))) {
-    const d = exEl('div', 'exrev', '<small>' + esc(exTrackName(q.t) + ' : ' + exChName(q.t, q.ch)) + (q.src === 'ai' ? ' ร่างโดย AI' : '') + '</small><div class="exq">' + mdToHtml(q.q) + '</div><div class="note">ตอบ ' + mdToHtml(q.c[q.a || 0]) + '</div>');
+    const d = exEl('div', 'exrev', '<small>' + esc(exTrackName(q.t) + ' : ' + exChName(q.t, q.ch)) + (q.src === 'ai' ? ' ร่างโดย AI' : '') + '</small><div class="exq">' + mdToHtml(q.q) + '</div><div class="note">ตอบ ' + mdToHtml(q.c && q.c.length ? q.c[q.a || 0] : (q.ans || '')) + '</div>');
     const b = exEl('button', 'btn', 'ลบ'); b.onclick = async () => { EX.own = EX.own.filter((x) => x.id !== q.id); await S.store.del('exq/' + q.id).catch(() => {}); exRenderOwnList(); };
     d.appendChild(b); d.appendChild(keyToggle(q)); ol.appendChild(d);
   }
@@ -18562,7 +18581,7 @@ async function exAIFromPage() {
 async function exSaveSet(qs, title0) {
   const id = 's' + now().toString(36) + uid().slice(0, 3);
   const title = title0 ? String(title0).slice(0, 60) : 'ชุด ' + [...new Set(qs.map((q) => exChName(q.t, q.ch)))].slice(0, 2).join(' + ') + ' ' + new Date().toLocaleDateString(LOC, { day: 'numeric', month: 'short' });
-  const set = { id, title, at: now(), nb: S.nid || null, qs: qs.map((q) => ({ id: q.id, t: q.t, ch: q.ch, d: q.d, k: q.k, q: q.q, c: q.c, a: q.a || 0, e: q.e || '', fig: q.fig || undefined, src: q.src, o: q.o, s: q.s, b: q.b, w: q.w })) };
+  const set = { id, title, at: now(), nb: S.nid || null, qs: qs.map((q) => ({ id: q.id, t: q.t, ch: q.ch, d: q.d, k: q.k, q: q.q, c: q.c, a: q.a || 0, e: q.e || '', fig: q.fig || undefined, src: q.src, o: q.o, s: q.s, b: q.b, w: q.w, ans: q.ans || undefined, given: q.given || undefined, lab: q.lab || undefined, img: q.img || undefined })) };
   EX.sets = EX.sets || []; EX.sets.push(set);
   await S.store.set('exs/' + id, Object.assign({}, set, { id: undefined })).catch(() => {});
   return set;
@@ -19787,19 +19806,135 @@ async function pqSplit() {
     pqReview();
   } catch (e) { B.stop(); box.innerHTML = '<div class="note err">แยกข้อไม่สำเร็จ ' + esc(aiErr(e)) + '</div>'; $('#pdfHere').disabled = $('#pdfNew').disabled = $('#pdfSplit').disabled = false; }
 }
-/* the teacher checks each cut before the set is saved */
+/* ---------- problems from a PDF into the question bank: kept in the teacher's own bank, and they count only after the key is checked ---------- */
+/* a PDF problem reaches practice sets and students only when its key is confirmed: the printed key plus an independent solve that agrees, or the teacher's own check */
+const VER_OK = ['doc', 'teacher'];
+const VER_NAME = { doc: 'เฉลยในเอกสารตรงกับที่ AI แก้เอง', ai2: 'AI แก้เองสองรอบตรงกัน รอครูตรวจ', teacher: 'ครูตรวจแล้ว', conflict: 'ต้องตรวจ เฉลยไม่ตรงหรือโจทย์มีปัญหา', nokey: 'ระบบเทียบเองไม่ได้ ครูต้องตรวจ', raw: 'ยังไม่ได้ตรวจ' };
+const verClass = (st) => (VER_OK.includes(st) ? 'ok' : st === 'ai2' ? 'wait' : 'bad');
+const exOk = (q) => q.src !== 'pdf' || !!(q.ver && VER_OK.includes(q.ver.st));
+const verOf = (q) => (q.tchk ? { st: 'teacher' } : q.verAI || { st: 'raw' });
+const KEYL = 'กขคงจ';
+function qShingles(s) {
+  const t = String(s || '').toLowerCase().replace(/[\s​$.,;:!?()\[\]{}"'`*_\-=+/\\^<>|]/g, ''); const out = new Set();
+  for (let i = 0; i + 5 <= t.length; i++) out.add(t.slice(i, i + 5));
+  return out;
+}
+function qSim(a, b) { if (!a.size || !b.size) return 0; let n = 0; for (const x of a) if (b.has(x)) n++; return n / (a.size + b.size - n); }
+/* a problem that is almost the same as one already in the bank or in the teacher's own questions */
+function pqFindDups(list) {
+  const pool = exAllQs().concat(EX.own.filter((q) => q.q)), cache = new Map();
+  const sh = (q) => { let v = cache.get(q); if (!v) { v = qShingles(q.q); cache.set(q, v); } return v; };
+  for (const q of list) {
+    q.dup = null; if (!q.q) continue;
+    const a = qShingles(q.q); if (a.size < 12) continue;
+    let best = 0, who = null;
+    for (const p of pool) { if (p.t !== q.t || !p.q) continue; const s = qSim(a, sh(p)); if (s > best) { best = s; who = p; } }
+    if (best >= 0.75) q.dup = { sim: Math.round(best * 100), q: String(who.q).slice(0, 60) };
+  }
+}
+function numOf(s) {
+  const m = String(s || '').replace(/\\times\s*10\s*\^\s*\{?\s*(-?\d+)\s*\}?/g, 'e$1').replace(/[$,]|\\,|\;/g, '').match(/-?\d+(?:\.\d+)?(?:e-?\d+)?/i);
+  return m ? parseFloat(m[0]) : NaN;
+}
+function pqSolvePrompt(q, rev) {
+  const idx = q.c.map((_, i) => i); if (rev) idx.reverse();
+  const lines = q.c.length ? idx.map((o, k) => KEYL[k] + '. ' + q.c[o]).join('\n') : '';
+  return 'Solve this Thai teaching problem completely from scratch, as a careful examiner would. No answer is given to you and you must not guess one: work it out step by step and check every number.\n\nProblem:\n' + q.q + (lines ? '\nChoices:\n' + lines : '')
+    + '\n\nReply in exactly this format and nothing else:\n@@FINAL\n(' + (lines ? 'only the letter of the one correct choice' : 'the final value with its unit') + ')\n@@WHY\n(one short Thai sentence with the key idea)\n@@FLAW\n(write - when the problem is sound; otherwise say in Thai what is wrong: data missing, a figure is needed but not shown, ambiguous wording, no choice is correct, or more than one choice is correct)';
+}
+async function pqSolveOnce(q, rev) {
+  const needImg = !q.q || /\[รูป|\[ภาพ/.test(q.q), lim = AI.limits('read');
+  const useImg = needImg && q.crop && AI.ready('read') && lim && lim.images;
+  const r = await AI.run(useImg ? 'read' : 'gen', pqSolvePrompt(q, rev), useImg ? { images: [q.crop.blob], cache: false, maxTokens: 4000 } : { cache: false, maxTokens: 4000 });
+  const L = sections(r.text), fin = String(sec(L, 'FINAL') || '').trim(), flaw = String(sec(L, 'FLAW') || '').trim();
+  let ix = -1;
+  if (q.c.length) { const m = fin.match(/[กขคงจ]/); if (m) { const idx = q.c.map((_, i) => i); if (rev) idx.reverse(); const o = idx[KEYL.indexOf(m[0])]; ix = o == null ? -1 : o; } }
+  return { ix, val: fin, flaw: /^[-–—\s]*$/.test(flaw) ? '' : flaw };
+}
+/* one problem: the AI solves it without seeing the key, then the answers are compared */
+async function pqVerify(q) {
+  const mc = q.c.length >= 2, hasKey = !!(q.given && q.given.trim());
+  const bad = (note) => ({ st: 'conflict', note });
+  if (mc) { const n = q.c.map((s) => String(s).replace(/\s+/g, '').toLowerCase()); if (new Set(n).size < n.length) return bad('มีตัวเลือกซ้ำกัน'); }
+  if (!mc && !isFinite(numOf(q.ans))) return { st: 'nokey', note: 'คำตอบไม่ใช่ตัวเลขเดียว ระบบเทียบเองไม่ได้' };
+  const same = (r) => { if (mc) return r.ix === q.a; const a = numOf(r.val), b = numOf(q.ans); return isFinite(a) && isFinite(b) && Math.abs(a - b) <= 0.02 * Math.max(Math.abs(a), Math.abs(b), 1e-12); };
+  const shown = (r) => (mc ? (r.ix >= 0 ? 'ข้อ ' + KEYL[r.ix] : 'ไม่ระบุข้อ') : r.val || 'ไม่ได้คำตอบ');
+  const keyShown = mc ? 'ข้อ ' + KEYL[q.a || 0] : q.ans;
+  const r1 = await pqSolveOnce(q, false);
+  if (r1.flaw) return bad('AI พบว่าโจทย์มีปัญหา ' + r1.flaw);
+  if (!same(r1)) return bad('AI แก้เองได้ ' + shown(r1) + ' แต่เฉลยที่ได้คือ ' + keyShown);
+  if (hasKey) return { st: 'doc', note: '' };
+  const r2 = await pqSolveOnce(q, true);
+  if (r2.flaw) return bad('AI พบว่าโจทย์มีปัญหา ' + r2.flaw);
+  if (!same(r2)) return bad('แก้รอบสองได้ ' + shown(r2) + ' ต่างจากเฉลยที่ได้ ' + keyShown);
+  return { st: 'ai2', note: '' };
+}
+async function pqVerifyAll() {
+  if (!needAI('gen')) return;
+  const box = $('#pqVer'); if (!box) return; let stop = false;
+  const todo = PQ.qs.filter((q) => !q.tchk);
+  if (!todo.length) { toast('ครูตรวจครบทุกข้อแล้ว', 2200); return; }
+  const B = waitCard(box, 'AI แก้โจทย์เองโดยไม่เห็นเฉลย แล้วเทียบกับเฉลยที่ได้', ['เตรียมโจทย์', 'แก้ทีละข้อ ข้อที่ไม่มีเฉลยในเอกสารแก้สองรอบ', 'เทียบผลให้ครูดู'], { cancelText: 'หยุด', onCancel: () => { stop = true; } });
+  B.step(1);
+  let i = 0;
+  try {
+    for (const q of todo) {
+      if (stop) break; i++;
+      const h = box.querySelector('.busy b'); if (h) h.textContent = 'กำลังตรวจข้อ ' + i + ' จาก ' + todo.length;
+      try { q.verAI = Object.assign(await pqVerify(q), { at: now() }); }
+      catch (e) { q.verAI = { st: 'raw', note: 'ตรวจไม่สำเร็จ ' + aiErr(e), at: now() }; if (e && /bad_key|rate_limited|network|not_granted|ai_off|bad_model/.test(String(e.code))) { stop = true; toast('หยุดตรวจเพราะ ' + aiErr(e), 4200); } }
+    }
+  } finally { B.stop(); }
+  pqReview();
+}
+function pqSetTrack(t) {
+  PQ.track = t;
+  for (const q of PQ.qs) { q.t = t; if (!q.chFixed) { const ch = detectFromText(q.q, t); q.ch = ch.length ? ch[0] : 0; } if (!CURRIC[t][1][q.ch]) q.ch = 0; }
+}
+function pqDone() { $('#pdfSheet').hidden = true; $('#pdfSheet .panel').classList.remove('wide'); PDFI.doc = null; PQ.pages = []; PQ.qs = []; for (const k of Object.keys(pqBmp)) delete pqBmp[k]; }
+function verBadge(q) {
+  const v = verOf(q); let h = '<span class="vb ' + verClass(v.st) + '">' + esc(VER_NAME[v.st] || VER_NAME.raw) + '</span>';
+  if (q.verAI && q.verAI.note && !q.tchk) h += '<div class="note small">' + esc(q.verAI.note) + '</div>';
+  if (q.dup) h += '<div class="note small err">คล้ายข้อที่มีในคลังอยู่แล้ว ร้อยละ ' + q.dup.sim + ' ระบบไม่เก็บข้อนี้เข้าคลังซ้ำ: ' + esc(q.dup.q) + '</div>';
+  return h;
+}
+/* the teacher checks each cut and its key before anything is saved */
 function pqReview() {
   const panel = $('#pdfSheet .panel'); panel.classList.add('wide');
   const box = $('#pdfMsg'); box.innerHTML = '';
+  if (!PQ.track || !CURRIC[PQ.track]) PQ.track = CURRIC[EX.track] ? EX.track : Object.keys(CURRIC)[0];
+  if (PQ.qs.some((q) => q.t !== PQ.track)) pqSetTrack(PQ.track);
+  if (PQ.qs.some((q) => q.dup === undefined)) pqFindDups(PQ.qs);
   const nEx = PQ.qs.filter((q) => q.kind === 'example').length;
-  box.appendChild(exEl('div', 'note ok', 'พบ ' + PQ.qs.length + ' ข้อ (ตัวอย่าง ' + nEx + ' แบบฝึก ' + (PQ.qs.length - nEx) + ') ตรวจภาพที่ตัดแต่ละข้อ ปรับขอบบนล่างได้ แล้วกดบันทึก ระบบจะเขียนเฉลยละเอียด 5 ขั้นให้ทุกข้อต่อเอง'));
+  box.appendChild(exEl('div', 'note ok', 'พบ ' + PQ.qs.length + ' ข้อ (ตัวอย่าง ' + nEx + ' แบบฝึก ' + (PQ.qs.length - nEx) + ') เทียบภาพที่ตัดกับข้อความที่ AI อ่านได้ ตรวจเฉลย แล้วเลือกว่าจะเก็บเป็นชุดสอน หรือเก็บเข้าคลังโจทย์ของฉัน ข้อที่ยังไม่ผ่านการตรวจจะเก็บไว้เป็นฉบับร่าง ไม่เข้าชุดฝึกของผู้เรียน'));
+  const top = exEl('div', 'row2');
+  const lab = exEl('label', 'field'); lab.appendChild(exEl('span', '', 'เก็บเข้าคลังหลักสูตร'));
+  const ts = document.createElement('select');
+  for (const t of [...new Set(subjTracks().concat(Object.keys(CURRIC)))].filter((x) => CURRIC[x])) { const o = document.createElement('option'); o.value = t; o.textContent = exTrackName(t); ts.appendChild(o); }
+  ts.value = PQ.track; ts.onchange = () => { pqSetTrack(ts.value); pqReview(); };
+  lab.appendChild(ts); top.appendChild(lab);
+  const vb = exEl('button', 'btn', 'ให้ AI แก้เองแล้วเทียบกับเฉลย'); vb.type = 'button'; vb.onclick = pqVerifyAll; top.appendChild(vb);
+  box.appendChild(top);
+  const ver = exEl('div', ''); ver.id = 'pqVer'; box.appendChild(ver);
   const list = exEl('div', 'pqlist');
   PQ.qs.forEach((q, i) => {
     const c = exEl('div', 'pqcard');
-    const head = exEl('div', 'tqh', '<b>' + esc(q.lab || ('ข้อ ' + (i + 1))) + '</b><span class="tqk">' + (q.kind === 'example' ? 'ตัวอย่าง' : 'แบบฝึก') + '</span>' + (q.c.length ? '<span class="tqk">ปรนัย ' + q.c.length + ' ตัวเลือก</span>' : '<span class="tqk">เขียนตอบ</span>'));
-    c.appendChild(head);
+    c.appendChild(exEl('div', 'tqh', '<b>' + esc(q.lab || ('ข้อ ' + (i + 1))) + '</b><span class="tqk">' + (q.kind === 'example' ? 'ตัวอย่าง' : 'แบบฝึก') + '</span>' + (q.c.length ? '<span class="tqk">ปรนัย ' + q.c.length + ' ตัวเลือก</span>' : '<span class="tqk">เขียนตอบ</span>')));
     const im = document.createElement('img'); im.className = 'pqimg'; im.alt = 'ภาพโจทย์ที่ตัดจาก PDF'; im.src = URL.createObjectURL(q.crop.blob); c.appendChild(im);
-    c.appendChild(exEl('div', 'tqkey', keyLine(q) + (q.given ? '<div><small>ในเอกสารมีเฉลยให้แล้ว ระบบจะใช้แนวนั้น</small></div>' : '')));
+    const dt = document.createElement('details'); dt.className = 'pqtxt';
+    dt.innerHTML = '<summary>ข้อความที่ AI อ่านได้ (ใช้ในชุดฝึก)</summary><div class="exq">' + mdToHtml(q.q || '(ไม่มีข้อความ ใช้ภาพอย่างเดียว)') + '</div>' + q.c.map((s, k) => '<div>' + KEYL[k] + '. ' + mdToHtml(s) + '</div>').join('');
+    dt.ontoggle = () => { if (dt.open) typeset(dt); };
+    c.appendChild(dt);
+    const kl = exEl('div', 'tqkey'); const bd = exEl('div', 'pqver');
+    const paint = () => { kl.innerHTML = keyLine(q) + (q.given ? '<div><small>ในเอกสารมีเฉลยให้แล้ว ระบบจะใช้แนวนั้น</small></div>' : ''); bd.innerHTML = verBadge(q); typeset(kl); };
+    const cl = exEl('label', 'pqchk'); const chk = document.createElement('input'); chk.type = 'checkbox'; chk.checked = !!q.tchk; chk.onchange = () => { q.tchk = chk.checked; paint(); };
+    cl.appendChild(chk); cl.appendChild(document.createTextNode('ครูเทียบกับภาพแล้ว โจทย์และเฉลยถูกต้อง'));
+    const meta = exEl('div', 'pqmeta');
+    const mk = (label, opts, cur, on) => { const l = exEl('label', 'pqsel'); l.appendChild(exEl('span', '', label)); const s = document.createElement('select'); opts.forEach(([v, t]) => { const o = document.createElement('option'); o.value = v; o.textContent = t; s.appendChild(o); }); s.value = String(cur); s.onchange = () => on(s.value); l.appendChild(s); meta.appendChild(l); };
+    mk('บท', CURRIC[PQ.track][1].map((ch, k) => [k, ch[0]]), q.ch, (v) => { q.ch = +v; q.chFixed = true; });
+    mk('ความยาก', [[1, 'ง่าย'], [2, 'กลาง'], [3, 'ยาก']], q.d || 2, (v) => { q.d = +v; });
+    if (q.c.length) mk('เฉลย', q.c.map((_, k) => [k, KEYL[k]]), q.a || 0, (v) => { q.a = +v; q.verAI = null; q.tchk = false; chk.checked = false; paint(); });
+    c.appendChild(meta); c.appendChild(kl); c.appendChild(bd); c.appendChild(cl); paint();
     const acts = exEl('div', 'tqa pqacts');
     const nudge = (t, k, d) => { const bt = exEl('button', 'btn sm', t); bt.type = 'button'; bt.onclick = async () => { const bx = k === 'y0' ? q.boxes[0] : q.boxes[q.boxes.length - 1]; bx[k] = clamp(bx[k] + d, 0, 1000); if (bx.y1 - bx.y0 < 15) bx[k] -= d; q.crop = await pqCrop(q); URL.revokeObjectURL(im.src); im.src = URL.createObjectURL(q.crop.blob); }; acts.appendChild(bt); };
     nudge('ขอบบนขึ้น', 'y0', -15); nudge('ขอบบนลง', 'y0', 15); nudge('ขอบล่างขึ้น', 'y1', -15); nudge('ขอบล่างลง', 'y1', 15);
@@ -19808,10 +19943,33 @@ function pqReview() {
     c.appendChild(acts); list.appendChild(c);
   });
   box.appendChild(list);
+  const ok = PQ.qs.filter((q) => VER_OK.includes(verOf(q).st)).length, dup = PQ.qs.filter((q) => q.dup).length;
+  box.appendChild(exEl('div', 'note small', 'ผ่านการตรวจแล้ว ' + ok + ' จาก ' + PQ.qs.length + ' ข้อ' + (dup ? ' มีข้อซ้ำกับคลัง ' + dup + ' ข้อ' : '') + ' ภาพต้นฉบับเก็บในบัญชีของอาจารย์เท่านั้น ไม่ถูกส่งเข้าคลังกลาง'));
   const row = exEl('div', 'row2 pqsave');
-  const sv = exEl('button', 'btn solid', 'บันทึกเป็นชุดโจทย์ แล้วเปิดแผงหยิบวางทีละข้อ'); sv.type = 'button'; sv.onclick = () => pqSave(sv); row.appendChild(sv);
+  const sv = exEl('button', 'btn solid', 'เก็บเป็นชุดสอนทีละข้อ'); sv.type = 'button'; sv.onclick = () => pqSave(sv); row.appendChild(sv);
+  const bk = exEl('button', 'btn solid', 'เก็บเข้าคลังโจทย์ของฉัน'); bk.type = 'button'; bk.onclick = () => pqSaveBank(bk); row.appendChild(bk);
   box.appendChild(row);
   typeset(box);
+}
+async function pqSaveBank(btn) {
+  const keep = PQ.qs.filter((q) => !q.dup);
+  if (!keep.length) { toast('ทุกข้อซ้ำกับที่มีในคลังแล้ว', 3000); return; }
+  const A = await getAssets(); if (!A) { toast('มุมมองนี้บันทึกภาพไม่ได้', 3000); return; }
+  const skipped = PQ.qs.length - keep.length, label = btn.textContent;
+  btn.disabled = true; btn.textContent = 'กำลังเก็บเข้าคลัง';
+  try {
+    if (!EX.loaded) await exLoad();
+    let ok = 0;
+    for (const q of keep) {
+      const up = await A.upload(q.crop.blob, { type: 'image/jpeg' }), v = verOf(q);
+      const item = { t: q.t, ch: q.ch, d: q.d || 2, k: q.kind === 'example' ? 'ex' : '', q: q.q || ('[ภาพโจทย์ ' + q.lab + ']'), c: q.c, a: q.a || 0, ans: q.c.length ? '' : q.ans, e: q.e || '', given: q.given || '', lab: q.lab || '', img: { asset: up.id, ar: Math.round(q.crop.ar * 1000) / 1000, fr: Math.round(q.crop.frac * 100) / 100 }, src: 'pdf', ver: { st: v.st, at: now(), note: String(v.note || '').slice(0, 240) }, from: { file: PQ.name || 'PDF', lab: q.lab || '' }, at: now() };
+      await exAddOwn([item]); if (VER_OK.includes(v.st)) ok++;
+    }
+    const file = PQ.name || 'PDF', t = PQ.track;
+    pqDone();
+    EX.brs = Object.assign(brsInit(), { src: 'pdf', file, t }); EX.tab = 'browse'; openExam();
+    toast('เก็บเข้าคลัง ' + keep.length + ' ข้อ ผ่านการตรวจ ' + ok + ' ข้อ' + (keep.length - ok ? ' อีก ' + (keep.length - ok) + ' ข้อเป็นฉบับร่าง ตรวจในแท็บนี้แล้วกดยืนยันเฉลย' : '') + (skipped ? ' ข้ามข้อซ้ำ ' + skipped + ' ข้อ' : ''), 5200);
+  } catch (e) { btn.disabled = false; btn.textContent = label; toast('เก็บเข้าคลังไม่สำเร็จ ' + assetErr(e), 4000); }
 }
 async function pqSave(btn) {
   if (!PQ.qs.length) return;
@@ -19833,6 +19991,124 @@ async function pqSave(btn) {
     toast('ได้ชุดโจทย์ ' + qs.length + ' ข้อ กดวางข้อถัดไปเพื่อสอนทีละข้อ เฉลยละเอียดกำลังเขียนให้', 3600);
     solQueue(set);
   } catch (e) { btn.disabled = false; btn.textContent = 'บันทึกเป็นชุดโจทย์ แล้วเปิดแผงหยิบวางทีละข้อ'; toast('บันทึกไม่สำเร็จ ' + assetErr(e), 4000); }
+}
+/* ---------- the teacher's browser for the bank: look through the questions, tick the ones to teach with, and use them as a set ---------- */
+/* teacher side only: it shows keys, the misconception behind each wrong choice and unchecked drafts, none of which a learner should see */
+const brsInit = () => ({ src: 'all', st: 'all', t: null, ch: 'all', d: 'all', text: '', file: '', page: 1, sel: new Map() });
+EX.brs = EX.brs || brsInit();
+function exBrowseAll() {
+  const out = exAllQs().filter((q) => q.src === 'bank');
+  for (const q of EX.own) if (q.q || q.img) out.push(Object.assign({ src: 'own' }, q, { id: 'u-' + q.id, oid: q.id }));
+  return out;
+}
+const brsState = (q) => (q.src === 'pdf' ? ((q.ver && q.ver.st) || 'raw') : 'ok');
+function brsProposal(qs) {
+  const ok = qs.filter((q) => q.src !== 'bank' && q.c && q.c.length >= 2 && !/^\[ภาพโจทย์|\[รูป/.test(q.q || '') && (q.src !== 'pdf' || VER_OK.includes(brsState(q))));
+  if (!ok.length) { toast('ส่งออกไม่ได้ ต้องเป็นโจทย์ปรนัยที่เป็นข้อความล้วนและตรวจเฉลยแล้ว', 4200); return; }
+  const items = ok.map((q) => { const a = q.a || 0; return { t: q.t, ch: q.ch, d: q.d || 2, q: q.q, c: [q.c[a]].concat(q.c.filter((_, i) => i !== a)), w: [], e: q.e || '', from: q.from || null, status: 'รอเขียนใหม่ให้เป็นของ Burin แล้วให้ AI อีกตัวแก้อิสระ ก่อนเข้าคลังกลาง' }; });
+  saveFile('burin-bank-proposal.json', new Blob([JSON.stringify({ proposal: true, items }, null, 1)], { type: 'application/json' }));
+  toast('ส่งออกข้อเสนอ ' + items.length + ' ข้อ ตัวเลือกแรกคือข้อที่ถูก เป็นไฟล์สำหรับเขียนใหม่และตรวจก่อนเข้าคลังกลาง', 5200);
+}
+function brsRow(q, B, sync) {
+  const r = exEl('div', 'exrev brsrow'), L = ['', 'ง่าย', 'กลาง', 'ยาก'], own = !!q.oid;
+  const head = exEl('label', 'brshead'); const cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = B.sel.has(q.id);
+  cb.onchange = () => { if (cb.checked) B.sel.set(q.id, q); else B.sel.delete(q.id); sync(); };
+  head.appendChild(cb);
+  head.appendChild(exEl('span', 'lv l' + effLevel(q), L[effLevel(q)]));
+  head.appendChild(exEl('span', 'tqk', esc(exChName(q.t, q.ch))));
+  head.appendChild(exEl('span', 'tqk', q.src === 'bank' ? 'คลัง Burin' : q.src === 'pdf' ? 'จาก PDF ' + esc(q.lab || '') : q.src === 'ai' ? 'AI ร่าง ครูตรวจแล้ว' : 'ของฉัน'));
+  if (q.b) head.appendChild(exEl('span', 'tqk', esc(bloomName(q.b))));
+  const bd = exEl('span', 'vb'); head.appendChild(bd);
+  const paintBd = () => { const st = brsState(q); bd.className = 'vb ' + verClass(st); bd.textContent = q.src === 'pdf' ? (VER_NAME[st] || VER_NAME.raw) : 'ใช้ได้'; };
+  paintBd(); r.appendChild(head);
+  r.appendChild(exEl('div', 'exq', mdToHtml(q.q || '')));
+  if (q.src === 'pdf' && q.ver && q.ver.note && !VER_OK.includes(q.ver.st)) r.appendChild(exEl('div', 'note small', esc(q.ver.note)));
+  if (q.o && q.src === 'bank') { const ob = objOf(q.t, q.ch, q.o); if (ob) r.appendChild(exEl('div', 'note small', 'จุดประสงค์: ' + mdToHtml(ob))); }
+  if (q.c && q.c.length) r.appendChild(exEl('div', 'brsch', q.c.map((s, k) => '<div class="brsc"><b>' + KEYL[k] + '.</b> ' + mdToHtml(s) + '</div>').join('')));
+  if (q.img && okAsset(q.img.asset)) {
+    const dt = document.createElement('details'); dt.className = 'pqtxt'; dt.innerHTML = '<summary>ดูภาพต้นฉบับจาก PDF</summary><div class="tqimg"><img alt="ภาพโจทย์ต้นฉบับ"></div>';
+    dt.ontoggle = () => { const im = dt.querySelector('img'); if (dt.open && !im.src) setAssetSrc(im, q.img.asset); }; r.appendChild(dt);
+  }
+  const act = exEl('div', 'pqacts'); act.appendChild(keyToggle(q));
+  if (own) {
+    const me = () => EX.own.find((x) => x.id === q.oid);
+    if (q.src === 'pdf') {
+      if (q.c && q.c.length >= 2) {
+        const l = exEl('label', 'pqsel'); l.appendChild(exEl('span', '', 'เฉลย')); const s = document.createElement('select');
+        q.c.forEach((_, k) => { const o = document.createElement('option'); o.value = k; o.textContent = KEYL[k]; s.appendChild(o); }); s.value = String(q.a || 0);
+        s.onchange = () => { q.a = +s.value; q.ver = { st: 'raw', at: now(), note: 'ครูแก้เฉลย ยังไม่ได้ยืนยัน' }; const o = me(); if (o) { o.a = q.a; o.ver = q.ver; } Promise.resolve(S.store.update('exq/' + q.oid, { a: q.a, ver: q.ver })).catch(() => {}); paintBd(); };
+        l.appendChild(s); act.appendChild(l);
+      }
+      const cf = exEl('button', 'btn sm', 'ยืนยันเฉลย ตรวจแล้วถูกต้อง'); cf.type = 'button';
+      cf.onclick = () => { q.ver = { st: 'teacher', at: now() }; const o = me(); if (o) o.ver = q.ver; Promise.resolve(S.store.update('exq/' + q.oid, { ver: q.ver })).catch(() => {}); paintBd(); };
+      act.appendChild(cf);
+    }
+    const dl = exEl('button', 'btn sm danger', 'ลบ'); dl.type = 'button';
+    dl.onclick = async () => { EX.own = EX.own.filter((x) => x.id !== q.oid); B.sel.delete(q.id); await S.store.del('exq/' + q.oid).catch(() => {}); r.remove(); sync(); };
+    act.appendChild(dl);
+  }
+  r.appendChild(act);
+  return r;
+}
+function exRenderBrowse(body) {
+  const B = EX.brs, tracks = [...new Set(subjTracks().concat(Object.keys(CURRIC)))].filter((t) => CURRIC[t]);
+  if (!B.t) B.t = CURRIC[EX.track] ? EX.track : tracks[0];
+  if (B.t !== '_mine' && BANK_META[B.t] && BANK_META[B.t].file && !BANKS[B.t]) {
+    body.appendChild(exEl('div', 'note', 'กำลังเปิดคลังโจทย์'));
+    bankEnsure([B.t]).then(() => { if (!$('#examSheet').hidden && EX.tab === 'browse') exRender(); });
+    return;
+  }
+  body = body.appendChild(exEl('div', 'exsetup'));
+  const rw = (label, cls) => { const r = exEl('div', 'exrow' + (cls ? ' ' + cls : '')); r.appendChild(exEl('span', 'label', label)); body.appendChild(r); return r; };
+  const trr = rw('หลักสูตร'); const ts = document.createElement('select');
+  { const o = document.createElement('option'); o.value = '_mine'; o.textContent = 'ของฉันทั้งหมด (ทุกหลักสูตร)'; ts.appendChild(o); }
+  for (const t of tracks) { const o = document.createElement('option'); o.value = t; o.textContent = exTrackName(t); ts.appendChild(o); }
+  ts.value = B.t; ts.onchange = () => { B.t = ts.value; B.ch = 'all'; B.page = 1; exRender(); }; trr.appendChild(ts);
+  exChips(rw('ที่มา'), [['all', 'ทั้งหมด'], ['bank', 'คลัง Burin'], ['mine', 'ของฉัน'], ['pdf', 'จาก PDF']], (v) => v === B.src, (v) => { B.src = v; B.page = 1; exRender(); });
+  exChips(rw('สถานะ'), [['all', 'ทั้งหมด'], ['ok', 'ใช้ได้ ตรวจแล้ว'], ['wait', 'รอครูตรวจ'], ['bad', 'ต้องแก้หรือยังไม่ตรวจ']], (v) => v === B.st, (v) => { B.st = v; B.page = 1; exRender(); });
+  exChips(rw('ความยาก'), [['all', 'ทุกระดับ'], [1, 'ง่าย'], [2, 'กลาง'], [3, 'ยาก']], (v) => v === B.d, (v) => { B.d = v; B.page = 1; exRender(); });
+  const sr = rw('ค้นหา'); const inp = document.createElement('input'); inp.type = 'search'; inp.placeholder = 'คำที่อยู่ในโจทย์'; inp.value = B.text;
+  inp.onchange = () => { B.text = inp.value.trim(); B.page = 1; exRender(); }; sr.appendChild(inp);
+  if (B.file) { const fr = rw('ไฟล์'); fr.appendChild(exEl('span', 'tqk', esc(B.file))); const x = exEl('button', 'btn sm', 'ดูทุกไฟล์'); x.type = 'button'; x.onclick = () => { B.file = ''; B.page = 1; exRender(); }; fr.appendChild(x); }
+  const all = exBrowseAll(), mine = (q) => q.src !== 'bank';
+  const base = all.filter((q) => (B.t === '_mine' ? mine(q) : q.t === B.t)
+    && (B.src === 'all' || (B.src === 'bank' ? q.src === 'bank' : B.src === 'pdf' ? q.src === 'pdf' : mine(q) && q.src !== 'pdf'))
+    && (B.st === 'all' || (B.st === 'ok' ? exOk(q) : B.st === 'wait' ? brsState(q) === 'ai2' : q.src === 'pdf' && !VER_OK.includes(brsState(q)) && brsState(q) !== 'ai2'))
+    && (B.d === 'all' || effLevel(q) === B.d)
+    && (!B.file || (q.from && q.from.file === B.file))
+    && (!B.text || (String(q.q || '') + ' ' + (q.c || []).join(' ')).toLowerCase().includes(B.text.toLowerCase())));
+  if (B.t !== '_mine') {
+    const chs = [...new Set(base.map((q) => q.ch))].sort((a, b) => a - b);
+    const cr = rw('บท', 'exlist');
+    exChips(cr, [['all', 'ทุกบท (' + base.length + ')']].concat(chs.map((ch) => [ch, exChName(B.t, ch) + ' (' + base.filter((q) => q.ch === ch).length + ')'])), (v) => v === B.ch, (v) => { B.ch = v; B.page = 1; exRender(); });
+  }
+  const list = base.filter((q) => B.ch === 'all' || B.t === '_mine' || q.ch === B.ch).sort((a, b) => (a.t === b.t ? 0 : a.t < b.t ? -1 : 1) || a.ch - b.ch || (a.d || 2) - (b.d || 2));
+  exScrollFix(body);
+  const parent = body.parentNode;
+  const info = exEl('div', 'note', 'พบ ' + list.length + ' ข้อ ติ๊กข้อที่จะใช้สอน แล้วเลือกวิธีใช้ที่แถบด้านล่าง เฉลยซ่อนไว้ก่อน เพราะแชร์จอให้ผู้เรียนดูอยู่');
+  parent.appendChild(info);
+  const bar = exEl('div', 'brsbar'); const cnt = exEl('b', '', ''); const nm = document.createElement('input'); nm.placeholder = 'ชื่อชุด (ไม่ใส่ก็ได้)'; nm.className = 'brsnm';
+  const picked = () => [...B.sel.values()];
+  const btns = [];
+  const mkb = (t, cls, fn) => { const b = exEl('button', 'btn ' + cls, t); b.type = 'button'; b.onclick = () => fn(b); btns.push(b); return b; };
+  const sync = () => { const n = B.sel.size; cnt.textContent = n ? 'เลือกแล้ว ' + n + ' ข้อ' : 'ยังไม่ได้เลือกข้อ'; btns.forEach((b) => { b.disabled = !n; }); };
+  const gate = (btn, go) => { const bad = picked().filter((q) => q.src === 'pdf' && !VER_OK.includes(brsState(q))); if (!bad.length) { go(); return; } popMenu(btn, 'มี ' + bad.length + ' ข้อจาก PDF ที่ยังไม่ได้ตรวจเฉลย จะส่งให้ผู้เรียนเลยไหม', [['ส่งต่อ', go], ['ยกเลิก', () => {}]]); };
+  const mkSet = async () => { const set = await exSaveSet(picked(), nm.value.trim() || null); setUse(set); return set; };
+  bar.appendChild(cnt); bar.appendChild(nm);
+  bar.appendChild(mkb('เก็บเป็นชุด เปิดสอนทีละข้อ', 'solid', async () => { const set = await mkSet(); $('#examSheet').hidden = true; TRAY.placed[set.id] = {}; openTray(set.id); }));
+  bar.appendChild(mkb('วางลงหน้าเป็นใบงาน', '', async () => { const set = await mkSet(); $('#examSheet').hidden = true; const res = await placeQuestions(set.qs, null, { setId: set.id, header: '## ' + set.title }); toast(placedMsg(res, set.qs.length) + ' เฉลยดูได้จากแผงชุดโจทย์', 3200); }));
+  bar.appendChild(mkb('ส่งให้ห้องสด', '', (b) => gate(b, async () => { const set = await mkSet(); $('#examSheet').hidden = true; liveSendSet(set); })));
+  bar.appendChild(mkb('มอบการบ้าน', '', (b) => gate(b, async () => { const set = await mkSet(); openAssign(set); })));
+  bar.appendChild(mkb('ส่งออกข้อเสนอเข้าคลังกลาง', '', () => brsProposal(picked())));
+  const clr = exEl('button', 'btn', 'ล้างที่เลือก'); clr.type = 'button'; clr.onclick = () => { B.sel.clear(); parent.querySelectorAll('.brshead input').forEach((c) => { c.checked = false; }); sync(); }; bar.appendChild(clr);
+  const wrap = exEl('div', 'brslist'); parent.appendChild(wrap);
+  if (!list.length) wrap.appendChild(exEl('div', 'note', B.t === '_mine' ? 'ยังไม่มีโจทย์ของฉัน นำเข้าจาก PDF หรือเพิ่มเองได้ในแท็บเพิ่มโจทย์เอง' : 'ไม่พบโจทย์ตามเงื่อนไข ลองเปลี่ยนตัวกรอง'));
+  const shown = list.slice(0, B.page * 25); shown.forEach((q) => wrap.appendChild(brsRow(q, B, sync)));
+  if (shown.length < list.length) { const more = exEl('button', 'btn', 'แสดงเพิ่ม (เหลือ ' + (list.length - shown.length) + ' ข้อ)'); more.type = 'button'; more.onclick = () => { B.page++; exRender(); }; parent.appendChild(more); }
+  const pg = exEl('button', 'btn', 'เลือกทั้ง ' + shown.length + ' ข้อที่แสดง'); pg.type = 'button'; pg.onclick = () => { shown.forEach((q) => B.sel.set(q.id, q)); wrap.querySelectorAll('.brshead input').forEach((c) => { c.checked = true; }); sync(); };
+  info.appendChild(document.createTextNode(' ')); info.appendChild(pg);
+  parent.appendChild(bar); sync();
+  typeset(parent);
 }
 /* write the five-step solutions for a whole set in the background, one at a time */
 const SOLQ = { run: false, set: null, done: 0, n: 0, fail: 0 };
@@ -19864,7 +20140,7 @@ function keyToggle(q) {
   b.onclick = (e) => {
     e.stopPropagation(); e.preventDefault(); pane.hidden = !pane.hidden; b.textContent = pane.hidden ? 'เฉลย' : 'ซ่อนเฉลย';
     if (!pane.hidden && !pane.childNodes.length) {
-      pane.innerHTML = keyLine(q) + (q.e ? '<div>' + mdToHtml(q.e) + '</div>' : '');
+      pane.innerHTML = keyLine(q) + (q.e ? '<div>' + mdToHtml(q.e) + '</div>' : '') + (q.w && q.w.length ? '<div class="note small">ตัวเลือกที่ผิดมาจากความเข้าใจคลาดเคลื่อน: ' + q.w.map(mdToHtml).join(' ; ') + '</div>' : '');
       const sb = exEl('button', 'btn solbtn', 'เฉลยละเอียด 5 ขั้น'); sb.type = 'button'; sb.onclick = (ev) => { ev.stopPropagation(); ev.preventDefault(); sb.remove(); showSolution(q, null, pane); }; pane.appendChild(sb);
       typeset(pane);
     }
