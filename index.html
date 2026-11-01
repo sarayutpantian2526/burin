@@ -3878,25 +3878,63 @@ function diaryDraw(sketch, x0, y0, dw, dh, lw, ink, fs, pid) {
     for (const lb of labels) addItem({ type: 'text', x: Math.round(clamp(x0 + lb.n[0] * sx, 10, W - 120)), y: Math.round(clamp(y0 + lb.n[1] * sy - fs * 0.45, 10, H - fs * 1.4)), w: Math.round(clamp(lb.label.length * fs * 0.62 + 20, 40, 260)), md: lb.label, fs: Math.round(clamp(fs * 0.8, 14, 60)), hand: DIARY_HAND(), ink: lb.col || ink, diary: true, dv: 2 });
   };
   if (diaryInstant() || !strokes.length || S.pid !== pid) { commit(); return; }
-  /* drawn as by a pen: each stroke traced in turn on a layer over the page, then it becomes ordinary ink you can erase or move */
-  const NS = 'http://www.w3.org/2000/svg', svg = document.createElementNS(NS, 'svg');
-  svg.setAttribute('class', 'dqdraw no-ink'); svg.style.cssText = 'position:absolute;left:0;top:0;width:' + W + 'px;height:' + H + 'px;overflow:visible;pointer-events:none';
-  itemsEl.appendChild(svg);
-  let i = 0;
-  const next = () => {
-    if (S.pid !== pid) { svg.remove(); commit(); return; }
-    /* the page may be drawn again under us (a save coming back from the cloud): put the drawing layer back and carry on */
-    if (!svg.isConnected) itemsEl.appendChild(svg);
-    if (i >= strokes.length) { setTimeout(() => { commit(); svg.remove(); }, 120); return; }
-    const st = strokes[i++], d = [];
-    for (let k = 0; k < st.p.length; k += 3) d.push((k ? 'L' : 'M') + (st.p[k] / 10).toFixed(1) + ' ' + (st.p[k + 1] / 10).toFixed(1));
-    const path = document.createElementNS(NS, 'path'); path.setAttribute('d', d.join(' ')); path.setAttribute('fill', 'none'); path.setAttribute('stroke', st.c); path.setAttribute('stroke-width', st.w); path.setAttribute('stroke-linecap', 'round'); path.setAttribute('stroke-linejoin', 'round'); path.setAttribute('pathLength', '100'); path.style.strokeDasharray = '100 120'; path.style.strokeDashoffset = '100';
-    svg.appendChild(path);
-    let len = 0; for (let k = 3; k < st.p.length; k += 3) len += Math.hypot(st.p[k] - st.p[k - 3], st.p[k + 1] - st.p[k - 2]) / 10;
-    const dur = clamp(len * 2.2, 160, 1100);
-    path.animate([{ strokeDashoffset: 100 }, { strokeDashoffset: 0 }], { duration: dur, easing: 'ease-in-out', fill: 'forwards' }).finished.then(() => setTimeout(next, 90 + Math.random() * 120)).catch(() => setTimeout(next, 0));
+  /* drawn as a person draws: the pen point travels along each line with a hand's rhythm (slow to start, quicker in
+     the middle, easing into the end), lifts and moves through the air to the next line, and the ink laid down is the
+     very same ink, pressure and all, that stays on the page afterwards */
+  const commitAndWrite = () => {
+    const before = S.page && S.page.items ? S.page.items.length : 0; commit();
+    if (diaryInstant()) return;
+    const its = ((S.page && S.page.items) || []).slice(before).filter((x) => x.diary && x.type === 'text');
+    let k = 0; const nextLab = () => { const it = its[k++]; if (!it) return; diaryWriteIn(it.id); const t0 = now(); const wait = () => { if (DIARY.anim[it.id] != null && findItem(it.id) && now() - t0 < 20000) setTimeout(wait, 120); else nextLab(); }; setTimeout(wait, 150); };
+    nextLab();
   };
-  next();
+  let bx0 = 1e9, by0 = 1e9, bx1 = -1e9, by1 = -1e9;
+  const segs = strokes.map((st) => { const P = []; for (let k = 0; k < st.p.length; k += 3) { const x = st.p[k] / 10, y = st.p[k + 1] / 10; P.push([x, y]); bx0 = Math.min(bx0, x); by0 = Math.min(by0, y); bx1 = Math.max(bx1, x); by1 = Math.max(by1, y); } const L = [0]; for (let k = 1; k < P.length; k++) L.push(L[k - 1] + Math.hypot(P[k][0] - P[k - 1][0], P[k][1] - P[k - 1][1])); return { st, P, L, len: L[L.length - 1] }; });
+  const pad = 14 + lw * 3; bx0 -= pad; by0 -= pad; bx1 += pad; by1 += pad;
+  const cv = document.createElement('canvas'); cv.className = 'dqdraw no-ink';
+  cv.style.cssText = 'position:absolute;left:' + bx0 + 'px;top:' + by0 + 'px;width:' + (bx1 - bx0) + 'px;height:' + (by1 - by0) + 'px;pointer-events:none';
+  const kk = Math.min(3, (window.devicePixelRatio || 1) * Math.max(1, (S.base || 1) * (S.zoom || 1)));
+  cv.width = Math.max(1, Math.round((bx1 - bx0) * kk)); cv.height = Math.max(1, Math.round((by1 - by0) * kk));
+  const c = cv.getContext('2d'); itemsEl.appendChild(cv);
+  /* part of a stroke, up to a distance along it, as a stroke of its own (the last point is placed part way) */
+  const part = (g, d) => {
+    const p = g.st.p, out = []; let k = 1;
+    for (; k < g.P.length && g.L[k] <= d; k++);
+    for (let m = 0; m < k * 3 && m < p.length; m++) out.push(p[m]);
+    if (k < g.P.length) { const a = (d - g.L[k - 1]) / Math.max(1e-6, g.L[k] - g.L[k - 1]); out.push(Math.round((g.P[k - 1][0] + (g.P[k][0] - g.P[k - 1][0]) * a) * 10), Math.round((g.P[k - 1][1] + (g.P[k][1] - g.P[k - 1][1]) * a) * 10), p[k * 3 + 2]); }
+    return { pt: [out[out.length - 3] / 10, out[out.length - 2] / 10], s: Object.assign({}, g.st, { p: out }) };
+  };
+  /* a hand's speed: minimum-jerk timing, and longer lines drawn a little faster than short ones */
+  const ease = (t) => t * t * t * (10 - 15 * t + 6 * t * t);
+  const durOf = (len) => clamp(160 + Math.sqrt(len) * 46, 180, 1500);
+  const nib = (x, y, air) => { c.save(); c.globalAlpha = air ? 0.28 : 0.85; c.fillStyle = ink; c.beginPath(); c.arc(x, y, Math.max(2.2, lw * 0.9), 0, 6.2832); c.fill(); c.globalAlpha = air ? 0.1 : 0.18; c.beginPath(); c.arc(x, y, Math.max(5, lw * 2.4), 0, 6.2832); c.fill(); c.restore(); };
+  let i = 0, phase = 'draw', t0 = 0, from = null;
+  const paint = (cur, curPt, air) => {
+    c.setTransform(kk, 0, 0, kk, -bx0 * kk, -by0 * kk); c.clearRect(bx0, by0, bx1 - bx0, by1 - by0);
+    for (let m = 0; m < i; m++) drawStroke(c, segs[m].st);
+    if (cur) drawStroke(c, cur);
+    if (curPt) nib(curPt[0], curPt[1], air);
+  };
+  const frame = (ts) => {
+    if (S.pid !== pid) { cv.remove(); commit(); return; }
+    /* the page may be drawn again under us (a save coming back from the cloud): put the drawing layer back and carry on */
+    if (!cv.isConnected) itemsEl.appendChild(cv);
+    if (i >= segs.length) { paint(null, null); setTimeout(() => { commitAndWrite(); cv.remove(); }, 140); return; }
+    const g = segs[i];
+    if (!t0) t0 = ts;
+    if (phase === 'air') {
+      /* the pen lifted, moving to where the next line starts */
+      const T = clamp(Math.hypot(g.P[0][0] - from[0], g.P[0][1] - from[1]) * 1.1, 120, 420), t = clamp((ts - t0) / T, 0, 1), e = ease(t);
+      paint(null, [from[0] + (g.P[0][0] - from[0]) * e, from[1] + (g.P[0][1] - from[1]) * e], true);
+      if (t >= 1) { phase = 'draw'; t0 = ts + 40; }
+    } else {
+      const T = durOf(g.len), t = Math.max(0, Math.min(1, (ts - t0) / T)), r = part(g, g.len * ease(t));
+      paint(r.s, r.pt, false);
+      if (t >= 1) { from = g.P[g.P.length - 1]; i++; phase = 'air'; t0 = ts + 60 + Math.random() * 90; }
+    }
+    requestAnimationFrame(frame);
+  };
+  requestAnimationFrame(frame);
 }
 const DIARY_HAND = () => (HAND_IDS.includes(S.handDefault) ? S.handDefault : 'pen');
 /* the reply appears as if an invisible pen were writing it: one letter at a time, ink soaking in */
@@ -20335,7 +20373,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793496190';
+const BUILD = '1793496500';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
