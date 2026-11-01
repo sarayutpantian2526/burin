@@ -2798,8 +2798,11 @@ async function runOpenAI(base, key, model, prompt, o, toolsOk) {
     if (isOR && o.grow) body.reasoning = { effort: 'low', exclude: true };
     if (o.effort && !o.noEffort) body.reasoning_effort = o.effort;
     let r;
-    try { r = await aiFetch(base + '/chat/completions', { method: 'POST', headers, body: JSON.stringify(body), signal: o.signal }); }
-    catch (e) { if (body.reasoning_effort && /^http_400$/.test(e && e.code)) { o.noEffort = true; delete body.reasoning_effort; r = await aiFetch(base + '/chat/completions', { method: 'POST', headers, body: JSON.stringify(body), signal: o.signal }); } else throw e; }
+    /* a caller that can use the answer as it arrives gets it piece by piece (falls back to the whole answer at once) */
+    const streamIt = !!(o.onPartial && !tools && !o.noStream);
+    const send = () => streamIt ? aiStreamOpenAI(base + '/chat/completions', { method: 'POST', headers, body: JSON.stringify(Object.assign({}, body, { stream: true })), signal: o.signal }, o).catch((e) => { if (e && (e.code === 'no_stream')) { o.noStream = true; return aiFetch(base + '/chat/completions', { method: 'POST', headers, body: JSON.stringify(body), signal: o.signal }); } throw e; }) : aiFetch(base + '/chat/completions', { method: 'POST', headers, body: JSON.stringify(body), signal: o.signal });
+    try { r = await send(); }
+    catch (e) { if (body.reasoning_effort && /^http_400$/.test(e && e.code)) { o.noEffort = true; delete body.reasoning_effort; r = await send(); } else throw e; }
     const ch = r.choices && r.choices[0], m = ch && ch.message;
     if (!m) throw { code: 'empty_completion' };
     if (tools && m.tool_calls && m.tool_calls.length) {
@@ -2821,6 +2824,42 @@ async function runOpenAI(base, key, model, prompt, o, toolsOk) {
   }
   throw { code: 'empty_completion' };
 }
+/* reading an answer as it is written (server-sent events): the text so far goes to o.onPartial after every piece */
+async function aiSSE(url, init, o, piece) {
+  let res;
+  try { res = await fetch(url, init); }
+  catch (e) { if (e && e.name === 'AbortError') throw { code: 'cancelled' }; throw { code: 'network', message: String(e && e.message || e) }; }
+  if (!res.ok) {
+    let body = null; try { body = await res.json(); } catch (e) { body = null; }
+    const msg = body && (body.error && (body.error.message || body.error) || body.message);
+    throw { code: res.status === 401 || res.status === 403 ? 'bad_key' : res.status === 429 ? 'rate_limited' : res.status === 404 ? 'bad_model' : 'http_' + res.status, message: typeof msg === 'string' ? msg : '' };
+  }
+  if (!/event-stream/i.test(res.headers.get('content-type') || '') || !res.body || !res.body.getReader) {
+    /* the service answered all at once after all */
+    let body = null; try { body = await res.json(); } catch (e) { body = null; }
+    if (body) return { whole: body }; throw { code: 'no_stream' };
+  }
+  const rd = res.body.getReader(), dec = new TextDecoder(); let buf = '', text = '', fin = null;
+  try {
+    for (;;) {
+      const { done, value } = await rd.read(); if (done) break;
+      buf += dec.decode(value, { stream: true });
+      let k; while ((k = buf.indexOf('\n')) >= 0) {
+        const line = buf.slice(0, k).trim(); buf = buf.slice(k + 1);
+        if (!line.startsWith('data:')) continue; const data = line.slice(5).trim(); if (!data || data === '[DONE]') continue;
+        let ev; try { ev = JSON.parse(data); } catch (e) { continue; }
+        if (ev.error) throw { code: 'http_500', message: String(ev.error.message || ev.error) };
+        const [t, f] = piece(ev); if (f) fin = f;
+        if (t) { text += t; try { o.onPartial(text); } catch (e) { /* the caller's business */ } }
+      }
+    }
+  } catch (e) { if (e && e.name === 'AbortError') throw { code: 'cancelled' }; throw e && e.code ? e : { code: 'network', message: String(e && e.message || e) }; }
+  return { text, fin };
+}
+async function aiStreamOpenAI(url, init, o) {
+  const r = await aiSSE(url, init, o, (ev) => { const c = ev.choices && ev.choices[0]; return [c && c.delta && typeof c.delta.content === 'string' ? c.delta.content : '', c && c.finish_reason]; });
+  return r.whole || { choices: [{ message: { content: r.text }, finish_reason: r.fin || 'stop' }] };
+}
 async function runAnthropic(key, model, prompt, o) {
   const imgs = (o.images || []).filter(Boolean);
   const content = [];
@@ -2831,7 +2870,12 @@ async function runAnthropic(key, model, prompt, o) {
   const headers = { 'content-type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' };
   for (let turn = 0; turn < 14; turn++) {
     const body = { model, max_tokens: 8000, messages: msgs }; if (tools) body.tools = tools;
-    const r = await aiFetch('https://api.anthropic.com/v1/messages', { method: 'POST', headers, body: JSON.stringify(body), signal: o.signal });
+    let r;
+    if (o.onPartial && !tools) {
+      const q = await aiSSE('https://api.anthropic.com/v1/messages', { method: 'POST', headers, body: JSON.stringify(Object.assign({}, body, { stream: true })), signal: o.signal }, o,
+        (ev) => [ev.type === 'content_block_delta' && ev.delta && ev.delta.type === 'text_delta' ? ev.delta.text : '', ev.type === 'message_delta' && ev.delta ? ev.delta.stop_reason : null]);
+      r = q.whole || { content: [{ type: 'text', text: q.text }], stop_reason: q.fin || 'end_turn' };
+    } else r = await aiFetch('https://api.anthropic.com/v1/messages', { method: 'POST', headers, body: JSON.stringify(body), signal: o.signal });
     const blocks = r.content || [];
     if (r.stop_reason === 'tool_use' && tools) {
       msgs.push({ role: 'assistant', content: blocks });
@@ -3710,36 +3754,52 @@ async function diaryAsk() {
       + '\nThe notebook subject is ' + subj + '.\n'
       + 'How to reply (chosen by the writer): ' + VP[3] + (V.c ? ' The writer also asked: "' + V.c.slice(0, 300) + '". Follow that above everything else, as long as it is safe and kind.' : '') + '\n'
       + (log.length ? 'Conversation so far on this page (oldest first):\n' + log.slice(-10).map((m) => (m[0] === 'u' ? 'Writer: ' : 'Notebook: ') + m[1]).join('\n') + '\n' : '');
-    const r = await AI.run('read', prompt, { images: [img.blob], maxTokens: 3500, cache: false, signal: ctl.signal });
+    /* the answer is read as it arrives: once the words are complete (the drawing section has begun) the notebook starts
+       writing them, while the drawing commands are still coming; the drawing follows when they are all in */
+    let early = null; const earlyP = new Promise((res) => { early = res; });
+    const full = AI.run('read', prompt, { images: [img.blob], maxTokens: 3500, cache: false, signal: ctl.signal,
+      onPartial: (t) => { const a = t.indexOf('@@REPLY'), b = a >= 0 ? t.indexOf('@@DRAW', a) : -1; if (b > a + 8) early({ text: t.slice(0, b), done: false }); } });
+    full.catch(() => {});
+    const first = await Promise.race([earlyP, full.then((r) => ({ text: r.text, done: true }))]);
     if (spec.cancelled) return;
-    const sec = sections(r.text), read = sec.find((x) => x.key === 'READ'), rep = sec.find((x) => x.key === 'REPLY');
+    const sec = sections(first.text), read = sec.find((x) => x.key === 'READ'), rep = sec.find((x) => x.key === 'REPLY');
     /* drawing commands are taken from wherever they ended up (their own section, or mixed into the reply when the
        section mark came out broken), and every leftover section mark is cleaned off the words */
     const DQ_LINE = /^\s*[-*0-9.)]*\s*(line|arrow|poly|shape|curve|circle|ellipse|arc|dash|dot|text)\s+-?\d/i;
-    const drw = sec.find((x) => x.key === 'DRAW');
-    const drawLines = String(drw ? drw.text : '').split('\n').concat(String(r.text || '').split('\n').filter((l) => DQ_LINE.test(l)));
-    let sketch = diaryParseDraw([...new Set(drawLines)].join('\n'));
-    /* the reply promised a picture but the drawing did not come with it: ask once more for the drawing alone */
-    const said = ((read && read.text) || '') + ' ' + ((rep && rep.text) || '');
-    if (!sketch.length && /วาด|แผนผัง|แผนภาพ|ภาพ|รูป|กราฟ|แผนที่|ไดอะแกรม|draw|diagram|sketch|graph|picture/i.test(said)) {
-      try {
-        const r2 = await AI.run('gen', 'You are the notebook in Burin and you are about to sketch by hand for this exchange.\nThe writer wrote: "' + ((read && read.text) || '').slice(0, 300) + '"\nYou replied: "' + ((rep && rep.text) || '').slice(0, 400) + '"\n'
-          + 'Now give ONLY the drawing as pen commands, one per line, in a box 100 wide and 60 high, x to the right and y downwards: "line x1 y1 x2 y2", "arrow x1 y1 x2 y2", "poly x y x y ...", "shape x y x y ..." (closed), "curve x y x y ...", "circle cx cy r", "ellipse cx cy rx ry", "arc cx cy r fromDeg toDeg", "dash x1 y1 x2 y2", "dot x y", "text x y label" (short label in the writer\'s language). Optional colour word at the end: red, blue, green, orange. A clear, simple hand sketch, at most 40 lines. No other words.', { maxTokens: 2500, cache: false, signal: ctl.signal });
-        if (spec.cancelled) return;
-        sketch = diaryParseDraw(String(r2.text || '').split('\n').filter((l) => DQ_LINE.test(l)).join('\n'));
-      } catch (e) { if (spec.cancelled) return; /* the words alone still go on the page */ }
-    }
-    let text = String((rep && rep.text) || (sketch.length ? '' : r.text) || '').split('\n').filter((l) => !DQ_LINE.test(l)).join('\n')
+    const getSketch = async () => {
+      let all = first.text; if (!first.done) { try { all = (await full).text; } catch (e) { return []; } }
+      const sec2 = sections(all), drw = sec2.find((x) => x.key === 'DRAW');
+      const drawLines = String(drw ? drw.text : '').split('\n').concat(String(all || '').split('\n').filter((l) => DQ_LINE.test(l)));
+      let sk = diaryParseDraw([...new Set(drawLines)].join('\n'));
+      /* the reply promised a picture but the drawing did not come with it: ask once more for the drawing alone */
+      const said = ((read && read.text) || '') + ' ' + ((rep && rep.text) || '');
+      if (!sk.length && /วาด|แผนผัง|แผนภาพ|ภาพ|รูป|กราฟ|แผนที่|ไดอะแกรม|draw|diagram|sketch|graph|picture/i.test(said)) {
+        try {
+          const r2 = await AI.run('gen', 'You are the notebook in Burin and you are about to sketch by hand for this exchange.\nThe writer wrote: "' + ((read && read.text) || '').slice(0, 300) + '"\nYou replied: "' + ((rep && rep.text) || '').slice(0, 400) + '"\n'
+            + 'Now give ONLY the drawing as pen commands, one per line, in a box 100 wide and 60 high, x to the right and y downwards: "line x1 y1 x2 y2", "arrow x1 y1 x2 y2", "poly x y x y ...", "shape x y x y ..." (closed), "curve x y x y ...", "circle cx cy r", "ellipse cx cy rx ry", "arc cx cy r fromDeg toDeg", "dash x1 y1 x2 y2", "dot x y", "text x y label" (short label in the writer\'s language). Optional colour word at the end: red, blue, green, orange. A clear, simple hand sketch, at most 40 lines. No other words.', { maxTokens: 2500, cache: false, signal: ctl.signal });
+          sk = diaryParseDraw(String(r2.text || '').split('\n').filter((l) => DQ_LINE.test(l)).join('\n'));
+        } catch (e) { /* the words alone still go on the page */ }
+      }
+      return sk;
+    };
+    /* when the whole answer is already in, the drawing is known before anything is placed (as before) */
+    let sketch = first.done ? await getSketch() : null;
+    if (spec.cancelled) return;
+    const sketchP = sketch ? Promise.resolve(sketch) : getSketch();
+    const r = first;
+    let text = String((rep && rep.text) || (sketch && sketch.length ? '' : r.text) || '').split('\n').filter((l) => !DQ_LINE.test(l)).join('\n')
       .replace(/@@\s*[A-Za-z_]*[\s\S]*$/, '').replace(/@+\s*$/, '').replace(/[*_#`$]/g, '').replace(/\n{3,}/g, '\n\n').trim().slice(0, 600);
     /* from here the reply goes on the page: writing again no longer drops it */
     if (spec.cancelled) return; DIARY.spec = null; dots.remove();
+    if (!text && sketch && !sketch.length) return;
+    if (!text) sketch = await sketchP;
     if (!text && !sketch.length) return;
     if (S.pid !== pid) {
       /* the writer turned the page while the notebook was thinking: the reply is kept and appears on that page next time it is opened */
       const fs0 = 26, w0 = Math.round(clamp(W - 80, 320, 1100)), y0 = clamp(box[3] + 16, 20, H - 120);
       const entry = { strokes: [], labels: [], items: text ? [{ type: 'text', x: Math.round((W - w0) / 2), y: Math.round(y0), w: w0, md: text, fs: fs0, hand: DIARY_HAND(), ink: '#2B3A67', diary: true, dv: 2 }] : [] };
       (DIARY.later[pid] = DIARY.later[pid] || []).push(entry);
-      if (sketch.length) { const dw0 = 520; diaryDraw(sketch, Math.round((W - dw0) / 2), clamp(y0 + (text ? estTextH(text, w0, fs0) + 20 : 0), 20, H - 20 - 312), dw0, 312, 3, '#2B3A67', fs0, pid); }
+      sketchP.then((sketch) => { if (!sketch.length) return; const dw0 = 520; diaryDraw(sketch, Math.round((W - dw0) / 2), clamp(y0 + (text ? estTextH(text, w0, fs0) + 20 : 0), 20, H - 20 - 312), dw0, 312, 3, '#2B3A67', fs0, pid); });
       return;
     }
     log.push(['u', ((read && read.text) || '').slice(0, 300)], ['a', text]); if (log.length > 30) log.splice(0, log.length - 30);
@@ -3762,6 +3822,7 @@ async function diaryAsk() {
     if (text) addItem({ id, type: 'text', x: Math.round(at[0]), y: Math.round(at[1]), w: Math.round(w), md: text, fs, hand: DIARY_HAND(), ink, diary: true, dv: 2 });
     S.page = Object.assign({}, S.page, { diaryLog: log }); savePage();
     if (text && !diaryInstant()) requestAnimationFrame(() => diaryWriteIn(id));
+    sketchP.then((sketch) => {
     if (sketch.length) {
       /* the drawing goes under the words, about as wide as a hand sketch, where the page is free */
       const lw = clamp(fs * 0.085, 2, 5), near = [0, Math.round(text ? at[1] + estTextH(text, w, fs) * 1.1 + 18 : box[3] + 16)];
@@ -3793,6 +3854,7 @@ async function diaryAsk() {
       /* a hand writes first, then draws */
       if (text && !diaryInstant()) { const t0 = now(); const wait = () => { if (DIARY.anim[id] != null && findItem(id) && now() - t0 < 90000) setTimeout(wait, 300); else setTimeout(go, 350); }; setTimeout(wait, 600); } else go();
     }
+    });
   } catch (e) { dots.remove(); if (!spec.cancelled) toast('สมุดยังตอบไม่ได้ ' + aiErr(e), 3500); }
   finally { DIARY.busy = false; if (DIARY.spec === spec) DIARY.spec = null; if (DIARY.pending.length) { clearTimeout(DIARY.t); DIARY.t = setTimeout(diaryAsk, spec.cancelled ? DIARY_IDLE + 300 : 1500); } }
 }
@@ -20398,7 +20460,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793506443';
+const BUILD = '1793506590';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
