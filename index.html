@@ -9625,9 +9625,35 @@ function motionWords(t) {
   /* faces and voices: shouting, talking, laughing, smiling, sad, crying, surprised, angry */
   for (const [re, e] of [[/ตะโกน|ร้องเรียก|แผดเสียง|ตวาด|เชียร์/, 'shout'], [/หัวเราะ|ขำ/, 'laugh'], [/ร้องไห้|น้ำตา/, 'cry'], [/ตกใจ|อึ้ง|ประหลาดใจ/, 'surprise'], [/โกรธ|โมโห|หงุดหงิด/, 'angry'], [/เศร้า|เสียใจ|ผิดหวัง/, 'sad'], [/ยิ้ม|ดีใจ|มีความสุข/, 'happy'], [/พูด|คุย|บอก|อธิบาย|เล่า/, 'talk']]) if (re.test(t)) { o.expr = e; break; }
   if (o.expr && !o.k) o.k = 'breathe';
+  /* what the real thing would show while doing it */
+  const fx = [], add = (type, at, text) => { if (!fx.some((f) => f.type === type)) fx.push(Object.assign({ type }, at ? { at } : {}, text ? { text } : {})); };
+  if (/เห่า/.test(t)) { add('mouth'); add('sound'); add('say', 'mouth', 'โฮ่ง!'); }
+  if (/ร้องเหมียว|แมวร้อง/.test(t)) { add('mouth'); add('say', 'mouth', 'เหมียว'); }
+  if (/ขัน|ไก่/.test(t) && /ขัน|ร้อง/.test(t)) { add('mouth'); add('say', 'mouth', 'เอ้กอี๊!'); }
+  if (/ร้องเพลง|ฮัมเพลง|ผิวปาก|เพลง|ดนตรี/.test(t)) { add('notes'); if (!o.expr) add('mouth'); }
+  if (/บีบแตร|แตร|ฮอร์น/.test(t)) { add('sound', 'front'); add('say', 'front', 'ปี๊น!'); }
+  if (/คำราม/.test(t)) { add('mouth'); add('sound'); add('say', 'mouth', 'แฮ่!'); }
+  if (/หอน/.test(t)) { add('mouth'); add('say', 'mouth', 'โฮ้ว'); }
+  if (/ร้อง|เสียง|ดัง/.test(t) && !fx.length && !o.expr) { add('mouth'); add('sound'); }
+  if (/นอน|หลับ|ง่วง/.test(t)) add('zzz');
+  if (/รัก|หลงรัก|ชอบมาก/.test(t)) add('hearts');
+  if (/มึน|เวียนหัว|งง/.test(t)) add('stars');
+  if (/คิด|สงสัย|ไม่เข้าใจ/.test(t)) add('question');
+  if (/ร้อน|เหนื่อย|เหงื่อ/.test(t)) add('sweat'); if (/ร้อนมาก|เดือด|ระอุ|ไอน้ำ|ต้ม/.test(t)) add('steam');
+  if (/หนาว|สั่น/.test(t)) add('shake'); if (/หิมะ/.test(t)) add('snow'); if (/ฝน/.test(t)) add('rain'); if (/ใบไม้ร่วง|ใบไม้ปลิว/.test(t)) add('leaves');
+  if (/ไฟไหม้|ลุกไหม้|ติดไฟ/.test(t)) add('fire'); if (/ควัน/.test(t)) add('smoke'); if (/ประกาย|ช็อต|สปาร์ก/.test(t)) add('sparks');
+  if (/เปียก|หยดน้ำ|น้ำหยด/.test(t)) add('drops'); if (/กระเซ็น|สาดน้ำ|ตกน้ำ/.test(t)) add('splash', 'bottom'); if (/ฟอง/.test(t)) add('bubbles');
+  if (/สว่าง|ส่องแสง|เรืองแสง|ไฟเปิด/.test(t)) add('glow'); if (/วิบวับ|แวววาว|เงาวับ|ระยิบ/.test(t)) add('shine', [0.3, 0.3]);
+  if (/ลมพัด|ลมแรง|พายุ/.test(t)) add('wind'); if (/ฟ้าผ่า|สายฟ้า/.test(t)) add('bolt'); if (/เร็วมาก|พุ่ง|ซิ่ง/.test(t)) add('speed');
+  if (/ฝุ่น/.test(t)) add('dust', 'bottom');
+  if (fx.length) o.fx = fx;
+  /* sleeping, or only making a sound, is done standing still unless the words also say it goes somewhere */
+  const goes = /เดิน|วิ่ง|บิน|ว่าย|กระโดด|ขับ|ไปทาง|ไปมา|เคลื่อน|กลิ้ง/.test(t);
+  if (/นอน|หลับ/.test(t) && !goes) { o.k = 'breathe'; o.edge = 'stay'; }
+  else if (fx.length && !goes && !o.expr && ['walk4', 'drive', 'flap', 'swim', 'hop'].includes(o.k) && fx.some((f) => ['mouth', 'sound', 'say', 'notes'].includes(f.type))) { o.k = o.k === 'flap' ? 'bob' : 'breathe'; o.edge = 'stay'; }
   if (/ซ้าย/.test(t)) o.face = -1; else if (/ขวา/.test(t)) o.face = 1;
   if (/เร็วมาก/.test(t)) o.sp = 2.4; else if (/เร็ว/.test(t)) o.sp = 1.7; else if (/ช้ามาก/.test(t)) o.sp = 0.35; else if (/ช้า/.test(t)) o.sp = 0.6;
-  if (/วน|ทะลุ|อีกฝั่ง/.test(t)) o.edge = 'wrap'; else if (/แอบ|โผล่/.test(t)) o.edge = 'peek'; else if (/ไม่ไปไหน|ที่เดิม/.test(t)) o.edge = 'stay'; else if (/หันกลับ|เดินกลับ|กลับไปกลับมา/.test(t)) o.edge = 'bounce';
+  if (/วนรอบ|วนกลับ|วนไป|วนมา|ทะลุ|อีกฝั่ง/.test(t)) o.edge = 'wrap'; else if (/แอบ|โผล่/.test(t)) o.edge = 'peek'; else if (/ไม่ไปไหน|ที่เดิม/.test(t)) o.edge = 'stay'; else if (/หันกลับ|เดินกลับ|กลับไปกลับมา/.test(t)) o.edge = 'bounce';
   if (/ชน|โต้ตอบ|หลบ|บนเส้น|บนพื้น|ข้าม/.test(t)) o.touch = 1;
   return o;
 }
@@ -9684,12 +9710,14 @@ async function motionPlan(text, sp, pieces) {
         + '- "path": any other movement described (circle around, climb up then come down, jump onto something, wave, spin three times, grow, shrink, go to a place). Give path.keys as a list of key frames {t seconds from start, dx, dy offset in page units from where it is drawn, rot degrees, scale}, first key t 0 with dx 0 dy 0, and loop true or false; path.anim is the behaviour the body keeps doing while it follows the path (flap for a bird beating its wings, walk4, swim, wiggle, or none). To go to another piece (swoop at it, run to it, chase it), aim the keys at that piece using the boxes above. Use enough keys (6 to 20) for a smooth natural motion and keep it on the page.\n'
         + 'Only the pieces the teacher asks to move should move; every other piece gets mode "none" (it may still react when something hits it).\n'
         + 'A drawn person or face can also show a feeling or make a sound: give "expr" one of shout, talk, laugh, happy, sad, cry, surprise, angry when the teacher asks for it or it clearly fits (shouting, calling out, cheering = shout). The app then redraws the mouth, eyes and eyebrows to match and adds sound lines, tears or the like, so the face really changes; pick a body motion that suits it (breathe or wiggle when standing, a path when it goes somewhere). Put all pieces of one person in one group.\n'
+        + 'Make every thing, whatever it is, believable with "fx": a list (at most 5) of what the real thing would show while doing what was asked, each {"type", "at", "text"}. type is one of ' + LIFE_FX.join(', ') + ' (sound = sound lines, say = the sound word written by it, mouth = its mouth opening and closing as it makes the sound, notes = music notes, zzz = sleeping, steam = hot steam, drops = dripping water, glow = light, shine = a glint, speed = speed lines, shake = trembling marks). at is front, back, top, bottom, center, mouth, or [u, v] in the piece box (0 to 1 from the drawn left and top, the way it was drawn). text is the Thai sound word for say, at most 8 letters (a dog barking: โฮ่ง!, a car horn: ปี๊น!, a cat: เหมียว, a rooster: เอ้กอี๊!, a bell: กริ๊ง). For example: a dog barking gets mouth at its head, sound and say; a kettle boiling gets steam at the spout; a sleeping cat gets zzz; a singing bird gets notes and mouth; a car racing gets speed and dust; a lamp turned on gets glow. Add nothing that the teacher would not expect.\n'
         + 'Also give "plan": one short Thai sentence saying what will happen, written for the teacher (mention anything you added to make it natural).\n'
         + 'Reply with JSON only: {"plan":"...","pieces":[{"n":1,"group":1,"what":"ball","mode":"physics","k":"","face":"right","speed":1,"edge":"bounce","touch":true,"phys":{"vx":0,"vy":0,"bounce":0.6,"friction":0.3,"gravity":1,"round":true,"spin":0},"path":null}]}\nface is left or right, speed 0.3 to 3, edge is wrap, bounce, peek or stay, touch true when it should walk on or bump into other things.', { images: [blob], maxTokens: 2200 });
       const j = JSON.parse(String(r.text || '').replace(/^[^{]*/, '').replace(/[^}]*$/, ''));
       if (j && typeof j.plan === 'string' && j.plan.trim()) MV_LAST.plan = j.plan.trim().slice(0, 200);
       if (j && Array.isArray(j.pieces) && j.pieces.length) return j.pieces.map((q) => {
-        const o = { n: +q.n, group: +q.group || +q.n, what: String(q.what || '').slice(0, 40), k: q.k, face: q.face === 'left' ? -1 : q.face === 'right' ? 1 : 0, sp: +q.speed || 1, edge: q.edge, touch: q.touch ? 1 : 0, expr: ['shout', 'talk', 'laugh', 'happy', 'sad', 'cry', 'surprise', 'angry'].includes(q.expr) ? q.expr : undefined };
+        const o = { n: +q.n, group: +q.group || +q.n, what: String(q.what || '').slice(0, 40), k: q.k, face: q.face === 'left' ? -1 : q.face === 'right' ? 1 : 0, sp: +q.speed || 1, edge: q.edge, touch: q.touch ? 1 : 0, expr: ['shout', 'talk', 'laugh', 'happy', 'sad', 'cry', 'surprise', 'angry'].includes(q.expr) ? q.expr : undefined,
+          fx: Array.isArray(q.fx) ? q.fx.filter((f) => f && LIFE_FX.includes(f.type)).slice(0, 5).map((f) => ({ type: f.type, at: Array.isArray(f.at) ? [clamp(+f.at[0] || 0, -0.5, 1.5), clamp(+f.at[1] || 0, -0.5, 1.5)] : ['front', 'back', 'top', 'bottom', 'center', 'mouth'].includes(f.at) ? f.at : undefined, text: f.text ? String(f.text).replace(/[<>]/g, '').slice(0, 10) : undefined, color: /^#[0-9a-f]{6}$/i.test(f.color || '') ? f.color : undefined, rate: f.rate ? clamp(+f.rate, 0.3, 3) : undefined })) : undefined };
         if (q.mode === 'none') o.k = 'none';
         else if (q.mode === 'physics' || q.k === 'phys') { const f = q.phys || {}; o.k = 'phys'; o.phys = { vx: clamp(+f.vx || 0, -2500, 2500), vy: clamp(+f.vy || 0, -2500, 2500), e: clamp(f.bounce == null ? 0.5 : +f.bounce, 0, 0.95), mu: clamp(f.friction == null ? 0.35 : +f.friction, 0, 1.5), g: clamp(f.gravity == null ? 1 : +f.gravity, 0, 3), spin: clamp(+f.spin || 0, -40, 40) }; if (f.round != null) o.phys.round = f.round ? 1 : 0; }
         else if (q.mode === 'path' && q.path && Array.isArray(q.path.keys) && q.path.keys.length >= 2) { o.k = 'path'; o.sub = LIFE_KINDS.some((x) => x[0] === q.path.anim) ? q.path.anim : (/bird|นก|butterfly|bat/i.test(o.what) ? 'flap' : undefined); o.path = { loop: q.path.loop !== false, keys: q.path.keys.slice(0, 40).map((k) => ({ t: clamp(+k.t || 0, 0, 60), dx: clamp(+k.dx || 0, -W, W), dy: clamp(+k.dy || 0, -H, H), rot: clamp(+k.rot || 0, -3600, 3600), scale: clamp(+k.scale || 1, 0.1, 5) })) }; }
@@ -9712,11 +9740,11 @@ async function motionDo(text, sp, pieces) {
     const q = g.plan; if (q.k === 'none') continue;
     const sub = { refs: g.refs, items: g.items, box: g.box };
     let k = q.k, f = q.face || 0;
-    const ex = q.expr ? { expr: q.expr } : {};
+    const ex = Object.assign(q.expr ? { expr: q.expr } : {}, q.fx && q.fx.length ? { fx: q.fx } : {});
     if (k === 'phys' || k === 'path') { await placeLife(sub, k, 'stay', f, k === 'phys' ? Object.assign({ touch: 1 }, q.phys || {}, ex) : Object.assign({ path: q.path }, q.sub ? { sub: q.sub } : {}, ex)); made++; continue; }
     if (!k || k === 'auto' || !LIFE_KINDS.some((x) => x[0] === k)) { const a = await lifeAuto(Object.assign({}, sp, sub)); if (Array.isArray(a)) { k = a[0]; f = f || a[1]; } else k = a; if (k === 'person') k = q.expr ? 'breathe' : 'wiggle'; }
     const before = new Set((S.page.items || []).map((x) => x.id));
-    await placeLife(sub, k, q.expr && !LIFE_KINDS.find((x) => x[0] === k)[3] ? 'stay' : (q.edge || 'bounce'), f, ex);
+    await placeLife(sub, k, (q.expr || q.fx) && !LIFE_KINDS.find((x) => x[0] === k)[3] ? 'stay' : (q.edge || 'bounce'), f, ex);
     const it = (S.page.items || []).find((x) => x.type === 'life' && !before.has(x.id));
     if (it && (q.sp && q.sp !== 1 || q.touch)) lifeSet(it, Object.assign({}, q.sp && q.sp !== 1 ? { sp: clamp(q.sp, 0.2, 3) } : {}, q.touch ? { touch: 1 } : {}));
     made++;
@@ -10477,8 +10505,8 @@ function lifeRegion(B, beh) {
   }
   const bw = B[2] - B[0], bh = B[3] - B[1], mv = beh.move && beh.edge !== 'stay';
   const up = beh.k === 'hop' ? bh * 1.3 : beh.k === 'flap' ? bh * 0.8 : beh.k === 'bob' ? bh * 0.35 : beh.k === 'roll' ? bw * 0.3 : beh.k === 'flicker' ? bh * 1.2 + 30 : beh.k === 'swim' ? bh * 0.9 : bh * 0.3; /* room above for sparks, smoke and bubbles */
-  const y0 = Math.max(0, Math.round(B[1] - up - 20 - (lifeTouch(beh) ? Math.max(bh * 2, 120) : 0))), y1 = Math.min(H, Math.round(B[3] + bh * 0.25 + 20));
-  const sx = beh.k === 'beat' || beh.k === 'flicker' || beh.k === 'spin' ? 0.65 : 0.4;
+  const y0 = Math.max(0, Math.round(B[1] - up - 20 - (Array.isArray(beh.fx) && beh.fx.length ? bh * 0.9 + 50 : 0) - (lifeTouch(beh) ? Math.max(bh * 2, 120) : 0))), y1 = Math.min(H, Math.round(B[3] + bh * 0.25 + 20));
+  const fxOn = Array.isArray(beh.fx) && beh.fx.length, sx = fxOn ? 0.9 : beh.k === 'beat' || beh.k === 'flicker' || beh.k === 'spin' ? 0.65 : 0.4;
   return mv ? [0, y0, W, y1] : [Math.max(0, Math.round(B[0] - bw * sx - 20)), y0, Math.min(W, Math.round(B[2] + bw * sx + 20)), y1];
 }
 async function placeLife(sp, kind, edge, face, extra) {
@@ -10537,6 +10565,11 @@ function lifePanel(d, it, dot) {
   p.appendChild(fc);
   { const es = document.createElement('select'); es.className = 'traysel'; es.title = 'สีหน้าและเสียงของภาพคนหรือหน้าที่วาด'; for (const [k, n] of LIFE_EXPR) { const o = document.createElement('option'); o.value = k; o.textContent = 'สีหน้า: ' + n; es.appendChild(o); } es.value = live.beh.expr || 'none';
     es.onchange = () => { const R = LIFE.get(it.id); if (R) R.face = undefined; lifeSet(it, { expr: es.value }); }; p.appendChild(es); }
+  /* tell it what else it does, in plain words: barks, sings, sleeps, is hot, it is raining ... */
+  { const r = document.createElement('div'); r.className = 'mrow'; const inp = document.createElement('input'); inp.placeholder = 'บอกเพิ่ม เช่น เห่า ร้องเพลง หลับ ร้อน ฝนตก'; inp.maxLength = 80;
+    const ok = document.createElement('button'); ok.type = 'button'; ok.className = 'btn'; ok.textContent = 'ใส่'; ok.onclick = () => { const w = typeof motionWords === 'function' ? motionWords(inp.value) : {}; const patch = {}; if (w.fx) patch.fx = w.fx; if (w.expr) patch.expr = w.expr; if (!w.fx && !w.expr) { toast('ยังไม่รู้จักคำนี้ ลองคำอื่น เช่น เห่า ร้องเพลง หลับ ตะโกน', 2600); return; } const R = LIFE.get(it.id); if (R) R.face = undefined; lifeSet(it, patch); toast('เพิ่มให้แล้ว', 1500); };
+    const clr = document.createElement('button'); clr.type = 'button'; clr.className = 'btn'; clr.textContent = 'ล้าง'; clr.onclick = () => lifeSet(it, { fx: [], expr: 'none' });
+    r.append(inp, ok, clr); p.appendChild(r); }
   { const tc = document.createElement('div'); tc.className = 'chips'; const b = document.createElement('button'); b.type = 'button'; b.className = 'chip'; b.textContent = 'โต้ตอบกับสิ่งอื่นบนหน้า';
     b.title = 'เดินบนเส้นที่วาด หันกลับเมื่อชนลายมือ รูป หรือภาพเคลื่อนไหวอื่น กระโดดข้ามสิ่งที่เตี้ย'; b.setAttribute('aria-pressed', lifeTouch(live.beh) ? 'true' : 'false');
     b.onclick = () => lifeSet(it, { touch: lifeTouch(live.beh) ? 0 : 1 }); tc.appendChild(b);
@@ -10900,6 +10933,56 @@ function lifeExpr(c, it, rt, F, ex, t, face, A) {
   }
   c.restore();
 }
+/* ----- effects any picture can carry, so whatever it is and whatever it is asked to do looks real: the sound it makes
+   (sound lines, the sound word, its mouth opening), music notes, sleep, love, dizziness, heat and cold, water, smoke, fire,
+   light, sparkle, wind, rain, snow, falling leaves, speed, thought. Each sits at an anchor on the picture: front, top,
+   back, bottom, centre, mouth, or a point [u, v] in its box (0 to 1 from its drawn left and top), and turns with it ----- */
+const LIFE_FX = ['sound', 'say', 'mouth', 'notes', 'zzz', 'hearts', 'stars', 'sweat', 'tears', 'steam', 'smoke', 'fire', 'sparks', 'drops', 'splash', 'glow', 'shine', 'wind', 'rain', 'snow', 'leaves', 'speed', 'question', 'exclaim', 'bolt', 'bubbles', 'dust', 'shake'];
+function lifeAnchor(it, rt, o, at) {
+  const { B, bw, bh, ox, oy, face } = o, d = (it.beh && it.beh.face) || 1;
+  let u = 0.5, v = 0.5;
+  if (Array.isArray(at)) { u = clamp(+at[0] || 0, -0.5, 1.5); v = clamp(+at[1] || 0, -0.5, 1.5); }
+  else if (at === 'front') { u = d > 0 ? 0.92 : 0.08; v = 0.35; } else if (at === 'back') { u = d > 0 ? 0.05 : 0.95; v = 0.5; }
+  else if (at === 'top') { u = 0.5; v = 0; } else if (at === 'bottom') { u = 0.5; v = 1; }
+  else if (at === 'mouth') { const F = lifeFaceParts(it, rt); if (F && F.mouth != null) return [F.m[0] + ox, F.m[1] + oy, F.r * 0.8]; u = d > 0 ? 0.9 : 0.1; v = 0.3; }
+  /* the picture may be drawn facing one way and now facing the other */
+  if (face !== d) u = 1 - u;
+  return [B[0] + u * bw + ox, B[1] + v * bh + oy, clamp(Math.max(bw, bh) * 0.12, 6, 40)];
+}
+function lifeFxOne(c, it, rt, o, f, P, emit) {
+  const ty = LIFE_FX.includes(f.type) ? f.type : null; if (!ty) return;
+  const { T0, bw, bh, face } = o, [ax, ay, ar] = lifeAnchor(it, rt, o, f.at || (['sound', 'say', 'mouth', 'notes'].includes(ty) ? 'mouth' : ['zzz', 'hearts', 'stars', 'question', 'exclaim', 'steam', 'sweat', 'bolt'].includes(ty) ? 'top' : ['dust', 'splash'].includes(ty) ? 'bottom' : ['speed'].includes(ty) ? 'back' : 'center'));
+  const sz = Math.max(8, Math.max(bw, bh)), R = Math.random, col = f.color && /^#[0-9a-f]{6}$/i.test(f.color) ? f.color : null, ink = '#2B3A67';
+  /* sounds come in bursts: a bark, a honk, a call, then a pause */
+  const burst = (T0 * (f.rate || 1)) % 1.6 < 0.9 ? Math.abs(Math.sin(((T0 * (f.rate || 1)) % 1.6) * 7)) : 0;
+  c.save(); c.lineCap = 'round'; c.lineJoin = 'round';
+  const key = 'fx' + ty + (f.at || '');
+  const em = (rate, make) => { rt[key] = (rt[key] || 0) + rate * clamp(T0 - (rt[key + 't'] == null ? T0 : rt[key + 't']), 0, 0.1); rt[key + 't'] = T0; while (rt[key] >= 1) { rt[key] -= 1; if (P.length < 90) P.push(Object.assign({ age: 0 }, make())); } };
+  if (ty === 'sound') { c.strokeStyle = col || ink; c.lineWidth = 2; for (let q = 0; q < 3; q++) { const ph = ((T0 * 2.2 + q / 3) % 1), rr = ar * (0.4 + 1.6 * ph); c.globalAlpha = (0.15 + 0.75 * burst) * (1 - ph); c.beginPath(); c.arc(ax, ay, rr, face > 0 ? -0.6 : Math.PI - 0.6, face > 0 ? 0.6 : Math.PI + 0.6); c.stroke(); } }
+  else if (ty === 'say') { const tx = String(f.text || '').slice(0, 10); if (tx && burst > 0.2) { const fs = clamp(sz * 0.18, 12, 40); c.globalAlpha = Math.min(1, burst * 1.3); c.font = '700 ' + Math.round(fs * (0.9 + 0.2 * burst)) + 'px sans-serif'; c.fillStyle = col || ink; c.textAlign = face > 0 ? 'left' : 'right'; c.fillText(tx, ax + face * ar * 0.9, ay - ar * 0.6); } }
+  else if (ty === 'mouth') { const op = 0.15 + 0.85 * burst; c.fillStyle = '#1F2533'; c.globalAlpha = 0.9; c.beginPath(); c.ellipse(ax, ay, ar * 0.45, Math.max(1, ar * 0.32 * op), 0, 0, 6.2832); c.fill(); if (op > 0.5) { c.fillStyle = 'rgba(214,92,92,0.9)'; c.beginPath(); c.ellipse(ax, ay + ar * 0.12 * op, ar * 0.25, ar * 0.1 * op, 0, 0, 6.2832); c.fill(); } }
+  else if (ty === 'notes') em(1.4 * (f.rate || 1), () => ({ ty: 'note', x: ax + face * ar * 0.5, y: ay - ar * 0.3, vx: face * (10 + R() * 12), vy: -(18 + R() * 10), life: 2, r: clamp(sz * 0.07, 5, 16), col: col || ink }));
+  else if (ty === 'zzz') em(0.9, () => ({ ty: 'z', x: ax + face * ar * 0.4, y: ay - 4, vx: face * 10, vy: -16, life: 2.4, r: clamp(sz * 0.08, 6, 18), col: col || ink }));
+  else if (ty === 'hearts') em(1.1, () => ({ ty: 'heart', x: ax + (R() - 0.5) * ar * 2, y: ay - 4, vx: (R() - 0.5) * 10, vy: -(16 + R() * 10), life: 1.8, r: clamp(sz * 0.06, 5, 14), col: col || '#D9405A' }));
+  else if (ty === 'stars') { c.fillStyle = col || '#E0A526'; c.strokeStyle = col || '#E0A526'; c.lineWidth = 1.6; for (let q = 0; q < 3; q++) { const a = T0 * 3 + q * 2.094, x = ax + Math.cos(a) * ar * 1.2, y = ay - ar * 0.5 + Math.sin(a) * ar * 0.35, r = clamp(sz * 0.04, 4, 10); c.globalAlpha = 0.6 + 0.4 * Math.sin(a); c.beginPath(); for (let k = 0; k < 10; k++) { const rr = k % 2 ? r * 0.45 : r, an = k * Math.PI / 5 - Math.PI / 2; c.lineTo(x + rr * Math.cos(an), y + rr * Math.sin(an)); } c.closePath(); c.fill(); } }
+  else if (ty === 'sweat' || ty === 'tears') em(ty === 'tears' ? 1.6 : 0.8, () => ({ ty: 'drop', x: ax + (ty === 'sweat' ? face * ar * 0.6 : (R() - 0.5) * ar * 0.6), y: ay + (ty === 'sweat' ? 0 : ar * 0.2), vx: 0, vy: ty === 'tears' ? 30 : 12, g: 1, life: 1.1, r: clamp(sz * 0.035, 3, 8), col: col || 'rgba(70,140,225,0.85)' }));
+  else if (ty === 'steam' || ty === 'smoke') em(ty === 'steam' ? 1.5 : 2, () => ({ ty: 'smoke', x: ax + (R() - 0.5) * ar * 0.6, y: ay, vx: (R() - 0.5) * 10, vy: -(20 + R() * 10), life: 2.2, r: clamp(sz * 0.05, 4, 14) }));
+  else if (ty === 'fire') { em(8, () => ({ ty: 'ember', x: ax + (R() - 0.5) * ar, y: ay, vx: (R() - 0.5) * 16, vy: -(40 + R() * 40), life: 0.8 + R() * 0.5, r: 1.3 + R() * 1.5 })); c.globalAlpha = 0.85; for (let q = 0; q < 3; q++) { const fx0 = ax + (q - 1) * ar * 0.35, hh = ar * (0.9 + 0.35 * Math.sin(T0 * 11 + q * 2)); c.fillStyle = q === 1 ? '#F4A23B' : '#D9602A'; c.beginPath(); c.moveTo(fx0 - ar * 0.22, ay); c.quadraticCurveTo(fx0 - ar * 0.25, ay - hh * 0.5, fx0 + Math.sin(T0 * 9 + q) * ar * 0.08, ay - hh); c.quadraticCurveTo(fx0 + ar * 0.25, ay - hh * 0.5, fx0 + ar * 0.22, ay); c.closePath(); c.fill(); } }
+  else if (ty === 'sparks') em(10, () => { const a = R() * 6.283, sp = 40 + R() * 60; return { ty: 'ember', x: ax, y: ay, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life: 0.5, r: 1.2 + R() }; });
+  else if (ty === 'drops' || ty === 'splash') em(ty === 'splash' ? 6 : 2, () => ({ ty: 'drop', x: ax + (R() - 0.5) * ar, y: ay, vx: ty === 'splash' ? (R() - 0.5) * 80 : 0, vy: ty === 'splash' ? -(40 + R() * 40) : 20, g: 1, life: ty === 'splash' ? 0.7 : 1.2, r: clamp(sz * 0.03, 2.5, 7), col: col || 'rgba(70,140,225,0.85)' }));
+  else if (ty === 'glow') { const g = c.createRadialGradient(ax, ay, 0, ax, ay, sz * 0.9), a = 0.22 + 0.06 * Math.sin(T0 * 3); const cc = col || '#FFD25A'; g.addColorStop(0, cc + Math.round(a * 255).toString(16).padStart(2, '0')); g.addColorStop(1, cc + '00'); c.fillStyle = g; c.fillRect(ax - sz, ay - sz, sz * 2, sz * 2); }
+  else if (ty === 'shine') { const ph = (T0 * 0.7) % 1; if (ph < 0.35) { const k = Math.sin(Math.PI * ph / 0.35), r = clamp(sz * 0.08, 5, 16) * k; c.strokeStyle = col || '#E0A526'; c.lineWidth = 2; c.globalAlpha = k; c.beginPath(); c.moveTo(ax - r, ay); c.lineTo(ax + r, ay); c.moveTo(ax, ay - r); c.lineTo(ax, ay + r); c.moveTo(ax - r * 0.5, ay - r * 0.5); c.lineTo(ax + r * 0.5, ay + r * 0.5); c.moveTo(ax + r * 0.5, ay - r * 0.5); c.lineTo(ax - r * 0.5, ay + r * 0.5); c.stroke(); } }
+  else if (ty === 'wind') em(1.2, () => ({ ty: 'wind', x: ax - sz * 0.8, y: ay + (R() - 0.5) * sz * 0.8, vx: 70 + R() * 30, vy: 0, life: 1.3, r: sz * 0.25 }));
+  else if (ty === 'rain' || ty === 'snow') em(ty === 'rain' ? 14 : 6, () => ({ ty: ty === 'rain' ? 'rain' : 'flake', x: ax + (R() - 0.5) * sz * 1.4, y: ay - sz * 0.6, vx: ty === 'snow' ? (R() - 0.5) * 12 : -10, vy: ty === 'rain' ? 220 : 30, life: ty === 'rain' ? 0.6 : 2.4, r: ty === 'rain' ? 8 : 2.5, col: col }));
+  else if (ty === 'leaves') em(0.8, () => ({ ty: 'leaf', x: ax + (R() - 0.5) * sz * 0.8, y: ay - sz * 0.2, vx: 14 + R() * 10, vy: 22 + R() * 10, life: 3, r: clamp(sz * 0.05, 4, 10), col: col || (R() < 0.5 ? '#C9822B' : '#7FA14A') }));
+  else if (ty === 'speed') { c.strokeStyle = col || ink; c.lineWidth = 1.6; for (let q = 0; q < 3; q++) { const yy = ay + (q - 1) * bh * 0.2, L = bw * (0.25 + 0.1 * Math.sin(T0 * 9 + q)); c.globalAlpha = 0.35; c.beginPath(); c.moveTo(ax - face * 6, yy); c.lineTo(ax - face * (6 + L), yy); c.stroke(); } }
+  else if (ty === 'question' || ty === 'exclaim') { const fs = clamp(sz * 0.22, 14, 44); c.globalAlpha = 0.65 + 0.35 * Math.sin(T0 * 4); c.fillStyle = col || ink; c.font = '700 ' + Math.round(fs) + 'px sans-serif'; c.textAlign = 'center'; c.fillText(ty === 'question' ? '?' : '!', ax + face * ar * 0.6, ay - 6 - Math.abs(Math.sin(T0 * 3)) * 4); }
+  else if (ty === 'bolt') { if ((T0 % 2.6) < 0.25) { c.strokeStyle = col || '#E0A526'; c.lineWidth = 3; const h = sz * 0.6; c.beginPath(); c.moveTo(ax, ay - h); c.lineTo(ax - h * 0.15, ay - h * 0.45); c.lineTo(ax + h * 0.1, ay - h * 0.4); c.lineTo(ax - h * 0.05, ay); c.stroke(); } }
+  else if (ty === 'bubbles') em(1.2, () => ({ ty: 'bubble', x: ax, y: ay, vx: face * 6, vy: -26 - R() * 12, life: 2.2, r: 1.6 + R() * 3 }));
+  else if (ty === 'dust') em(2.5, () => ({ ty: 'dust', x: ax + (R() - 0.5) * bw * 0.6, y: ay - 1, vx: (R() - 0.5) * 40, vy: -(6 + R() * 10), life: 0.6, r: clamp(sz * 0.03, 3, 8) }));
+  else if (ty === 'shake') { if ((T0 % 2.4) < 1.3) { c.strokeStyle = col || ink; c.lineWidth = 1.8; c.globalAlpha = 0.45; for (const sd of [-1, 1]) for (let q = 0; q < 2; q++) { c.beginPath(); c.arc(ax + sd * (bw * 0.5 + 6 + q * 7), ay, bh * (0.2 + q * 0.1), sd > 0 ? -0.6 : Math.PI - 0.6, sd > 0 ? 0.6 : Math.PI + 0.6); c.stroke(); } } }
+  c.restore();
+}
 /* ----- extra touches that make a moving picture feel real (see lifeDraw): small particles living for a moment ----- */
 function lifeFx(c, it, rt, o) {
   const { k, t, T0, A, B, bw, bh, cx, cy, ox, oy, face, moving, vr } = o;
@@ -10939,6 +11022,8 @@ function lifeFx(c, it, rt, o) {
   } else if (k === 'wiggle') {
     emit(0.5, () => ({ ty: 'spark', x: X + (R() - 0.5) * bw * 1.1, y: top + R() * bh * 0.4, vx: 0, vy: -10, life: 0.9, r: u0 * 0.9 }));
   }
+  /* whatever else the teacher's words call for, anchored on the picture (see lifeFxList) */
+  if (Array.isArray(it.beh.fx)) for (const f of it.beh.fx.slice(0, 6)) lifeFxOne(c, it, rt, o, f, P, emit);
   /* feelings: startled by something rushing at it */
   const fr = Math.max(rt.flinch || 0, (rt.scare || 0) * 0.8);
   if (fr > 0.15 && k !== 'phys') {
@@ -10961,6 +11046,13 @@ function lifeFx(c, it, rt, o) {
     else if (p.ty === 'puff' || p.ty === 'dust') { c.globalAlpha = (p.ty === 'puff' ? 0.28 : 0.35) * (1 - f); c.strokeStyle = '#6B7280'; c.lineWidth = 1.4; c.beginPath(); c.arc(p.x, p.y, p.r * (1 + f * (p.ty === 'puff' ? 1.6 : 0.8)), 0, 6.2832); c.stroke(); }
     else if (p.ty === 'air' || p.ty === 'wind') { c.globalAlpha = (p.ty === 'air' ? 0.35 : 0.22) * Math.sin(Math.PI * f); c.strokeStyle = '#2B3A67'; c.lineWidth = 1.5; c.lineCap = 'round'; const dir = Math.sign(p.vx) || 1; c.beginPath(); c.moveTo(p.x, p.y); c.quadraticCurveTo(p.x - dir * p.r * 0.5, p.y - p.r * 0.18, p.x - dir * p.r, p.y); c.stroke(); }
     else if (p.ty === 'ring') { c.globalAlpha = 0.4 * (1 - f); c.strokeStyle = '#C8323C'; c.lineWidth = 2; c.beginPath(); c.arc(p.x, p.y, p.r * (1 + f * 0.7), 0, 6.2832); c.stroke(); }
+    else if (p.ty === 'note') { c.globalAlpha = Math.sin(Math.PI * f); c.fillStyle = p.col; c.strokeStyle = p.col; c.lineWidth = Math.max(1.2, p.r * 0.18); c.beginPath(); c.ellipse(p.x, p.y, p.r * 0.45, p.r * 0.33, -0.4, 0, 6.2832); c.fill(); c.beginPath(); c.moveTo(p.x + p.r * 0.4, p.y); c.lineTo(p.x + p.r * 0.4, p.y - p.r * 1.3); c.quadraticCurveTo(p.x + p.r * 0.9, p.y - p.r * 1.1, p.x + p.r * 0.9, p.y - p.r * 0.7); c.stroke(); }
+    else if (p.ty === 'z') { c.globalAlpha = Math.sin(Math.PI * f) * 0.9; c.fillStyle = p.col; c.font = '700 ' + Math.round(p.r * (1 + f)) + 'px sans-serif'; c.fillText('z', p.x, p.y); }
+    else if (p.ty === 'heart') { c.globalAlpha = Math.sin(Math.PI * f); c.fillStyle = p.col; const r = p.r; c.beginPath(); c.moveTo(p.x, p.y + r * 0.8); c.bezierCurveTo(p.x - r * 1.4, p.y - r * 0.2, p.x - r * 0.6, p.y - r * 1.2, p.x, p.y - r * 0.4); c.bezierCurveTo(p.x + r * 0.6, p.y - r * 1.2, p.x + r * 1.4, p.y - r * 0.2, p.x, p.y + r * 0.8); c.fill(); }
+    else if (p.ty === 'drop') { if (p.g) p.vy += 160 * dt; c.globalAlpha = 1 - f * 0.7; c.fillStyle = p.col; const d = p.r; c.beginPath(); c.moveTo(p.x, p.y - d * 1.8); c.quadraticCurveTo(p.x + d, p.y, p.x, p.y + d * 0.7); c.quadraticCurveTo(p.x - d, p.y, p.x, p.y - d * 1.8); c.fill(); }
+    else if (p.ty === 'rain') { c.globalAlpha = 0.5; c.strokeStyle = p.col || '#4C8FD6'; c.lineWidth = 1.4; c.beginPath(); c.moveTo(p.x, p.y); c.lineTo(p.x - 2, p.y + p.r); c.stroke(); }
+    else if (p.ty === 'flake') { c.globalAlpha = 0.85 * (1 - f * 0.5); c.strokeStyle = p.col || '#7FA7D9'; c.lineWidth = 1.2; const r = p.r; for (let a = 0; a < 3; a++) { const an = a * 1.047; c.beginPath(); c.moveTo(p.x - r * Math.cos(an), p.y - r * Math.sin(an)); c.lineTo(p.x + r * Math.cos(an), p.y + r * Math.sin(an)); c.stroke(); } p.x += Math.sin(p.age * 3 + q) * 0.4; }
+    else if (p.ty === 'leaf') { c.globalAlpha = 1 - f * 0.6; c.fillStyle = p.col; c.translate(p.x + Math.sin(p.age * 3 + q) * 8, p.y); c.rotate(p.age * 2 + q); c.beginPath(); c.ellipse(0, 0, p.r, p.r * 0.45, 0, 0, 6.2832); c.fill(); }
     else if (p.ty === 'spark') { c.globalAlpha = Math.sin(Math.PI * f) * 0.8; c.strokeStyle = '#E0A526'; c.lineWidth = 1.5; c.lineCap = 'round'; const r = p.r * (0.6 + 0.4 * Math.sin(Math.PI * f)); c.beginPath(); c.moveTo(p.x - r, p.y); c.lineTo(p.x + r, p.y); c.moveTo(p.x, p.y - r); c.lineTo(p.x, p.y + r); c.stroke(); }
     c.restore();
   }
@@ -21006,7 +21098,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793513338';
+const BUILD = '1793513724';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
