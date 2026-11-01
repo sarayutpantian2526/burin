@@ -18762,7 +18762,119 @@ store_ls.set('tp-sid', LIVE.sid);
 const CODE_ABC = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const newCode = () => Array.from({ length: 6 }, () => CODE_ABC[Math.floor(Math.random() * CODE_ABC.length)]).join('');
 const okSigned = (u) => !!(CLOUD.cfg && CLOUD.cfg.url) && String(u || '').startsWith(CLOUD.cfg.url.replace(/\/+$/, '') + '/storage/v1/object/sign/') && !/[\s"'<>]/.test(String(u));
-function liveSend(ev, data) { if (!LIVE.ch || !LIVE.ready) return; try { LIVE.ch.send({ type: 'broadcast', event: ev, payload: data }); } catch (e) { /* dropped */ } }
+/* ----- signed room messages. the teacher signs everything sent to the room with a key kept in the teacher's own store;
+   its public half sits in the shares table under room-CODE, which only its owner can write, so a learner who knows the
+   room code can tell the teacher's messages from anyone else's. each learner device signs its join and answers with its
+   own key; the teacher keeps the first key seen for each device (and for each roster identity), so answers cannot be
+   sent in someone else's name. nothing here asks the user for anything ----- */
+const RK_ALG = { name: 'ECDSA', namedCurve: 'P-256' }, RK_SIG = { name: 'ECDSA', hash: 'SHA-256' };
+const RK = { priv: null, code: null, q: Promise.resolve(), vq: Promise.resolve(), tpub: null, tx: null, tload: 0, tmax: 0, mine: null, spub: null, spubT: null };
+const rkOn = () => !!(window.crypto && crypto.subtle);
+const rkB64d = (s) => Uint8Array.from(atob(String(s).replace(/-/g, '+').replace(/_/g, '/') + '='.repeat((4 - String(s).length % 4) % 4)), (c) => c.charCodeAt(0));
+const rkMsg = (ev, t, body) => new TextEncoder().encode(ev + '|' + t + '|' + body);
+const rkStrip = (p) => { if (!p || typeof p !== 'object') return p; const { _t, _s, _k, ...rest } = p; return rest; };
+const rkPubOk = (k) => k && typeof k.x === 'string' && typeof k.y === 'string' && k.x.length < 60 && k.y.length < 60;
+const rkImportPub = (k) => crypto.subtle.importKey('jwk', { kty: 'EC', crv: 'P-256', x: k.x, y: k.y, ext: true }, RK_ALG, false, ['verify']);
+async function rkCheck(key, ev, p) {
+  if (!key || !p || typeof p._s !== 'string' || !isFinite(p._t)) return false;
+  try { return await crypto.subtle.verify(RK_SIG, key, rkB64d(p._s), rkMsg(ev, p._t, JSON.stringify(rkStrip(p)))); } catch (e) { return false; }
+}
+/* teacher: load or make this room's key, and publish its public half. 'taken' when someone else owns the room name */
+async function rkTeacher(code) {
+  if (!rkOn() || CLOUD.state !== 'on') return false;
+  if (RK.code === code && RK.priv) return true;
+  const sb = CLOUD.client, slot = 'settings/roomkey-' + code;
+  const { data: row, error: e0 } = await sb.from('shares').select('owner,data').eq('id', 'room-' + code).maybeSingle();
+  if (e0) return false;
+  if (row && row.owner !== CLOUD.user.id) return 'taken';
+  let k = await Promise.resolve(S.store.get(slot)).catch(() => null), priv = null;
+  if (k && k.d && rkPubOk(k)) { try { priv = await crypto.subtle.importKey('jwk', { kty: 'EC', crv: 'P-256', x: k.x, y: k.y, d: k.d, ext: true }, RK_ALG, false, ['sign']); } catch (e) { priv = null; } }
+  if (!priv) {
+    const kp = await crypto.subtle.generateKey(RK_ALG, true, ['sign', 'verify']), jw = await crypto.subtle.exportKey('jwk', kp.privateKey);
+    k = { x: jw.x, y: jw.y, d: jw.d }; priv = kp.privateKey;
+    await Promise.resolve(S.store.set(slot, k)).catch(() => {});
+  }
+  if (!row || !row.data || row.data.x !== k.x || row.data.y !== k.y) {
+    const { error } = await sb.from('shares').upsert({ id: 'room-' + code, owner: CLOUD.user.id, title: 'room ' + code, data: { kty: 'EC', crv: 'P-256', x: k.x, y: k.y } });
+    if (error) return 'taken';
+  }
+  RK.priv = priv; RK.code = code;
+  RK.spub = (await Promise.resolve(S.store.get('settings/roompubs-' + code)).catch(() => null)) || { sid: {}, stu: {} };
+  RK.spub.sid = RK.spub.sid || {}; RK.spub.stu = RK.spub.stu || {};
+  return true;
+}
+function rkSaveSpub() { clearTimeout(RK.spubT); const code = RK.code, v = RK.spub; RK.spubT = setTimeout(() => { if (code && v) Promise.resolve(S.store.set('settings/roompubs-' + code, v)).catch(() => {}); }, 1200); }
+/* learner: this device's own key, made once */
+async function rkMine() {
+  if (RK.mine || !rkOn()) return RK.mine;
+  try {
+    let k = null; try { k = JSON.parse(store_ls.get('tp-skey') || 'null'); } catch (e) { k = null; }
+    let priv = null;
+    if (k && k.d && rkPubOk(k)) { try { priv = await crypto.subtle.importKey('jwk', { kty: 'EC', crv: 'P-256', x: k.x, y: k.y, d: k.d, ext: true }, RK_ALG, false, ['sign']); } catch (e) { priv = null; } }
+    if (!priv) { const kp = await crypto.subtle.generateKey(RK_ALG, true, ['sign', 'verify']), jw = await crypto.subtle.exportKey('jwk', kp.privateKey); k = { x: jw.x, y: jw.y, d: jw.d }; priv = kp.privateKey; store_ls.set('tp-skey', JSON.stringify(k)); }
+    RK.mine = { priv, pub: { x: k.x, y: k.y } };
+  } catch (e) { RK.mine = null; }
+  return RK.mine;
+}
+/* learner: the teacher's public key for this room (none yet means a teacher on an older version: messages are taken as before) */
+async function rkLoadTeacher(code, force) {
+  if (!rkOn() || (!force && now() - RK.tload < 8000)) return RK.tpub;
+  RK.tload = now();
+  try {
+    const sb = await cloudClient();
+    const { data } = await sb.from('shares').select('data').eq('id', 'room-' + code).maybeSingle();
+    const k = data && data.data;
+    if (rkPubOk(k) && k.x !== RK.tx) { RK.tpub = await rkImportPub(k); RK.tx = k.x; }
+  } catch (e) { /* keep what we have */ }
+  return RK.tpub;
+}
+/* learner: is this message really from the teacher? */
+async function rkFromTeacher(ev, p) {
+  if (!rkOn()) return true;
+  if (!p || typeof p !== 'object') return false;
+  if (typeof p._s !== 'string') { if (!RK.tpub) await rkLoadTeacher(LIVE.code); return !RK.tpub; }
+  if (!RK.tpub) await rkLoadTeacher(LIVE.code, true);
+  let ok = await rkCheck(RK.tpub, ev, p);
+  if (!ok && now() - RK.tload > 8000) { await rkLoadTeacher(LIVE.code, true); ok = await rkCheck(RK.tpub, ev, p); }
+  if (!ok || p._t < RK.tmax - 120000) return false;
+  RK.tmax = Math.max(RK.tmax, p._t); return true;
+}
+/* learner: receive a teacher event only when it checks out, in the order it came */
+function rkOnTeacher(ch, ev, f) {
+  ch.on('broadcast', { event: ev }, (m) => { const p = m.payload; RK.vq = RK.vq.then(() => rkFromTeacher(ev, p)).then((ok) => { if (ok) f({ payload: rkStrip(p) }); }).catch(() => {}); });
+}
+/* teacher: a learner's join carries its device key; keep the first one seen for that device */
+async function rkJoin(p) {
+  if (!p || typeof p.sid !== 'string' || !rkPubOk(p._k) || !RK.spub) return;
+  if (RK.spub.sid[p.sid]) return;
+  try { const key = await rkImportPub(p._k); if (await rkCheck(key, 'join', p)) { RK.spub.sid[p.sid] = { x: p._k.x, y: p._k.y }; rkSaveSpub(); } } catch (e) { /* ignore */ }
+}
+/* teacher: an answer counts for a device only with that device's signature; a roster identity stays with the first device that used it */
+async function rkAnswer(p) {
+  if (!p || typeof p.sid !== 'string') return null;
+  const known = RK.spub && RK.spub.sid[p.sid];
+  if (!known) return typeof p._s === 'string' ? null : { p: rkStrip(p), unbound: true };
+  try { if (!(await rkCheck(await rkImportPub(known), 'ans', p))) return null; } catch (e) { return null; }
+  const d = rkStrip(p);
+  if (typeof d.stu === 'string') {
+    const owner = RK.spub.stu[d.stu];
+    if (!owner) { RK.spub.stu[d.stu] = p.sid; rkSaveSpub(); }
+    else if (owner !== p.sid) return { p: Object.assign({}, d, { stu: null, name: String(d.name || 'ไม่ระบุชื่อ').slice(0, 40) + ' (เครื่องอื่น)' }), other: true };
+  }
+  return { p: d };
+}
+function liveSend(ev, data) {
+  if (!LIVE.ch || !LIVE.ready) return;
+  const ch = LIVE.ch, teacher = LIVE.role === 'teacher';
+  const mine = !teacher && (ev === 'ans' || ev === 'join') ? RK.mine : null, key = teacher ? (RK.code === LIVE.code ? RK.priv : null) : mine && mine.priv;
+  if (!key) { RK.q = RK.q.then(() => { ch.send({ type: 'broadcast', event: ev, payload: data }); }).catch(() => {}); return; } /* same queue, so messages keep their order */
+  RK.q = RK.q.then(async () => {
+    const t = Date.now(), sig = await crypto.subtle.sign(RK_SIG, key, rkMsg(ev, t, JSON.stringify(data)));
+    const payload = Object.assign({}, data, { _t: t, _s: b64url(sig) });
+    if (mine && ev === 'join') payload._k = mine.pub;
+    ch.send({ type: 'broadcast', event: ev, payload });
+  }).catch(() => {});
+}
 function classLink(code) { return location.origin + location.pathname + '#class=' + code; }
 async function signedUrl(asset, secs) {
   const k = asset + ':' + (secs || 0), hit = LIVE.signed.get(k); if (hit && hit.exp > now() + 60000) return hit.u;
@@ -18827,10 +18939,13 @@ async function liveOpen() {
   /* each class (or, with no class chosen, each notebook) has its own room code, kept for next time */
   const sb = CLOUD.client; if (!LIVE.nbId) LIVE.nbId = S.nid; if (!LIVE.code) LIVE.code = liveRoomCode(LIVE.nbId, LIVE.clsId); store_ls.set('tp-class', LIVE.code); store_ls.set('tp-live-nb', LIVE.nbId || '');
   LIVE.role = 'teacher';
+  { let r = await rkTeacher(LIVE.code).catch(() => false);
+    /* someone else holds this room name: move to a fresh code so the learners only ever hear this teacher */
+    if (r === 'taken') { LIVE.code = liveRoomCode(LIVE.nbId, LIVE.clsId, true); store_ls.set('tp-class', LIVE.code); r = await rkTeacher(LIVE.code).catch(() => false); } }
   const ch = sb.channel('class-' + LIVE.code, { config: { broadcast: { self: false }, presence: { key: 'teacher-' + TAB } } });
   ch.on('broadcast', { event: 'pullall' }, () => { clearTimeout(LIVE.pullT); LIVE.pullT = setTimeout(liveSendAll, 400); });
-  ch.on('broadcast', { event: 'join' }, (m) => { liveSendRoster(m.payload);  liveSendPage(); liveSendHw(); { const al = m.payload && liveNames()[m.payload.sid]; if (al && al !== m.payload.name) liveSend('rename', { sid: m.payload.sid, name: al }); } if (LIVE.set) liveSend('quiz', liveQuizPayload()); if (LIVE.revealed) liveSend('reveal', liveRevealPayload()); });
-  ch.on('broadcast', { event: 'ans' }, (m) => liveGotAnswer(m.payload));
+  ch.on('broadcast', { event: 'join' }, (m) => { rkJoin(m.payload); m = { payload: rkStrip(m.payload) }; liveSendRoster(m.payload);  liveSendPage(); liveSendHw(); { const al = m.payload && liveNames()[m.payload.sid]; if (al && al !== m.payload.name) liveSend('rename', { sid: m.payload.sid, name: al }); } if (LIVE.set) liveSend('quiz', liveQuizPayload()); if (LIVE.revealed) liveSend('reveal', liveRevealPayload()); });
+  ch.on('broadcast', { event: 'ans' }, (m) => { const p = m.payload; RK.vq = RK.vq.then(() => rkAnswer(p)).then((r) => { if (r) liveGotAnswer(r.p); }).catch(() => {}); });
   ch.on('presence', { event: 'sync' }, () => { const st = ch.presenceState(); const seen = LIVE.seen || (LIVE.seen = new Set()); let fresh = false; for (const k in st) if (!k.startsWith('teacher-') && !seen.has(k)) { seen.add(k); fresh = true; } if (fresh) liveSendPage(); LIVE.peers = []; for (const k in st) { const m = (st[k] || []).slice(-1)[0] || {}; if (m.role === 'student') { const al = liveNames()[k]; LIVE.peers.push({ sid: k, name: al || m.name || 'ไม่ระบุชื่อ', orig: m.name || '', no: m.no || null, stu: m.stu || null }); } } LIVE.peers.sort((x, y) => (x.no || 999) - (y.no || 999)); liveRender(); });
   ch.subscribe((s) => { if (s === 'SUBSCRIBED') { LIVE.ready = true; ch.track({ role: 'teacher' }); liveSendPage(); liveSendRoster(); liveSendHw(true); liveRender(); } });
   LIVE.ch = ch; liveRender(); $('#bLive').classList.add('on');
@@ -19094,22 +19209,23 @@ async function studentJoin(code) {
   LIVE.nid = nid; openNotebook(nid);
   $('#livePill').hidden = false; liveStudentPill('กำลังเชื่อมต่อ'); lpFold(true);
   let sb; try { sb = await cloudClient(); } catch (e) { liveStudentPill('เชื่อมต่อไม่ได้'); return; }
+  await rkMine(); rkLoadTeacher(code, true);
   const ch = sb.channel('class-' + code, { config: { broadcast: { self: false }, presence: { key: LIVE.sid } } });
-  ch.on('broadcast', { event: 'page' }, (m) => studentGotPage(m.payload));
-  ch.on('broadcast', { event: 'strokes' }, (m) => studentGotStrokes(m.payload));
-  ch.on('broadcast', { event: 'ink' }, (m) => studentInk(m.payload));
-  ch.on('broadcast', { event: 'laser' }, (m) => studentLaser(m.payload));
-  ch.on('broadcast', { event: 'quiz' }, (m) => studentQuiz(m.payload));
-  ch.on('broadcast', { event: 'reveal' }, (m) => studentReveal(m.payload));
-  ch.on('broadcast', { event: 'quizend' }, () => { $('#sqSheet').hidden = true; });
-  ch.on('broadcast', { event: 'roster' }, (m) => studentRoster(m.payload));
-  ch.on('broadcast', { event: 'rename' }, (m) => { const d = m.payload; if (!d || d.sid !== LIVE.sid || typeof d.name !== 'string' || LIVE.stu) return; LIVE.name = d.name.slice(0, 60); store_ls.set('tp-sname', LIVE.name); try { ch.track({ role: 'student', name: LIVE.name }); } catch (e) { /* offline */ } toast('ผู้สอนตั้งชื่อของคุณในห้องนี้เป็น ' + LIVE.name, 3000); });
-  ch.on('broadcast', { event: 'hw' }, (m) => { const L = (m.payload && Array.isArray(m.payload.list)) ? m.payload.list.filter((a) => a && typeof a.id === 'string' && /^[a-z0-9]{6,20}$/.test(a.id)).slice(0, 12) : []; LIVE.hwList = L; const b = $('#lpHw'); b.hidden = !L.length; b.textContent = 'การบ้าน ' + L.length; });
-  ch.on('broadcast', { event: 'end' }, () => { liveStudentPill('ผู้สอนปิดห้องแล้ว สมุดยังอยู่ในเครื่องนี้'); });
+  rkOnTeacher(ch, 'page', (m) => studentGotPage(m.payload));
+  rkOnTeacher(ch, 'strokes', (m) => studentGotStrokes(m.payload));
+  rkOnTeacher(ch, 'ink', (m) => studentInk(m.payload));
+  rkOnTeacher(ch, 'laser', (m) => studentLaser(m.payload));
+  rkOnTeacher(ch, 'quiz', (m) => studentQuiz(m.payload));
+  rkOnTeacher(ch, 'reveal', (m) => studentReveal(m.payload));
+  rkOnTeacher(ch, 'quizend', () => { $('#sqSheet').hidden = true; });
+  rkOnTeacher(ch, 'roster', (m) => studentRoster(m.payload));
+  rkOnTeacher(ch, 'rename', (m) => { const d = m.payload; if (!d || d.sid !== LIVE.sid || typeof d.name !== 'string' || LIVE.stu) return; LIVE.name = d.name.slice(0, 60); store_ls.set('tp-sname', LIVE.name); try { ch.track({ role: 'student', name: LIVE.name }); } catch (e) { /* offline */ } toast('ผู้สอนตั้งชื่อของคุณในห้องนี้เป็น ' + LIVE.name, 3000); });
+  rkOnTeacher(ch, 'hw', (m) => { const L = (m.payload && Array.isArray(m.payload.list)) ? m.payload.list.filter((a) => a && typeof a.id === 'string' && /^[a-z0-9]{6,20}$/.test(a.id)).slice(0, 12) : []; LIVE.hwList = L; const b = $('#lpHw'); b.hidden = !L.length; b.textContent = 'การบ้าน ' + L.length; });
+  rkOnTeacher(ch, 'end', () => { liveStudentPill('ผู้สอนปิดห้องแล้ว สมุดยังอยู่ในเครื่องนี้'); });
   /* is the teacher in the room? if not yet, wait and join by itself the moment the teacher opens it */
   LIVE.gotPage = false;
   const teacherHere = () => { try { const st = ch.presenceState(); return Object.keys(st).some((k) => k.startsWith('teacher-') || (st[k] || []).some((m) => m.role === 'teacher')); } catch (e) { return false; } };
-  ch.on('presence', { event: 'sync' }, () => { if (!LIVE.ready) return; if (teacherHere()) { if (!LIVE.gotPage) { liveSend('join', { sid: LIVE.sid, name: LIVE.name }); liveStudentPill('เชื่อมต่อแล้ว กำลังรับหน้าจากผู้สอน'); } } else if (!LIVE.gotPage) noTeacher(); });
+  ch.on('presence', { event: 'sync' }, () => { if (!LIVE.ready) return; if (teacherHere()) { if (!RK.tpub) rkLoadTeacher(code); if (!LIVE.gotPage) { liveSend('join', { sid: LIVE.sid, name: LIVE.name }); liveStudentPill('เชื่อมต่อแล้ว กำลังรับหน้าจากผู้สอน'); } } else if (!LIVE.gotPage) noTeacher(); });
   const noTeacher = () => { liveStudentPill('รอผู้สอนเปิดห้อง'); if (!LIVE.warned) { LIVE.warned = true; lpFold(false); toast('ยังไม่พบผู้สอนในห้อง ' + code + ' ตรวจว่ารหัสถูก และผู้สอนกดเปิดห้องเรียนสดอยู่ ระบบจะเชื่อมให้เองเมื่อผู้สอนเปิด', 6000); } };
   LIVE.warned = false;
   clearInterval(LIVE.askT); let tries = 0;
@@ -21367,7 +21483,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793532273';
+const BUILD = '1793547223';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
