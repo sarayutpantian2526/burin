@@ -17699,7 +17699,21 @@ function exStartFromSetup() {
     if (want && sub.length < EX.n && sub.length >= Math.min(EX.n, 3)) { const have = new Set(picked.map((q) => q.id)); picked = picked.concat(exPick(pool.filter((q) => !have.has(q.id)), EX.n - picked.length, hist)); }
   }
   const lvn = { easy: ' (ง่าย)', mid: ' (กลาง)', hard: ' (ยาก)', mix: ' (คละระดับ)' }[lv] || '';
-  exStart(picked, exTrackName(EX.track) + (EX.chs.size === 1 ? ' : ' + exChName(EX.track, [...EX.chs][0]) : '') + lvn);
+  const title = exTrackName(EX.track) + (EX.chs.size === 1 ? ' : ' + exChName(EX.track, [...EX.chs][0]) : '') + lvn;
+  if (EX.onlyPick) return { picked, title };
+  exStart(picked, title);
+}
+/* the teacher's choice of use: a worksheet on the page, the live class, homework, or a try-out */
+async function exUseFromSetup() {
+  if (EX.use === 'try') { EX.mode = 'practice'; exStartFromSetup(); return; }
+  EX.onlyPick = true; let r; try { r = exStartFromSetup(); } finally { EX.onlyPick = false; }
+  if (!r || !r.picked.length) { toast('ยังไม่มีโจทย์ในบทที่เลือก', 2400); return; }
+  const set = await exSaveSet(r.picked, r.title); if (typeof setUse === 'function') setUse(set);
+  if (EX.use === 'live') { $('#examSheet').hidden = true; liveSendSet(set); return; }
+  if (EX.use === 'hw') { openAssign(set); return; }
+  $('#examSheet').hidden = true;
+  const res = await placeQuestions(set.qs, null, { setId: set.id, header: '## ' + set.title });
+  toast(placedMsg(res, set.qs.length) + ' เฉลยดูได้จากแผงชุดโจทย์', 3200);
 }
 function exStartWeak() {
   const { by, hist } = exStats(EX.who);
@@ -17772,10 +17786,12 @@ function exRenderNav() {
   const g = exGroupOf(EX.tab), gb = $('#exGroups'), stu = isStudentSide();
   EX.lastTab = EX.lastTab || {}; EX.lastTab[g[0]] = EX.tab;
   gb.innerHTML = ''; gb.hidden = !!EX.run || stu;
-  for (const [k, name, tabs] of EX_GROUPS) { const b = document.createElement('button'); b.type = 'button'; b.textContent = name; b.setAttribute('aria-pressed', k === g[0] ? 'true' : 'false'); b.onclick = () => { EX.tab = EX.lastTab[k] || tabs[0]; exRender(); }; gb.appendChild(b); }
+  for (const [k, name, tabs] of EX_GROUPS) { const b = document.createElement('button'); b.type = 'button'; b.textContent = k === 'train' && !stu ? 'จัดชุดฝึกและสอบ' : name; b.setAttribute('aria-pressed', k === g[0] ? 'true' : 'false'); b.onclick = () => { EX.tab = EX.lastTab[k] || tabs[0]; exRender(); }; gb.appendChild(b); }
   $('#exTabs').hidden = !!EX.run;
   $('#exTabs').querySelectorAll('button').forEach((b) => { b.hidden = !g[2].includes(b.dataset.t); b.setAttribute('aria-pressed', b.dataset.t === EX.tab ? 'true' : 'false'); });
-  const who = document.querySelector('#examSheet .exwho'); if (who) who.hidden = g[0] !== 'train';
+  /* the teacher picks questions for a class: the tab says so, and "who is practising" only matters for a try-out or the scores kept on this device */
+  { const tp = document.querySelector('#exTabs [data-t="practice"]'); if (tp) { tp.dataset.l0 = tp.dataset.l0 || tp.textContent; tp.textContent = stu ? 'ทำแบบฝึก' : 'เลือกโจทย์จากคลัง'; } }
+  const who = document.querySelector('#examSheet .exwho'); if (who) who.hidden = g[0] !== 'train' || (!stu && EX.tab === 'practice' && EX.use !== 'try');
   if (g[0] !== 'train') $('#exAdd').hidden = true;
 }
 function exRender() {
@@ -17844,17 +17860,26 @@ function exRenderSetup(body) {
   { const pool = all.filter((q) => q.t === EX.track && (!EX.chs.size || EX.chs.has(q.ch))), cnt = (d) => pool.filter((q) => (q.d || 2) === d).length;
     exChips(row('ความยาก'), [['all', 'ทุกระดับ'], ['easy', 'ง่าย (' + cnt(1) + ')'], ['mid', 'กลาง (' + cnt(2) + ')'], ['hard', 'ยาก (' + cnt(3) + ')'], ['mix', 'คละ ง่ายไปยาก']], (v) => v === (EX.dlev || 'all'), (v) => { EX.dlev = v; try { store_ls.set('tp-exdlev', v); } catch (e) { /* fine */ } exRender(); }); }
   exChips(row('จำนวนข้อ'), [[5, '5 ข้อ'], [10, '10 ข้อ'], [20, '20 ข้อ'], [40, '40 ข้อ']], (v) => v === EX.n, (v) => { EX.n = v; exRender(); });
-  const mr = row('รูปแบบ', 'exlist');
-  exChips(mr, [['practice', 'ฝึก เฉลยทันทีทีละข้อ'], ['work', 'แสดงวิธีทำ เขียนแล้วให้ AI ตรวจลายมือตาม 5 ขั้น'], ['exam', 'สอบ จับเวลา 2 นาทีต่อข้อ เฉลยตอนจบ']], (v) => v === EX.mode, (v) => { EX.mode = v; exRender(); });
-  if (EX.mode === 'work') mr.appendChild(exEl('div', 'note small', 'แต่ละข้อมีที่ให้เขียนวิธีทำด้วยปากกาหรือนิ้ว กดตรวจจากลายมือ แล้ว AI จะอ่านวิธีทำและบอกว่าแต่ละขั้นทำได้ดีแค่ไหน: ' + SOL_STEPS.map((x, i) => (i + 1) + ' ' + x).join(' ') + (AI.anyReady() ? '' : ' ต้องเชื่อมต่อ AI ก่อน')));
-  const gor = exEl('div', 'row2 exgo');
-  const go = exEl('button', 'btn solid', 'เริ่มทำ'); go.onclick = exStartFromSetup; gor.appendChild(go);
-  const wk = exEl('button', 'btn', 'ฝึกจุดอ่อนของ ' + esc(EX.who)); wk.onclick = exStartWeak; gor.appendChild(wk);
-  body.appendChild(gor);
+  if (!isStudentSide()) {
+    /* the teacher's side: the chosen questions are for a class, so the choice is how to use them */
+    const ur = row('นำไปใช้', 'exlist'); EX.use = EX.use || 'page';
+    exChips(ur, [['page', 'วางลงหน้าเป็นใบงาน มีที่ว่างให้เขียนวิธีทำ'], ['live', 'ส่งให้ห้องเรียนสด ผู้เรียนตอบบนเครื่องของตัวเอง'], ['hw', 'มอบเป็นการบ้าน ทำผ่านลิงก์หรือ QR ตรวจให้อัตโนมัติ'], ['try', 'ลองทำเองก่อน เห็นแบบที่ผู้เรียนเห็น']], (v) => v === EX.use, (v) => { EX.use = v; exRender(); });
+    const gor = exEl('div', 'row2 exgo');
+    const go = exEl('button', 'btn solid', { page: 'วางใบงาน', live: 'ส่งให้ห้องเรียน', hw: 'มอบการบ้าน', try: 'เริ่มลองทำ' }[EX.use]); go.onclick = exUseFromSetup; gor.appendChild(go);
+    body.appendChild(gor);
+  } else {
+    const mr = row('รูปแบบ', 'exlist');
+    exChips(mr, [['practice', 'ฝึก เฉลยทันทีทีละข้อ'], ['work', 'แสดงวิธีทำ เขียนแล้วให้ AI ตรวจลายมือตาม 5 ขั้น'], ['exam', 'สอบ จับเวลา 2 นาทีต่อข้อ เฉลยตอนจบ']], (v) => v === EX.mode, (v) => { EX.mode = v; exRender(); });
+    if (EX.mode === 'work') mr.appendChild(exEl('div', 'note small', 'แต่ละข้อมีที่ให้เขียนวิธีทำด้วยปากกาหรือนิ้ว กดตรวจจากลายมือ แล้ว AI จะอ่านวิธีทำและบอกว่าแต่ละขั้นทำได้ดีแค่ไหน: ' + SOL_STEPS.map((x, i) => (i + 1) + ' ' + x).join(' ') + (AI.anyReady() ? '' : ' ต้องเชื่อมต่อ AI ก่อน')));
+    const gor = exEl('div', 'row2 exgo');
+    const go = exEl('button', 'btn solid', 'เริ่มทำ'); go.onclick = exStartFromSetup; gor.appendChild(go);
+    const wk = exEl('button', 'btn', 'ฝึกจุดอ่อนของ ' + esc(EX.who)); wk.onclick = exStartWeak; gor.appendChild(wk);
+    body.appendChild(gor);
+  }
   if (!isStudentSide() || AI.anyReady()) { const more = document.createElement('details'); more.className = 'exmore'; more.innerHTML = '<summary><span>สร้างโจทย์เพิ่มด้วย AI</span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6 8l4 4 4-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></summary>'; more.ontoggle = () => { if (more.open && !more.querySelector('.aibank')) aiBankPanel(more, st.filter((t) => CURRIC[t])); }; body.appendChild(more); }
   /* on a phone the short option rows scroll sideways: bring the chosen chip into view and fade the edge while more is hidden */
   exScrollFix(body);
-  body.appendChild(exEl('div', 'note', 'ระบบเลือกข้อที่เคยทำผิดและข้อที่ยังไม่เคยทำก่อน คะแนนทุกชุดเก็บแยกตามผู้ฝึกและซิงก์ข้ามเครื่อง บทที่มีกรอบสีส้มคือบทที่ยังเป็นจุดอ่อน'));
+  body.appendChild(exEl('div', 'note', !isStudentSide() ? 'ระบบสุ่มข้อตามบท ระดับ และจำนวนที่เลือก จากคลังในแอปรวมกับโจทย์ที่สร้างเพิ่มเอง ชุดที่ใช้แล้วเก็บไว้ในแผงชุดโจทย์ เรียกใช้ซ้ำ ดูเฉลย และวิเคราะห์ผลได้' : 'ระบบเลือกข้อที่เคยทำผิดและข้อที่ยังไม่เคยทำก่อน คะแนนทุกชุดเก็บแยกตามผู้ฝึกและซิงก์ข้ามเครื่อง บทที่มีกรอบสีส้มคือบทที่ยังเป็นจุดอ่อน'));
 }
 /* every option sheet uses one layout: a "label then choices" pair becomes a row (label on the left, on top on a phone);
    short choices scroll sideways on a phone, long lists (chapters, pages, long sentences) become full-width rows */
@@ -18503,9 +18528,9 @@ async function exAIFromPage() {
     if (!$('#examSheet').hidden && !EX.run && EX.tab === 'build') { exRender(); if (box()) box().innerHTML = '<div class="note ok">AI เพิ่มโจทย์ ' + good.length + ' ข้อ (ตรวจตัวเลขก่อนใช้)</div>'; }
   } catch (e) { if (box()) box().innerHTML = '<div class="note err">' + esc(aiErr(e)) + '</div>'; }
 }
-async function exSaveSet(qs) {
+async function exSaveSet(qs, title0) {
   const id = 's' + now().toString(36) + uid().slice(0, 3);
-  const title = 'ชุด ' + [...new Set(qs.map((q) => exChName(q.t, q.ch)))].slice(0, 2).join(' + ') + ' ' + new Date().toLocaleDateString(LOC, { day: 'numeric', month: 'short' });
+  const title = title0 ? String(title0).slice(0, 60) : 'ชุด ' + [...new Set(qs.map((q) => exChName(q.t, q.ch)))].slice(0, 2).join(' + ') + ' ' + new Date().toLocaleDateString(LOC, { day: 'numeric', month: 'short' });
   const set = { id, title, at: now(), nb: S.nid || null, qs: qs.map((q) => ({ id: q.id, t: q.t, ch: q.ch, d: q.d, k: q.k, q: q.q, c: q.c, a: q.a || 0, e: q.e || '', fig: q.fig || undefined, src: q.src, o: q.o, s: q.s, b: q.b, w: q.w })) };
   EX.sets = EX.sets || []; EX.sets.push(set);
   await S.store.set('exs/' + id, Object.assign({}, set, { id: undefined })).catch(() => {});
@@ -18621,6 +18646,7 @@ function applyRole() {
   const seg = $('#roleSeg'); if (seg) seg.querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', b.dataset.r === (isStudentSide() ? 'student' : 'teacher') ? 'true' : 'false'));
   if (EX && isStudentSide() && !['practice', 'stats'].includes(EX.tab)) EX.tab = 'practice';
   const st = isStudentSide(); $('#examSheet h2').textContent = st ? 'ทำแบบฝึก ตรวจให้ทันที' : 'โจทย์ ห้องเรียน และคะแนน'; $('#bExam .lbl').textContent = st ? 'ทำแบบฝึก' : 'โจทย์และคะแนน'; $('#bExam').title = st ? 'ทำแบบฝึก ตรวจให้ทันที' : 'โจทย์ ห้องเรียน และคะแนน';
+  { const sq = $('#sQuiz'), sl = sq && sq.querySelector('span'); if (sl) { sl.dataset.l0 = sl.dataset.l0 || sl.textContent; sl.textContent = st ? 'ทำโจทย์ทบทวน' : sl.dataset.l0; } }
   { const tp = document.querySelector('#exTabs [data-t="practice"]'), ts = document.querySelector('#exTabs [data-t="stats"]'); if (tp) { tp.dataset.l0 = tp.dataset.l0 || tp.textContent; tp.textContent = st ? 'ทำแบบฝึก' : tp.dataset.l0; } if (ts) { ts.dataset.l0 = ts.dataset.l0 || ts.textContent; ts.textContent = st ? 'ผลและสิ่งที่ต้องพัฒนา' : ts.dataset.l0; } }
 }
 function setRole(r) {
@@ -19805,7 +19831,9 @@ function qmRender() {
   exChips(body, [[3, '3 ข้อ'], [5, '5 ข้อ'], [10, '10 ข้อ'], [20, '20 ข้อ']], (v) => v === QM.n, (v) => { QM.n = v; qmSave(); qmRender(); });
   exChips(body, [['easy', 'ง่ายไปยาก'], ['rand', 'สุ่มลำดับ']], (v) => v === QM.order, (v) => { QM.order = v; qmSave(); qmRender(); });
   body.appendChild(exEl('span', 'label', 'เมื่อได้โจทย์แล้ว'));
-  const outs = [['tray', 'เก็บเป็นชุด แล้วหยิบวางทีละข้อ'], ['page', 'วางทุกข้อเป็นกล่องแยก'], ['run', 'เปิดเป็นแบบฝึกทำทันที']]; if (LIVE.role === 'teacher' && LIVE.ready) outs.push(['live', 'ส่งให้ผู้เรียนในห้องสด']);
+  /* a student makes questions from their notes to practise right away; the tray of sets is a teacher's tool */
+  const outs = isStudentSide() ? [['run', 'ทำเป็นแบบฝึกทันที ตรวจให้ทีละข้อ'], ['page', 'วางทุกข้อลงหน้าไว้ทำทีหลัง']] : [['tray', 'เก็บเป็นชุด แล้วหยิบวางทีละข้อ'], ['page', 'วางทุกข้อเป็นกล่องแยก'], ['run', 'เปิดเป็นแบบฝึกทำทันที']];
+  if (!outs.some((o) => o[0] === QM.out)) QM.out = outs[0][0]; if (LIVE.role === 'teacher' && LIVE.ready) outs.push(['live', 'ส่งให้ผู้เรียนในห้องสด']);
   if (!outs.some((o) => o[0] === QM.out)) QM.out = 'tray';
   exChips(body, outs, (v) => v === QM.out, (v) => { QM.out = v; qmSave(); qmRender(); });
   if (QM.out === 'page') { body.appendChild(exEl('span', 'label', 'พื้นที่ใต้แต่ละข้อสำหรับแสดงวิธีทำ (ถ้าเกินหน้า ระบบเพิ่มหน้าให้เอง)')); exChips(body, SPACE_OPTS, (v) => v === TRAY.space, (v) => { TRAY.space = v; store_ls.set('tp-tray-space', String(v)); qmRender(); }); }
@@ -21308,7 +21336,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793520643';
+const BUILD = '1793520952';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
