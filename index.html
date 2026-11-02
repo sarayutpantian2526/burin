@@ -118,6 +118,20 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .avbtn { flex: 0 0 auto; margin-left: auto; width: 32px; height: 32px; padding: 0; border-radius: 50%; border: 2px solid var(--surface); box-shadow: 0 0 0 1px var(--line); background: var(--surface-2); cursor: pointer; overflow: hidden; }
 .avbtn i, .avi { display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; border-radius: 50%; font-style: normal; font-weight: 700; font-size: 14px; color: #FFFFFF; background: var(--av, #9AA1AD) center / cover no-repeat; }
 .avbtn.out i { background: #B8BEC9; }
+/* which side this device is on: a small quiet label next to the account, tap to change */
+.sidepill { flex: 0 0 auto; margin-left: auto; height: 26px; padding: 0 10px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--muted); font: inherit; font-size: 12.5px; font-weight: 600; line-height: 24px; white-space: nowrap; cursor: pointer; }
+.sidepill.tch { color: var(--accent, #2F4BB8); border-color: color-mix(in srgb, var(--accent, #2F4BB8) 35%, transparent); }
+.sidepill.stu { color: #2E7D4F; border-color: rgba(46,125,79,0.35); }
+.sidepill + .avbtn { margin-left: 8px; }
+/* a small mark on the account picture when AI is connected */
+.avbtn { position: relative; }
+.avbtn.ai::after { content: ''; position: absolute; right: -2px; bottom: -2px; width: 10px; height: 10px; border-radius: 50%; background: #2E7D4F; border: 2px solid var(--surface); }
+.acpop .ailine { display: flex; align-items: center; gap: 8px; padding: 10px 0; margin: 2px 0 10px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); font-size: 13px; }
+.acpop .ailine .dotai { flex: 0 0 9px; width: 9px; height: 9px; border-radius: 50%; background: var(--line); }
+.acpop .ailine.on .dotai { background: #2E7D4F; }
+.acpop .ailine span { flex: 1 1 auto; min-width: 0; }
+.acpop .ailine small { display: block; color: var(--muted); }
+.acpop .ailine .btn { padding: 4px 10px; font-size: 12.5px; min-height: 30px; }
 .acpop { position: fixed; z-index: 60; top: 46px; right: 12px; width: min(300px, calc(100vw - 24px)); padding: 14px; border-radius: 16px; background: var(--surface); border: 1px solid var(--line); box-shadow: 0 12px 32px rgba(20,26,34,0.2); font-size: 13.5px; }
 .acpop .ah { display: flex; gap: 10px; align-items: center; margin-bottom: 10px; }
 .acpop .ah .avi { flex: 0 0 42px; width: 42px; height: 42px; font-size: 18px; }
@@ -1667,6 +1681,7 @@ body.role-student .scnpill .sbtns button[data-s="back"], body.role-student .scnp
   <div class="tabrow" id="tabRow">
     <button class="tabbtn" id="bAllNb" type="button" aria-label="สมุดทั้งหมด" title="สมุดทั้งหมด แตะเพื่อเลือกและจัดลำดับ"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="3" y="3" width="5.5" height="5.5" rx="1.4" fill="none" stroke="currentColor" stroke-width="1.6"/><rect x="11.5" y="3" width="5.5" height="5.5" rx="1.4" fill="none" stroke="currentColor" stroke-width="1.6"/><rect x="3" y="11.5" width="5.5" height="5.5" rx="1.4" fill="none" stroke="currentColor" stroke-width="1.6"/><rect x="11.5" y="11.5" width="5.5" height="5.5" rx="1.4" fill="none" stroke="currentColor" stroke-width="1.6"/></svg><span class="lbl">สมุดทั้งหมด</span></button>
     <div class="tabs" id="tabs" role="group" aria-label="สมุดที่เปิดค้างไว้ แตะเพื่อสลับ ลากเพื่อย้าย แตะค้างเพื่อดูคู่กัน"></div>
+    <button class="sidepill" id="bSide" type="button" aria-label="ฝั่งที่ใช้อยู่"></button>
     <button class="avbtn" id="bAcct" type="button" hidden aria-label="บัญชีบนเครื่องนี้" aria-haspopup="dialog"><i></i></button>
   </div>
   <div class="acpop" id="acctPop" hidden role="dialog" aria-label="บัญชีบนเครื่องนี้"></div>
@@ -8384,6 +8399,7 @@ function renderLevels() {
 }
 const AI_INFO = 'อ่านหน้าที่กำลังสอน แล้วสร้างตัวอย่าง โจทย์ฝึก และข้อสอบที่ใช้สถานการณ์และตัวเลขเดียวกัน ทุกคำตอบคำนวณซ้ำด้วยเครื่องคำนวณก่อนแสดง ครั้งแรกที่ใช้ ระบบจะขออนุญาตใช้ Claude ในบัญชีของผู้ใช้';
 function renderAIAvail(state) {
+  try { const ba = $('#bAcct'); if (ba) ba.classList.toggle('ai', !!aiStatus().on); } catch (e) { /* early */ }
   const el = $('#aiAvail');
   const st = state || (AI.anyReady() ? 'ok' : 'none');
   if (st === 'checking') { el.className = 'note'; el.textContent = 'กำลังเชื่อมต่อผู้ช่วย AI'; $('#bGenPage').disabled = true; }
@@ -19031,6 +19047,7 @@ function isStudentSide() { return !!S.student || S.role === 'student'; }
 function sideMatch(nb) { return isStudentSide() ? nb.side === 'student' : nb.side !== 'student'; }
 function applyRole() {
   document.body.classList.toggle('role-student', isStudentSide());
+  try { renderSide(); } catch (e) { /* not ready */ }
   document.body.classList.toggle('guest', !!S.student);
   const seg = $('#roleSeg'); if (seg) seg.querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', b.dataset.r === (isStudentSide() ? 'student' : 'teacher') ? 'true' : 'false'));
   if (EX && isStudentSide() && !['practice', 'stats'].includes(EX.tab)) EX.tab = 'practice';
@@ -22655,7 +22672,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793600822';
+const BUILD = '1793601966';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
@@ -22756,7 +22773,16 @@ function avFill(el, on, em) {
   el.style.backgroundImage = ph ? 'url("' + ph.replace(/["\\]/g, '') + '")' : ''; el.textContent = ph ? '' : on ? em.slice(0, 1).toUpperCase() : '';
   if (!on) el.innerHTML = '<svg viewBox="0 0 20 20" width="60%" height="60%" aria-hidden="true"><circle cx="10" cy="7" r="3.4" fill="currentColor"/><path d="M3.5 17c.8-3.4 3.4-5 6.5-5s5.7 1.6 6.5 5" fill="currentColor"/></svg>';
 }
+/* the side label: teacher or student; a learner who came by class link stays a learner */
+function renderSide() {
+  const b = $('#bSide'); if (!b) return; const st = isStudentSide();
+  b.textContent = S.student ? 'ผู้เรียน' : st ? 'ฝั่งนักเรียน' : 'ฝั่งครู';
+  b.className = 'sidepill ' + (st ? 'stu' : 'tch');
+  b.title = S.student ? 'เข้าห้องเรียนในฐานะผู้เรียน' : 'เครื่องนี้ใช้' + (st ? 'ฝั่งนักเรียน' : 'ฝั่งครู') + ' แตะเพื่อสลับ';
+}
 function renderAcct() {
+  renderSide();
+  { const ba = $('#bAcct'); if (ba) { const st = aiStatus(); ba.classList.toggle('ai', !!st.on); } }
   const inClaude = !!(window.claude && window.claude.use), on = !!(CLOUD.state === 'on' && CLOUD.user), can = CLOUD.ready() || on, em = on ? CLOUD.user.email || 'บัญชีคลาวด์' : '';
   const b = $('#bAcct');
   if (b) { b.hidden = inClaude || !can; b.classList.toggle('out', !on); avFill(b.querySelector('i'), on, em); b.title = on ? em + ' บนเครื่องนี้ (' + devName() + ') แตะเพื่อดูรายละเอียด' : 'ยังไม่เข้าระบบ แตะเพื่อเข้าระบบ'; b.setAttribute('aria-label', on ? 'บัญชี ' + em : 'ยังไม่เข้าระบบ'); }
@@ -22777,7 +22803,31 @@ function acctPop() {
   avFill(p.querySelector('.avi'), on, em); p.querySelector('b').textContent = em; p.querySelector('small').textContent = 'เครื่องนี้: ' + devName();
   const row = p.querySelector('.row2'), add = (t, f, solid) => { const x = document.createElement('button'); x.type = 'button'; x.className = 'btn' + (solid ? ' solid' : ''); x.textContent = t; x.onclick = () => { p.hidden = true; f(); }; row.appendChild(x); };
   add('บัญชีและสลับบัญชี', openAcct, true); add('ออกจากระบบ', () => acctSwitch(null));
+  /* AI for this account: connected or not, from where, and a way to connect or to stop */
+  { const st = aiStatus(), line = document.createElement('div'); line.className = 'ailine' + (st.on ? ' on' : '');
+    line.innerHTML = '<i class="dotai"></i><span><b></b><small></small></span>';
+    line.querySelector('b').textContent = st.on ? 'เชื่อมต่อ AI แล้ว' : 'ยังไม่ได้เชื่อมต่อ AI';
+    line.querySelector('small').textContent = st.on ? st.from : 'เชื่อมต่อเพื่อใช้แปลงลายมือ สร้างโจทย์ และสมุดตอบได้';
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'btn';
+    if (!st.on) { b.textContent = 'เชื่อมต่อ'; b.onclick = () => { p.hidden = true; openAISetup(); }; }
+    else if (st.key) { b.textContent = 'ยกเลิก'; b.onclick = () => popMenu(b, 'ยกเลิกการเชื่อมต่อ AI ของบัญชีนี้ทุกเครื่อง', [['ยืนยันยกเลิก', () => { aiDisconnect(); p.hidden = true; }], ['ไม่ยกเลิก', () => {}]]); }
+    else { b.textContent = 'ตั้งค่า'; b.onclick = () => { p.hidden = true; openAISetup(); }; }
+    line.appendChild(b); p.insertBefore(line, row); }
   p.hidden = false;
+}
+/* what the account uses for AI */
+function aiStatus() {
+  const C = AI.cfg || {}, key = AI.keyReady && AI.keyReady(), local = AI.localReady && AI.localReady();
+  if (key) { const V = KEY_VENDORS[(C.key || {}).vendor] || KEY_VENDORS.other; return { on: true, key: true, from: String((V && V.name) || 'คีย์ AI').replace(/\s*\(.*\)\s*$/, '') + ' ใช้ได้ทุกเครื่องของบัญชีนี้' }; }
+  if (local) return { on: true, from: 'AI ในเครื่องนี้' };
+  if (AI.claude) return { on: true, from: 'AI ของ Claude' };
+  return { on: false };
+}
+/* stop using the account's AI key: removed here and, through the account, on its other devices */
+function aiDisconnect() {
+  AI.cfg.key = { vendor: 'gemini', url: '', model: '', key: '' }; AI.save();
+  try { renderAISettings(); } catch (e) { /* closed */ } renderAIAvail(); renderAcct();
+  toast('ยกเลิกการเชื่อมต่อ AI แล้ว เชื่อมต่อใหม่ได้ทุกเมื่อจากรูปบัญชี', 3000);
 }
 document.addEventListener('pointerdown', (e) => { const p = $('#acctPop'); if (p && !p.hidden && !p.contains(e.target) && e.target.closest('#bAcct') == null) p.hidden = true; }, true);
 async function acctSwitch(email) {
@@ -22831,7 +22881,8 @@ function openAcct() {
   if (on) box.appendChild(exEl('div', 'note small', 'ก่อนสลับ ระบบบันทึกงานขึ้นคลาวด์ให้ก่อน งานของบัญชีเดิมไม่ปนกับบัญชีใหม่ และคีย์ AI ของบัญชีเดิมไม่ติดไปกับบัญชีใหม่'));
   $('#acctSheet').hidden = false;
 }
-$('#bAcct').onclick = acctPop; $('#bAnimAll').onclick = (e) => { e.stopPropagation(); animSet(!animAny()); }; $('#bAcctX').onclick = () => { $('#acctSheet').hidden = true; };
+$('#bAcct').onclick = acctPop;
+$('#bSide').onclick = (e) => { if (S.student) { toast('เข้าห้องเรียนในฐานะผู้เรียน', 1800); return; } const st = isStudentSide(); popMenu(e.currentTarget, 'เครื่องนี้ใช้' + (st ? 'ฝั่งนักเรียน' : 'ฝั่งครู'), [[st ? 'สลับไปฝั่งครู' : 'สลับไปฝั่งนักเรียน', () => setRole(st ? 'teacher' : 'student')], ['ไม่เปลี่ยน', () => {}]]); }; $('#bAnimAll').onclick = (e) => { e.stopPropagation(); animSet(!animAny()); }; $('#bAcctX').onclick = () => { $('#acctSheet').hidden = true; };
 function renderCloud() {
   const box = $('#cloudBox');
   const inClaude = !!(window.claude && window.claude.use);
