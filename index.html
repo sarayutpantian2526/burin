@@ -4771,7 +4771,7 @@ function onDown(e) {
       if (S.sel && S.sel.box && nearHandle(S.sel.box, x, y) >= 0) { startScale(pt, nearHandle(S.sel.box, x, y)); return; }
       if (S.sel && S.sel.box && inBox(S.sel.box, x, y)) { pt.mode = 'move'; pt.last = [x, y]; pt.dx = 0; pt.dy = 0; return; }
       pt.mode = 'pan';
-      const hit0 = itemAt(x, y), hit = hit0 && !hit0.lock && !isExItem(hit0) && !(isStudentSide() && hit0.by === 'teacher') ? hit0 : null; /* question boxes are written on and scrolled over: they move only by their handle */
+      const hit0 = itemAt(x, y), hit = hit0 && !hit0.lock && !(isStudentSide() && hit0.by === 'teacher') ? hit0 : null;
       const grp = hit ? null : (() => { const r0 = strokeAt(x, y); return r0 && r0.length && (findStroke(r0[0]) || {}).g ? r0 : null; })();
       if (grp) pt.tapStrokes = grp;
       if (hit || grp) {
@@ -21288,7 +21288,7 @@ async function placeQuestions(qs, near, opt) {
   if (opt.setId && typeof setUse === 'function') { const st0 = setById(opt.setId); if (st0 && (!st0.used || now() - st0.used > 60000)) setUse(st0); }
   const fs = opt.fs || 20, w = opt.w || (W - 100), space = opt.space != null ? opt.space : TRAY.space, bottom = H - 30, top = 40, x0 = Math.round((W - w) / 2);
   const units = [];
-  if (opt.header) units.push({ parts: [{ type: 'text', md: opt.header, h: await measureMd(opt.header, w, fs), w, fs }], gap: 10 });
+  if (opt.header) units.push({ head: true, parts: [{ type: 'text', md: opt.header, h: await measureMd(opt.header, w, fs), w, fs }], gap: 10 });
   for (let i = 0; i < qs.length; i++) {
     const q = qs[i], parts = [], num = opt.numFrom != null ? opt.numFrom + i : i + 1;
     if (q.img && okAsset(q.img.asset) && !opt.typed) { const iw = Math.round(clamp((q.img.fr || 0.9) * W * 1.1, 420, W - 100)); parts.push({ type: 'img', asset: q.img.asset, ar: q.img.ar, w: iw, h: iw * q.img.ar, x: Math.round((W - iw) / 2), qref: opt.setId ? { set: opt.setId, q: q.id } : null }); units.push({ parts, gap: space + 16 }); continue; }
@@ -21305,6 +21305,7 @@ async function placeQuestions(qs, near, opt) {
   for (const u of units) { const over = unitH(u) - (bottom - top); if (over > 0) for (const p of u.parts) if (p.type === 'svg' || p.type === 'img') { const k = Math.max(0.35, (p.h - over) / p.h); p.w = Math.round(p.w * k); p.h = Math.round(p.h * k); if (p.x != null) p.x = Math.round((W - p.w) / 2); break; } }
   let y = clamp(Math.round(near ? near[1] : (TRAY.lastBottom[S.pid] || top)), top, bottom);
   if (!opt.newPage) { cur = { here: true, items: [] }; }
+  units.forEach((u, k) => { u.k = k; });
   for (const u of units) {
     const h = unitH(u);
     if (cur && cur.here) { let yy = y; while (yy + h <= bottom && !freeRect(yy, h)) yy += 10; if (yy + h <= bottom) y = yy; else { pagesOut.push(cur); cur = null; } }
@@ -21313,12 +21314,23 @@ async function placeQuestions(qs, near, opt) {
     for (const p of u.parts) {
       const it = { id: 'i' + uid(), by: DEV, ex: 1, type: p.type, x: p.x != null ? p.x : p.type === 'svg' ? x0 + 30 : x0, y: Math.round(y), w: p.w };
       if (p.type === 'svg') it.svg = p.svg; else if (p.type === 'img') { it.asset = p.asset; it.ar = p.ar; if (p.qref) it.qref = p.qref; } else { it.md = p.md; it.fs = p.fs; if (p.qref) it.qref = p.qref; }
-      cur.items.push(it); y += p.h + 6;
+      it._u = u.k; cur.items.push(it); y += p.h + 6;
     }
     if (cur.here) occ.push([x0, y - h, x0 + w, y + u.gap]);
     y += u.gap;
   }
   if (cur && cur.items.length) pagesOut.push(cur);
+  /* each new page is shared out evenly: the room left at the bottom becomes working space under every question on that
+     page, so the questions fill the paper instead of bunching at the top */
+  for (const pg of pagesOut) {
+    if (pg.here) continue;
+    const ks = [...new Set(pg.items.map((it) => it._u))], us = ks.map((k) => units[k]), qn = us.filter((u) => !u.head).length;
+    if (!qn) continue;
+    const used = us.reduce((a, u) => a + unitH(u) + u.gap, 0), extra = Math.max(0, bottom - top - used), add = Math.min(extra / qn, 600);
+    let yy = top;
+    for (const u of us) { const its = pg.items.filter((it) => it._u === u.k), dy = yy - Math.min(...its.map((it) => it.y)); for (const it of its) it.y = Math.round(it.y + dy); yy += unitH(u) + u.gap + (u.head ? 0 : add); }
+  }
+  for (const pg of pagesOut) for (const it of pg.items) delete it._u;
   let newPages = 0, firstNew = null, here = 0;
   const pages = ((S.nb && S.nb.pages) || []).slice(); let at = pages.indexOf(S.pid);
   for (const pg of pagesOut) {
@@ -22765,7 +22777,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793611794';
+const BUILD = '1793615617';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
