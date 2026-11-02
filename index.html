@@ -21563,21 +21563,21 @@ function openAssign(set) {
   const cf = exEl('label', 'field', '<span>ห้องเรียน (ผู้เรียนยืนยันตัวด้วยรหัสหรือเลขที่ คะแนนเข้าสมุดคะแนนของห้องเอง)</span>'); b.appendChild(cf);
   const fillCls = () => { const old = $('#hwCls'); if (old) old.remove(); cf.appendChild(classSelect('hwCls', true)); };
   if (CLS.loaded) fillCls(); else clsLoad().then(fillCls);
-  const opt = { online: true, files: true, instant: false };
+  const opt = { online: true, files: true, instant: false, paper: false };
   HW.opt = opt;
-  exChips(b, [['online', 'ให้ตอบตัวเลือกในแอป'], ['files', 'ให้ส่งรูปถ่ายหรือไฟล์งานกระดาษ'], ['instant', 'ให้เห็นคะแนนและเฉลยทันทีหลังส่ง']], (v) => !!opt[v], (v) => { opt[v] = !opt[v]; openAssignRefresh(); });
-  b.appendChild(exEl('div', 'note small', 'ถ้าเปิด "ให้เห็นคะแนนและเฉลยทันที" เฉลยจะอยู่ในงานที่ผู้เรียนเปิด เหมาะกับแบบฝึก ไม่เหมาะกับการสอบ'));
+  exChips(b, [['online', 'ให้ตอบตัวเลือกในแอป'], ['files', 'ให้ส่งรูปถ่ายหรือไฟล์งานกระดาษ'], ['instant', 'ให้เห็นคะแนนและเฉลยทันทีหลังส่ง'], ['paper', 'มีผู้เรียนทำใส่กระดาษ ครูจะบันทึกให้เอง']], (v) => !!opt[v], (v) => { opt[v] = !opt[v]; openAssignRefresh(); });
+  b.appendChild(exEl('div', 'note small', 'ถ้าเปิด "ให้เห็นคะแนนและเฉลยทันที" เฉลยจะอยู่ในงานที่ผู้เรียนเปิด เหมาะกับแบบฝึก ไม่เหมาะกับการสอบ<br>ผู้เรียนที่ไม่มีอุปกรณ์ทำใส่กระดาษได้ ครูพิมพ์กระดาษคำตอบแจก แล้วกรอกตัวเลือกหรือถ่ายรูปกองงานเข้าระบบแทนได้ที่แท็บ "การบ้าน" เลือกงานนี้ ถ้าจะรับเฉพาะงานกระดาษ ให้ปิดสองข้อแรกและเปิดข้อนี้'));
   const go = exEl('button', 'btn solid', 'มอบหมายงาน ' + set.qs.length + ' ข้อ'); go.onclick = createAssignment; b.appendChild(go);
   const out = exEl('div', ''); out.id = 'hwOut'; b.appendChild(out);
 }
-function openAssignRefresh() { const o = HW.opt; document.querySelectorAll('#hwBody .chips .chip').forEach((c, i) => c.setAttribute('aria-pressed', [o.online, o.files, o.instant][i] ? 'true' : 'false')); }
+function openAssignRefresh() { const o = HW.opt; document.querySelectorAll('#hwBody .chips .chip').forEach((c, i) => c.setAttribute('aria-pressed', [o.online, o.files, o.instant, o.paper][i] ? 'true' : 'false')); }
 async function createAssignment() {
   const set = HW.set, o = HW.opt, out = $('#hwOut');
-  if (!o.online && !o.files) { out.innerHTML = '<div class="note err">เลือกอย่างน้อยหนึ่งวิธีส่งงาน</div>'; return; }
+  if (!o.online && !o.files && !o.paper) { out.innerHTML = '<div class="note err">เลือกอย่างน้อยหนึ่งวิธีส่งงาน</div>'; return; }
   const id = Array.from({ length: 9 }, () => CODE_ABC[Math.floor(Math.random() * CODE_ABC.length)]).join('').toLowerCase();
   const due = $('#hwDue').value ? new Date($('#hwDue').value).toISOString() : null;
   const qs = set.qs.map((q) => { const x = { id: q.id, t: q.t, ch: q.ch, q: q.q, c: q.c, d: q.d, fig: q.fig }; if (o.instant) { x.a = q.a || 0; x.e = q.e || ''; } return x; });
-  const data = { title: $('#hwTitle').value.trim() || set.title, setId: set.id, qs, online: o.online, files: o.files, instant: o.instant, teacher: (S.nb && S.nb.title) || '' };
+  const data = { title: $('#hwTitle').value.trim() || set.title, setId: set.id, qs, online: o.online, files: o.files, instant: o.instant, paper: !!o.paper, teacher: (S.nb && S.nb.title) || '' };
   const cls = CLS.list.find((c) => c.id === ($('#hwCls') && $('#hwCls').value));
   if (S.nid && S.nb) data.nb = { id: S.nid, title: S.nb.title || '', room: liveRoomCode(S.nid, cls ? cls.id : null) };
   if (cls) { data.clsId = cls.id; data.cls = await rosterHashed(cls); }
@@ -21613,7 +21613,7 @@ function hwScore(a, s) {
     const key = hwKeyFor(a, q), on = s.data.answers && s.data.answers[q.id], ai = s.data.ai && s.data.ai.q && s.data.ai.q[q.id], man = s.data.manual && s.data.manual[q.id];
     let ok = null, src = '';
     if (man != null) { ok = man; src = 'ครูตัดสิน'; }
-    else if (on && on[0] >= 0 && key != null) { ok = on[0] === key ? 1 : 0; src = 'ตอบในแอป'; }
+    else if (on && on[0] >= 0 && key != null) { ok = on[0] === key ? 1 : 0; src = s.data.by === 'teacher' ? 'ครูกรอกจากกระดาษ' : 'ตอบในแอป'; }
     else if (ai) { ok = ai.score; src = 'AI อ่านจากกระดาษ'; }
     res.push({ q, key, ok, src, choice: on ? on[0] : (ai && ai.choice != null ? ai.choice : -1), note: ai && ai.note });
   }
@@ -21635,6 +21635,8 @@ async function exRenderHW(body) {
   const needAIChk = subs.filter((s) => (s.data.files || []).length && !s.data.ai);
   const chk = exEl('button', 'btn solid', 'ตรวจรูปและไฟล์ด้วย AI (' + needAIChk.length + ' คน)'); chk.disabled = !needAIChk.length; chk.onclick = () => hwCheckAll(a, needAIChk); row.appendChild(chk);
   const imp = exEl('button', 'btn', 'นำคะแนนเข้าสมุดคะแนน'); imp.onclick = () => hwImport(a, subs); row.appendChild(imp);
+  const pr = exEl('button', 'btn', 'พิมพ์กระดาษคำตอบ'); pr.onclick = () => openAnswerSheet(a); row.appendChild(pr);
+  const pe = exEl('button', 'btn', 'บันทึกงานกระดาษแทนผู้เรียน'); pe.onclick = () => hwPaperEntry(a, subs); row.appendChild(pe);
   const cp = exEl('button', 'btn', 'คัดลอกลิงก์'); cp.onclick = () => navigator.clipboard && navigator.clipboard.writeText(hwLink(a.id)).then(() => toast('คัดลอกแล้ว', 1200)).catch(() => {}); row.appendChild(cp);
   body.appendChild(row);
   const msg = exEl('div', ''); msg.id = 'hwMsg'; body.appendChild(msg);
@@ -21648,7 +21650,7 @@ async function exRenderHW(body) {
   if (!subs.length) { body.appendChild(exEl('div', 'note', 'ยังไม่มีใครส่ง')); return; }
   body.appendChild(exEl('h3', '', 'ส่งแล้ว ' + subs.length + ' คน'));
   const tb = exEl('table', 'extab grades'); let h = '<thead><tr><th>ผู้เรียน</th><th>ส่งเมื่อ</th><th>คะแนน</th><th>วิธีส่ง</th><th></th></tr></thead><tbody>';
-  subs.forEach((s, i) => { const sc = hwScore(a, s); h += '<tr><td>' + esc((s.data.stu ? s.data.stu.no + '. ' : '') + s.name) + '</td><td>' + new Date(s.created_at).toLocaleString(LOC, { dateStyle: 'short', timeStyle: 'short' }) + '</td><td class="' + (sc.checked < sc.n ? 'na' : sc.got / sc.n < 0.5 ? 'lo' : sc.got / sc.n >= 0.8 ? 'hi' : '') + '">' + (sc.checked ? +sc.got.toFixed(1) + '/' + sc.n : 'รอตรวจ') + (sc.checked && sc.checked < sc.n ? ' (ตรวจแล้ว ' + sc.checked + ' ข้อ)' : '') + '</td><td>' + [s.data.answers && Object.keys(s.data.answers).length ? 'ตอบในแอป' : '', (s.data.files || []).length ? 'ไฟล์ ' + s.data.files.length : ''].filter(Boolean).join(' และ ') + '</td><td><button class="btn" data-i="' + i + '">ดูงาน</button></td></tr>'; });
+  subs.forEach((s, i) => { const sc = hwScore(a, s); h += '<tr><td>' + esc((s.data.stu ? s.data.stu.no + '. ' : '') + s.name) + '</td><td>' + new Date(s.created_at).toLocaleString(LOC, { dateStyle: 'short', timeStyle: 'short' }) + '</td><td class="' + (sc.checked < sc.n ? 'na' : sc.got / sc.n < 0.5 ? 'lo' : sc.got / sc.n >= 0.8 ? 'hi' : '') + '">' + (sc.checked ? +sc.got.toFixed(1) + '/' + sc.n : 'รอตรวจ') + (sc.checked && sc.checked < sc.n ? ' (ตรวจแล้ว ' + sc.checked + ' ข้อ)' : '') + '</td><td>' + [s.data.answers && Object.keys(s.data.answers).length ? (s.data.by === 'teacher' ? 'กรอกจากกระดาษ' : 'ตอบในแอป') : '', s.data.by === 'teacher' && !(s.data.answers && Object.keys(s.data.answers).length) ? 'ครูบันทึกจากกระดาษ' : '', (s.data.files || []).length ? 'ไฟล์ ' + s.data.files.length : ''].filter(Boolean).join(' และ ') + '</td><td><button class="btn" data-i="' + i + '">ดูงาน</button></td></tr>'; });
   tb.innerHTML = h + '</tbody>';
   tb.querySelectorAll('button[data-i]').forEach((b) => { b.onclick = () => hwDetail(a, subs[+b.dataset.i]); });
   const wrap = exEl('div', 'gwrap'); wrap.appendChild(tb); body.appendChild(wrap);
@@ -21716,6 +21718,93 @@ async function hwImport(a, subs) {
     n++;
   }
   exSavePeople(); toast('นำคะแนน ' + n + ' คนเข้าสมุดคะแนนแล้ว ดูการวิเคราะห์รายข้อได้ที่แท็บวิเคราะห์ข้อสอบ', 3200);
+}
+/* ----- paper work: a printable answer sheet, and the teacher keys in or photographs it for the learners ----- */
+function answerSheetHtml(a) {
+  const A = a.data, n = A.qs.length, L = 'กขคงจ', cols = n > 24 ? 2 : 1;
+  const rows = A.qs.map((q, i) => '<div class="r"><b>' + (i + 1) + '</b>' + q.c.map((c, j) => '<span class="o">' + L[j] + '</span>').join('') + '</div>').join('');
+  return '<!doctype html><html lang="th"><head><meta charset="utf-8"><title>กระดาษคำตอบ ' + esc(a.title) + '</title><meta name="viewport" content="width=device-width,initial-scale=1">'
+    + '<style>@page{size:A4;margin:14mm}body{font-family:Sarabun,Thonburi,sans-serif;font-size:14pt;color:#14181F;margin:0}main{padding:0 6mm}h1{font-size:18pt;margin:0 0 2px}header{border-bottom:2px solid #14181F;padding-bottom:6px;margin-bottom:10px}.name{display:flex;gap:18px;font-size:13pt;margin-top:8px;flex-wrap:wrap}.hint{font-size:11.5pt;color:#444;margin:8px 0 12px}.grid{columns:' + cols + ';column-gap:14mm}.r{display:flex;align-items:center;gap:10px;break-inside:avoid;margin:0 0 8px;padding-bottom:6px;border-bottom:1px dotted #BBB}.r b{min-width:2.2em;text-align:right}.o{width:9mm;height:9mm;border:1.6px solid #14181F;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:12pt}.back{margin-top:14px;border:1.5px dashed #888;border-radius:6px;padding:8px 10px;min-height:60mm;font-size:11.5pt;color:#555;break-inside:avoid}.bar{position:sticky;top:0;background:#2F4BB8;color:#fff;padding:10px 14px;font-size:14px;display:flex;gap:12px;align-items:center}.bar button{font:inherit;padding:6px 14px;border-radius:8px;border:0;cursor:pointer}@media print{.bar{display:none}}</style></head><body>'
+    + '<div class="bar"><span>กระดาษคำตอบ ' + n + ' ข้อ กดพิมพ์แล้วเลือก บันทึกเป็น PDF เพื่อได้ไฟล์</span><button onclick="print()">พิมพ์ หรือ บันทึกเป็น PDF</button></div>'
+    + '<main><header><h1>' + esc(a.title) + '</h1>' + (A.cls && A.cls.label ? '<div>' + esc(A.cls.label) + '</div>' : '') + '<div class="name"><span>ชื่อ ..................................................</span><span>ชั้น ..........</span><span>เลขที่ ..........</span><span>รหัสนักเรียน ..................</span></div></header>'
+    + '<div class="hint">วงกลมหรือระบายตัวเลือกที่เลือกให้ชัด ข้อละหนึ่งตัวเลือก ถ้าแก้ให้ขีดฆ่าอันเดิมแล้ววงใหม่ วิธีทำเขียนในกรอบด้านล่างหรือด้านหลังกระดาษ โดยระบุเลขข้อกำกับ</div>'
+    + '<div class="grid">' + rows + '</div><div class="back">พื้นที่แสดงวิธีทำ ระบุเลขข้อกำกับทุกครั้ง</div></main></body></html>';
+}
+function openAnswerSheet(a) {
+  const html = answerSheetHtml(a), w = window.open('', '_blank');
+  if (w) { w.document.open(); w.document.write(html); w.document.close(); toast('เปิดกระดาษคำตอบในหน้าต่างใหม่แล้ว กดพิมพ์ด้านบน', 2600); }
+  else { saveFile('กระดาษคำตอบ ' + a.title + '.html', new Blob([html], { type: 'text/html' })); toast('บันทึกเป็นไฟล์ให้แล้ว เปิดไฟล์แล้วสั่งพิมพ์ได้', 3000); }
+}
+/* letters in question order: ก ข ค ง, a b c d, or 1 2 3 4; "-", "." or "_" leaves a question blank; spaces are ignored */
+function paperParse(str, qs) {
+  const map = { 'ก': 0, 'ข': 1, 'ค': 2, 'ง': 3, 'จ': 4, a: 0, b: 1, c: 2, d: 3, e: 4, 1: 0, 2: 1, 3: 2, 4: 3, 5: 4 };
+  const chars = Array.from(String(str || '').toLowerCase().replace(/\s+/g, '')), v = []; let bad = 0;
+  for (const ch of chars) { if (/[-._*]/.test(ch)) { v.push(-1); continue; } const k = map[ch]; if (k == null) { bad++; continue; } v.push(k); }
+  const over = Math.max(0, v.length - qs.length); v.length = Math.min(v.length, qs.length);
+  while (v.length < qs.length) v.push(-1);
+  for (let i = 0; i < v.length; i++) if (v[i] >= (qs[i].c || []).length) { v[i] = -1; bad++; }
+  return { v, bad, over, n: v.filter((x) => x >= 0).length };
+}
+async function hwPaperEntry(a, subs) {
+  const box = $('#exBody'); box.innerHTML = ''; const A = a.data, qs = A.qs;
+  const back = exEl('button', 'btn', 'กลับไปรายชื่อ'); back.onclick = () => exRender(); box.appendChild(back);
+  box.appendChild(exEl('h3', '', 'บันทึกงานกระดาษแทนผู้เรียน'));
+  box.appendChild(exEl('div', 'note', 'พิมพ์ตัวเลือกที่เด็กเลือกเรียงตามข้อ เช่น <b>กขคงก</b> หรือ <b>abcda</b> ใช้ <b>-</b> แทนข้อที่ไม่ได้ตอบ งานนี้มี ' + qs.length + ' ข้อ ระบบตรวจตามเฉลยให้ทันที ถ้ามีวิธีทำที่อยากให้ AI ช่วยดู ให้กดแนบรูปของคนนั้นด้วย แล้วกดตรวจด้วย AI ในหน้ารายชื่อ'));
+  if (!a.open) box.appendChild(exEl('div', 'note err', 'งานนี้ปิดรับอยู่ ระบบบันทึกไม่ได้ กลับไปกด "เปิดรับงานอีกครั้ง" ก่อน'));
+  const dl = exEl('label', 'field', '<span>วันที่เด็กส่งงาน (เว้นว่างใช้วันนี้ ใช้ตัดสินว่าส่งช้าหรือไม่)</span>'); const di = document.createElement('input'); di.type = 'date'; dl.appendChild(di); box.appendChild(dl);
+  const had = new Set(subs.map((s) => (s.data.stu && s.data.stu.sid) || s.name.trim()));
+  let roster = [];
+  if (A.clsId) { if (!CLS.loaded) await clsLoad(); const c = CLS.list.find((x) => x.id === A.clsId); roster = c ? (c.roster || []).slice().sort((x, y) => x.no - y.no) : []; }
+  const rows = [], list = exEl('div', 'hwpaper'); box.appendChild(list);
+  const addRow = (r) => {
+    const st = { r, files: [], inp: null }; const el = exEl('div', 'setrow'); const done = had.has(r.sid || r.name.trim());
+    el.innerHTML = '<div><b>' + esc((r.no ? r.no + '. ' : '') + r.name) + '</b><small class="pcnt">' + (done ? 'ส่งแล้ว ถ้ากรอกทับจะใช้ฉบับใหม่' : '') + '</small></div>';
+    const inp = document.createElement('input'); inp.type = 'text'; inp.className = 'pin'; inp.placeholder = 'กขคงก'; inp.autocomplete = 'off'; inp.spellcheck = false; inp.style.cssText = 'flex:1 1 150px;min-width:120px;font-size:18px;letter-spacing:2px';
+    const cnt = el.querySelector('.pcnt');
+    inp.oninput = () => { const p = paperParse(inp.value, qs); cnt.textContent = inp.value.trim() ? 'อ่านได้ ' + p.n + ' จาก ' + qs.length + ' ข้อ' + (p.over ? ' เกินมา ' + p.over + ' ตัว' : '') + (p.bad ? ' ตัวอักษรผิด ' + p.bad : '') : (done ? 'ส่งแล้ว ถ้ากรอกทับจะใช้ฉบับใหม่' : ''); cnt.style.color = p.over || p.bad ? '#B3261E' : ''; };
+    const fi = document.createElement('input'); fi.type = 'file'; fi.accept = 'image/*,application/pdf'; fi.multiple = true; fi.hidden = true;
+    const fb = exEl('button', 'btn', 'แนบรูป'); fb.type = 'button'; fb.onclick = () => fi.click();
+    fi.onchange = () => { for (const f of fi.files) if (st.files.length < 6 && f.size <= 10 * 1024 * 1024) st.files.push(f); fb.textContent = st.files.length ? 'แนบแล้ว ' + st.files.length : 'แนบรูป'; fi.value = ''; };
+    st.inp = inp; el.appendChild(inp); el.appendChild(fb); el.appendChild(fi); list.appendChild(el); rows.push(st);
+  };
+  roster.forEach(addRow);
+  if (!A.clsId || !roster.length) {
+    const ad = exEl('div', 'row2'); const ni = document.createElement('input'); ni.maxLength = 60; ni.placeholder = 'ชื่อเด็ก'; ni.className = 'pin'; ni.style.flex = '1 1 200px';
+    const ab = exEl('button', 'btn', 'เพิ่มชื่อ'); ab.type = 'button'; ab.onclick = () => { const v = ni.value.trim(); if (!v) return; addRow({ name: v }); ni.value = ''; ni.focus(); }; ni.onkeydown = (e) => { if (e.key === 'Enter') ab.onclick(); };
+    ad.appendChild(ni); ad.appendChild(ab); box.insertBefore(ad, list);
+  }
+  const msg = exEl('div', ''); const go = exEl('button', 'btn solid', 'บันทึกเข้าระบบ'); go.disabled = !a.open;
+  go.onclick = async () => {
+    const todo = rows.filter((st) => st.inp.value.trim() || st.files.length);
+    if (!todo.length) { toast('ยังไม่ได้กรอกหรือแนบอะไร', 2000); return; }
+    const badRows = todo.filter((st) => { const p = paperParse(st.inp.value, qs); return p.over || p.bad; });
+    if (badRows.length) { toast('ตรวจแถวสีแดงก่อน มีตัวอักษรผิดหรือเกินจำนวนข้อ', 3000); badRows[0].inp.focus(); return; }
+    go.disabled = true; const B = waitCard(msg, 'กำลังบันทึกงานกระดาษ', todo.map((st) => st.r.name).slice(0, 8));
+    let ok = 0, bad = 0, firstErr = null;
+    const at = di.value ? new Date(di.value + 'T12:00:00').toISOString() : null;
+    for (let k = 0; k < todo.length; k++) {
+      B.step(Math.min(k, 7)); const st = todo[k], p = paperParse(st.inp.value, qs);
+      try {
+        const sid = 'p' + uid(), paths = [];
+        for (let i = 0; i < st.files.length; i++) {
+          let f = st.files[i], ext = /pdf/i.test(f.type) ? 'pdf' : 'jpg';
+          if (ext === 'jpg') { try { const q = await prepImage(f); f = q.blob; ext = /png/.test(q.type) ? 'png' : 'jpg'; } catch (e) { /* send as is */ } }
+          const path = a.id + '/' + sid + '/' + (i + 1) + '.' + ext;
+          const { error: ue } = await CLOUD.client.storage.from('burin-sub').upload(path, f, { contentType: ext === 'pdf' ? 'application/pdf' : (ext === 'png' ? 'image/png' : 'image/jpeg') });
+          if (ue) throw ue; paths.push(path);
+        }
+        const answers = {}; p.v.forEach((o, i) => { if (o >= 0) answers[qs[i].id] = [o, 0]; });
+        const row = { id: sid, assignment: a.id, name: st.r.name, data: { answers, files: paths, at: now(), by: 'teacher', stu: st.r.sid ? { sid: st.r.sid, no: st.r.no } : undefined } };
+        if (at) row.created_at = at;
+        const { error: ie } = await CLOUD.client.from('submissions').insert(row); if (ie) throw ie; ok++;
+      } catch (e) { bad++; firstErr = firstErr || e; }
+    }
+    B.stop(); go.disabled = false;
+    if (bad) { msg.innerHTML = '<div class="note err">บันทึกไม่สำเร็จ ' + bad + ' คน ' + esc(hwSqlHint(firstErr)) + '</div>'; }
+    toast('บันทึกงานกระดาษ ' + ok + ' คนแล้ว' + (bad ? ' ไม่สำเร็จ ' + bad : ''), 3000);
+    if (ok && !bad) exRender();
+  };
+  box.appendChild(go); box.appendChild(msg);
 }
 async function hwDetail(a, s) {
   const box = $('#exBody'); box.innerHTML = ''; const L = 'กขคง';
@@ -21803,6 +21892,7 @@ async function openHomework(id, termCls) {
       go.hidden = true; typeset(res);
     } catch (e) { W8.stop(); go.disabled = false; res.innerHTML = '<div class="note err">ส่งไม่สำเร็จ ลองอีกครั้ง ' + esc((e && e.message) || '') + '</div>'; }
   };
+  if (!A.online && !A.files) { go.hidden = true; b.appendChild(exEl('div', 'note', 'งานนี้ทำใส่กระดาษ เขียนคำตอบบนกระดาษคำตอบหรือสมุดแล้วส่งครูตามที่ครูนัด ครูจะบันทึกคะแนนให้เอง ไม่ต้องส่งในแอป')); }
   b.appendChild(go); b.appendChild(res);
   typeset(b);
 }
