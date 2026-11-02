@@ -2568,6 +2568,9 @@ const CLOUD = {
   cfg: (() => {
     const b = window.BURIN_CONFIG || {}; let l = {};
     try { l = JSON.parse(store_ls.get('tp-cloud') || '{}') || {}; } catch (e) { l = {}; }
+    /* a project saved on this device that is the old one named in config.js gives way to the new one */
+    const pv = b.previous && b.previous.supabaseUrl ? String(b.previous.supabaseUrl).replace(/\/+$/, '') : '';
+    if (pv && String(l.url || '').replace(/\/+$/, '') === pv) l = {};
     return { url: String(l.url || b.supabaseUrl || '').trim(), key: String(l.key || b.supabaseKey || '').trim(), fromFile: !!(b.supabaseUrl && b.supabaseKey) };
   })(),
   client: null, user: null, state: 'off', store: null,
@@ -2583,8 +2586,79 @@ async function cloudClient() {
     try { await loadScript('vendor/supabase.js'); }
     catch (e) { await loadScript('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.3/dist/umd/supabase.js'); }
   }
-  CLOUD.client = window.supabase.createClient(CLOUD.cfg.url.replace(/\/+$/, ''), CLOUD.cfg.key, { auth: { persistSession: true, autoRefreshToken: true, storageKey: 'burin-auth' }, realtime: { params: { eventsPerSecond: 30 } } });
+  /* each project keeps its own sign-in; the first project keeps the name it always had */
+  const ref = (/^https:\/\/([^.]+)\./.exec(CLOUD.cfg.url) || [])[1] || '', skey = MIG.prev && MIG.prev.url !== CLOUD.cfg.url.replace(/\/+$/, '') ? 'burin-auth-' + ref : 'burin-auth';
+  CLOUD.client = window.supabase.createClient(CLOUD.cfg.url.replace(/\/+$/, ''), CLOUD.cfg.key, { auth: { persistSession: true, autoRefreshToken: true, storageKey: skey }, realtime: { params: { eventsPerSecond: 40 } } });
   return CLOUD.client;
+}
+/* ----- moving to a new cloud project (another region): the old project stays untouched and is only read.
+   config.js names the new project, and the old one under "previous". A person signs in once with their usual
+   email and password: when the new project does not know them yet, the password is checked against the old project,
+   the same account is made on the new one, and everything they own is copied across before the notebook opens:
+   notebooks, pages and ink, pictures and videos, shared lectures, room keys, homework and hand-ins. The copy can be
+   run again at any time; it only adds what is missing and overwrites with the old values, it never deletes. ----- */
+const MIG = { prev: (() => { const p = (window.BURIN_CONFIG || {}).previous; return p && p.supabaseUrl && p.supabaseKey ? { url: String(p.supabaseUrl).replace(/\/+$/, ''), key: String(p.supabaseKey) } : null; })(), old: null };
+function migOn() { return !!(MIG.prev && CLOUD.cfg.url && MIG.prev.url !== CLOUD.cfg.url.replace(/\/+$/, '')); }
+async function migOldClient() {
+  if (MIG.old) return MIG.old;
+  await cloudClient();
+  /* the old project's sign-in is kept under the key the app always used, so people already signed in need no password */
+  MIG.old = window.supabase.createClient(MIG.prev.url, MIG.prev.key, { auth: { persistSession: true, autoRefreshToken: true, storageKey: 'burin-auth' } });
+  return MIG.old;
+}
+function migOldUser() { try { const s = JSON.parse(localStorage.getItem('burin-auth') || 'null'); const u = s && (s.user || (s.currentSession && s.currentSession.user)); return u && u.id ? { id: u.id, email: u.email || '' } : null; } catch (e) { return null; } }
+async function migRun(sbNew, user, say) {
+  const done = 'tp-migrated-' + user.id; if (store_ls.get(done) === '1') return { skipped: true };
+  /* done once per account, remembered on the new server: a second device signing in later must never copy the old
+     values over work done since on the new server */
+  { const { data: m } = await sbNew.from('docs').select('path').eq('owner', user.id).eq('path', 'settings/migrated').maybeSingle(); if (m) { store_ls.set(done, '1'); return { skipped: true }; } }
+  const old = await migOldClient();
+  const { data: sd } = await old.auth.getSession();
+  const ou = sd && sd.session && sd.session.user;
+  if (!ou) return { needLogin: true };
+  if ((ou.email || '').toLowerCase() !== (user.email || '').toLowerCase()) return { otherAccount: ou.email };
+  const me = user.id, them = ou.id, n = { docs: 0, files: 0, shares: 0, hw: 0, subs: 0, skip: 0 };
+  /* notebooks, pages, ink and settings */
+  say('กำลังย้ายสมุดจากเซิร์ฟเวอร์เดิม');
+  for (let from = 0; ; from += 200) {
+    const { data: r, error } = await old.from('docs').select('path,parent,data,updated_at').eq('owner', them).order('path').range(from, from + 199);
+    if (error) throw error;
+    let batch = [], size = 0;
+    const put = async () => { if (!batch.length) return; const { error: e2 } = await sbNew.from('docs').upsert(batch, { onConflict: 'owner,path' }); if (e2) throw e2; n.docs += batch.length; batch = []; size = 0; say('กำลังย้ายสมุด ' + n.docs + ' รายการ'); };
+    for (const row of r) { const z = JSON.stringify(row.data).length; if (batch.length && size + z > 1500000) await put(); batch.push({ owner: me, path: row.path, parent: row.parent, data: row.data, updated_at: row.updated_at }); size += z; }
+    await put();
+    if (r.length < 200) break;
+  }
+  /* pictures and videos */
+  const listAll = async (sb, root) => { const out = []; const walk = async (dir) => { for (let off = 0; ; off += 1000) { const { data: L, error } = await sb.storage.from('burin').list(dir, { limit: 1000, offset: off }); if (error) throw error; for (const f of L || []) { const p = dir + '/' + f.name; if (f.id == null && !f.metadata) await walk(p); else out.push(p.slice(root.length + 1)); } if (!L || L.length < 1000) break; } }; await walk(root); return out; };
+  const oldFiles = await listAll(old, them), have = new Set(await listAll(sbNew, me).catch(() => []));
+  const todo = oldFiles.filter((f) => !have.has(f));
+  let k = 0;
+  const one = async (f) => {
+    const { data: blob, error } = await old.storage.from('burin').download(them + '/' + f); if (error) { n.skip++; return; }
+    const u = await sbNew.storage.from('burin').upload(me + '/' + f, blob, { contentType: blob.type || 'application/octet-stream', upsert: true });
+    if (u.error) n.skip++; else n.files++;
+    say('กำลังย้ายรูปและวิดีโอ ' + (++k) + ' จาก ' + todo.length);
+  };
+  for (let i = 0; i < todo.length; i += 3) await Promise.all(todo.slice(i, i + 3).map(one));
+  /* shared lectures and room keys, homework and what was handed in */
+  say('กำลังย้ายเลคเชอร์ที่แชร์และการบ้าน');
+  { const { data: r } = await old.from('shares').select('*').eq('owner', them); for (const x of r || []) { const { error } = await sbNew.from('shares').upsert(Object.assign({}, x, { owner: me }), { onConflict: 'id' }); if (error) n.skip++; else n.shares++; } }
+  const hwIds = [];
+  { const { data: r } = await old.from('assignments').select('*').eq('owner', them); for (const x of r || []) { const { error } = await sbNew.from('assignments').upsert(Object.assign({}, x, { owner: me, open: true }), { onConflict: 'id' }); if (error) n.skip++; else { n.hw++; hwIds.push([x.id, x.open]); } } }
+  for (const [id, open] of hwIds) {
+    const { data: r } = await old.from('submissions').select('*').eq('assignment', id);
+    for (const x of r || []) { const { error } = await sbNew.from('submissions').upsert(x, { onConflict: 'id' }); if (error) n.skip++; else n.subs++; }
+    /* the photos and files handed in */
+    const { data: L } = await old.storage.from('burin-sub').list(id, { limit: 1000 });
+    for (const f of L || []) { const p = id + '/' + f.name; const { data: blob } = await old.storage.from('burin-sub').download(p); if (!blob) { n.skip++; continue; } const u = await sbNew.storage.from('burin-sub').upload(p, blob, { contentType: blob.type || 'application/octet-stream', upsert: true }); if (u.error) n.skip++; }
+    /* hand-ins are accepted only while a homework is open, so each was opened for the copy: closed ones close again */
+    if (!open) await sbNew.from('assignments').update({ open: false }).eq('id', id);
+  }
+  if (AI.cfg.owner === them) { AI.cfg.owner = me; AI.save(true); }
+  await sbNew.from('docs').upsert({ owner: me, path: 'settings/migrated', parent: 'settings', data: { from: MIG.prev.url, at: now(), n }, updated_at: new Date().toISOString() }, { onConflict: 'owner,path' });
+  store_ls.set(done, '1');
+  return n;
 }
 async function makeCloudStore(sb, user) {
   const me = user.id, PFX = 'cloud:' + me + ':', QK = 'tp-cq-' + me;
@@ -19728,7 +19802,7 @@ function studentLaser(d) {
   if (!d.down) { pvLaserUp(); return; }
   if (!PV.laser || PV.laser.mode !== d.mode) PV.laser = { mode: d.mode === 'line' ? 'line' : 'dot', pts: [] };
   PV.laser.pts.push([+d.x, +d.y]); if (PV.laser.pts.length > 3000) PV.laser.pts.shift();
-  drawPresentLive();
+  lzGlide();
 }
 function drawStudentMineOnTop() { /* the student's own live stroke is drawn on the same canvas by the pen code, nothing else to do */ }
 function studentQuiz(d) {
@@ -22520,7 +22594,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793595958';
+const BUILD = '1793597618';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
@@ -22556,7 +22630,15 @@ async function doAuth(signup) {
   say(signup ? 'กำลังสร้างบัญชี' : 'กำลังเข้าสู่ระบบ');
   try {
     const sb = await cloudClient();
-    const r = signup ? await sb.auth.signUp({ email, password }) : await sb.auth.signInWithPassword({ email, password });
+    let r = signup ? await sb.auth.signUp({ email, password }) : await sb.auth.signInWithPassword({ email, password });
+    if (r.error && !signup && migOn() && /invalid login/i.test(String(r.error.message || ''))) {
+      /* not on the new server yet: the same email and password on the old server move the account across */
+      say('กำลังตรวจบัญชีกับเซิร์ฟเวอร์เดิม');
+      const old = await migOldClient(), o = await old.auth.signInWithPassword({ email, password });
+      if (o.error) throw r.error;
+      r = await sb.auth.signUp({ email, password });
+      if (!r.error && !(r.data && r.data.session)) { say('ย้ายบัญชีแล้ว เปิดอีเมลยืนยันจาก Supabase แล้วกดลิงก์ จากนั้นกลับมากดเข้าสู่ระบบอีกครั้ง สมุดทั้งหมดจะย้ายตามมาเอง', 'ok'); return; }
+    }
     if (r.error) throw r.error;
     if (signup && !(r.data && r.data.session)) { say('สร้างบัญชีแล้ว เปิดอีเมลจาก Supabase แล้วกดลิงก์ยืนยัน จากนั้นกลับมากดเข้าสู่ระบบ', 'ok'); return; }
     say('เข้าสู่ระบบแล้ว กำลังโหลดสมุดจากคลาวด์', 'ok');
@@ -22990,7 +23072,7 @@ function emitInkDelta(pt) {
   const s = pt.stroke, t = now();
   if (pt.snapped) return; /* a stroke turned into a shape is sent whole when the pen lifts */
   if (!pt.inkStart) pt.inkStart = t;
-  if (pt.inkT && t - pt.inkT < 80) return; pt.inkT = t;
+  if (pt.inkT && t - pt.inkT < liveGap(80, 300)) return; pt.inkT = t;
   const from = pt.inkSent || 0, to = Math.min(s.p.length, from + 450);
   if (to <= from) return;
   pt.inkSent = to;
@@ -23012,13 +23094,17 @@ function emitInkDone(pt) {
 /* a piece of a stroke for the room: where in the stroke it starts (so a lost piece is noticed) and, for learners who
    understand it, its points in the small form */
 function liveInkWire(msg, at) { if (!liveV2()) return msg; const e = ptsEnc(msg.p); const o = Object.assign({}, msg, { at }); if (e != null) { delete o.p; o.e = e; } return o; }
-function liveCrowd() { return (LIVE.peers || []).length > 5; }
+/* the realtime service counts every message once for each learner who receives it (Pro plan: 500 a second for the
+   project). Live writing keeps within about 300 of those and the laser within 150, by sending a little less often as
+   the room grows; the writing still plays back smoothly at the teacher's pace on every screen */
+function liveGap(min, budget) { const n = liveOn() ? (LIVE.peers || []).length : 0; return Math.max(min, Math.ceil(n * 1000 / budget)); }
+function liveCrowd() { return (LIVE.peers || []).length > 150; }
 function emitInk() { /* shapes reach the audience when saved */ }
 let lastLz = 0;
 function emitLaserPt(x, y, down) {
   if (S.present || !((S.room && (S.watchers || S.peersAny)) || liveOn())) return;
   /* about 20 points a second: smooth enough to follow, and well inside what the realtime service lets through */
-  const t = now(); if (down && t - lastLz < 50) return; lastLz = t;
+  const t = now(); if (down && t - lastLz < liveGap(50, 150)) return; lastLz = t;
   const msg = { pid: S.pid, mode: S.laserMode, x: Math.round(x), y: Math.round(y), down: !!down };
   if (S.room && (S.watchers || S.peersAny)) S.room.emit('laser', msg).catch(() => {});
   if (liveOn()) liveSend('laser', msg);
@@ -23032,6 +23118,12 @@ function pvLaserUp() {
   if (!K.raf) K.raf = requestAnimationFrame(loop);
 }
 /* the teacher's live lines and laser have their own layer, so a student writing at the same time never wipes them, and they never wipe the student's line */
+/* points of a laser seen from afar arrive a few times a second in a big room: the dot glides from one to the next */
+function lzGlide() {
+  const L = PV.laser; if (!L) return; const t = performance.now();
+  L.gap = L.at ? clamp(t - L.at, 30, 400) : 60; L.at = t;
+  if (!PV.lzRaf) { const loop = () => { PV.lzRaf = 0; drawPresentLive(); const M = PV.laser; if (M && performance.now() - M.at < M.gap) PV.lzRaf = requestAnimationFrame(loop); }; PV.lzRaf = requestAnimationFrame(loop); }
+}
 function drawPresentLive() {
   const c = cRemote.getContext('2d');
   c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, cRemote.width, cRemote.height);
@@ -23041,7 +23133,8 @@ function drawPresentLive() {
   if (PV.lzKept && PV.lzKept.list.length) { const a = L ? 1 : lzAlpha(PV.lzKept.at); for (const q of PV.lzKept.list) drawLzLine(c, q, a); }
   if (L && L.pts.length) {
     if (L.mode === 'line' && L.pts.length > 1) drawLzLine(c, L.pts, 1);
-    const q = L.pts[L.pts.length - 1];
+    let q = L.pts[L.pts.length - 1];
+    if (L.mode !== 'line' && L.pts.length > 1 && L.at) { const a = L.pts[L.pts.length - 2], u = clamp((performance.now() - L.at) / (L.gap || 60), 0, 1); q = [a[0] + (q[0] - a[0]) * u, a[1] + (q[1] - a[1]) * u]; }
     c.fillStyle = 'rgba(229,72,60,0.25)'; c.beginPath(); c.arc(q[0], q[1], 16, 0, 6.2832); c.fill();
     c.fillStyle = '#E5483C'; c.beginPath(); c.arc(q[0], q[1], 7, 0, 6.2832); c.fill();
   }
@@ -23127,7 +23220,7 @@ function setupRoom(room) {
     if (!d.down) { pvLaserUp(); return; }
     if (!PV.laser || PV.laser.mode !== d.mode) PV.laser = { mode: d.mode === 'line' ? 'line' : 'dot', pts: [] };
     PV.laser.pts.push([+d.x, +d.y]); if (PV.laser.pts.length > 3000) PV.laser.pts.shift();
-    drawPresentLive();
+    lzGlide();
   }, () => {});
   if (S.present) room.presence({ role: 'present' }).catch(() => {});
 }
@@ -23517,7 +23610,13 @@ async function boot() {
       const user = data && data.session && data.session.user;
       if (user) {
         CLOUD.user = user; CLOUD.state = 'on'; acctRemember(user.email);
+        if (migOn() && store_ls.get('tp-migrated-' + user.id) !== '1') {
+          const say = (t) => { $('#loading').querySelector('span').textContent = t; };
+          try { const r = await migRun(sb, user, say); if (r && !r.skipped && !r.needLogin && !r.otherAccount) setTimeout(() => toast('ย้ายข้อมูลจากเซิร์ฟเวอร์เดิมครบแล้ว สมุด ' + r.docs + ' รายการ ไฟล์ ' + r.files + ' ไฟล์' + (r.skip ? ' (ข้าม ' + r.skip + ' รายการที่ย้ายไม่ได้)' : ''), 6000), 1500); }
+          catch (e) { console.warn('migrate', e); setTimeout(() => toast('ย้ายข้อมูลจากเซิร์ฟเวอร์เดิมยังไม่ครบ จะลองต่อให้เองเมื่อเปิดแอปครั้งหน้า', 5000), 1500); }
+        }
         /* an AI key belongs to the account it was connected with: another account on this device does not get it */
+        { const ou = migOn() ? migOldUser() : null; if (ou && AI.cfg.owner === ou.id && (ou.email || '').toLowerCase() === (user.email || '').toLowerCase()) AI.cfg.owner = user.id; }
         if (AI.cfg.owner && AI.cfg.owner !== user.id) { AI.cfg.key = { vendor: 'gemini', url: '', model: '', key: '' }; AI.cfg.kat = 0; }
         AI.cfg.owner = user.id; AI.save(true);
         $('#loading').querySelector('span').textContent = 'กำลังโหลดสมุดจากคลาวด์';
