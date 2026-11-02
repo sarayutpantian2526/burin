@@ -71,6 +71,7 @@ window.MathJax = {
 html, body { height: 100%; }
 body { background: var(--bg); color: var(--fg); font-family: var(--ui); font-size: 15px; overflow: hidden; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
 button { font: inherit; color: inherit; }
+input, select, textarea { font-family: inherit; }
 button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 #app { height: 100%; box-sizing: border-box; display: flex; flex-direction: column; gap: 8px; padding-block: 8px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
 
@@ -1027,8 +1028,8 @@ body.role-student .qkeybox { display: none; }
 .brsbar .brsnm { flex: 1 1 160px; min-width: 0; }
 .xmchs { display: flex; flex-direction: column; gap: 6px; width: 100%; }
 .xmch { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 8px; border: 1px solid var(--line); border-radius: 10px; }
-.xmch small { display: block; color: var(--muted); font-size: 12px; }
-.xmnum { width: 76px; font-size: 16px; padding: 4px 6px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--fg); }
+.xmch small { display: block; color: var(--muted); font-size: 13px; }
+.xmnum { width: 84px; font: inherit; font-size: 16px; padding: 4px 6px; border-radius: 10px; box-sizing: border-box; border: 1px solid var(--line); background: var(--surface); color: var(--fg); }
 .xmprev { margin-top: 12px; }
 .tqq { font-size: 14px; line-height: 1.55; }
 .tqa { display: flex; gap: 6px; flex-wrap: wrap; }
@@ -1192,7 +1193,20 @@ body.present .peekcard { display: none !important; }
 .exsetup { display: flex; flex-direction: column; }
 .exrow { display: grid; grid-template-columns: 116px minmax(0, 1fr); gap: 8px 14px; align-items: start; padding: 10px 0; border-top: 1px solid var(--line); }
 .exrow:first-child { border-top: 0; padding-top: 2px; }
-.exrow > .label { padding-top: 11px; line-height: 1.3; }
+.exrow > .label { padding-top: 13px; line-height: 1.3; }
+/* every plain text box, number box and drop-down in a form row looks like the other fields: app font, 16px, 44px tall, aligned with its label */
+.exrow > select, .exrow > input[type=text], .exrow > input[type=number], .exrow > input:not([type]), .exrow .row2 > select, .exrow .row2 > input { box-sizing: border-box; width: 100%; max-width: 560px; min-height: 44px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); color: var(--fg); font: inherit; font-size: 16px; line-height: 1.3; padding: 0 12px; -webkit-user-select: text; user-select: text; }
+.exrow > select { padding-right: 8px; }
+.exrow input.xmnum, .exrow .xmnum { width: 84px; max-width: 84px; min-height: 40px; text-align: center; padding: 0 6px; font-size: 16px; }
+.exrow > input.xmnum { width: 84px; }
+.exrow > .btn.sm { margin-top: 2px; }
+.exrow > .label { font-size: 13px; }
+/* a safety net for any plain box added later: zero specificity, so every named style still wins */
+:where(#exBody, #hwBody, #hwsBody, #deckBody) :where(input:not([type]), input[type=text], input[type=search], input[type=number], input[type=date], input[type=datetime-local], input[type=email], input[type=password], select) { font-family: inherit; font-size: 15px; min-height: 40px; box-sizing: border-box; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--fg); padding: 0 10px; }
+:where(#exBody, #hwBody, #hwsBody, #deckBody) :where(textarea) { font-family: inherit; font-size: 15px; box-sizing: border-box; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--fg); padding: 8px 10px; }
+.xmch > span { line-height: 1.35; }
+.xmch b { font-weight: 600; }
+.pqsel { display: inline-flex; align-items: center; gap: 8px; margin: 0 14px 0 0; font-size: 14px; }
 .exrow > .label small { display: block; font-weight: 400; margin-top: 2px; }
 .exrow > .chips, .exrow > .note, .exrow > div { grid-column: 2; }
 .exrow .chip { white-space: nowrap; }
@@ -1264,7 +1278,7 @@ body.present .peekcard { display: none !important; }
 .exrev .btn { align-self: flex-start; }
 .expick { flex-direction: row; align-items: flex-start; cursor: pointer; }
 .expick input { width: 22px; height: 22px; margin-top: 4px; flex: 0 0 auto; }
-.exform textarea, .exform input, .exform select { font: inherit; }
+.exform textarea, .exform input, .exform select { font-family: inherit; font-size: 15px; }
 .qsteps { margin: 0; padding-left: 22px; display: flex; flex-direction: column; gap: 6px; font-size: 15px; line-height: 1.5; }
 .qsteps a { color: var(--accent); font-weight: 600; }
 .mrow input { flex: 1; min-width: 0; }
