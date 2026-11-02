@@ -3326,6 +3326,11 @@ function peekFromScreen() {
     while (PEEKS.size > 4) PEEKS.delete(PEEKS.keys().next().value);
   } catch (e) { /* drawn the usual way */ }
 }
+async function drawIntoSliced(c, list) {
+  const order = list.filter((r) => r.s.k === 'h').concat(list.filter((r) => r.s.k !== 'h'));
+  let i = 0;
+  while (i < order.length) { const t0 = performance.now(); while (i < order.length && performance.now() - t0 < 6) drawStroke(c, order[i++].s); if (i < order.length) await new Promise((r) => requestAnimationFrame(r)); }
+}
 async function peekBuild(pid) {
   const { page, strokes } = await pageData(pid);
   const [pw, ph] = pageDims(page);
@@ -3335,7 +3340,8 @@ async function peekBuild(pid) {
   const cv = document.createElement('canvas'), dpr = Math.min(2, window.devicePixelRatio || 1), k = Math.min(pw * S.base * dpr * clamp(S.zoom, 1, 1.6), 1500) / pw;
   cv.width = Math.round(pw * k); cv.height = Math.round(ph * k);
   const c = cv.getContext('2d'); c.setTransform(k, 0, 0, k, 0, 0); const keep = [W, H]; W = pw; H = ph; c.fillStyle = '#FFFFFF'; c.fillRect(0, 0, W, H); try { paper(c, (page && page.paper) || 'grid'); } catch (e) { /* plain */ } [W, H] = keep;
-  drawInto(c, strokes, null);
+  /* the neighbouring page's lines are drawn a few at a time, so scrolling on never stutters while it is made */
+  await drawIntoSliced(c, strokes);
   const lay = document.createElement('div'); lay.className = 'fitems'; lay.style.width = pw + 'px'; lay.style.height = ph + 'px'; lay.style.transform = 'scale(' + S.base + ')';
   for (const it of (page && page.items) || []) { if (it.teacher && isStudentSide()) continue; try { lay.appendChild(buildItemEl(it, true)); } catch (e) { /* skip */ } }
   const lb = document.createElement('div'); lb.className = 'plabel'; lb.textContent = 'หน้า ' + ((S.nb.pages || []).indexOf(pid) + 1);
@@ -5853,7 +5859,7 @@ function openPage(pid) {
   if (S.room && S.watchers && !S.present) { S.room.emit('page', { nid: S.nid, pid }).catch(() => {}); setTimeout(emitView, 60); }
   if (!$('#ai').hidden) setTimeout(renderAIPages, 0);
   if (!S.present) publishLiveLater();
-  PV.ink = {}; PV.laser = null; { const c = cRemote.getContext('2d'); c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, cRemote.width, cRemote.height); }
+  PV.ink = {}; PV.laser = null; PV.box = null; if (cRemote.width > 2) { cRemote.width = 1; cRemote.height = 1; } /* the layer for live lines frees its memory on a new page (iPad) and is made again when a line comes in */
   S.mine = []; S.others = {}; S.ownLoaded = false; S.myRev = 0; S.page = { nb: S.nid, paper: 'grid', items: [] };
   S.undo = []; S.redo = []; updUndo(); clearSel();
   if (S.unsub.page) S.unsub.page();
@@ -19750,20 +19756,36 @@ async function stuTeacherLines(lpid) {
   const d = await Promise.resolve(S.store.get('pages/' + lpid + '/layers/teacher')).catch(() => null);
   return (d && Array.isArray(d.strokes)) ? d.strokes : [];
 }
-async function stuSetTeacherLines(lpid, arr) {
-  if (S.pid === lpid) { S.others.teacher = arr; if (!S.inkRaf) S.inkRaf = requestAnimationFrame(() => { S.inkRaf = 0; drawInk(); }); studentSaveInk(); return; }
+async function stuSetTeacherLines(lpid, arr, added) {
+  if (S.pid === lpid) {
+    S.others.teacher = arr;
+    /* lines only added: just those are painted; anything replaced or rubbed out redraws the page once */
+    if (added && !added.length && !S.inkRaf) S.inkSigDrawn = inkSig(); /* only thinned copies of lines already on the page */
+    else if (added && added.length && !S.inkRaf) { const c = cInk.getContext('2d'); c.setTransform(S.res, 0, 0, S.res, 0, 0); for (const st of added) if (st.k !== 'h') drawStroke(c, st); if (added.some((st) => st.k === 'h')) drawInk(); else { S.inkSigDrawn = inkSig(); if (cSharp && (!cSharp.hidden || S.zoom > 1.2)) sharpLater(); } }
+    else if (!S.inkRaf) S.inkRaf = requestAnimationFrame(() => { S.inkRaf = 0; drawInk(); });
+    studentSaveInk(); return;
+  }
   await Promise.resolve(S.store.set('pages/' + lpid + '/layers/teacher', { strokes: arr, rev: now(), dev: 'teacher' })).catch(() => {});
 }
 /* lines added or changed by the teacher, and lines rubbed out */
+/* the teacher thins a finished line (drops points that do not change its shape): the copy that arrives later
+   looks the same as the streamed one, so the page need not be painted again for it */
+function stBox(p) { let a = 1e9, b = 1e9, c = -1e9, d = -1e9; for (let i = 0; i < p.length; i += 3) { const x = p[i], y = p[i + 1]; if (x < a) a = x; if (x > c) c = x; if (y < b) b = y; if (y > d) d = y; } return [a, b, c, d]; }
+function stLooksSame(o, n) {
+  if (!o || !n || o.c !== n.c || o.w !== n.w || o.k !== n.k || o.o !== n.o || !Array.isArray(o.p) || !Array.isArray(n.p) || n.p.length > o.p.length || n.p.length < 6) return false;
+  if (o.p[0] !== n.p[0] || o.p[1] !== n.p[1] || o.p[o.p.length - 3] !== n.p[n.p.length - 3] || o.p[o.p.length - 2] !== n.p[n.p.length - 2]) return false;
+  const A = stBox(o.p), B = stBox(n.p); for (let i = 0; i < 4; i++) if (Math.abs(A[i] - B[i]) > 6) return false;
+  return true;
+}
 async function stuAdd(d) {
   if (!d || typeof d.tpid !== 'string' || !Array.isArray(d.strokes)) return;
   const lpid = lpidOf(d.tpid), cur = await stuTeacherLines(lpid); if (!cur) return;
   const add = d.strokes.map(stDec).filter((s) => s && typeof s.id === 'string' && Array.isArray(s.p));
   const by = new Map(cur.map((s, i) => [s.id, i])), arr = cur.slice();
-  let changed = false;
-  for (const s of add) { const i = by.get(s.id); if (i != null) { if (stKey(arr[i]) !== stKey(s)) { arr[i] = s; changed = true; } } else { by.set(s.id, arr.length); arr.push(s); changed = true; } if (PV.ink[s.id]) delete PV.ink[s.id]; }
+  let changed = false, replaced = false; const fresh = [];
+  for (const s of add) { const i = by.get(s.id); if (i != null) { if (stKey(arr[i]) !== stKey(s)) { if (!stLooksSame(arr[i], s)) replaced = true; arr[i] = s; changed = true; } } else { by.set(s.id, arr.length); arr.push(s); fresh.push(s); changed = true; } if (PV.ink[s.id]) delete PV.ink[s.id]; }
   if (!changed) { if (S.pid === lpid) drawPresentLive(); return; }
-  await stuSetTeacherLines(lpid, arr); if (S.pid === lpid) drawPresentLive();
+  await stuSetTeacherLines(lpid, arr, replaced ? null : fresh); if (S.pid === lpid) drawPresentLive();
 }
 async function stuDel(d) {
   if (!d || typeof d.tpid !== 'string' || !Array.isArray(d.ids)) return;
@@ -19896,8 +19918,8 @@ function studentInk(d) {
     if (s.gap) { LIVE.gapAsk = LIVE.gapAsk || setTimeout(async () => { LIVE.gapAsk = 0; const cur = layerArr('teacher'); liveSend('need', { sid: LIVE.sid, tpid: String(d.pid), have: cur.map(stKey) }); }, 300); }
     (LIVE.inkAt || (LIVE.inkAt = {}))[id] = now();
     if (!arr.some((x) => x.id === id)) { const st = { id, k: s.k, c: s.c, w: s.w, p: s.p.slice() }; if (s.t) st.t = s.t; if (s.o) st.o = s.o; arr.push(st);
-      try { const c = cInk.getContext('2d'); c.setTransform(S.res, 0, 0, S.res, 0, 0); drawStroke(c, st); } catch (e) { drawInk(); }
-      drawInkLater(); studentSaveInk(); }
+      try { const c = cInk.getContext('2d'); c.setTransform(S.res, 0, 0, S.res, 0, 0); drawStroke(c, st); S.inkSigDrawn = inkSig(); if (cSharp && (!cSharp.hidden || S.zoom > 1.2)) sharpLater(); } catch (e) { drawInk(); }
+      studentSaveInk(); } /* the finished line is added to the picture; no full redraw follows */
   });
 }
 function studentLaser(d) {
@@ -22697,7 +22719,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793602620';
+const BUILD = '1793603731';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
@@ -23275,7 +23297,17 @@ function lzGlide() {
 function drawPresentLive() {
   if (cRemote.width <= 2) { if (!Object.keys(PV.ink).length && !PV.laser && !(PV.lzKept && PV.lzKept.list.length)) return; cRemote.width = Math.round(W * S.res); cRemote.height = Math.round(H * S.res); }
   const c = cRemote.getContext('2d');
-  c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, cRemote.width, cRemote.height);
+  /* only the part of the layer that had or now has something on it is cleared and redrawn (the layer is the size of
+     the whole page: clearing all of it every frame while writing came in made the learner's screen stutter) */
+  let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9; const grow = (x, y) => { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; };
+  for (const s of Object.values(PV.ink)) if (s) { for (let i = 0; i < s.p.length; i += 3) grow(s.p[i] / 10, s.p[i + 1] / 10); }
+  if (PV.lzKept) for (const q of PV.lzKept.list) for (const p of q) grow(p[0], p[1]);
+  if (PV.laser) for (const p of PV.laser.pts) grow(p[0], p[1]);
+  const cur = x1 >= x0 ? [x0 - 40, y0 - 40, x1 + 40, y1 + 40] : null, prev = PV.box;
+  const clr = prev && cur ? [Math.min(prev[0], cur[0]), Math.min(prev[1], cur[1]), Math.max(prev[2], cur[2]), Math.max(prev[3], cur[3])] : prev || cur;
+  c.setTransform(1, 0, 0, 1, 0, 0);
+  if (clr) { const k = S.res; c.clearRect(Math.floor(clr[0] * k), Math.floor(clr[1] * k), Math.ceil((clr[2] - clr[0]) * k) + 2, Math.ceil((clr[3] - clr[1]) * k) + 2); }
+  PV.box = cur;
   c.setTransform(S.res, 0, 0, S.res, 0, 0);
   for (const s of Object.values(PV.ink)) if (s && s.p.length >= 3) drawStroke(c, s);
   const L = PV.laser;
