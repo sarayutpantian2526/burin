@@ -22614,7 +22614,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793599031';
+const BUILD = '1793599069';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
@@ -23397,7 +23397,8 @@ function exitAsk(b) {
   b.classList.add('ask'); clearTimeout(b._askT); b._askT = setTimeout(() => b.classList.remove('ask'), 3000);
   if (b.id === 'fqExit') toast('แตะอีกครั้งเพื่อออกจากเต็มจอ', 2200);
 }
-$('#bExitFull').onclick = () => exitAsk($('#bExitFull'));
+/* one tap, symbol only: the button sits at the top right, away from the writing hand */
+$('#bExitFull').onclick = () => setFocus(false);
 $('#fqExit').onclick = () => exitAsk($('#fqExit'));
 document.addEventListener('keydown', (e) => { if (S.focus && !S.present && e.key === 'Escape' && !document.querySelector('.sheet:not([hidden])')) setFocus(false); });
 
