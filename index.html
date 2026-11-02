@@ -4943,8 +4943,8 @@ function drawLasers() {
 /* draw and hold: turn the stroke into a clean shape */
 function armHold(pt, x, y) {
   if (!S.shapeSnap || pt.stroke.k !== 'p' || pt.snapped) return;
-  /* a resting pen still trembles a little: only a real move (about 6 screen pixels) restarts the wait */
-  if (pt.holdRef && Math.hypot(x - pt.holdRef[0], y - pt.holdRef[1]) < Math.max(3.5, 6 / Math.max(0.2, (S.base || 1) * (S.zoom || 1)))) return;
+  /* a resting pen still trembles a little: only a real move (about 9 screen pixels) restarts the wait */
+  if (pt.holdRef && Math.hypot(x - pt.holdRef[0], y - pt.holdRef[1]) < Math.max(3.5, 9 / Math.max(0.2, (S.base || 1) * (S.zoom || 1)))) return;
   pt.holdRef = [x, y];
   clearTimeout(pt.holdT);
   const f = pt.stroke.p; let L = 0;
@@ -4955,7 +4955,7 @@ function armHold(pt, x, y) {
   /* a letter or a word is never a shape: only drawings bigger than handwriting snap, and only after a clear pause */
   let bx0 = 1e9, by0 = 1e9, bx1 = -1e9, by1 = -1e9; for (let i = 0; i < f.length; i += 3) { const qx = f[i] / 10, qy = f[i + 1] / 10; if (qx < bx0) bx0 = qx; if (qx > bx1) bx1 = qx; if (qy < by0) by0 = qy; if (qy > by1) by1 = qy; }
   if (Math.max(bx1 - bx0, by1 - by0) < 70 && Math.max(bx1 - bx0, by1 - by0) * sc < 70) return;
-  pt.holdT = setTimeout(() => trySnap(pt), 1200);
+  pt.holdT = setTimeout(() => trySnap(pt), 600); /* about half a second, like other drawing apps */
 }
 function strokePts(flat) { const out = []; for (let i = 0; i < flat.length; i += 3) out.push([flat[i] / 10, flat[i + 1] / 10]); return out; }
 function rdp(pts, eps) {
@@ -5011,9 +5011,9 @@ function recognize(flat) {
   for (const q of p0) { x0 = Math.min(x0, q[0]); y0 = Math.min(y0, q[1]); x1 = Math.max(x1, q[0]); y1 = Math.max(y1, q[1]); }
   const w = x1 - x0, h = y1 - y0, size = Math.max(w, h), diag = Math.hypot(w, h);
   /* a straight line */
-  if (d > 0.85 * L) {
+  if (d > 0.8 * L) {
     let dev = 0; for (const q of p0) dev = Math.max(dev, ipSegD(q, a, b));
-    if (dev < Math.max(5, 0.07 * d)) { const ang = shAng(a, b), sn = Math.round(ang / (Math.PI / 4)) * (Math.PI / 4), A = Math.abs(ang - sn) < 0.08 ? sn : ang; return { type: 'line', a: a.slice(), b: [a[0] + d * Math.cos(A), a[1] + d * Math.sin(A)], name: 'เส้นตรง' }; }
+    if (dev < Math.max(6, 0.09 * d)) { const ang = shAng(a, b), sn = Math.round(ang / (Math.PI / 4)) * (Math.PI / 4), A = Math.abs(ang - sn) < 0.08 ? sn : ang; return { type: 'line', a: a.slice(), b: [a[0] + d * Math.cos(A), a[1] + d * Math.sin(A)], name: 'เส้นตรง' }; }
   }
   const closed = d < Math.max(24, 0.22 * L, 0.2 * size);
   if (closed && w > 12 && h > 12) {
@@ -5095,6 +5095,12 @@ function recognize(flat) {
       if (Math.abs(rx - ry) / Math.max(rx, ry) < 0.16) { const rr = (rx + ry) / 2; return { type: 'ellipse', cx, cy, rx: rr, ry: rr, name: 'วงกลม' }; }
       return { type: 'ellipse', cx, cy, rx, ry, name: 'วงรี' };
     }
+    /* nothing named fits well: a shaky round line is still a circle or an ellipse, anything else keeps its outline,
+       straightened, so holding the pen always gives a clean shape */
+    if (sd < 0.22) { if (Math.abs(rx - ry) / Math.max(rx, ry) < 0.2) { const rr = (rx + ry) / 2; return { type: 'ellipse', cx, cy, rx: rr, ry: rr, name: 'วงกลม' }; } return { type: 'ellipse', cx, cy, rx, ry, name: 'วงรี' }; }
+    { const mx = r.reduce((s0, q) => s0 + q[0], 0) / N, my = r.reduce((s0, q) => s0 + q[1], 0) / N; let f = 0, fd = -1; r.forEach((q, i) => { const dd = Math.hypot(q[0] - mx, q[1] - my); if (dd > fd) { fd = dd; f = i; } });
+      const rot = r.slice(f).concat(r.slice(0, f + 1));
+      for (const e of [0.08, 0.11, 0.14]) { const vs = rdp(rot, e * size).slice(0, -1); if (vs.length >= 3 && vs.length <= 8) return { type: 'poly', closed: true, pts: vs.map((q) => q.slice()), name: vs.length === 3 ? 'สามเหลี่ยม' : vs.length === 4 ? 'สี่เหลี่ยม' : 'รูปหลายเหลี่ยม' }; } }
     return null;
   }
   /* open: an arc of a circle, or a line bent at a few corners */
@@ -5103,7 +5109,7 @@ function recognize(flat) {
     if (Math.abs(D) > 1e-6) { const ux = ((ax * ax + ay * ay) * (by - cyp) + (bx * bx + by * by) * (cyp - ay) + (cxp * cxp + cyp * cyp) * (ay - by)) / D, uy = ((ax * ax + ay * ay) * (cxp - bx) + (bx * bx + by * by) * (ax - cxp) + (cxp * cxp + cyp * cyp) * (bx - ax)) / D, R = Math.hypot(ax - ux, ay - uy);
       let dev = 0; for (const q of r) dev = Math.max(dev, Math.abs(Math.hypot(q[0] - ux, q[1] - uy) - R));
       const cs0 = shCorners(r, false, 3);
-      if (dev < Math.max(4, 0.06 * diag) && cs0.length === 0 && R < 4 * diag) {
+      if (dev < Math.max(4, 0.08 * diag) && cs0.length === 0 && R < 4 * diag) {
         const a0 = shAng([ux, uy], a), am = shAng([ux, uy], m), a1 = shAng([ux, uy], b); let sw = shWrap(a1 - a0); const toM = shWrap(am - a0); if (Math.sign(toM) !== Math.sign(sw) || Math.abs(toM) > Math.abs(sw)) sw = sw > 0 ? sw - 2 * Math.PI : sw + 2 * Math.PI;
         return { type: 'arc', cx: ux, cy: uy, r: R, a0, a1: a0 + sw, name: 'ส่วนโค้ง' };
       }
@@ -22315,7 +22321,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793583665';
+const BUILD = '1793585664';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
@@ -22763,7 +22769,7 @@ $('#fqPages').onclick = () => togglePages();
 
 /* ---------- audience screen: paper only, follows the writing device ---------- */
 const PV = { ink: {}, laser: null, view: null, ty: null, raf: 0, taps: [] };
-S.present = false; S.watchers = 0;
+S.present = false; S.watchers = 0; S.peersAny = 0;
 function publishLive() {
   if (S.present || !S.store || !S.nid || !S.pid) return;
   Promise.resolve(S.store.set('live/current', { nid: S.nid, pid: S.pid, by: TAB, ts: now() })).catch(() => {});
@@ -22807,10 +22813,11 @@ function liveCrowd() { return (LIVE.peers || []).length > 5; }
 function emitInk() { /* shapes reach the audience when saved */ }
 let lastLz = 0;
 function emitLaserPt(x, y, down) {
-  if (S.present || !((S.room && S.watchers) || liveOn())) return;
-  const t = now(); if (down && t - lastLz < 35) return; lastLz = t;
+  if (S.present || !((S.room && (S.watchers || S.peersAny)) || liveOn())) return;
+  /* about 20 points a second: smooth enough to follow, and well inside what the realtime service lets through */
+  const t = now(); if (down && t - lastLz < 50) return; lastLz = t;
   const msg = { pid: S.pid, mode: S.laserMode, x: Math.round(x), y: Math.round(y), down: !!down };
-  if (S.room && S.watchers) S.room.emit('laser', msg).catch(() => {});
+  if (S.room && (S.watchers || S.peersAny)) S.room.emit('laser', msg).catch(() => {});
   if (liveOn()) liveSend('laser', msg);
 }
 /* a viewer keeps the teacher's finished laser lines for the same few seconds, then they fade together */
@@ -22899,6 +22906,7 @@ function setupRoom(room) {
   S.room = room; if (!room) return;
   room.onPeers((ch) => {
     S.watchers = ch.peers.filter((p) => !p.sameTab && p.presence && p.presence.role === 'present').length;
+    S.peersAny = ch.peers.filter((p) => !p.sameTab).length; /* any other screen of this account shows the laser too */
     if (ch.joined.some((p) => p.presence && p.presence.role === 'present') || ch.updated.some((p) => p.presence && p.presence.role === 'present')) { publishLive(); setTimeout(emitView, 300); }
   }, () => {});
   room.on('view', (m) => { if (!S.present || m.sameTab || !m.data || m.data.pid !== S.pid) return; const v = m.data; if (isFinite(v.y0) && isFinite(v.y1)) { PV.view = { y0: +v.y0, y1: +v.y1 }; if (isFinite(v.x0) && isFinite(v.x1) && v.x1 > v.x0 && v.y1 > v.y0) { PV.view.x0 = +v.x0; PV.view.x1 = +v.x1; } followView(); } }, () => {});
@@ -22907,8 +22915,9 @@ function setupRoom(room) {
     const d = m.data; if (typeof d.id !== 'string' || !Array.isArray(d.p)) return;
     inkFeed(d, (id) => setTimeout(() => { delete PV.ink[id]; drawPresentLive(); }, 1600));
   }, () => {});
+  /* the laser shows on every screen open on the same page: the presenting screen and any other device of the account */
   room.on('laser', (m) => {
-    if (!S.present || m.sameTab || !m.data || m.data.pid !== S.pid) return;
+    if (m.sameTab || !m.data || m.data.pid !== S.pid) return;
     const d = m.data; if (!isFinite(d.x) || !isFinite(d.y)) return;
     if (!d.down) { pvLaserUp(); return; }
     if (!PV.laser || PV.laser.mode !== d.mode) PV.laser = { mode: d.mode === 'line' ? 'line' : 'dot', pts: [] };
