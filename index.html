@@ -3365,7 +3365,7 @@ function flowSet(on) {
   document.querySelectorAll('#flowSeg button').forEach((b) => b.setAttribute('aria-pressed', (b.dataset.f === '1') === !!on ? 'true' : 'false'));
   renderPeeks().catch(() => {}); if (!on) { clampT(); applyT(); }
 }
-function applyT() { if (FLOW.on) flowCheckLater(); const zn = document.getElementById('zNum'); if (zn) { const pc = Math.round(S.zoom * 100); zn.classList.toggle('off', Math.abs(pc - 100) > 1); zn.title = pc === 100 ? 'พอดีหน้า' : 'ตอนนี้ ' + pc + '% แตะเพื่อกลับมาพอดีหน้า'; zn.setAttribute('aria-label', zn.title); } itemsEl.style.setProperty('--hk', (1 / ((S.base || 1) * (S.zoom || 1))).toFixed(3)); wrapEl.style.willChange = 'transform'; { const dpr = window.devicePixelRatio || 1, rx = Math.round(S.tx * dpr) / dpr, ry = Math.round((S.ty + rubber(S.pull || 0)) * dpr) / dpr; wrapEl.style.transform = 'translate(' + rx + 'px,' + ry + 'px) scale(' + S.zoom + ')'; } if (S.watchers && !S.present) viewLater(); sharpLater(); }
+function applyT() { if (FLOW.on) flowCheckLater(); const zn = document.getElementById('zNum'); if (zn) { const pc = Math.round(S.zoom * 100); zn.classList.toggle('off', Math.abs(pc - 100) > 1); zn.title = pc === 100 ? 'พอดีหน้า' : 'ตอนนี้ ' + pc + '% แตะเพื่อกลับมาพอดีหน้า'; zn.setAttribute('aria-label', zn.title); } itemsEl.style.setProperty('--hk', (1 / ((S.base || 1) * (S.zoom || 1))).toFixed(3)); wrapEl.style.willChange = 'transform'; { const dpr = window.devicePixelRatio || 1, rx = Math.round(S.tx * dpr) / dpr, ry = Math.round((S.ty + rubber(S.pull || 0)) * dpr) / dpr; wrapEl.style.transform = 'translate(' + rx + 'px,' + ry + 'px) scale(' + S.zoom + ')'; } if (S.watchers && !S.present) emitView(); /* throttled inside, with a last update when the movement stops: the audience screen follows while the teacher is still scrolling, not only after */ sharpLater(); }
 function topY() { return S.tv ? 12 : 72; }
 function bounds() {
   const vw = vp.clientWidth, vh = vp.clientHeight;
@@ -22594,7 +22594,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793597844';
+const BUILD = '1793598468';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
@@ -23059,13 +23059,13 @@ const publishLiveLater = debounce(publishLive, 300);
 let lastView = 0;
 function emitView() {
   if (!S.room || S.present || !S.watchers || !S.pid) return;
-  const t = now(); if (t - lastView < 110) { viewLater(); return; } lastView = t;
+  const t = now(); if (t - lastView < 60) { viewLater(); return; } lastView = t;
   const r = vp.getBoundingClientRect();
   /* the whole rectangle the teacher sees, so the viewer screen can match zoom and position exactly */
   const a = toLogical(r.left, r.top), b = toLogical(r.right, r.bottom);
   S.room.emit('view', { pid: S.pid, x0: Math.round(a[0]), y0: Math.round(a[1]), x1: Math.round(b[0]), y1: Math.round(b[1]) }).catch(() => {});
 }
-const viewLater = debounce(emitView, 140);
+const viewLater = debounce(emitView, 80);
 const liveOn = () => LIVE.role === 'teacher' && LIVE.ready;
 function emitInkDelta(pt) {
   if (S.present || !((S.room && (S.watchers || S.peersAny)) || liveOn())) return;
@@ -23158,7 +23158,7 @@ function stepFollow() {
   PV.raf = 0; const to = PV.to; if (!to) return;
   const dz = to.z - S.zoom, dx = to.tx - S.tx, dy = to.ty - S.ty;
   if (Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5 && Math.abs(dz) < 0.002) { S.zoom = to.z; S.tx = to.tx; S.ty = to.ty; applyT(); return; }
-  S.zoom += dz * 0.25; S.tx += dx * 0.25; S.ty += dy * 0.25; applyT();
+  S.zoom += dz * 0.35; S.tx += dx * 0.35; S.ty += dy * 0.35; applyT();
   PV.raf = requestAnimationFrame(stepFollow);
 }
 function presentFit() {
