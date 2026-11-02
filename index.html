@@ -18971,12 +18971,12 @@ async function liveSendAll() {
     const pid = pages[i]; if (pid === S.pid) continue;
     const pg = await S.store.get('pages/' + pid); if (!pg) continue;
     const ls = await S.store.list('pages/' + pid + '/layers').catch(() => []); const strokes = []; for (const l of ls) for (const st of l.strokes || []) strokes.push(st);
-    const items = await shareItems(pg.items, 86400), parts = chunkStrokes(strokes, 90000), rev = now();
+    const items = await shareItems(pg.items, 86400), parts = liveV2() ? chunkStrokes(strokes, 90000).map((q) => q.map(stEnc)) : chunkStrokes(strokes, 90000), rev = now();
     liveSend('page', { tpid: pid, idx: i, n: pages.length, tnid: S.nid, order: pages.slice(0, 400), nb: S.nb.title || '', level: S.nb.level || 'mp', subject: S.nb.subject || 'phys', subjectName: S.nb.subjectName || null, orient: pg.orient || null, paper: pg.paper || 'grid', items, rev, parts: parts.length, bg: true });
     for (let k = 0; k < parts.length; k++) { await new Promise((r) => setTimeout(r, 60)); liveSend('strokes', { tpid: pid, rev, part: k, strokes: parts[k] }); }
     await new Promise((r) => setTimeout(r, 250));
   }
-  liveSendPageNow();
+  liveSendPageNow(true);
 }
 /* ---------- live class: students follow the lecture on their own device, keep their own notes, answer the same exercises ---------- */
 const LIVE = { streamed: new Set(), sig: '', ch: null, code: null, role: null, peers: [], follow: store_ls.get('tp-follow') !== '0', set: null, ans: {}, revealed: false, parts: {}, signed: new Map(), sid: store_ls.get('tp-sid') || ('s' + uid()), name: store_ls.get('tp-sname') || '' };
@@ -19096,6 +19096,77 @@ async function rkAnswer(p) {
   }
   return { p: d };
 }
+/* ----- live room, version 2: small and complete.
+   Small: pen points go as a short text of differences (a few bits per point instead of a dozen characters), exactly the
+   same points, nothing rounded or dropped; any stroke whose points are not whole numbers is sent as before.
+   Complete: the teacher sends a short summary of the page every few seconds; a learner whose copy differs (a message
+   lost on a weak network) sends its own list back, and the teacher sends only what is missing and which lines were
+   rubbed out. A changed page sends only what changed. Learners announce v:2 in presence; until every learner in the
+   room has, the teacher keeps to the old way so nobody is left out. ----- */
+const PT64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
+const PT64I = (() => { const m = new Int16Array(128).fill(-1); for (let i = 0; i < 64; i++) m[PT64.charCodeAt(i)] = i; return m; })();
+function ptsEnc(a) {
+  if (!Array.isArray(a)) return null;
+  const out = []; let px = 0, py = 0, pp = 0;
+  for (let i = 0; i + 2 < a.length; i += 3) {
+    const x = a[i], y = a[i + 1], p = a[i + 2];
+    if (!Number.isInteger(x) || !Number.isInteger(y) || !Number.isInteger(p)) return null;
+    for (let z of [x - px, y - py, p - pp]) { z = z < 0 ? -z * 2 - 1 : z * 2; while (z >= 32) { out.push(PT64[(z & 31) | 32]); z = Math.floor(z / 32); } out.push(PT64[z]); }
+    px = x; py = y; pp = p;
+  }
+  if (a.length % 3) return null;
+  return out.join('');
+}
+function ptsDec(s) {
+  const v = []; let z = 0, sh = 1;
+  for (let i = 0; i < s.length; i++) { const c = PT64I[s.charCodeAt(i) & 127]; if (c < 0) return null; z += (c & 31) * sh; if (c & 32) { sh *= 32; continue; } v.push(z % 2 ? -(z + 1) / 2 : z / 2); z = 0; sh = 1; }
+  if (v.length % 3) return null;
+  for (let i = 3; i < v.length; i++) v[i] += v[i - 3];
+  return v;
+}
+/* a stroke made small for the wire, and back */
+function stEnc(s) { const e = ptsEnc(s.p); if (e == null) return s; const o = Object.assign({}, s); delete o.p; o.e = e; return o; }
+function stDec(s) { if (!s || typeof s !== 'object') return s; if (typeof s.e === 'string' && !Array.isArray(s.p)) { const p = ptsDec(s.e); if (!p) return null; const o = Object.assign({}, s); delete o.e; o.p = p; return o; } return s; }
+/* what identifies a line's current shape: its id, how many points, where it starts and ends */
+function stKey(s) { const p = s.p || [], n = p.length; return s.id + ':' + n + ':' + (p[0] | 0) + ',' + (p[1] | 0) + ':' + (p[n - 3] | 0) + ',' + (p[n - 2] | 0); }
+function keysHash(keys) { let h = 2166136261 >>> 0; for (const k of keys.slice().sort()) for (let i = 0; i < k.length; i++) { h ^= k.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; } return h.toString(36) + '.' + keys.length; }
+const V2 = { sent: new Map(), full: null, digT: 0, needs: null, needT: 0 };
+function liveV2() { const ps = LIVE.peers || []; return ps.length > 0 && ps.every((p) => p.v === 2); }
+function teacherStrokesNow() { return S.mine.concat(...Object.values(S.others)); }
+/* teacher: a short summary of the page on screen, every few seconds while learners are in */
+function liveDigest() {
+  if (LIVE.role !== 'teacher' || !LIVE.ready || !S.pid || !liveV2()) return;
+  const keys = teacherStrokesNow().map(stKey);
+  liveSend('dig', { tpid: S.pid, h: keysHash(keys), ih: keysHash(((S.page && S.page.items) || []).filter((it) => !it.teacher).map((it) => it.id + ':' + JSON.stringify(it).length)) });
+}
+/* teacher: learners whose copy differs send their list; within a short moment all such lists are answered together */
+function liveGotNeed(d) {
+  if (!d || typeof d.tpid !== 'string' || d.tpid !== S.pid || !Array.isArray(d.have)) return;
+  const N = V2.needs || (V2.needs = { have: [], items: false });
+  N.have.push(new Set(d.have.slice(0, 5000).map(String))); if (d.items) N.items = true;
+  clearTimeout(V2.needT); V2.needT = setTimeout(liveAnswerNeeds, 350);
+}
+function liveAnswerNeeds() {
+  const N = V2.needs; V2.needs = null; if (!N || LIVE.role !== 'teacher' || !S.pid) return;
+  const all = teacherStrokesNow(), keys = new Map(all.map((s) => [stKey(s), s])), ids = new Set(all.map((s) => s.id));
+  const add = new Map(), del = new Set();
+  for (const have of N.have) {
+    for (const [k, s] of keys) if (!have.has(k)) add.set(s.id, s);
+    for (const k of have) { const id = k.split(':')[0]; if (!ids.has(id)) del.add(id); }
+  }
+  if (N.items) liveSendPageNow();
+  liveSendDiff(S.pid, [...add.values()], [...del]);
+}
+/* teacher: strokes added or changed, and strokes rubbed out, in pieces of a safe size */
+function liveSendDiff(tpid, add, del) {
+  if (del.length) for (let i = 0; i < del.length; i += 800) liveSend('sdel', { tpid, ids: del.slice(i, i + 800) });
+  if (!add.length) return;
+  const enc = add.map(stEnc); let cur = [], size = 0;
+  const flush = () => { if (cur.length) liveSend('sadd', { tpid, strokes: cur }); cur = []; size = 0; };
+  for (const s of enc) { const z = (s.e ? s.e.length : (s.p || []).length * 5) + 80; if (cur.length && size + z > 60000) flush(); cur.push(s); size += z; }
+  flush();
+  const m = V2.sent.get(tpid) || new Map(); for (const s of add) m.set(s.id, stKey(s)); for (const id of del) m.delete(id); V2.sent.set(tpid, m);
+}
 function liveSend(ev, data) {
   if (!LIVE.ch || !LIVE.ready) return;
   const ch = LIVE.ch, teacher = LIVE.role === 'teacher';
@@ -19178,10 +19249,12 @@ async function liveOpen() {
     if (r === 'taken') { LIVE.code = liveRoomCode(LIVE.nbId, LIVE.clsId, true); store_ls.set('tp-class', LIVE.code); r = await rkSoon(rkTeacher(LIVE.code).catch(() => false), 4000, false); } }
   const ch = sb.channel('class-' + LIVE.code, { config: { broadcast: { self: false }, presence: { key: 'teacher-' + TAB } } });
   ch.on('broadcast', { event: 'pullall' }, () => { clearTimeout(LIVE.pullT); LIVE.pullT = setTimeout(liveSendAll, 400); });
-  ch.on('broadcast', { event: 'join' }, (m) => { rkJoin(m.payload); m = { payload: rkStrip(m.payload) }; liveSendRoster(m.payload);  liveSendPage(); liveSendHw(); { const al = m.payload && liveNames()[m.payload.sid]; if (al && al !== m.payload.name) liveSend('rename', { sid: m.payload.sid, name: al }); } if (LIVE.set) liveSend('quiz', liveQuizPayload()); if (LIVE.revealed) liveSend('reveal', liveRevealPayload()); });
+  ch.on('broadcast', { event: 'need' }, (m) => liveGotNeed(rkStrip(m.payload)));
+  ch.on('broadcast', { event: 'join' }, (m) => { rkJoin(m.payload); m = { payload: rkStrip(m.payload) }; liveSendRoster(m.payload); LIVE.forceFull = true; liveSendPage(); liveSendHw(); { const al = m.payload && liveNames()[m.payload.sid]; if (al && al !== m.payload.name) liveSend('rename', { sid: m.payload.sid, name: al }); } if (LIVE.set) liveSend('quiz', liveQuizPayload()); if (LIVE.revealed) liveSend('reveal', liveRevealPayload()); });
   ch.on('broadcast', { event: 'ans' }, (m) => { const p = m.payload; RK.vq = RK.vq.then(() => rkSoon(rkAnswer(p).catch(() => null), 2500, null)).then((r) => { if (r) liveGotAnswer(r.p); }).catch(() => {}); });
-  ch.on('presence', { event: 'sync' }, () => { const st = ch.presenceState(); const seen = LIVE.seen || (LIVE.seen = new Set()); let fresh = false; for (const k in st) if (!k.startsWith('teacher-') && !seen.has(k)) { seen.add(k); fresh = true; } if (fresh) liveSendPage(); LIVE.peers = []; for (const k in st) { const m = (st[k] || []).slice(-1)[0] || {}; if (m.role === 'student') { const al = liveNames()[k]; LIVE.peers.push({ sid: k, name: al || m.name || 'ไม่ระบุชื่อ', orig: m.name || '', no: m.no || null, stu: m.stu || null }); } } LIVE.peers.sort((x, y) => (x.no || 999) - (y.no || 999)); liveRender(); });
-  ch.subscribe((s) => { if (s === 'SUBSCRIBED') { LIVE.ready = true; ch.track({ role: 'teacher' }); liveSendPage(); liveSendRoster(); liveSendHw(true); liveRender(); } });
+  ch.on('presence', { event: 'sync' }, () => { const st = ch.presenceState(); const seen = LIVE.seen || (LIVE.seen = new Set()); let fresh = false; for (const k in st) if (!k.startsWith('teacher-') && !seen.has(k)) { seen.add(k); fresh = true; } if (fresh) { LIVE.forceFull = true; liveSendPage(); } LIVE.peers = []; for (const k in st) { const m = (st[k] || []).slice(-1)[0] || {}; if (m.role === 'student') { const al = liveNames()[k]; LIVE.peers.push({ sid: k, name: al || m.name || 'ไม่ระบุชื่อ', orig: m.name || '', no: m.no || null, stu: m.stu || null, v: m.v === 2 ? 2 : 1 }); } } LIVE.peers.sort((x, y) => (x.no || 999) - (y.no || 999)); liveRender(); });
+  ch.subscribe((s) => { if (s === 'SUBSCRIBED') { LIVE.ready = true; ch.track({ role: 'teacher' }); LIVE.forceFull = true; liveSendPage(); liveSendRoster(); liveSendHw(true); liveRender(); } });
+  clearInterval(V2.digT); V2.digT = setInterval(liveDigest, 2000); V2.sent.clear(); V2.full = null;
   LIVE.ch = ch; liveRender(); $('#bLive').classList.add('on');
   /* the room stays open after the app reloads or updates, until the teacher closes it */
   store_ls.set('tp-live-on', '1'); store_ls.set('tp-live-cls', LIVE.clsId || '');
@@ -19201,20 +19274,32 @@ async function liveSendRoster(p) {
 }
 function liveClose() {
   if (LIVE.ch) { liveSend('end', {}); try { CLOUD.client.removeChannel(LIVE.ch); } catch (e) { /* closed */ } }
+  clearInterval(V2.digT); V2.sent.clear(); V2.full = null;
   store_ls.del('tp-live-on'); store_ls.del('tp-live-cls'); store_ls.del('tp-live-nb'); LIVE.seen = null; LIVE.nbId = null; LIVE.hw = null;
   LIVE.ch = null; LIVE.ready = false; LIVE.role = null; LIVE.peers = []; LIVE.clsId = null; LIVE.set = null; LIVE.ans = {}; LIVE.revealed = false;
   $('#bLive').classList.remove('on'); $('#bLiveN').textContent = ''; liveRender();
 }
 function liveSig() { return S.pid + '|' + S.mine.map((x) => x.id + ':' + (x.p[0] | 0) + ',' + (x.p[1] | 0)).join(';'); }
-async function liveSendPageNow() {
+async function liveSendPageNow(full) {
   if (LIVE.role !== 'teacher' || !LIVE.ready || !S.page || !S.pid || !S.nb) return;
   LIVE.sig = liveSig();
-  const pages = S.nb.pages || [], rev = now();
+  const pages = S.nb.pages || [], rev = now(), tpid = S.pid, v2 = liveV2();
   const items = await shareItems(S.page.items, 86400);
-  const strokes = S.mine.concat(...Object.values(S.others));
-  const parts = chunkStrokes(strokes, 90000);
-  liveSend('page', { tpid: S.pid, idx: pages.indexOf(S.pid), n: pages.length, tnid: S.nid, order: pages.slice(0, 400), nb: S.nb.title || '', level: S.nb.level || 'mp', subject: S.nb.subject || 'phys', subjectName: S.nb.subjectName || null, orient: S.page.orient || null, paper: S.page.paper || 'grid', items, rev, parts: parts.length });
-  parts.forEach((p, i) => setTimeout(() => liveSend('strokes', { tpid: S.pid, rev, part: i, strokes: p }), 40 * (i + 1)));
+  const strokes = teacherStrokesNow();
+  const meta = { tpid, idx: pages.indexOf(tpid), n: pages.length, tnid: S.nid, order: pages.slice(0, 400), nb: S.nb.title || '', level: S.nb.level || 'mp', subject: S.nb.subject || 'phys', subjectName: S.nb.subjectName || null, orient: S.page.orient || null, paper: S.page.paper || 'grid', items, rev };
+  /* the same page again (a box moved, a line rubbed out): only what changed, when every learner understands that */
+  if (v2 && !full && !LIVE.forceFull && V2.full === tpid && V2.sent.has(tpid)) {
+    liveSend('page', Object.assign(meta, { parts: -1 }));
+    const was = V2.sent.get(tpid), now0 = new Map(strokes.map((s) => [s.id, s]));
+    const add = strokes.filter((s) => was.get(s.id) !== stKey(s)), del = [...was.keys()].filter((id) => !now0.has(id));
+    liveSendDiff(tpid, add, del);
+    return;
+  }
+  LIVE.forceFull = false; V2.full = tpid; V2.sent.set(tpid, new Map(strokes.map((s) => [s.id, stKey(s)])));
+  const wire = v2 ? strokes.map(stEnc) : strokes;
+  const parts = v2 ? (() => { const out = []; let cur = [], size = 0; for (const s of wire) { const z = (s.e ? s.e.length : (s.p || []).length * 5) + 80; if (cur.length && size + z > 60000) { out.push(cur); cur = []; size = 0; } cur.push(s); size += z; } out.push(cur); return out; })() : chunkStrokes(strokes, 90000);
+  liveSend('page', Object.assign(meta, { parts: parts.length }));
+  parts.forEach((p, i) => setTimeout(() => liveSend('strokes', { tpid, rev, part: i, strokes: p }), 40 * (i + 1)));
 }
 const liveSendPage = debounce(liveSendPageNow, 900);
 function liveQuizPayload() { const s = LIVE.set; return { id: s.id, title: s.title, qs: s.qs.map((q) => ({ id: q.id, q: q.q, c: q.c, d: q.d, fig: q.fig })) }; }
@@ -19263,7 +19348,7 @@ function liveRender() {
     const row = exEl('div', 'row2');
     const cp = exEl('button', 'btn', 'คัดลอกลิงก์'); cp.onclick = () => { navigator.clipboard && navigator.clipboard.writeText(link).then(() => toast('คัดลอกแล้ว', 1200)).catch(() => {}); }; row.appendChild(cp);
     const big = exEl('button', 'btn', 'วาง QR ลงหน้ากระดาษให้ทั้งห้องเห็น'); big.onclick = liveQRToPage; row.appendChild(big);
-    const rs = exEl('button', 'btn', 'ส่งหน้านี้อีกครั้ง'); rs.onclick = liveSendPageNow; row.appendChild(rs);
+    const rs = exEl('button', 'btn', 'ส่งหน้านี้อีกครั้ง'); rs.onclick = () => liveSendPageNow(true); row.appendChild(rs);
     const nc = exEl('button', 'btn', 'เปลี่ยนรหัสห้อง'); nc.title = 'ใช้รหัสใหม่สำหรับ' + liveWhose() + ' ผู้เรียนที่ใช้รหัสเดิมจะเข้าไม่ได้'; nc.onclick = () => { const cls = LIVE.clsId, nid = LIVE.nbId; liveClose(); LIVE.clsId = cls; LIVE.nbId = nid; LIVE.code = liveRoomCode(nid, cls, true); liveOpen(); toast('เปลี่ยนรหัสห้องแล้ว', 1800); }; row.appendChild(nc);
     const cl = exEl('button', 'btn', 'ปิดห้อง'); cl.onclick = () => { liveClose(); store_ls.set('tp-class', ''); LIVE.code = null; }; row.appendChild(cl);
     box.appendChild(row);
@@ -19447,13 +19532,17 @@ async function studentJoin(code) {
   const ch = sb.channel('class-' + code, { config: { broadcast: { self: false }, presence: { key: LIVE.sid } } });
   rkOnTeacher(ch, 'page', (m) => studentGotPage(m.payload));
   rkOnTeacher(ch, 'strokes', (m) => studentGotStrokes(m.payload));
+  /* additions and rub-outs change the same list: one after another, never at the same time */
+  rkOnTeacher(ch, 'sadd', (m) => { LIVE.sq = (LIVE.sq || Promise.resolve()).then(() => stuAdd(m.payload)).catch(() => {}); });
+  rkOnTeacher(ch, 'sdel', (m) => { LIVE.sq = (LIVE.sq || Promise.resolve()).then(() => stuDel(m.payload)).catch(() => {}); });
+  rkOnTeacher(ch, 'dig', (m) => stuDigest(m.payload));
   rkOnTeacher(ch, 'ink', (m) => studentInk(m.payload));
   rkOnTeacher(ch, 'laser', (m) => studentLaser(m.payload));
   rkOnTeacher(ch, 'quiz', (m) => studentQuiz(m.payload));
   rkOnTeacher(ch, 'reveal', (m) => studentReveal(m.payload));
   rkOnTeacher(ch, 'quizend', () => { $('#sqSheet').hidden = true; });
   rkOnTeacher(ch, 'roster', (m) => studentRoster(m.payload));
-  rkOnTeacher(ch, 'rename', (m) => { const d = m.payload; if (!d || d.sid !== LIVE.sid || typeof d.name !== 'string' || LIVE.stu) return; LIVE.name = d.name.slice(0, 60); store_ls.set('tp-sname', LIVE.name); try { ch.track({ role: 'student', name: LIVE.name }); } catch (e) { /* offline */ } toast('ผู้สอนตั้งชื่อของคุณในห้องนี้เป็น ' + LIVE.name, 3000); });
+  rkOnTeacher(ch, 'rename', (m) => { const d = m.payload; if (!d || d.sid !== LIVE.sid || typeof d.name !== 'string' || LIVE.stu) return; LIVE.name = d.name.slice(0, 60); store_ls.set('tp-sname', LIVE.name); try { ch.track({ role: 'student', name: LIVE.name, v: 2 }); } catch (e) { /* offline */ } toast('ผู้สอนตั้งชื่อของคุณในห้องนี้เป็น ' + LIVE.name, 3000); });
   rkOnTeacher(ch, 'hw', (m) => { const L = (m.payload && Array.isArray(m.payload.list)) ? m.payload.list.filter((a) => a && typeof a.id === 'string' && /^[a-z0-9]{6,20}$/.test(a.id)).slice(0, 12) : []; LIVE.hwList = L; const b = $('#lpHw'); b.hidden = !L.length; b.textContent = 'การบ้าน ' + L.length; });
   rkOnTeacher(ch, 'end', () => { liveStudentPill('ผู้สอนปิดห้องแล้ว สมุดยังอยู่ในเครื่องนี้'); });
   /* is the teacher in the room? if not yet, wait and join by itself the moment the teacher opens it */
@@ -19465,7 +19554,7 @@ async function studentJoin(code) {
   clearInterval(LIVE.askT); let tries = 0;
   LIVE.askT = setInterval(() => { if (LIVE.gotPage || LIVE.ch !== ch || ++tries > 40) { clearInterval(LIVE.askT); return; } if (LIVE.ready) liveSend('join', { sid: LIVE.sid, name: LIVE.name }); if (tries === 3 && !teacherHere()) noTeacher(); }, 4000);
   ch.subscribe((s) => {
-    if (s === 'SUBSCRIBED') { LIVE.ready = true; ch.track({ role: 'student', name: LIVE.name }); liveSend('join', { sid: LIVE.sid, name: LIVE.name }); liveStudentPill('เชื่อมต่อแล้ว'); }
+    if (s === 'SUBSCRIBED') { LIVE.ready = true; ch.track({ role: 'student', name: LIVE.name, v: 2 }); liveSend('join', { sid: LIVE.sid, name: LIVE.name }); liveStudentPill('เชื่อมต่อแล้ว'); }
     else if (s === 'CHANNEL_ERROR' || s === 'TIMED_OUT' || s === 'CLOSED') { LIVE.ready = false; liveStudentPill('หลุดการเชื่อมต่อ กำลังต่อใหม่'); }
   });
   LIVE.ch = ch;
@@ -19474,7 +19563,7 @@ async function studentRoster(R) {
   if (!R || !R.map || LIVE.asking || (LIVE.stu && LIVE.stuCls === R.id)) return;
   LIVE.asking = true; const who = await askIdentity(R); LIVE.asking = false;
   LIVE.stu = who.sid; LIVE.stuCls = R.id; LIVE.stuNo = who.no; LIVE.name = who.name;
-  if (LIVE.ch) { try { LIVE.ch.track({ role: 'student', name: who.name, no: who.no, stu: who.sid }); } catch (e) { /* offline */ } }
+  if (LIVE.ch) { try { LIVE.ch.track({ role: 'student', name: who.name, no: who.no, stu: who.sid, v: 2 }); } catch (e) { /* offline */ } }
   liveSend('join', { sid: LIVE.sid, name: who.name, stu: who.sid });
   liveStudentPill('เชื่อมต่อแล้ว ในนาม ' + who.no + '. ' + who.name);
 }
@@ -19484,19 +19573,73 @@ $('#lpDot').onclick = () => lpFold(!$('#livePill').classList.contains('mini'));
 ['#lpFollow', '#lpQuiz', '#lpPull'].forEach((q) => $(q).addEventListener('click', () => lpFold(true)));
 $('#lpHw').onclick = (e) => { const L = LIVE.hwList || []; if (!L.length) return; popMenu(e.currentTarget, 'การบ้านของห้องนี้', L.map((a) => [a.title + (a.due ? ' (ส่ง ' + new Date(a.due).toLocaleDateString(LOC, { day: 'numeric', month: 'short' }) + ')' : ''), () => { const w = window.open(hwLink(a.id), '_blank'); if (!w) location.href = hwLink(a.id); }])); };
 function liveStudentPill(msg) { $('#lpMsg').textContent = 'ห้อง ' + LIVE.code + (/^(เชื่อมต่อแล้ว|กำลังเชื่อมต่อ)$/.test(msg) ? '' : ' ' + msg); $('#lpDot').title = 'ห้อง ' + LIVE.code + ' ' + msg; $('#livePill').dataset.s = /เชื่อมต่อแล้ว/.test(msg) ? 'on' : 'wait'; $('#lpFollow').setAttribute('aria-pressed', LIVE.follow ? 'true' : 'false'); }
+/* ----- learner side of version 2 ----- */
+const lpidOf = (tpid) => 'T' + String(tpid || '').replace(/[^A-Za-z0-9]/g, '');
+/* the learner's copy of the teacher's lines on a page: on screen when that page is open, else from the notebook */
+async function stuTeacherLines(lpid) {
+  if (S.pid === lpid) return layerArr('teacher');
+  const d = await Promise.resolve(S.store.get('pages/' + lpid + '/layers/teacher')).catch(() => null);
+  return (d && Array.isArray(d.strokes)) ? d.strokes : [];
+}
+async function stuSetTeacherLines(lpid, arr) {
+  if (S.pid === lpid) { S.others.teacher = arr; if (!S.inkRaf) S.inkRaf = requestAnimationFrame(() => { S.inkRaf = 0; drawInk(); }); studentSaveInk(); return; }
+  await Promise.resolve(S.store.set('pages/' + lpid + '/layers/teacher', { strokes: arr, rev: now(), dev: 'teacher' })).catch(() => {});
+}
+/* lines added or changed by the teacher, and lines rubbed out */
+async function stuAdd(d) {
+  if (!d || typeof d.tpid !== 'string' || !Array.isArray(d.strokes)) return;
+  const lpid = lpidOf(d.tpid), cur = await stuTeacherLines(lpid); if (!cur) return;
+  const add = d.strokes.map(stDec).filter((s) => s && typeof s.id === 'string' && Array.isArray(s.p));
+  const by = new Map(cur.map((s, i) => [s.id, i])), arr = cur.slice();
+  for (const s of add) { const i = by.get(s.id); if (i != null) arr[i] = s; else { by.set(s.id, arr.length); arr.push(s); } if (PV.ink[s.id]) delete PV.ink[s.id]; }
+  await stuSetTeacherLines(lpid, arr); if (S.pid === lpid) drawPresentLive();
+}
+async function stuDel(d) {
+  if (!d || typeof d.tpid !== 'string' || !Array.isArray(d.ids)) return;
+  const lpid = lpidOf(d.tpid), cur = await stuTeacherLines(lpid); if (!cur) return;
+  const gone = new Set(d.ids.map(String)); if (!cur.some((s) => gone.has(s.id))) return;
+  await stuSetTeacherLines(lpid, cur.filter((s) => !gone.has(s.id)));
+}
+/* the teacher's summary: when this copy differs, look again a moment later (lines still being drawn out count then),
+   and if it still differs send this copy's list so the teacher sends only what is missing */
+function stuDigest(d) {
+  if (!d || typeof d.tpid !== 'string') return;
+  clearTimeout(LIVE.digT);
+  LIVE.digT = setTimeout(async () => {
+    const lpid = lpidOf(d.tpid);
+    /* the whole page never arrived: ask for it */
+    if (S.pid !== lpid && !(await Promise.resolve(S.store.get('pages/' + lpid)).catch(() => null))) { liveSend('need', { sid: LIVE.sid, tpid: d.tpid, have: [], items: true }); return; }
+    const cur = await stuTeacherLines(lpid);
+    /* a line still being drawn out waits for the next summary; one whose last piece never came (over 2.5 s) does not */
+    const tn = performance.now(); for (const [id, s] of Object.entries(PV.ink)) if (s && !s.fin && tn - (s.upd || 0) > 2500) delete PV.ink[id];
+    if (Object.values(PV.ink).some((s) => s && !s.fin)) return;
+    const keys = cur.map(stKey), same = keysHash(keys) === d.h;
+    let itemsSame = true;
+    if (d.ih) { const pg = S.pid === lpid ? S.page : await Promise.resolve(S.store.get('pages/' + lpid)).catch(() => null); const its = ((pg && pg.items) || []).filter((it) => it.by === 'teacher'); itemsSame = !its.length || its.length === Number(String(d.ih).split('.')[1] || -1); }
+    if (same && itemsSame) return;
+    liveSend('need', { sid: LIVE.sid, tpid: d.tpid, have: same ? [] : keys, items: !itemsSame });
+  }, 700);
+}
+/* a page whose pieces did not all arrive is shown with what came; the summary brings the rest */
+function stuPartsLater(tpid) {
+  setTimeout(() => { const P = LIVE.parts[tpid]; if (P && P.got.some(Boolean)) studentApply(tpid); else if (P && P.d && P.need > 0) studentApply(tpid); }, 3000);
+}
 async function studentGotPage(d) {
   if (!d || typeof d.tpid !== 'string') return;
   if (!LIVE.gotPage) { LIVE.gotPage = true; liveStudentPill('เชื่อมต่อแล้ว'); }
+  /* only the page's boxes and paper changed: its lines stay as they are */
+  if (d.parts === -1) { const lpid = lpidOf(d.tpid); await studentNbFor(d); await studentPutPage(LIVE.nid, lpid, d.idx, d, null); if (!d.bg) { LIVE.cur = lpid; if (LIVE.follow && S.pid !== lpid) openPage(lpid); } return; }
   const P = LIVE.parts[d.tpid] = { d, rev: d.rev, need: d.parts || 1, got: [] };
-  if (P.need === 0) studentApply(d.tpid);
+  if (P.need === 0) studentApply(d.tpid); else stuPartsLater(d.tpid);
   if (false && LIVE.nid) { const nb = await S.store.get('notebooks/' + LIVE.nid); if (nb && d.nb && !nb.titleSet) S.store.update('notebooks/' + LIVE.nid, { title: d.nb + ' (ห้อง ' + LIVE.code + ')', titleSet: true, level: d.level || nb.level, subject: d.subject || nb.subject || 'phys', subjectName: d.subjectName || nb.subjectName || null }).catch(() => {}); }
 }
 function studentGotStrokes(d) {
   const P = d && LIVE.parts[d.tpid]; if (!P || P.rev !== d.rev || !Array.isArray(d.strokes)) return;
-  P.got[d.part] = d.strokes;
+  P.got[d.part] = d.strokes.map(stDec).filter(Boolean);
   if (P.got.filter(Boolean).length >= P.need) studentApply(d.tpid);
 }
-async function studentApply(tpid) {
+function studentApply(tpid) { LIVE.sq = (LIVE.sq || Promise.resolve()).then(() => studentApplyNow(tpid)).catch(() => {}); return LIVE.sq; }
+async function studentApplyNow(tpid) {
   const P = LIVE.parts[tpid]; if (!P) return; delete LIVE.parts[tpid];
   const strokes = [].concat(...P.got.filter(Boolean)).filter((s) => s && Array.isArray(s.p) && typeof s.id === 'string');
   const lpid = 'T' + tpid.replace(/[^A-Za-z0-9]/g, '');
@@ -19516,6 +19659,8 @@ function inkFeed(d, onDone) {
   let s = PV.ink[d.id];
   if (!s) s = PV.ink[d.id] = { k: d.k === 'h' ? 'h' : 'p', c: okHex(d.c) ? d.c : '#14181F', w: clamp(+d.w || 3, 1, 40), t: typeof d.t === 'string' ? d.t : undefined, o: isFinite(d.o) ? clamp(+d.o, 0.1, 1) : undefined, p: [], q: [], base: null, last: 0 };
   const v = d.p.slice(0, d.whole ? 6000 : 1500).map(Number), n = Math.floor(v.length / 3);
+  s.upd = tn;
+  if (isFinite(d.at)) { if (!d.whole && !d.replace && +d.at !== (s.rcv || 0)) s.gap = true; s.rcv = (d.whole || d.replace ? 0 : +d.at) + v.length; }
   if (d.whole) { /* a whole stroke sent at once (big rooms): drawn out smoothly over about the time it took to write */
     s.p = []; s.q = []; const dur = clamp(+d.ms || 300, 120, 1200), t0 = tn + 40;
     for (let i = 0; i < n; i++) { if (!isFinite(v[i * 3]) || !isFinite(v[i * 3 + 1])) continue; s.q.push([v[i * 3], v[i * 3 + 1], isFinite(v[i * 3 + 2]) ? v[i * 3 + 2] : 5, t0 + dur * (i + 1) / n]); }
@@ -19547,12 +19692,14 @@ function inkTick() {
 /* a finished stroke joins the student's copy of the teacher's page at once, without waiting for the whole page */
 const studentSaveInk = debounce(() => { const pid = S.pid; if (!/^T/.test(pid || '')) return; Promise.resolve(S.store.set('pages/' + pid + '/layers/teacher', { strokes: (S.others.teacher || []).slice(), rev: now(), dev: 'teacher' })).catch(() => {}); }, 1500);
 function studentInk(d) {
+  if (d && typeof d.e === 'string' && !Array.isArray(d.p)) { const p = ptsDec(d.e); if (!p) return; d = Object.assign({}, d, { p }); }
   if (!d || typeof d.id !== 'string' || !Array.isArray(d.p) || S.pid !== 'T' + String(d.pid || '').replace(/[^A-Za-z0-9]/g, '')) return;
   const pid = S.pid;
   inkFeed(d, (id, s) => {
     delete PV.ink[id];
     if (S.pid !== pid) return;
     const arr = layerArr('teacher');
+    if (s.gap) { LIVE.gapAsk = LIVE.gapAsk || setTimeout(async () => { LIVE.gapAsk = 0; const cur = layerArr('teacher'); liveSend('need', { sid: LIVE.sid, tpid: String(d.pid), have: cur.map(stKey) }); }, 300); }
     if (!arr.some((x) => x.id === id)) { const st = { id, k: s.k, c: s.c, w: s.w, p: s.p.slice() }; if (s.t) st.t = s.t; if (s.o) st.o = s.o; arr.push(st);
       try { const c = cInk.getContext('2d'); c.setTransform(S.res, 0, 0, S.res, 0, 0); drawStroke(c, st); } catch (e) { drawInk(); }
       drawInkLater(); studentSaveInk(); }
@@ -22355,7 +22502,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793593430';
+const BUILD = '1793595409';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
@@ -22831,7 +22978,7 @@ function emitInkDelta(pt) {
   pt.inkSent = to;
   const msg = { pid: S.pid, id: s.id, c: s.c, w: s.w, k: s.k, t: s.t, o: s.o, ms: t - pt.inkStart, p: s.p.slice(from, to) };
   if (S.room && S.watchers) S.room.emit('ink', msg).catch(() => {});
-  if (liveOn() && !liveCrowd()) liveSend('ink', msg);
+  if (liveOn() && !liveCrowd()) liveSend('ink', liveInkWire(msg, from));
 }
 function emitInkDone(pt) {
   if (S.present || !((S.room && S.watchers) || liveOn())) return;
@@ -22840,9 +22987,13 @@ function emitInkDone(pt) {
   if (pt.snapped) msg.replace = true; /* the watcher drops the freehand part it already drew and shows the clean shape */
   if (liveOn()) LIVE.streamed.add(s.id);
   if (S.room && S.watchers) S.room.emit('ink', msg).catch(() => {});
-  if (liveOn()) liveSend('ink', liveCrowd() && !pt.snapped ? Object.assign({}, msg, { p: s.p.slice(0, 6000), whole: 1 }) : msg);
+  if (liveOn()) liveSend('ink', liveCrowd() && !pt.snapped ? liveInkWire(Object.assign({}, msg, { p: s.p.slice(0, 6000), whole: 1 }), 0) : liveInkWire(msg, from));
+  if (liveOn() && V2.sent.has(S.pid)) V2.sent.get(S.pid).set(s.id, stKey(s)); /* streamed: counted as sent; the summary repairs it if a piece was lost */
 }
 /* many students: the realtime service limits messages per second for everyone together, so strokes go whole, one message each */
+/* a piece of a stroke for the room: where in the stroke it starts (so a lost piece is noticed) and, for learners who
+   understand it, its points in the small form */
+function liveInkWire(msg, at) { if (!liveV2()) return msg; const e = ptsEnc(msg.p); const o = Object.assign({}, msg, { at }); if (e != null) { delete o.p; o.e = e; } return o; }
 function liveCrowd() { return (LIVE.peers || []).length > 5; }
 function emitInk() { /* shapes reach the audience when saved */ }
 let lastLz = 0;
