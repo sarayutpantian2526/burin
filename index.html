@@ -1200,7 +1200,7 @@ body.present .peekcard { display: none !important; }
 .exrow input.xmnum, .exrow .xmnum { width: 84px; max-width: 84px; min-height: 40px; text-align: center; padding: 0 6px; font-size: 16px; }
 .exrow > input.xmnum { width: 84px; }
 .exrow > .btn.sm { margin-top: 2px; }
-.exrow > .label { font-size: 13px; }
+.exrow > .label { font-size: 14px; }
 /* a safety net for any plain box added later: zero specificity, so every named style still wins */
 :where(#exBody, #hwBody, #hwsBody, #deckBody) :where(input:not([type]), input[type=text], input[type=search], input[type=number], input[type=date], input[type=datetime-local], input[type=email], input[type=password], select) { font-family: inherit; font-size: 15px; min-height: 40px; box-sizing: border-box; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--fg); padding: 0 10px; }
 :where(#exBody, #hwBody, #hwsBody, #deckBody) :where(textarea) { font-family: inherit; font-size: 15px; box-sizing: border-box; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--fg); padding: 8px 10px; }
@@ -1227,11 +1227,14 @@ body.present .peekcard { display: none !important; }
   .exrow { grid-template-columns: minmax(0, 1fr); gap: 6px; padding: 9px 0; }
   .exrow > .label { padding-top: 0; }
   .exrow > .label small { display: inline; margin: 0 0 0 6px; }
-  .exrow > .chips, .exrow > .note, .exrow > div { grid-column: 1; }
+  /* one column on a phone: nothing in a row may ask for a second column (that squeezed the label into a narrow strip) */
+  .exrow > * { grid-column: 1 / -1 !important; }
   .exform .row2 > .field { flex: 1 1 100% !important; }
   .exrow:not(.exlist) > .chips { flex-wrap: nowrap; overflow-x: auto; margin: 0 -18px; padding: 0 18px 2px; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
   .exrow:not(.exlist) > .chips::-webkit-scrollbar { display: none; }
   .exrow:not(.exlist) .chip { flex: 0 0 auto; }
+  /* a few choices wrap onto a second line so none is hidden off the edge; long lists still scroll sideways */
+  .exrow:not(.exlist) > .chips:not(:has(> .chip:nth-child(5))) { flex-wrap: wrap; overflow-x: visible; margin: 0; padding: 0; }
   .exrow.exlist > .chips { grid-template-columns: minmax(0, 1fr); }
   .exrow > .chips.scrolls { -webkit-mask-image: linear-gradient(90deg, #000 82%, transparent); mask-image: linear-gradient(90deg, #000 82%, transparent); }
   .exrow > .chips.scrolls.atend { -webkit-mask-image: none; mask-image: none; }
@@ -22304,7 +22307,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793582084';
+const BUILD = '1793582287';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
