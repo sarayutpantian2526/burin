@@ -3873,6 +3873,8 @@ function renderItems() {
 const okAsset = (id) => /^[A-Za-z0-9_-]{8,80}$/.test(String(id || ''));
 /* a question box or its figure, put on the page from a question set */
 function isExItem(it) { return !!(it && (it.ex || it.qref)); }
+/* the top of the next question box under a piece of writing (null when there is none): the space between is its working space */
+function exBelow(b) { let top = null; for (const it of visibleItems()) { if (!isExItem(it)) continue; const r = itemBox(it); if (r[1] >= b[1] + 4 && r[0] < b[2] + 40 && r[2] > b[0] - 40 && (top == null || r[1] < top)) top = r[1]; } return top; }
 function buildItemEl(it, forExport) {
   const d = document.createElement('div');
   if (isExItem(it)) d.classList.add('exq');
@@ -4140,6 +4142,21 @@ async function diaryAsk() {
       }
     }
     if (at && at[2]) w = at[2];
+    /* writing in the space under a question: the reply stays in that space, above the next question (beside the
+       writing, or in slightly smaller letters), so the questions after it are not covered or pushed away */
+    { const nq = exBelow(box);
+      if (h && nq != null && (!at || at[1] + estTextH(text, at[2] || w, fs) * 1.25 + 10 > nq - 8)) {
+        let fit = null;
+        for (let f2 = fs; f2 >= 16 && !fit; f2 = f2 > 30 ? Math.round(f2 * 0.88) : f2 - 2) {
+          const m = (ww) => estTextH(text, ww, f2) * 1.25 + 10;
+          for (const o of [{ fs: f2, side: true, sideAny: true }, { fs: f2, minW: Math.max(260, f2 * 10) }]) {
+            const ww0 = o.side ? Math.round(W - PAGE_M - (box[2] + 30)) : w; if (ww0 < 220) continue;
+            const sp = placeNear(box, ww0, m(ww0), Object.assign(o, { measure: m }));
+            if (sp && sp[1] + m(sp[2] || ww0) <= nq - 8) { fit = [sp, f2]; break; }
+          }
+        }
+        if (fit) { at = fit[0]; fs = fit[1]; w = at[2] || (at[0] > box[2] ? Math.round(W - PAGE_M - (box[2] + 30)) : w); }
+      } }
     if (!at) { const np = await addPage(); if (!np) return; apid = np; at = [W - PAGE_M - w, PAGE_M + 16]; toast('หน้าเต็มแล้ว สมุดเขียนตอบในหน้าถัดไป', 2400); }
     const ink = '#2B3A67', id = 'i' + uid();
     if (text) addItem({ id, type: 'text', x: Math.round(at[0]), y: Math.round(at[1]), w: Math.round(w), md: text, fs, hand: DIARY_HAND(), ink, diary: true, dv: 2 });
@@ -4173,16 +4190,17 @@ async function diaryAsk() {
         let dw = Math.round(clamp(fs * 16, 320, Math.min(640, W - 2 * PAGE_M))), spot = null;
         /* under the words or beside them, a little smaller if that lets it sit higher: the spot that leaves the most of
            the page free below wins (a shrunken drawing only wins when it really saves room) */
-        { const dw0 = dw, dh0 = Math.round(dw0 * 0.6); let best = null;
+        { const dw0 = dw, dh0 = Math.round(dw0 * 0.6), nq = exBelow(src); let best = null, late = null;
           for (let ww = dw0; ww >= 240; ww = Math.round(ww * 0.85)) {
             const hh = Math.round(ww * 0.6);
             for (const o of [{ fs }, { fs, side: true, sideAny: true }]) {
               const sp = placeNear(src, ww, hh, o); if (!sp) continue;
+              if (nq != null && sp[1] + hh > nq - 8) { if (!late || sp[1] < late.sp[1]) late = { sp, ww }; continue; } /* would run into the next question */
               const score = sp[1] + dh0 + (dh0 - hh) * 0.6;
               if (!best || score < best.score - 2) best = { score, sp, ww };
             }
           }
-          if (best) { spot = best.sp; dw = best.ww; } }
+          if (best) { spot = best.sp; dw = best.ww; } else if (late) { spot = late.sp; dw = late.ww; } }
         let pg = apid;
         if (!spot) { dw = Math.round(clamp(fs * 16, 320, Math.min(640, W - 2 * PAGE_M))); const np = await addPage(); if (!np) return; pg = np; spot = [clamp(src[0], PAGE_M, W - dw - PAGE_M), PAGE_M + 16]; toast('หน้าเต็มแล้ว สมุดวาดต่อในหน้าถัดไป', 2400); }
         diaryDraw(sketch, spot[0], spot[1], dw, Math.round(dw * 0.6), lw, ink, fs, pg);
@@ -5627,7 +5645,7 @@ function finishLasso(poly) {
     if (n && inside / n >= 0.55) strokes.push({ layer: r.layer, id: r.s.id });
   }
   const items = [];
-  for (const it of visibleItems()) { if (it.lock || it.by === 'teacher' || (it.spec && it.spec.bare) || it.type === 'life') continue; const b = itemBox(it); if (inPoly(poly, (b[0] + b[2]) / 2, (b[1] + b[3]) / 2)) items.push(it.id); }
+  for (const it of visibleItems()) { if (it.lock || it.by === 'teacher' || (it.spec && it.spec.bare) || it.type === 'life') continue; const b = itemBox(it); if (!inPoly(poly, (b[0] + b[2]) / 2, (b[1] + b[3]) / 2)) continue; if (isExItem(it) && strokes.length && ![[b[0], b[1]], [b[2], b[1]], [b[0], b[3]], [b[2], b[3]]].every(([x, y]) => inPoly(poly, x, y))) continue; items.push(it.id); } /* circling a drawing in the space between questions picks up the drawing, not the question beside it */
   if (!strokes.length && !items.length) { selEl.innerHTML = ''; toast('ไม่พบลายมือในบริเวณที่วง', 1600); return; }
   S.sel = { strokes, items, box: null };
   S.sel.box = selBox(S.sel);
@@ -22782,7 +22800,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793616163';
+const BUILD = '1793618647';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
