@@ -1025,6 +1025,11 @@ body.role-student .qkeybox { display: none; }
 .brslist { display: flex; flex-direction: column; gap: 10px; margin: 10px 0; }
 .brsbar { position: sticky; bottom: 0; z-index: 2; background: var(--surface); border-top: 1px solid var(--line); padding: 8px 0; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 .brsbar .brsnm { flex: 1 1 160px; min-width: 0; }
+.xmchs { display: flex; flex-direction: column; gap: 6px; width: 100%; }
+.xmch { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 8px; border: 1px solid var(--line); border-radius: 10px; }
+.xmch small { display: block; color: var(--muted); font-size: 12px; }
+.xmnum { width: 76px; font-size: 16px; padding: 4px 6px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--fg); }
+.xmprev { margin-top: 12px; }
 .tqq { font-size: 14px; line-height: 1.55; }
 .tqa { display: flex; gap: 6px; flex-wrap: wrap; }
 .tqa .btn { min-height: 34px; font-size: 13px; padding: 0 10px; }
@@ -2163,7 +2168,7 @@ body.role-student .scnpill .sbtns button[data-s="back"], body.role-student .scnp
   <div class="panel wide" role="dialog" aria-label="ฝึกโจทย์แข่งขัน">
     <div class="exttl"><h2>ฝึกโจทย์แข่งขัน</h2><label class="field exwho"><span>ผู้ฝึก</span><select id="exWho"></select></label><span id="exAdd" hidden class="mrow"><input id="exNew" placeholder="ชื่อผู้ฝึก" maxlength="40"><button class="btn" id="exAddOk" type="button">เพิ่ม</button></span><button class="btn solid" id="exMinBtn" type="button" hidden>ย่อไว้ก่อน</button><button class="btn" id="exClose">ปิด</button></div>
     <div class="seg exgroups" id="exGroups" role="group" aria-label="หมวด"></div>
-    <div class="seg" id="exTabs" role="group" aria-label="ส่วนในหมวด"><button data-t="cls">ห้องและคะแนน</button><button data-t="hw">การบ้าน</button><button data-t="sets">ชุดโจทย์ของฉัน</button><button data-t="browse">เปิดดูและเลือกข้อ</button><button data-t="build">จากหน้านี้</button><button data-t="bank">คลังโจทย์</button><button data-t="analysis">วิเคราะห์ข้อสอบ</button><button data-t="practice">ฝึกและสอบ</button><button data-t="stats">ผลและจุดอ่อน</button><button data-t="grades">คะแนนผู้ฝึก</button></div>
+    <div class="seg" id="exTabs" role="group" aria-label="ส่วนในหมวด"><button data-t="cls">ห้องและคะแนน</button><button data-t="hw">การบ้าน</button><button data-t="sets">ชุดโจทย์ของฉัน</button><button data-t="browse">เปิดดูและเลือกข้อ</button><button data-t="exam">สร้างข้อสอบ</button><button data-t="build">จากหน้านี้</button><button data-t="bank">คลังโจทย์</button><button data-t="analysis">วิเคราะห์ข้อสอบ</button><button data-t="practice">ฝึกและสอบ</button><button data-t="stats">ผลและจุดอ่อน</button><button data-t="grades">คะแนนผู้ฝึก</button></div>
     <div id="exBody" class="exbody"></div>
   </div>
 </div>
@@ -17820,9 +17825,9 @@ function exRenderWho() {
    Teacher: the class (rooms and gradebook, homework, practice scores, each learner's weak points) and the question sets
    (my sets, picked from the bank, made from this page, my own questions, item analysis).
    Student: practising and their own results. Tabs show in the order listed here. */
-const EX_GROUPS_T = [['class', 'ห้องเรียนและคะแนน', ['cls', 'hw', 'grades', 'stats']], ['sets', 'ชุดโจทย์', ['sets', 'practice', 'browse', 'build', 'bank', 'analysis']]];
+const EX_GROUPS_T = [['class', 'ห้องเรียนและคะแนน', ['cls', 'hw', 'grades', 'stats']], ['sets', 'ชุดโจทย์', ['sets', 'practice', 'browse', 'exam', 'build', 'bank', 'analysis']]];
 const EX_GROUPS_S = [['train', 'ฝึก', ['practice', 'stats']]];
-const EX_TAB_T = { cls: 'ห้องและสมุดคะแนน', hw: 'การบ้าน', grades: 'คะแนนแบบฝึก', stats: 'จุดอ่อนรายคน', sets: 'ชุดโจทย์ของฉัน', practice: 'สุ่มจากคลัง', browse: 'เปิดดูและเลือกข้อ', build: 'จากหน้านี้', bank: 'เพิ่มโจทย์เอง', analysis: 'วิเคราะห์ข้อสอบ' };
+const EX_TAB_T = { cls: 'ห้องและสมุดคะแนน', hw: 'การบ้าน', grades: 'คะแนนแบบฝึก', stats: 'จุดอ่อนรายคน', sets: 'ชุดโจทย์ของฉัน', practice: 'สุ่มจากคลัง', browse: 'เปิดดูและเลือกข้อ', exam: 'สร้างข้อสอบ', build: 'จากหน้านี้', bank: 'เพิ่มโจทย์เอง', analysis: 'วิเคราะห์ข้อสอบ' };
 const EX_TAB_S = { practice: 'ทำแบบฝึก', stats: 'ผลและสิ่งที่ต้องพัฒนา' };
 const exGroups = () => (isStudentSide() ? EX_GROUPS_S : EX_GROUPS_T);
 const exGroupOf = (t) => { const G = exGroups(); return G.find((g) => g[2].includes(t)) || G[G.length - 1]; };
@@ -17851,6 +17856,7 @@ function exRender() {
   else if (EX.tab === 'build') exRenderBuild(body);
   else if (EX.tab === 'practice') exRenderSetup(body);
   else if (EX.tab === 'browse') exRenderBrowse(body);
+  else if (EX.tab === 'exam') exRenderExam(body);
   else if (EX.tab === 'stats') exRenderStats(body);
   else if (EX.tab === 'analysis') exRenderAnalysis(body);
   else if (EX.tab === 'grades') exRenderGrades(body);
@@ -18647,6 +18653,7 @@ function exRenderAnalysis(body) {
   { const byO = {}, byB = {}; A.items.forEach((it) => { const q = it.q; if (q.o) { const k = q.t + ':' + q.ch + ':' + q.o; const s2 = byO[k] || (byO[k] = { t: q.t, ch: q.ch, o: q.o, n: 0, ok: 0 }); s2.n += A.N; s2.ok += it.p * A.N; } if (q.b) { const s3 = byB[q.b] || (byB[q.b] = { n: 0, ok: 0 }); s3.n += A.N; s3.ok += it.p * A.N; } });
     for (const o of Object.values(byO).concat(Object.values(byB))) o.ok = Math.round(o.ok);
     const h = masteryHtml(byO, byB, 1); if (h) body.appendChild(exEl('div', '', '<h3>ผลทั้งห้องตามจุดประสงค์และระดับการคิด</h3>' + h)); }
+  { const ar = exEl('div', 'row2'); const b1 = exEl('button', 'btn', 'ส่งออกสถิติรายข้อ CSV'); b1.type = 'button'; b1.onclick = () => calExport('csv'); const b2 = exEl('button', 'btn', 'ส่งออกสถิติรายข้อ JSON'); b2.type = 'button'; b2.onclick = () => calExport('json'); ar.append(b1, b2); body.appendChild(ar); }
   body.appendChild(exEl('div', 'note', 'ตัวเลือก ก ถึง ง ในตารางเรียงตามที่บันทึกในชุด ผู้เรียนแต่ละคนเห็นตัวเลือกสลับลำดับ ระบบแปลงกลับให้แล้ว'));
 }
 
@@ -19994,7 +20001,7 @@ async function pqSave(btn) {
 }
 /* ---------- the teacher's browser for the bank: look through the questions, tick the ones to teach with, and use them as a set ---------- */
 /* teacher side only: it shows keys, the misconception behind each wrong choice and unchecked drafts, none of which a learner should see */
-const brsInit = () => ({ src: 'all', st: 'all', t: null, ch: 'all', d: 'all', text: '', file: '', page: 1, sel: new Map() });
+const brsInit = () => ({ cal: 'all', src: 'all', st: 'all', t: null, ch: 'all', d: 'all', text: '', file: '', page: 1, sel: new Map() });
 EX.brs = EX.brs || brsInit();
 function exBrowseAll() {
   const out = exAllQs().filter((q) => q.src === 'bank');
@@ -20018,7 +20025,7 @@ function brsRow(q, B, sync) {
   head.appendChild(exEl('span', 'tqk', esc(exChName(q.t, q.ch))));
   head.appendChild(exEl('span', 'tqk', q.src === 'bank' ? 'คลัง Burin' : q.src === 'pdf' ? 'จาก PDF ' + esc(q.lab || '') : q.src === 'ai' ? 'AI ร่าง ครูตรวจแล้ว' : 'ของฉัน'));
   if (q.b) head.appendChild(exEl('span', 'tqk', esc(bloomName(q.b))));
-  const bd = exEl('span', 'vb'); head.appendChild(bd);
+  const bd = exEl('span', 'vb'); head.appendChild(bd); { const cb0 = calBadge(q); if (cb0) head.appendChild(exEl('span', '', cb0)); }
   const paintBd = () => { const st = brsState(q); bd.className = 'vb ' + verClass(st); bd.textContent = q.src === 'pdf' ? (VER_NAME[st] || VER_NAME.raw) : 'ใช้ได้'; };
   paintBd(); r.appendChild(head);
   r.appendChild(exEl('div', 'exq', mdToHtml(q.q || '')));
@@ -20076,6 +20083,7 @@ function exRenderBrowse(body) {
   exChips(rw('ที่มา'), [['all', 'ทั้งหมด'], ['bank', 'คลัง Burin'], ['mine', 'ของฉัน'], ['pdf', 'จาก PDF']], (v) => v === B.src, (v) => { B.src = v; B.page = 1; exRender(); });
   exChips(rw('สถานะ'), [['all', 'ทั้งหมด'], ['ok', 'ใช้ได้ ตรวจแล้ว'], ['wait', 'รอครูตรวจ'], ['bad', 'ต้องแก้หรือยังไม่ตรวจ']], (v) => v === B.st, (v) => { B.st = v; B.page = 1; exRender(); });
   exChips(rw('ความยาก'), [['all', 'ทุกระดับ'], [1, 'ง่าย'], [2, 'กลาง'], [3, 'ยาก']], (v) => v === B.d, (v) => { B.d = v; B.page = 1; exRender(); });
+  exChips(rw('ค่าจากห้องเรียน'), [['all', 'ทั้งหมด'], ['cal', 'ปรับเทียบแล้ว'], ['good', 'จำแนกดี'], ['bad', 'ควรแก้หรือตรวจเฉลย']], (v) => v === B.cal, (v) => { B.cal = v; B.page = 1; exRender(); });
   const sr = rw('ค้นหา'); const inp = document.createElement('input'); inp.type = 'search'; inp.placeholder = 'คำที่อยู่ในโจทย์'; inp.value = B.text;
   inp.onchange = () => { B.text = inp.value.trim(); B.page = 1; exRender(); }; sr.appendChild(inp);
   if (B.file) { const fr = rw('ไฟล์'); fr.appendChild(exEl('span', 'tqk', esc(B.file))); const x = exEl('button', 'btn sm', 'ดูทุกไฟล์'); x.type = 'button'; x.onclick = () => { B.file = ''; B.page = 1; exRender(); }; fr.appendChild(x); }
@@ -20084,6 +20092,7 @@ function exRenderBrowse(body) {
     && (B.src === 'all' || (B.src === 'bank' ? q.src === 'bank' : B.src === 'pdf' ? q.src === 'pdf' : mine(q) && q.src !== 'pdf'))
     && (B.st === 'all' || (B.st === 'ok' ? exOk(q) : B.st === 'wait' ? brsState(q) === 'ai2' : q.src === 'pdf' && !VER_OK.includes(brsState(q)) && brsState(q) !== 'ai2'))
     && (B.d === 'all' || effLevel(q) === B.d)
+    && (B.cal === 'all' || (() => { const m = calibMap().get(q.id); return B.cal === 'cal' ? !!m && m.tier === 'cal' : B.cal === 'good' ? !!m && m.grade === 'good' : !!m && (m.grade === 'weak' || m.grade === 'suspect'); })())
     && (!B.file || (q.from && q.from.file === B.file))
     && (!B.text || (String(q.q || '') + ' ' + (q.c || []).join(' ')).toLowerCase().includes(B.text.toLowerCase())));
   if (B.t !== '_mine') {
@@ -20118,6 +20127,261 @@ function exRenderBrowse(body) {
   info.appendChild(document.createTextNode(' ')); info.appendChild(pg);
   parent.appendChild(bar); sync();
   typeset(parent);
+}
+/* ---------- item calibration: difficulty and discrimination measured from the teacher's own classes ---------- */
+/* p is the share who answered right; D is the upper group minus the lower group (27 percent each) on the same fixed set.
+   Fewer than CAL_MIN answers: no verdict. CAL_MIN to CAL_OK: early figures. CAL_OK and up: calibrated. */
+const CAL_MIN = 20, CAL_OK = 60, CALC = { key: '', map: null };
+const LVN = ['', 'ง่าย', 'กลาง', 'ยาก'];
+function calFlags(m) {
+  const f = [];
+  if (m.p != null) { if (m.p > 0.85) f.push('ง่ายเกินไป'); if (m.p < 0.15) f.push('ยากเกินไป'); }
+  if (m.D != null) { if (m.D < 0) f.push('คนเก่งตอบถูกน้อยกว่าคนอ่อน ตรวจเฉลย'); else if (m.D < 0.2) f.push('จำแนกต่ำ'); }
+  const key = m.dist[m.key] || 0, top = Math.max(0, ...Object.entries(m.dist).filter(([t]) => t !== m.key).map(([, c]) => c));
+  if (m.N >= CAL_MIN && top > key && (m.D == null || m.D < 0.1)) f.push('ตัวลวงถูกเลือกมากกว่าเฉลย ตรวจเฉลย');
+  return f;
+}
+function calGrade(m) {
+  if (m.tier === 'none') return 'none';
+  if (m.flags.some((x) => /ตรวจเฉลย/.test(x))) return 'suspect';
+  if (m.D == null) return 'p';
+  return m.D < 0.2 ? 'weak' : m.D < 0.3 ? 'ok' : 'good';
+}
+function calibMap() {
+  const key = EX.att.length + ':' + (EX.sets || []).length + ':' + (EX.att.length ? EX.att[EX.att.length - 1].at : 0);
+  if (CALC.key === key && CALC.map) return CALC.map;
+  const map = new Map();
+  const get = (id) => { let m = map.get(id); if (!m) { m = { id, n: 0, ok: 0, dn: 0, dsum: 0, pn: 0, pok: 0, dist: {}, key: '' }; map.set(id, m); } return m; };
+  for (const set of EX.sets || []) {
+    if (!EX.att.some((a) => a.setId === set.id)) continue;
+    const A = analyseSet(set); if (A.N < 8) continue;
+    for (const it of A.items) {
+      const m = get(it.q.id); m.n += A.N; m.ok += it.p * A.N;
+      if (it.r != null && A.N >= 10) { m.dn += A.N; m.dsum += it.r * A.N; }
+      if (it.q.c && it.q.c.length) { m.key = it.q.c[it.q.a || 0] || m.key; it.dist.forEach((c, o) => { const t = it.q.c[o]; m.dist[t] = (m.dist[t] || 0) + c; }); }
+    }
+  }
+  for (const a of EX.att) if (!a.setId) for (const it of a.items || []) { const m = get(it[0]); m.pn++; m.pok += it[2]; }
+  for (const m of map.values()) {
+    m.N = m.n + m.pn; m.p = m.N ? (m.ok + m.pok) / m.N : null; m.D = m.dn ? m.dsum / m.dn : null;
+    m.tier = m.N < CAL_MIN ? 'none' : m.N < CAL_OK ? 'early' : 'cal'; m.flags = calFlags(m); m.grade = calGrade(m);
+  }
+  CALC.key = key; CALC.map = map; return map;
+}
+function calBadge(q) {
+  const m = calibMap().get(q.id); if (!m || m.N < 5) return '';
+  const tier = m.tier === 'cal' ? 'ปรับเทียบแล้ว' : m.tier === 'early' ? 'ข้อมูลเบื้องต้น' : 'ข้อมูลน้อย';
+  return '<span class="vb ' + (m.grade === 'good' ? 'ok' : m.grade === 'suspect' || m.grade === 'weak' ? 'bad' : 'wait') + '">' + tier + ' p ' + (m.p != null ? m.p.toFixed(2) : '-') + (m.D != null ? ' D ' + m.D.toFixed(2) : '') + ' จาก ' + m.N + ' คำตอบ</span>';
+}
+function calRows() {
+  const map = calibMap(), qs = new Map();
+  for (const q of exAllQs()) qs.set(q.id, q);
+  for (const st of EX.sets || []) for (const q of st.qs) if (!qs.has(q.id)) qs.set(q.id, q);
+  return [...map.values()].filter((m) => m.N >= 5).map((m) => { const q = qs.get(m.id) || {}; return { id: m.id, track: q.t || '', ch: q.ch == null ? '' : q.ch, level: q.d || '', n: m.N, p: m.p == null ? null : +m.p.toFixed(3), D: m.D == null ? null : +m.D.toFixed(3), grade: m.grade, tier: m.tier, flags: m.flags, o: q.o || '', b: q.b || '' }; });
+}
+function calExport(kind) {
+  const rows = calRows(); if (!rows.length) { toast('ยังไม่มีข้อมูลการตอบพอที่จะส่งออก', 2800); return; }
+  if (kind === 'json') { saveFile('burin-item-stats.json', new Blob([JSON.stringify({ made: now(), min: CAL_MIN, ok: CAL_OK, items: rows }, null, 1)], { type: 'application/json' })); return; }
+  const q = (x) => '"' + String(x == null ? '' : x).replace(/"/g, '""') + '"';
+  const lines = [['รหัสข้อ', 'หลักสูตร', 'บท', 'ระดับตั้งต้น', 'จำนวนคำตอบ', 'p ความยาก', 'D อำนาจจำแนก', 'ผล', 'ระดับข้อมูล', 'ข้อสังเกต', 'จุดประสงค์', 'ระดับการคิด'].map(q).join(',')];
+  for (const r of rows) lines.push([r.id, r.track, r.ch, r.level, r.n, r.p, r.D, CAL_NAME[r.grade] || r.grade, { cal: 'ปรับเทียบแล้ว', early: 'เบื้องต้น', none: 'น้อย' }[r.tier], r.flags.join(' ; '), r.o, r.b].map(q).join(','));
+  saveFile('burin-item-stats.csv', new Blob(['﻿' + lines.join('\n')], { type: 'text/csv' }));
+}
+const CAL_NAME = { good: 'จำแนกดี', ok: 'พอใช้', weak: 'จำแนกต่ำ', suspect: 'เฉลยน่าสงสัย', p: 'มีแต่ค่าความยาก', none: 'ยังไม่มีข้อมูล' };
+
+/* ---------- the exam builder: the teacher states what the exam must be, the system picks the questions and says what it could not meet ---------- */
+const XM_PURPOSE = { quiz: ['ควิซสั้น', [4, 4, 2], 0], mid: ['สอบกลางภาคหรือปลายภาค', [3, 5, 2], 0.2], select: ['สอบคัดเลือกหรือแข่งขัน', [1, 4, 5], 0.3] };
+const XM_MIN = [0, 1, 1.5, 2.5], XM_P = [0, 0.75, 0.5, 0.3]; /* minutes per question and the p expected before any data, by level */
+EX.xm = EX.xm || { name: '', purpose: 'mid', t: null, ch: {}, ratio: [3, 5, 2], minD: 0.2, uncal: 100, apply: 0, noRepeat: true, minutes: 0, forms: 1, built: null, order: 'easy' };
+function xmUsedIds() {
+  const ids = new Set();
+  for (const st of EX.sets || []) { if (!((st.uses || 0) > 0 || EX.att.some((a) => a.setId === st.id))) continue; for (const q of st.qs) ids.add(q.id); }
+  return ids;
+}
+/* the questions that may be used: checked keys, multiple choice, not already used, and not shown by the class data to be weak */
+function xmPool() {
+  const X = EX.xm, cal = calibMap(), used = X.noRepeat ? xmUsedIds() : new Set();
+  return exAllQs().filter((q) => q.t === X.t && q.c.length >= 2 && !used.has(q.id)).filter((q) => {
+    const m = cal.get(q.id); if (!m || m.tier === 'none') return true;
+    if (m.grade === 'suspect') return false;
+    return !(X.minD > 0 && m.D != null && m.D < X.minD);
+  });
+}
+/* n questions split by a ratio, whole numbers adding up exactly */
+function xmAlloc(n, r) {
+  const s = r[0] + r[1] + r[2]; if (!(s > 0)) return [0, n, 0];
+  const raw = r.map((x) => n * x / s), base = raw.map(Math.floor); let rest = n - base.reduce((a, b) => a + b, 0);
+  const ord = raw.map((x, i) => [x - base[i], i]).sort((a, b) => b[0] - a[0]);
+  for (let k = 0; rest > 0; k++, rest--) base[ord[k % 3][1]]++;
+  return base;
+}
+/* difficulty targets for the whole exam first, then handed out chapter by chapter so the totals stay exact */
+function xmCells(list, ratio) {
+  const total = list.reduce((s, x) => s + x[1], 0); let left = xmAlloc(total, ratio); const out = {};
+  const sorted = [...list].sort((a, b) => b[1] - a[1]);
+  sorted.forEach(([c, n], i) => {
+    let got;
+    if (i === sorted.length - 1) got = left.slice();
+    else {
+      got = xmAlloc(n, left).map((v, k) => Math.min(v, left[k])); let diff = n - got.reduce((p, q) => p + q, 0);
+      for (let k = 0; diff > 0 && k < 60; k++) { const j = k % 3; if (left[j] - got[j] > 0) { got[j]++; diff--; } }
+    }
+    out[c] = got; left = left.map((v, k) => v - got[k]);
+  });
+  return out;
+}
+function xmBuild() {
+  const X = EX.xm, cal = calibMap(), pool = xmPool(), chs = Object.keys(X.ch).map(Number).filter((c) => X.ch[c] > 0).sort((a, b) => a - b);
+  const N = chs.reduce((s, c) => s + X.ch[c], 0), cells = xmCells(chs.map((c) => [c, X.ch[c]]), X.ratio);
+  const chosen = new Map(), notes = [], short = [], capUncal = Math.floor(N * X.uncal / 100), needApply = Math.ceil(N * X.apply / 100), APPLIED = ['Ap', 'An', 'E'];
+  let uncal = 0, applied = 0;
+  const isUncal = (q) => { const m = cal.get(q.id); return !m || m.tier === 'none'; };
+  const score = (q) => { const m = cal.get(q.id); let s = !m || m.tier === 'none' ? 1 : m.grade === 'good' ? 3 : m.grade === 'ok' ? 2 : 1.5; if (applied < needApply && APPLIED.includes(q.b)) s += 1.5; return s + Math.random() * 0.6; };
+  const pick = (c, L, k) => {
+    let got = 0; const cands = pool.filter((q) => q.ch === c && effLevel(q) === L && !chosen.has(q.id));
+    while (got < k && cands.length) {
+      cands.sort((a, b) => score(b) - score(a)); const q = cands.shift();
+      if (isUncal(q) && uncal >= capUncal) continue;
+      chosen.set(q.id, q); if (isUncal(q)) uncal++; if (APPLIED.includes(q.b)) applied++; got++;
+    }
+    return got;
+  };
+  const alt = { 1: [2, 3], 2: [1, 3], 3: [2, 1] };
+  for (const c of chs) {
+    const want = cells[c], miss = [0, 0, 0];
+    for (let L = 1; L <= 3; L++) miss[L - 1] = want[L - 1] - pick(c, L, want[L - 1]);
+    for (let L = 1; L <= 3; L++) {
+      let m = miss[L - 1];
+      for (const a of alt[L]) { if (m <= 0) break; const g = pick(c, a, m); if (g) { notes.push(exChName(X.t, c) + ' ใช้ข้อระดับ' + LVN[a] + ' ' + g + ' ข้อแทนระดับ' + LVN[L] + ' เพราะข้อไม่พอ'); m -= g; } }
+      if (m > 0) short.push([c, m]);
+    }
+  }
+  let qs = [...chosen.values()];
+  qs = X.order === 'easy' ? qs.sort((a, b) => effLevel(a) - effLevel(b) || a.ch - b.ch) : qs.sort((a, b) => a.ch - b.ch || effLevel(a) - effLevel(b));
+  return { qs, notes, short, N };
+}
+function xmMissing() {
+  const X = EX.xm, m = [], N = Object.values(X.ch).reduce((a, b) => a + (b || 0), 0);
+  if (!X.name.trim()) m.push('ชื่อข้อสอบ');
+  if (!X.t) m.push('หลักสูตร');
+  if (!N) m.push('บทและจำนวนข้อ');
+  if (!(X.ratio[0] + X.ratio[1] + X.ratio[2] > 0)) m.push('สัดส่วนความยาก');
+  if (!(X.minutes > 0)) m.push('เวลาสอบ');
+  return m;
+}
+/* the other forms of the same exam: order and choices shuffled, the key follows each choice */
+function xmForms(qs) {
+  const X = EX.xm, out = [{ label: 'ก', qs: qs.map((q) => Object.assign({}, q)) }];
+  for (let f = 1; f < X.forms; f++) out.push({ label: 'กขคง'[f], qs: qs.slice().sort(() => Math.random() - 0.5).map(shuffleChoices) });
+  return out;
+}
+function xmBlueprintMd(X, qs) {
+  const chs = [...new Set(qs.map((q) => q.ch))].sort((a, b) => a - b), cnt = (c, L) => qs.filter((q) => q.ch === c && effLevel(q) === L).length;
+  const rows = ['## ตารางวิเคราะห์ข้อสอบ ' + X.name, '', '| บท | ง่าย | กลาง | ยาก | รวม |', '|---|---|---|---|---|'];
+  for (const c of chs) rows.push('| ' + exChName(X.t, c) + ' | ' + cnt(c, 1) + ' | ' + cnt(c, 2) + ' | ' + cnt(c, 3) + ' | ' + qs.filter((q) => q.ch === c).length + ' |');
+  rows.push('| รวม | ' + qs.filter((q) => effLevel(q) === 1).length + ' | ' + qs.filter((q) => effLevel(q) === 2).length + ' | ' + qs.filter((q) => effLevel(q) === 3).length + ' | ' + qs.length + ' |');
+  const bl = {}; for (const q of qs) if (q.b) bl[q.b] = (bl[q.b] || 0) + 1;
+  if (Object.keys(bl).length) rows.push('', 'ระดับการคิด ' + BLOOM.filter(([k]) => bl[k]).map(([k]) => bloomName(k) + ' ' + bl[k] + ' ข้อ').join(' ') + ' เวลาสอบ ' + X.minutes + ' นาที');
+  else rows.push('', 'เวลาสอบ ' + X.minutes + ' นาที');
+  return rows.join('\n');
+}
+async function xmPlace(forms, title, withKey) {
+  if (!S.nb || !S.page) { toast('เปิดหน้าสมุดที่จะวางข้อสอบก่อน', 2800); return; }
+  const L = 'กขคง', X = EX.xm; $('#examSheet').hidden = true; let pages = 0;
+  for (const f of forms) {
+    const tag = forms.length > 1 ? ' ชุด ' + f.label : '';
+    const blocks = ['## ' + title + tag + '\nชื่อ ........................................ เลขที่ ........ คะแนน ........ / ' + f.qs.length + ' เวลา ' + X.minutes + ' นาที\n\n' + qBlock(f.qs[0], 0) + '\n\n'].concat(f.qs.slice(1).map((q, i) => qBlock(q, i + 1) + '\n\n'));
+    const r = await placeBlocks(blocks, null, { newPage: true, paper: 'lined', fs: 20, gap: 40 }); pages += r.pages || 0;
+  }
+  let kp = 0;
+  if (withKey) for (const f of forms) { const kb = ['## เฉลย ' + title + (forms.length > 1 ? ' ชุด ' + f.label : '')].concat(f.qs.map((q, i) => (i + 1) + '. ' + L[q.a || 0] + '  ' + (q.e || ''))); const r2 = await placeBlocks(kb, null, { newPage: true, paper: 'lined', fs: 18, gap: 10 }); kp += r2.pages || 0; }
+  toast('วางข้อสอบ ' + pages + ' หน้า' + (kp ? ' และเฉลย ' + kp + ' หน้า' : ''), 3000);
+}
+function xmRenderPreview(body) {
+  const X = EX.xm, R = X.built, qs = R.qs, cal = calibMap(); body = body.appendChild(exEl('div', 'xmprev'));
+  body.appendChild(exEl('h3', '', 'ข้อสอบ ' + qs.length + ' ข้อ จากที่ขอ ' + R.N));
+  const lv = (q) => effLevel(q), mean = qs.reduce((s, q) => { const m = cal.get(q.id); return s + (m && m.tier !== 'none' && m.p != null ? m.p : XM_P[lv(q)]); }, 0);
+  const need = qs.reduce((s, q) => s + XM_MIN[lv(q)], 0), nCal = qs.filter((q) => { const m = cal.get(q.id); return m && m.tier === 'cal'; }).length, nGood = qs.filter((q) => { const m = cal.get(q.id); return m && m.tier !== 'none' && m.grade === 'good'; }).length;
+  const objs = new Set(qs.filter((q) => q.o).map((q) => q.t + ':' + q.ch + ':' + q.o)), noObj = qs.filter((q) => !q.o).length, appl = qs.filter((q) => ['Ap', 'An', 'E'].includes(q.b)).length;
+  body.appendChild(exEl('div', 'exsum', '<div><b>' + [1, 2, 3].map((L) => qs.filter((q) => lv(q) === L).length).join(' : ') + '</b><span>ง่าย : กลาง : ยาก</span></div><div><b>' + mean.toFixed(1) + '</b><span>คะแนนเฉลี่ยที่คาด จาก ' + qs.length + ' (ร้อยละ ' + Math.round(mean / Math.max(1, qs.length) * 100) + ')</span></div><div><b>' + Math.round(need) + '</b><span>นาทีที่ควรใช้ ที่ให้ไว้ ' + X.minutes + '</span></div><div><b>' + nCal + '</b><span>ข้อปรับเทียบแล้ว ที่ D ดี ' + nGood + '</span></div>'));
+  const warn = [];
+  if (qs.length < R.N) warn.push('ได้ข้อไม่ครบ ขาด ' + (R.N - qs.length) + ' ข้อ: ' + R.short.map(([c, m]) => exChName(X.t, c) + ' ขาด ' + m + ' ข้อ').join(', ') + ' ลดจำนวนข้อ ผ่อนเกณฑ์ หรือเพิ่มโจทย์ในบทนั้น');
+  R.notes.forEach((n) => warn.push(n));
+  if (X.minutes < need * 0.9) warn.push('เวลาน้อยกว่าที่ควร ' + Math.round(need) + ' นาที ผู้เรียนอาจทำไม่ทัน');
+  if (X.minutes > need * 1.6) warn.push('เวลามากกว่าที่ควรมาก ผู้เรียนเก่งจะว่าง และข้อสอบแยกคนเก่งกับคนอ่อนได้น้อยลง');
+  if (nCal === 0) warn.push('ยังไม่มีข้อที่ปรับเทียบจากห้องเรียน ระดับความยากและอำนาจจำแนกเป็นค่าตั้งต้นของคลัง ทำชุดนี้ให้ผู้เรียนทำแล้วดูผลในแท็บวิเคราะห์ข้อสอบ');
+  if (X.apply && appl < Math.ceil(qs.length * X.apply / 100)) warn.push('ข้อระดับประยุกต์ขึ้นไปได้ ' + appl + ' ข้อ ต่ำกว่าที่ตั้งไว้ร้อยละ ' + X.apply);
+  if (noObj) warn.push(noObj + ' ข้อไม่มีป้ายจุดประสงค์ จึงตรวจความครอบคลุมจุดประสงค์ไม่ได้ครบ ครอบคลุม ' + objs.size + ' จุดประสงค์');
+  warn.forEach((w) => body.appendChild(exEl('div', 'note small' + (/ไม่ครบ|น้อยกว่าที่ควร/.test(w) ? ' err' : ''), esc(w))));
+  const ol = exEl('div', 'brslist');
+  qs.forEach((q, i) => {
+    const r = exEl('div', 'exrev brsrow'), head = exEl('div', 'brshead');
+    head.appendChild(exEl('b', '', 'ข้อ ' + (i + 1))); head.appendChild(exEl('span', 'lv l' + lv(q), LVN[lv(q)])); head.appendChild(exEl('span', 'tqk', esc(exChName(X.t, q.ch))));
+    if (q.b) head.appendChild(exEl('span', 'tqk', esc(bloomName(q.b)))); const cb = calBadge(q); if (cb) head.appendChild(exEl('span', '', cb));
+    r.appendChild(head); r.appendChild(exEl('div', 'exq', mdToHtml(q.q || '')));
+    r.appendChild(exEl('div', 'brsch', q.c.map((s, k) => '<div class="brsc"><b>' + KEYL[k] + '.</b> ' + mdToHtml(s) + '</div>').join('')));
+    const act = exEl('div', 'pqacts'); act.appendChild(keyToggle(q));
+    const sw = exEl('button', 'btn sm', 'เปลี่ยนข้อนี้'); sw.type = 'button';
+    sw.onclick = () => {
+      const have = new Set(qs.map((x) => x.id)), c = xmPool().filter((x) => x.ch === q.ch && lv(x) === lv(q) && !have.has(x.id));
+      if (!c.length) { toast('ไม่มีข้ออื่นในบทและระดับเดียวกันให้เปลี่ยน', 2600); return; }
+      c.sort((a, b) => ((cal.get(b.id) || {}).grade === 'good' ? 1 : 0) - ((cal.get(a.id) || {}).grade === 'good' ? 1 : 0) || Math.random() - 0.5); qs[i] = c[0]; exRender();
+    };
+    act.appendChild(sw); r.appendChild(act); ol.appendChild(r);
+  });
+  body.appendChild(ol);
+  const title = X.name.trim(), bar = exEl('div', 'brsbar');
+  const mk = (t, cls, fn) => { const b = exEl('button', 'btn ' + cls, t); b.type = 'button'; b.onclick = () => fn(b); bar.appendChild(b); return b; };
+  mk('บันทึกเป็นชุดข้อสอบ', 'solid', async () => { const fs = xmForms(qs); for (const f of fs) await exSaveSet(f.qs, title + (fs.length > 1 ? ' ชุด ' + f.label : '')); toast('บันทึก ' + fs.length + ' ชุดแล้ว ดูได้ที่แท็บชุดโจทย์ของฉัน', 3000); });
+  mk('วางเป็นข้อสอบพร้อมเฉลยลงสมุด', '', () => xmPlace(xmForms(qs), title, true));
+  mk('วางตารางวิเคราะห์ข้อสอบ', '', async () => { if (!S.page) { toast('เปิดหน้าสมุดก่อน', 2400); return; } $('#examSheet').hidden = true; const r = await placeBlocks([xmBlueprintMd(X, qs)], null, { newPage: true, fs: 20 }); toast('วางตารางแล้ว', 2000); });
+  mk('ส่งให้ห้องสด', '', async () => { const set = await exSaveSet(qs, title); setUse(set); $('#examSheet').hidden = true; liveSendSet(set); });
+  mk('มอบการบ้าน', '', async () => { const set = await exSaveSet(qs, title); setUse(set); openAssign(set); });
+  body.appendChild(bar); typeset(body);
+}
+function exRenderExam(body) {
+  const X = EX.xm, tracks = [...new Set(subjTracks().concat(Object.keys(CURRIC)))].filter((t) => CURRIC[t] && BANK_META[t] && BANK_META[t].file);
+  if (!X.t || !CURRIC[X.t]) X.t = CURRIC[EX.track] && tracks.includes(EX.track) ? EX.track : tracks[0];
+  if (!BANKS[X.t]) { body.appendChild(exEl('div', 'note', 'กำลังเปิดคลังโจทย์')); bankEnsure([X.t]).then(() => { if (!$('#examSheet').hidden && EX.tab === 'exam') exRender(); }); return; }
+  body.appendChild(exEl('div', 'note', 'ระบุสิ่งที่ข้อสอบต้องเป็น ระบบจะเลือกข้อให้ตามแผนผังบทและความยาก เลือกเฉพาะข้อที่ตรวจเฉลยแล้ว และบอกตรง ๆ ว่าข้อไหนทำไม่ได้ตามที่ขอ ช่องที่มีเครื่องหมายดอกจันต้องกรอก'));
+  const miss = exEl('div', 'note err'); body.appendChild(miss);
+  const set = body.appendChild(exEl('div', 'exsetup'));
+  const rw = (label, cls) => { const r = exEl('div', 'exrow' + (cls ? ' ' + cls : '')); r.appendChild(exEl('span', 'label', label)); set.appendChild(r); return r; };
+  const num = (val, min, max, step, on) => { const i = document.createElement('input'); i.type = 'number'; i.min = min; i.max = max; i.step = step || 1; i.value = val; i.className = 'xmnum'; i.onchange = () => { on(clamp(parseFloat(i.value) || 0, min, max)); i.value = clamp(parseFloat(i.value) || 0, min, max); upd(); }; return i; };
+  const nm = document.createElement('input'); nm.type = 'text'; nm.placeholder = 'เช่น สอบกลางภาค ฟิสิกส์ ม.4'; nm.value = X.name; nm.oninput = () => { X.name = nm.value; upd(); }; rw('ชื่อข้อสอบ *').appendChild(nm);
+  exChips(rw('จุดประสงค์ของข้อสอบ'), Object.entries(XM_PURPOSE).map(([k, v]) => [k, v[0]]), (v) => v === X.purpose, (v) => { X.purpose = v; X.ratio = XM_PURPOSE[v][1].slice(); X.minD = XM_PURPOSE[v][2]; exRender(); });
+  const tr = rw('หลักสูตร *'); const ts = document.createElement('select'); for (const t of tracks) { const o = document.createElement('option'); o.value = t; o.textContent = exTrackName(t); ts.appendChild(o); }
+  ts.value = X.t; ts.onchange = () => { X.t = ts.value; X.ch = {}; X.built = null; exRender(); }; tr.appendChild(ts);
+  const cal = calibMap(), pool = exAllQs().filter((q) => q.t === X.t && q.c.length >= 2), chs = [...new Set(pool.map((q) => q.ch))].sort((a, b) => a - b);
+  const cr = rw('บทและจำนวนข้อ *', 'exlist'); cr.querySelector('.label').innerHTML = 'บทและจำนวนข้อ *<small>ใส่จำนวนข้อของแต่ละบท บทที่ไม่ใช้ปล่อยเป็น 0</small>';
+  const tot = exEl('div', 'exch', ''); const cw = exEl('div', 'xmchs');
+  for (const c of chs) {
+    const my = pool.filter((q) => q.ch === c), calN = my.filter((q) => { const m = cal.get(q.id); return m && m.tier === 'cal'; }).length;
+    const row = exEl('div', 'xmch'); row.appendChild(exEl('span', '', '<b>' + esc(exChName(X.t, c)) + '</b><small>มี ' + my.length + ' ข้อ (ง่าย ' + my.filter((q) => effLevel(q) === 1).length + ' กลาง ' + my.filter((q) => effLevel(q) === 2).length + ' ยาก ' + my.filter((q) => effLevel(q) === 3).length + ') ปรับเทียบแล้ว ' + calN + '</small>'));
+    row.appendChild(num(X.ch[c] || 0, 0, Math.min(60, my.length), 1, (v) => { X.ch[c] = v; X.built = null; })); cw.appendChild(row);
+  }
+  cr.appendChild(cw); cr.appendChild(tot);
+  const rr = rw('สัดส่วนความยาก ง่าย : กลาง : ยาก *'); ['ง่าย', 'กลาง', 'ยาก'].forEach((n, k) => { const l = exEl('label', 'pqsel'); l.appendChild(exEl('span', '', n)); l.appendChild(num(X.ratio[k], 0, 20, 1, (v) => { X.ratio[k] = v; X.built = null; })); rr.appendChild(l); });
+  exChips(rw('ระดับประยุกต์ขึ้นไปอย่างน้อย', 'exlist'), [[0, 'ไม่กำหนด'], [30, 'ร้อยละ 30'], [50, 'ร้อยละ 50']], (v) => v === X.apply, (v) => { X.apply = v; X.built = null; exRender(); });
+  exChips(rw('อำนาจจำแนก D ขั้นต่ำ', 'exlist'), [[0, 'ไม่กำหนด'], [0.2, '0.20 ขึ้นไป'], [0.3, '0.30 ขึ้นไป']], (v) => v === X.minD, (v) => { X.minD = v; X.built = null; exRender(); });
+  exChips(rw('ข้อที่ยังไม่มีข้อมูลจากห้อง ใช้ได้ไม่เกิน', 'exlist'), [[100, 'ทั้งหมด'], [50, 'ครึ่งหนึ่ง'], [25, 'หนึ่งในสี่'], [0, 'ไม่ใช้เลย']], (v) => v === X.uncal, (v) => { X.uncal = v; X.built = null; exRender(); });
+  exChips(rw('ไม่ซ้ำกับชุดที่เคยใช้แล้ว'), [[true, 'ไม่ซ้ำ'], [false, 'ซ้ำได้']], (v) => v === X.noRepeat, (v) => { X.noRepeat = v; X.built = null; exRender(); });
+  exChips(rw('เรียงข้อสอบ'), [['easy', 'ง่ายไปยาก'], ['ch', 'ตามบท']], (v) => v === X.order, (v) => { X.order = v; X.built = null; exRender(); });
+  const tmr = rw('เวลาสอบ (นาที) *'); tmr.appendChild(num(X.minutes, 0, 600, 5, (v) => { X.minutes = v; })); const sug = exEl('button', 'btn sm', 'ใช้ค่าแนะนำ'); sug.type = 'button'; tmr.appendChild(sug);
+  const sugT = exEl('span', 'note small', ''); tmr.appendChild(sugT);
+  exChips(rw('จำนวนชุดสลับข้อและตัวเลือก'), [[1, '1 ชุด'], [2, '2 ชุด'], [3, '3 ชุด'], [4, '4 ชุด']], (v) => v === X.forms, (v) => { X.forms = v; exRender(); });
+  let go = null;
+  const upd = () => {
+    const N = Object.values(X.ch).reduce((a, b) => a + (b || 0), 0), r = X.ratio, al = xmAlloc(N, r), m = xmMissing(), mins = Math.ceil(al[0] * XM_MIN[1] + al[1] * XM_MIN[2] + al[2] * XM_MIN[3]);
+    tot.innerHTML = 'รวม ' + N + ' ข้อ แบ่งเป็นง่าย ' + al[0] + ' กลาง ' + al[1] + ' ยาก ' + al[2]; sugT.textContent = N ? 'ควรใช้ราว ' + mins + ' นาที' : '';
+    sug.onclick = () => { X.minutes = mins; exRender(); };
+    miss.hidden = !m.length; miss.textContent = 'ยังต้องระบุ: ' + m.join(', '); if (go) go.disabled = !!m.length;
+  };
+  const row = exEl('div', 'row2 exgo'); go = exEl('button', 'btn solid', 'สร้างข้อสอบ'); go.onclick = () => { X.built = xmBuild(); exRender(); }; row.appendChild(go);
+  const ex1 = exEl('button', 'btn', 'ส่งออกสถิติรายข้อ CSV'); ex1.type = 'button'; ex1.onclick = () => calExport('csv'); row.appendChild(ex1);
+  const ex2 = exEl('button', 'btn', 'ส่งออกสถิติรายข้อ JSON'); ex2.type = 'button'; ex2.onclick = () => calExport('json'); row.appendChild(ex2);
+  body.appendChild(row); upd(); exScrollFix(set);
+  if (X.built) xmRenderPreview(body);
 }
 /* write the five-step solutions for a whole set in the background, one at a time */
 const SOLQ = { run: false, set: null, done: 0, n: 0, fail: 0 };
