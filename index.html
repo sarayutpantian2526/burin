@@ -3198,10 +3198,27 @@ const PEEKS = new Map();
 function flowNb() { const pages = (S.nb && S.nb.pages) || [], i = pages.indexOf(S.pid); return { prev: i > 0 ? pages[i - 1] : null, next: i >= 0 && i < pages.length - 1 ? pages[i + 1] : null }; }
 /* a neighbouring page drawn as a picture with its boxes on top; kept for reuse while unchanged, and the pages two away are
    drawn ahead while nothing else is happening, so scrolling quickly through a notebook finds them ready */
+function peekSig(pid, page, n, pw, ph) { return [pid, n, JSON.stringify((page && page.items) || []).length, (page && page.paper) || '', pw, ph, S.base.toFixed(3), clamp(S.zoom, 1, 1.6).toFixed(1), curBg()].join('|'); }
+/* the page being left is already drawn on screen: its picture for the continuous view is copied from the screen's
+   canvases at once, instead of drawing every stroke of it again (the slow part of moving on, on an iPad) */
+function peekFromScreen() {
+  try {
+    const pid = S.pid; if (!pid || !S.page || !cInk.width) return;
+    const pw = W, ph = H, sig = peekSig(pid, S.page, allStrokes().length, pw, ph), hit = PEEKS.get(pid); if (hit && hit.sig === sig) return;
+    const dpr = Math.min(2, window.devicePixelRatio || 1), k = Math.min(pw * S.base * dpr * clamp(S.zoom, 1, 1.6), 1500) / pw;
+    const cv = document.createElement('canvas'); cv.width = Math.round(pw * k); cv.height = Math.round(ph * k);
+    const c = cv.getContext('2d'); c.drawImage(cBg, 0, 0, cv.width, cv.height); c.drawImage(cInk, 0, 0, cv.width, cv.height);
+    const lay = itemsEl.cloneNode(true); lay.removeAttribute('id'); lay.className = 'fitems'; lay.style.cssText = ''; lay.style.width = pw + 'px'; lay.style.height = ph + 'px'; lay.style.transform = 'scale(' + S.base + ')';
+    lay.querySelectorAll('[id]').forEach((n) => n.removeAttribute('id')); lay.querySelectorAll('.dsvg, .diarydots').forEach((n) => n.remove());
+    const lb = document.createElement('div'); lb.className = 'plabel'; lb.textContent = 'หน้า ' + ((S.nb.pages || []).indexOf(pid) + 1);
+    PEEKS.delete(pid); PEEKS.set(pid, { sig, dims: [pw, ph], nodes: [cv, lay, lb], lay, typeset: true });
+    while (PEEKS.size > 4) PEEKS.delete(PEEKS.keys().next().value);
+  } catch (e) { /* drawn the usual way */ }
+}
 async function peekBuild(pid) {
   const { page, strokes } = await pageData(pid);
   const [pw, ph] = pageDims(page);
-  const sig = [pid, strokes.length, JSON.stringify((page && page.items) || []).length, (page && page.paper) || '', pw, ph, S.base.toFixed(3), clamp(S.zoom, 1, 1.6).toFixed(1), curBg()].join('|');
+  const sig = peekSig(pid, page, strokes.length, pw, ph);
   const hit = PEEKS.get(pid); if (hit && hit.sig === sig) { PEEKS.delete(pid); PEEKS.set(pid, hit); return hit; }
   /* a picture as sharp as the screen needs, but no more: these are kept in memory (iPad) */
   const cv = document.createElement('canvas'), dpr = Math.min(2, window.devicePixelRatio || 1), k = Math.min(pw * S.base * dpr * clamp(S.zoom, 1, 1.6), 1500) / pw;
@@ -3247,8 +3264,11 @@ function flowGo(d) {
   if (d < 0 && !dimPrev) return false;
   FLOW.busy = true;
   S.ty += d < 0 ? -(dimPrev[1] * S.base + FLOW.gap) * S.zoom : (cur[1] * S.base + FLOW.gap) * S.zoom;
-  FLOW.dims = d < 0 ? { prev: null, next: cur } : { prev: cur, next: null };
-  openPage(pid); applyT();
+  /* the page beyond the new one is taken at its known size (drawn ahead) or the size of this one, right away: waiting for
+     its picture left the scroll stopped at the edge for a moment and then jumping, on a slower iPad */
+  const pages = S.nb.pages || [], j = pages.indexOf(pid), beyond = pages[j + (d < 0 ? -1 : 1)], bd = beyond ? ((PEEKS.get(beyond) || {}).dims || cur.slice()) : null;
+  FLOW.dims = d < 0 ? { prev: bd, next: cur } : { prev: cur, next: bd };
+  peekFromScreen(); openPage(pid); applyT();
   renderPeeks().catch(() => {}).finally(() => { FLOW.busy = false; if (FLOW.again) { FLOW.again = false; flowCheck(); } });
   return true;
 }
@@ -3299,8 +3319,9 @@ function releasePull() {
   const p = S.pull || 0; const lim = S.pullSrc === 'wheel' ? PULL * 2 : PULL;
   S.pull = 0; S.pullSrc = null; $('#pull').hidden = true; applyT();
   const [i, n] = pageIndex();
-  if (p <= -lim) { if (i >= n - 1) addPage(); else stepPage(1); }
-  else if (p >= lim && i > 0) stepPage(-1, true);
+  /* in the continuous view the neighbouring pages are scrolled to, never jumped to by a pull */
+  if (p <= -lim) { if (i >= n - 1) addPage(); else if (!FLOW.on) stepPage(1); }
+  else if (p >= lim && i > 0 && !FLOW.on) stepPage(-1, true);
 }
 const wheelRelease = debounce(releasePull, 220);
 /* the top bar stays on one line: when it runs out of room, buttons show icons only */
@@ -5718,7 +5739,8 @@ function openPage(pid) {
       if (!S.sel.strokes.length && !S.sel.items.length) clearSel();
       else { S.sel.box = selBox(S.sel); drawSelBox(); showSelbar(); }
     }
-    drawInk();
+    /* the layers of a page arrive one after another just after turning to it: drawn once per frame, not once per layer */
+    if (!S.inkRaf) S.inkRaf = requestAnimationFrame(() => { S.inkRaf = 0; drawInk(); });
   });
   hideLoading();
 }
@@ -22333,7 +22355,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793587775';
+const BUILD = '1793593430';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
