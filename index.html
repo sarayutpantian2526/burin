@@ -10078,6 +10078,13 @@ async function sceneFromSelection() {
 }
 /* ---------- lasso a drawing or a picture, then choose how it moves: the picture itself becomes the body ---------- */
 const SPRITES = new Map();
+/* a picture given by link (a teacher's picture on a learner's copy) */
+function scSpriteUrl(u) {
+  if (!okSigned(u)) return null;
+  let s = SPRITES.get(u);
+  if (!s) { s = { im: new Image(), ok: false }; SPRITES.set(u, s); s.im.onload = () => { s.ok = true; for (const [k, r] of SCN) { const it = findItem(k); if (it && r.cv && r.cv.isConnected && !r.playing) scRender(it, r); } }; s.im.src = u; }
+  return s.ok ? s.im : null;
+}
 function scSprite(id) {
   let s = SPRITES.get(id);
   if (!s) {
@@ -10564,7 +10571,7 @@ function ipDrawInk(c, it, r, b, X, Y) {
     c.translate(at[0], at[1]); c.rotate(-b.ang); c.translate(-rig.cx, -rig.cy);
     const wheels = rig.wheels || [], inW = new Set(); wheels.forEach((w) => w.i.forEach((k) => inW.add(k)));
     if (wheels.length) { const last = r.lastPos || [b.x, b.y]; const ds = (b.x - last[0]) * Math.cos(b.ang) + (b.y - last[1]) * Math.sin(b.ang); r.roll = (r.roll || 0) + ds; r.lastPos = [b.x, b.y]; }
-    for (const q of it.pics || []) { const im = q.asset && scSprite(q.asset); if (im) c.drawImage(im, q.x, q.y, q.w, q.h); }
+    for (const q of it.pics || []) { const im = q.asset ? scSprite(q.asset) : q.url ? scSpriteUrl(q.url) : null; if (im) c.drawImage(im, q.x, q.y, q.w, q.h); }
     it.ink.forEach((s, k) => { if (!inW.has(k)) drawStroke(c, s); });
     for (const w of wheels) { const kpx = rig.K || 100; c.save(); c.translate(w.cx, w.cy); c.rotate((r.roll || 0) * kpx / Math.max(4, w.r)); c.translate(-w.cx, -w.cy); w.i.forEach((k) => it.ink[k] && drawStroke(c, it.ink[k])); c.restore(); }
   }
@@ -11368,7 +11375,7 @@ function lifeDraw(it, rt) {
   const wings = k === 'flap' ? (rt.wings || (rt.wings = lifeWings(it))) : [], wingSet = new Set(wings.map((q) => q.i));
   const legOf = new Map(); if (gait && gait.strokes) for (const g of gait.legs) legOf.set(g.i, g);
   const deforms = ['sway', 'flutter', 'swim', 'flicker', 'breathe', 'walk4'].includes(k) || (k === 'flap' && !wings.length);
-  for (const q of it.pics || []) { const im = q.asset && scSprite(q.asset); if (im) c.drawImage(im, q.x, q.y, q.w, q.h); }
+  for (const q of it.pics || []) { const im = q.asset ? scSprite(q.asset) : q.url ? scSpriteUrl(q.url) : null; if (im) c.drawImage(im, q.x, q.y, q.w, q.h); }
   const inW = new Set(); (it.wheels || []).forEach((wl) => wl.i.forEach((i) => inW.add(i)));
   /* a drawn person flinching throws the arms up over the head */
   let armUp = null;
@@ -19271,6 +19278,8 @@ async function shareItems(items, secs) {
     if (it.teacher) continue; /* the teacher's answer boxes stay on the teacher's screen */
     const o = clone(it);
     if ((o.type === 'img' || o.type === 'video') && okAsset(o.asset)) { const u = await signedUrl(o.asset, secs); if (!u) continue; o.url = u; delete o.asset; }
+    /* pictures inside a moving drawing or a scene live in the teacher's files too: learners get a link to each */
+    if (Array.isArray(o.pics)) for (const q of o.pics) if (q && okAsset(q.asset)) { const u = await signedUrl(q.asset, secs); if (u) { q.url = u; delete q.asset; } }
     o.by = 'teacher'; out.push(o);
   }
   return out;
@@ -22594,7 +22603,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793598468';
+const BUILD = '1793598697';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
