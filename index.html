@@ -512,7 +512,8 @@ body.fs-ios .dock { left: 96px; }
 .dockctl svg { transition: transform 0.2s; }
 /* small: only the grip, the tool in use, the current colour and the button to open it again */
 .dock.mini > *:not(.grip):not(#toolRow):not(#curColor):not(#dockMin):not(.pop) { display: none !important; }
-.dock.mini #toolRow > *:not([aria-pressed="true"]), .dock.mini #fingerTg { display: none !important; }
+/* the small toolbar keeps the tool in use, the pen and the laser: one tap between writing and pointing while teaching zoomed in */
+.dock.mini #toolRow > *:not([aria-pressed="true"]):not([data-tool="laser"]):not([data-tool="pen"]), .dock.mini #fingerTg { display: none !important; }
 .dock.mini #toolRow { flex: none !important; overflow: visible !important; }
 .dock.mini #dockMin svg { transform: rotate(180deg); }
 /* standing: tools in a column along the side of the page */
@@ -22327,7 +22328,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793586352';
+const BUILD = '1793587301';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
