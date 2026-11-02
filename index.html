@@ -497,8 +497,12 @@ body.present #viewport { border-radius: 0; cursor: default; }
 body.focus #app { padding-block: 0; padding-left: 0; padding-right: 0; }
 body.focus #viewport { border-radius: 0; }
 body.fs-ios .dock { left: 96px; }
-.exitfull { position: absolute; right: 14px; bottom: max(14px, env(safe-area-inset-bottom, 0px)); z-index: 6; min-width: 44px; height: 44px; padding: 0 12px; gap: 6px; font-size: 14px; font-weight: 600; border-radius: 12px; border: 0; background: var(--surface); color: var(--fg); box-shadow: var(--shadow); cursor: pointer; display: flex; align-items: center; justify-content: center; opacity: 0.85; }
+/* top right, away from the resting hand of a right- or left-handed writer; only the symbol until it is touched */
+.exitfull { position: absolute; right: 12px; top: max(10px, env(safe-area-inset-top, 0px)); z-index: 6; min-width: 44px; height: 44px; padding: 0 12px; gap: 6px; font-size: 14px; font-weight: 600; border-radius: 12px; border: 0; background: var(--surface); color: var(--fg); box-shadow: var(--shadow); cursor: pointer; display: flex; align-items: center; justify-content: center; opacity: 0.85; }
 .exitfull svg { width: 20px; height: 20px; }
+.exitfull span { display: none; }
+.exitfull.ask span { display: inline; }
+.exitfull.ask, .fqexit.ask { background: var(--accent, #2B3A67); color: #fff; opacity: 1; }
 /* phones: smaller buttons, and the tools wrap onto a second line instead of scrolling out of sight */
 @media (max-width: 600px) {
   .dock:not(.vert) .tool, .dock:not(.vert) .curc { width: 34px; height: 38px; border-radius: 10px; }
@@ -522,7 +526,8 @@ body.fs-ios .dock { left: 96px; }
 .dock.vert > .grip, .dock.vert > #toolRow, .dock.vert > #recent, .dock.vert > #dockWidths, .dock.vert > .sep, .dock.vert > .fonly { grid-column: 1 / -1; }
 .dock.vert #toolRow, .dock.vert #recent, .dock.vert #dockWidths, body.focus .dock.vert .fonly:not(.sep) { display: grid !important; grid-template-columns: repeat(2, 46px); justify-items: center; align-items: center; gap: 2px; overflow: visible !important; max-width: none; touch-action: none; }
 .dock.vert #toolRow[hidden] { display: none !important; }
-@media (max-width: 900px) { body.focus .dock:not(.vert) #fqExit { display: none; } }
+/* the way out of full screen is the one button at the top right (#bExitFull), not in the toolbar under the hand */
+body.focus #fqExit, #fqExit { display: none !important; }
 .dock.vert.mini #toolRow { grid-template-columns: 46px; }
 .dock.vert > #curWidth, .dock.vert > #dockMin { order: 1; }
 .dock.vert.tight > #dockWidths, .dock.vert.tight > #wSep, .dock.vert.tighter > #recent { display: none !important; }
@@ -1807,7 +1812,7 @@ body.role-student .scnpill .sbtns button[data-s="back"], body.role-student .scnp
       <button class="updbar no-ink" id="updBar" hidden>มีเวอร์ชันใหม่ แตะเพื่ออัปเดต</button>
       <button class="pexit no-ink" id="presentExit" hidden>ออกจากจอผู้ชม</button>
       <div class="pwait no-ink" id="presentWait" hidden><b>หน้าต่างนี้เป็นจอผู้ชมแล้ว</b><br>เปิดสมุดแล้วเขียนบนอีกเครื่องที่ใช้บัญชีเดียวกัน หน้านั้นจะขึ้นที่นี่<br><small>ถ้าใช้เครื่องนี้เครื่องเดียวต่อจอใหญ่ ให้ใช้แบบเต็มจอแทน จะเขียนต่อได้</small><span class="row2"><button type="button" class="btn" id="pwFull">ขยายเต็มจอ</button><button type="button" class="btn" id="pwFocus">ใช้แบบเต็มจอ เขียนต่อได้</button><button type="button" class="btn solid" id="pwExit">ออกจากจอผู้ชม</button></span></div>
-      <button class="exitfull no-ink" id="bExitFull" hidden aria-label="ออกจากเต็มหน้าจอ"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7.5 3v4.5H3 M17 7.5h-4.5V3 M12.5 17v-4.5H17 M3 12.5h4.5V17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span>ออกจากเต็มจอ</span></button>
+      <button class="exitfull no-ink" id="bExitFull" hidden aria-label="ออกจากเต็มหน้าจอ"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7.5 3v4.5H3 M17 7.5h-4.5V3 M12.5 17v-4.5H17 M3 12.5h4.5V17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span>แตะอีกครั้งเพื่อออกจากเต็มจอ</span></button>
       <div class="exmini no-ink" id="exMini" role="group" aria-label="ชุดโจทย์ที่ย่อไว้" hidden><button id="emPrev" aria-label="ข้อก่อนหน้า">ก่อนหน้า</button><button id="emOpen" class="main"></button><button id="emNext" aria-label="ข้อต่อไป">ต่อไป</button><button id="emPlace">วางข้อนี้ลงหน้า</button></div>
       <div class="pagenav no-ink mini" role="group" aria-label="เปลี่ยนหน้า">
         <button id="bAnimAll" class="animall" type="button" hidden aria-pressed="true"><svg viewBox="0 0 20 20" aria-hidden="true"></svg><span></span></button><button id="bLifeCtl" class="lifectl" type="button" hidden aria-pressed="false" title="ซ่อนปุ่มดาวที่ใช้ปรับภาพเคลื่อนไหว" aria-label="ซ่อนปุ่มดาวที่ใช้ปรับภาพเคลื่อนไหว"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3l1.6 4.4L16 9l-4.4 1.6L10 15l-1.6-4.4L4 9l4.4-1.6z" fill="currentColor"/><path class="x" d="M3.5 16.5L16.5 3.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button><span class="zsep" id="animSep" hidden></span>
@@ -22328,7 +22333,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793587301';
+const BUILD = '1793587775';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
@@ -23064,20 +23069,29 @@ function setFocus(on) {
   let standalone = false; try { standalone = !!(navigator.standalone || matchMedia('(display-mode: standalone)').matches || matchMedia('(display-mode: fullscreen)').matches); } catch (e) { /* ignore */ }
   /* installed from the home screen the app already fills the screen; in Safari we still ask for browser fullscreen,
      and keep the toolbar clear of iPad's own close button and its pull-down-to-shrink area at the top */
-  document.body.classList.toggle('fs-ios', on && ipad && !standalone);
+  /* iPad Safari's own fullscreen closes when a stroke is drawn downwards (its swipe-down gesture), which threw the
+     teacher out of full screen mid-writing: on iPad only the app's bars are hidden, nothing the browser can undo */
+  document.body.classList.remove('fs-ios');
   try {
-    if (on && standalone) { /* bars hidden by CSS only */ }
+    if (on && (standalone || ipad)) { /* bars hidden by CSS only */ }
     else if (on) { const req = de.requestFullscreen || de.webkitRequestFullscreen; if (req) { const r = req.call(de); if (r && r.catch) r.catch(() => {}); } }
     else if (document.fullscreenElement || document.webkitFullscreenElement) { const ex = document.exitFullscreen || document.webkitExitFullscreen; if (ex) { const r = ex.call(document); if (r && r.catch) r.catch(() => {}); } }
   } catch (e) { /* the bars still hide */ }
-  setTimeout(() => { fit(); placeDock(); }, 120);
+  setTimeout(() => { fit(); placeDock(); placeExitFull(); }, 120);
 }
 let fsOn = false;
 const onFs = () => { const el = document.fullscreenElement || document.webkitFullscreenElement; if (el) fsOn = true; else if (fsOn) { fsOn = false; if (S.focus) setFocus(false); } };
 document.addEventListener('fullscreenchange', onFs); document.addEventListener('webkitfullscreenchange', onFs);
 $('#bFull').onclick = () => setFocus(true);
-$('#bExitFull').onclick = () => setFocus(false);
-$('#fqExit').onclick = () => setFocus(false);
+/* leaving full screen takes two taps: the first shows what the button does, the second (within 3 s) leaves, so a hand
+   resting on the screen never leaves full screen by accident */
+function exitAsk(b) {
+  if (b.classList.contains('ask')) { b.classList.remove('ask'); clearTimeout(b._askT); setFocus(false); return; }
+  b.classList.add('ask'); clearTimeout(b._askT); b._askT = setTimeout(() => b.classList.remove('ask'), 3000);
+  if (b.id === 'fqExit') toast('แตะอีกครั้งเพื่อออกจากเต็มจอ', 2200);
+}
+$('#bExitFull').onclick = () => exitAsk($('#bExitFull'));
+$('#fqExit').onclick = () => exitAsk($('#fqExit'));
 document.addEventListener('keydown', (e) => { if (S.focus && !S.present && e.key === 'Escape' && !document.querySelector('.sheet:not([hidden])')) setFocus(false); });
 
 /* the tool dock can be dragged anywhere; it remembers where */
@@ -23087,7 +23101,7 @@ const PHONE = window.matchMedia('(max-width: 520px)');
 function dockFold(on) { $('#dock').classList.toggle('folded', on); $('#dockFold').setAttribute('aria-pressed', on ? 'true' : 'false'); $('#dockFold').setAttribute('aria-label', on ? 'กางแถบเครื่องมือ' : 'พับแถบเครื่องมือให้เหลือแถวเดียว'); store_ls.set('tp-dockfold', on ? '1' : '0'); }
 $('#dockFold').onclick = () => dockFold(!$('#dock').classList.contains('folded'));
 /* the tool bar can shrink to the tool in use, and can stand upright along the side of the page */
-function dockRefit() { dockTight(); try { const p = JSON.parse(store_ls.get('tp-dock') || 'null'); if (Array.isArray(p)) setDockPos(p[0], p[1]); else placeDock(); } catch (e) { placeDock(); } }
+function dockRefit() { dockTight(); try { const p = JSON.parse(store_ls.get('tp-dock') || 'null'); if (Array.isArray(p)) setDockPos(p[0], p[1], p[2], p[3]); else placeDock(); } catch (e) { placeDock(); } }
 function dockMin(on) { closePops(); $('#dock').classList.toggle('mini', on); store_ls.set('tp-dockmin', on ? '1' : '0'); $('#dockMin').setAttribute('aria-pressed', on ? 'true' : 'false'); $('#dockMin').setAttribute('aria-label', on ? 'กางแถบเครื่องมือ' : 'ย่อแถบเครื่องมือ'); requestAnimationFrame(dockRefit); }
 /* dragged against the left or right side of the page the tool bar stands upright along it; dragged back toward the middle it lies flat again */
 /* on a short screen the upright bar drops its quick width row, then its quick colours (both still in the pickers) */
@@ -23114,20 +23128,37 @@ function placePhonePop(p) {
 }
 { const mo = new MutationObserver((ms) => ms.forEach((m) => placePhonePop(m.target))); document.querySelectorAll('.dock .pop').forEach((p) => mo.observe(p, { attributes: true, attributeFilter: ['hidden'] })); }
 PHONE.addEventListener && PHONE.addEventListener('change', () => document.querySelectorAll('.dock .pop').forEach(placePhonePop));
+/* the full-screen exit sits at the top right; when the toolbar runs along the top it sits just under the toolbar's end */
+function placeExitFull() {
+  const b = $('#bExitFull'); if (!b || b.hidden) return;
+  const d = $('#dock'), host = b.offsetParent || vp; if (!host) return;
+  const h = host.getBoundingClientRect(), r = d.getBoundingClientRect();
+  let top = 10;
+  if (r.width && r.right > h.right - 70 && r.top < h.top + 70) top = Math.round(r.bottom - h.top + 10);
+  b.style.top = 'max(' + top + 'px, env(safe-area-inset-top, 0px))';
+}
 function placeDock() {
+  setTimeout(placeExitFull, 0);
   const d = $('#dock'), r = d.getBoundingClientRect(), v = vp.getBoundingClientRect();
   d.classList.toggle('flip-y', r.top - v.top > v.height * 0.55);
   d.classList.toggle('flip-x', r.left - v.left > v.width * 0.5);
 }
-function setDockPos(fx, fy) {
+/* a toolbar left against an edge (or in the middle) stays there when the screen changes size, e.g. going full screen,
+   instead of drifting to the same fraction of a wider or narrower screen */
+function dockAnchor(r, v) {
+  const ax = r.left - v.left < 48 ? 'l' : v.right - r.right < 48 ? 'r' : Math.abs((r.left + r.right) / 2 - (v.left + v.right) / 2) < 48 ? 'c' : '';
+  const ay = r.top - v.top < 48 ? 't' : v.bottom - r.bottom < 48 ? 'b' : '';
+  return [ax, ay];
+}
+function setDockPos(fx, fy, ax, ay) {
   const d = $('#dock');
   if (fx == null) { d.style.left = ''; d.style.top = ''; d.style.bottom = ''; placeDock(); return; }
   const vw = vp.clientWidth, vh = vp.clientHeight;
   const ios = document.body.classList.contains('fs-ios');
-  const y = clamp(fy * vh, 6, Math.max(6, vh - d.offsetHeight - 6));
+  const y = clamp(ay === 't' ? 12 : ay === 'b' ? vh - d.offsetHeight - 12 : fy * vh, 6, Math.max(6, vh - d.offsetHeight - 6));
   /* in iPad Safari fullscreen the system close button sits in the top-left corner: keep the toolbar to its right */
   const minX = ios && y < 80 ? 96 : 6;
-  const x = clamp(fx * vw, minX, Math.max(minX, vw - d.offsetWidth - 6));
+  const x = clamp(ax === 'l' ? 12 : ax === 'r' ? vw - d.offsetWidth - 12 : ax === 'c' ? (vw - d.offsetWidth) / 2 : fx * vw, minX, Math.max(minX, vw - d.offsetWidth - 6));
   d.style.left = x + 'px'; d.style.top = y + 'px'; d.style.bottom = 'auto';
   placeDock();
 }
@@ -23158,7 +23189,7 @@ function setDockPos(fx, fy) {
     if (moved > 2) {
       if (d.classList.contains('vert')) { /* upright: settle snugly against the nearer side */ const v0 = vp.getBoundingClientRect(), r0 = d.getBoundingClientRect(); const left = r0.left + r0.width / 2 < v0.left + v0.width / 2; setDockPos(left ? 6 / v0.width : (v0.width - r0.width - 6) / v0.width, (r0.top - v0.top) / v0.height); }
       const r = d.getBoundingClientRect(), v = vp.getBoundingClientRect();
-      store_ls.set('tp-dock', JSON.stringify([(r.left - v.left) / v.width, (r.top - v.top) / v.height]));
+      store_ls.set('tp-dock', JSON.stringify([(r.left - v.left) / v.width, (r.top - v.top) / v.height].concat(dockAnchor(r, v))));
     } else {
       const t = now();
       if (t - lastTap < 400) { store_ls.set('tp-dock', ''); dockVert(false); setDockPos(null); toast('แถบเครื่องมือกลับที่เดิมแล้ว', 1400); }
@@ -23166,8 +23197,8 @@ function setDockPos(fx, fy) {
     }
   };
   g.addEventListener('pointerup', end); g.addEventListener('pointercancel', end);
-  window.addEventListener('resize', debounce(() => { dockTight(); try { const p = JSON.parse(store_ls.get('tp-dock') || 'null'); if (Array.isArray(p)) setDockPos(p[0], p[1]); else placeDock(); } catch (e) { placeDock(); } }, 200));
-  try { const p = JSON.parse(store_ls.get('tp-dock') || 'null'); if (Array.isArray(p) && isFinite(p[0]) && isFinite(p[1])) setTimeout(() => { dockTight(); setDockPos(p[0], p[1]); }, 0); } catch (e) {}
+  window.addEventListener('resize', debounce(() => { dockTight(); try { const p = JSON.parse(store_ls.get('tp-dock') || 'null'); if (Array.isArray(p)) setDockPos(p[0], p[1], p[2], p[3]); else placeDock(); } catch (e) { placeDock(); } }, 200));
+  try { const p = JSON.parse(store_ls.get('tp-dock') || 'null'); if (Array.isArray(p) && isFinite(p[0]) && isFinite(p[1])) setTimeout(() => { dockTight(); setDockPos(p[0], p[1], p[2], p[3]); }, 0); } catch (e) {}
 })();
 $('#tgFlow').onclick = () => flowSet(!FLOW.on);
 $('#tgNavRight').onclick = () => navSide(NAV.side === 'right' ? 'left' : 'right');
