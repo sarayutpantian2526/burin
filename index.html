@@ -6422,9 +6422,9 @@ async function generateRun(fromSel, more) {
     + (GA.made.length ? 'Questions already written for this content (write DIFFERENT ones: other unknowns, other variables changed, other misconceptions):\n' + GA.made.map((q, i) => (i + 1) + '. ' + String(q.q).replace(/\s+/g, ' ').slice(0, 160)).join('\n') + '\n' : '')
     + 'Tasks:\n'
     + '1. Identify the physical scenario and the exact quantities, symbols and values the teacher used. Keep the teacher\'s value of g and notation.\n'
-    + '2. Write exactly 3 new items in Thai that continue THE SAME scenario and stay consistent with it:\n'
-    + '   - "example": a worked example that extends the scenario with one new question, with a full step-by-step solution.\n'
-    + '   - "drill": a practice problem that changes exactly one variable of the scenario, with the answer and a short solution.\n'
+    + '2. Write exactly 3 NEW items in Thai that are comparable to this content: the same physics ideas, skills and difficulty, but each in a new situation of your own with different numbers. Never copy, reword or merely change the question of a problem that is already on the page; a learner who has only memorised the page\'s problem must still have to think. Keep the teacher\'s notation and value of g.\n'
+    + '   - "example": a worked example in a new situation that uses the same idea as the page, with a full step-by-step solution.\n'
+    + '   - "drill": a practice problem in another new situation of the same kind, with the answer and a short solution.\n'
     + '   - "mcq": a 4-option multiple-choice item, options labelled ก. ข. ค. ง., similar length, no cueing words shared between stem and key, each distractor built on a real student misconception. Give the key and say which misconception each distractor targets.\n'
     + (haveCalc ? '3. Compute EVERY number in every answer with the calc tool and use exactly the numbers it returns, rounded sensibly.\n' : '3. Double-check every number carefully.\n')
     + 'Write math in LaTeX between $...$ inside the Thai text; never use the √ character, write \\sqrt{}. Use SI units.\n'
@@ -19028,7 +19028,9 @@ async function rkFromTeacher(ev, p) {
   if (!p || typeof p !== 'object') return false;
   /* fetching the key never holds up the pages: it runs on the side, and only the very first signed message waits for
      it, at most a moment; while no key can be had, messages are taken as from a teacher on an older version */
-  if (typeof p._s !== 'string') { if (!RK.tpub) rkLoadTeacher(LIVE.code); return !RK.tpub; }
+  /* unsigned: a teacher on an older version of the app. taken until a signed message has been seen in this room;
+     after that only the teacher's signed messages count */
+  if (typeof p._s !== 'string') { if (!RK.tpub) rkLoadTeacher(LIVE.code); return !RK.sawSigned; }
   if (!RK.tpub) {
     if (!RK.firstWait) RK.firstWait = Promise.race([rkLoadTeacher(LIVE.code, true), new Promise((r) => setTimeout(r, 1500))]);
     await RK.firstWait;
@@ -19037,11 +19039,14 @@ async function rkFromTeacher(ev, p) {
   const ok = await rkCheck(RK.tpub, ev, p);
   if (!ok) { rkLoadTeacher(LIVE.code); return false; } /* maybe a new key: look again on the side */
   if (p._t < RK.tmax - 120000) return false;
-  RK.tmax = Math.max(RK.tmax, p._t); return true;
+  RK.sawSigned = true; RK.tmax = Math.max(RK.tmax, p._t); return true;
 }
 /* learner: receive a teacher event only when it checks out, in the order it came */
+/* no step of the checking queue may hold it for long: a check that takes over 2.5 s lets the message through as it
+   is, so a slow network can never freeze a learner's screen */
+const rkSoon = (pr, ms, v) => Promise.race([pr, new Promise((r) => setTimeout(() => r(v), ms))]);
 function rkOnTeacher(ch, ev, f) {
-  ch.on('broadcast', { event: ev }, (m) => { const p = m.payload; RK.vq = RK.vq.then(() => rkFromTeacher(ev, p)).then((ok) => { if (ok) f({ payload: rkStrip(p) }); }).catch(() => {}); });
+  ch.on('broadcast', { event: ev }, (m) => { const p = m.payload; RK.vq = RK.vq.then(() => rkSoon(rkFromTeacher(ev, p).catch(() => true), 2500, true)).then((ok) => { if (ok) { try { f({ payload: rkStrip(p) }); } catch (e) { console.warn(e); } } }).catch(() => {}); });
 }
 /* teacher: a learner's join carries its device key; keep the first one seen for that device */
 async function rkJoin(p) {
@@ -19139,13 +19144,14 @@ async function liveOpen() {
   /* each class (or, with no class chosen, each notebook) has its own room code, kept for next time */
   const sb = CLOUD.client; if (!LIVE.nbId) LIVE.nbId = S.nid; if (!LIVE.code) LIVE.code = liveRoomCode(LIVE.nbId, LIVE.clsId); store_ls.set('tp-class', LIVE.code); store_ls.set('tp-live-nb', LIVE.nbId || '');
   LIVE.role = 'teacher';
-  { let r = await rkTeacher(LIVE.code).catch(() => false);
+  /* the room opens even when the key cannot be stored quickly (slow network): it is then simply not signed this time */
+  { let r = await rkSoon(rkTeacher(LIVE.code).catch(() => false), 4000, false);
     /* someone else holds this room name: move to a fresh code so the learners only ever hear this teacher */
-    if (r === 'taken') { LIVE.code = liveRoomCode(LIVE.nbId, LIVE.clsId, true); store_ls.set('tp-class', LIVE.code); r = await rkTeacher(LIVE.code).catch(() => false); } }
+    if (r === 'taken') { LIVE.code = liveRoomCode(LIVE.nbId, LIVE.clsId, true); store_ls.set('tp-class', LIVE.code); r = await rkSoon(rkTeacher(LIVE.code).catch(() => false), 4000, false); } }
   const ch = sb.channel('class-' + LIVE.code, { config: { broadcast: { self: false }, presence: { key: 'teacher-' + TAB } } });
   ch.on('broadcast', { event: 'pullall' }, () => { clearTimeout(LIVE.pullT); LIVE.pullT = setTimeout(liveSendAll, 400); });
   ch.on('broadcast', { event: 'join' }, (m) => { rkJoin(m.payload); m = { payload: rkStrip(m.payload) }; liveSendRoster(m.payload);  liveSendPage(); liveSendHw(); { const al = m.payload && liveNames()[m.payload.sid]; if (al && al !== m.payload.name) liveSend('rename', { sid: m.payload.sid, name: al }); } if (LIVE.set) liveSend('quiz', liveQuizPayload()); if (LIVE.revealed) liveSend('reveal', liveRevealPayload()); });
-  ch.on('broadcast', { event: 'ans' }, (m) => { const p = m.payload; RK.vq = RK.vq.then(() => rkAnswer(p)).then((r) => { if (r) liveGotAnswer(r.p); }).catch(() => {}); });
+  ch.on('broadcast', { event: 'ans' }, (m) => { const p = m.payload; RK.vq = RK.vq.then(() => rkSoon(rkAnswer(p).catch(() => null), 2500, null)).then((r) => { if (r) liveGotAnswer(r.p); }).catch(() => {}); });
   ch.on('presence', { event: 'sync' }, () => { const st = ch.presenceState(); const seen = LIVE.seen || (LIVE.seen = new Set()); let fresh = false; for (const k in st) if (!k.startsWith('teacher-') && !seen.has(k)) { seen.add(k); fresh = true; } if (fresh) liveSendPage(); LIVE.peers = []; for (const k in st) { const m = (st[k] || []).slice(-1)[0] || {}; if (m.role === 'student') { const al = liveNames()[k]; LIVE.peers.push({ sid: k, name: al || m.name || 'ไม่ระบุชื่อ', orig: m.name || '', no: m.no || null, stu: m.stu || null }); } } LIVE.peers.sort((x, y) => (x.no || 999) - (y.no || 999)); liveRender(); });
   ch.subscribe((s) => { if (s === 'SUBSCRIBED') { LIVE.ready = true; ch.track({ role: 'teacher' }); liveSendPage(); liveSendRoster(); liveSendHw(true); liveRender(); } });
   LIVE.ch = ch; liveRender(); $('#bLive').classList.add('on');
@@ -19731,7 +19737,7 @@ async function aiQuestionsFrom(text, picks, level, n, kind) {
   const names = picks.map(([t, c]) => exChName(t, c)).join(', ') || 'physics';
   const lvl = { easy: 'easy', mid: 'medium', hard: 'hard', mix: 'mixed: about 40% easy, 40% medium, 20% hard' }[level];
   const prompt = 'A Thai physics teacher wrote this on the board (topic: ' + names + '):\n"""' + String(text).slice(0, 2500) + '"""\n'
-    + 'Write ' + n + ' original multiple-choice questions in Thai that test exactly this content, reusing the teacher\'s situation, symbols and numbers where it makes sense. Difficulty: ' + lvl + '.\n'
+    + 'Write ' + n + ' NEW multiple-choice questions in Thai that test the same concepts and skills as this content, at a comparable level: each in a new situation of your own with different numbers, not the teacher\'s problem reworded or with its question turned around. If the board holds a worked problem, write sibling problems that need the same idea, not that problem again. Keep the teacher\'s symbols and value of g. Difficulty: ' + lvl + '.\n'
     + (kind === 'analyze' ? 'Make them analysis questions: interpret a described graph, table of data or experimental result, compare cases, or explain why; not plain substitution into a formula.\n' : kind === 'apply' ? 'Make them application questions: a realistic situation that needs choosing the right principle and calculating.\n' : '')
     + 'Each has exactly 4 choices, one correct. Use $...$ for math. Compute every answer step by step before writing it. Wrong choices should come from typical student mistakes.\n'
     + 'Reply in exactly this format and nothing else, ' + n + ' times:\n@@Q 1, 2 or 3 for difficulty\n(question)\n@@RIGHT\n(correct choice)\n@@WRONG\n(wrong 1)\n(wrong 2)\n(wrong 3)\n@@WHY\n(short explanation in Thai)';
@@ -22321,7 +22327,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793585664';
+const BUILD = '1793586352';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
@@ -23253,7 +23259,11 @@ function stepPage(d, toBottom) {
   openPage(pages[j]);
   S.pull = 0; S.ty = toBottom ? bounds().y0 : topY(); applyT();
 }
-window.addEventListener('resize', debounce(fit, 150));
+/* only a change of width (turning the device, a new window size) fits the page again: on an iPad the browser bars
+   show and hide when a stroke goes downwards, which changes only the height, and that must never undo a zoom */
+let fitW = 0;
+window.addEventListener('resize', debounce(() => { const vw = vp.clientWidth || 0; if (fitW && Math.abs(vw - fitW) < 2) { applyT(); return; } fitW = vw; fit(); }, 150));
+setTimeout(() => { fitW = vp.clientWidth || 0; }, 0);
 /* the page moves only through our own transform; undo any native scroll a focused element causes */
 for (const el of [vp, $('#stage')]) el.addEventListener('scroll', () => { if (el.scrollTop || el.scrollLeft) { el.scrollTop = 0; el.scrollLeft = 0; } });
 document.addEventListener('gesturestart', (e) => e.preventDefault());
