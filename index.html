@@ -768,6 +768,8 @@ body.present .updbar { display: none !important; }
 .livepill button[aria-pressed="true"] { background: var(--ok); color: #FFFFFF; }
 .sqq { display: flex; flex-direction: column; gap: 8px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
 body.student #bLive, body.student #bPresent, body.student #bViewer { display: none; }
+/* the audience screen is switched off for now (it stuttered and froze); the button comes back when it is ready */
+#bViewer, #bPresent { display: none !important; }
 #qmBody textarea { min-height: 70px; }
 .pagenav .zsep { width: 1px; align-self: stretch; margin: 6px 2px; background: var(--line); }
 body.writing .pagenav, body.writing .diarybar { pointer-events: none; opacity: 0.35; transition: opacity 0.15s; }
@@ -3719,6 +3721,18 @@ function drawStroke(c, s) {
   if (wl !== cw) { if (cw >= 0) c.stroke(); c.lineWidth = wl; c.beginPath(); c.moveTo(mx0, my0); }
   c.lineTo(x0, y0); c.stroke();
 }
+/* lines only appended to the other layers (none changed, removed or a highlighter, which sits under the ink): the new ones */
+function linesAdded(before, after) {
+  const out = [];
+  for (const k of Object.keys(before)) if (!after[k]) return null;
+  for (const [k, nx] of Object.entries(after)) {
+    const pv = before[k] || [];
+    if (pv === nx) continue;
+    if (nx.length < pv.length || !layerSame(pv, nx.slice(0, pv.length))) return null;
+    for (let i = pv.length; i < nx.length; i++) { if (nx[i].k === 'h') return null; out.push(nx[i]); }
+  }
+  return out.length ? out : null;
+}
 function allStrokes() {
   const out = S.mine.map((s) => ({ s, layer: DEV }));
   for (const [lid, arr] of Object.entries(S.others)) for (const s of arr) out.push({ s, layer: lid });
@@ -5859,7 +5873,7 @@ function openPage(pid) {
   if (S.room && S.watchers && !S.present) { S.room.emit('page', { nid: S.nid, pid }).catch(() => {}); setTimeout(emitView, 60); }
   if (!$('#ai').hidden) setTimeout(renderAIPages, 0);
   if (!S.present) publishLiveLater();
-  PV.ink = {}; PV.laser = null; PV.box = null; if (cRemote.width > 2) { cRemote.width = 1; cRemote.height = 1; } /* the layer for live lines frees its memory on a new page (iPad) and is made again when a line comes in */
+  PV.ink = {}; PV.laser = null; if (cRemote.width > 2) drawPresentLive(); /* clears only where live lines were (making the page-size layer again on every page cost a stutter) */
   S.mine = []; S.others = {}; S.ownLoaded = false; S.myRev = 0; S.page = { nb: S.nid, paper: 'grid', items: [] };
   S.undo = []; S.redo = []; updUndo(); clearSel();
   if (S.unsub.page) S.unsub.page();
@@ -5877,7 +5891,7 @@ function openPage(pid) {
   });
   S.unsub.layers = S.store.watchCollection('pages/' + pid + '/layers', (list) => {
     if (pid !== S.pid) return;
-    const others = {};
+    const others = {}, upToDate = !S.inkRaf && S.ownLoaded && inkSig() === S.inkSigDrawn, mine0 = S.mine, others0 = S.others;
     /* pieces of one writer's layer (id, id~1, id~2 ...) are joined back into one list */
     { const by = new Map(); for (const d of list) { const [base, k] = String(d.id).split('~'); const ck = k ? +k || 0 : 0; for (const st of d.strokes || []) if (st.ck == null) st.ck = ck; const known = CHUNKS.docs.get(pid + '/' + base) || new Set([base]); known.add(d.id); CHUNKS.docs.set(pid + '/' + base, known); CHUNKS.sig.set(pid + '/' + d.id, chunkSig(d.strokes || [])); if (!by.has(base)) by.set(base, { id: base, strokes: [], rev: 0, dev: base }); const m = by.get(base); m.strokes = m.strokes.concat(d.strokes || []); m.rev = Math.max(m.rev, d.rev || 0); } list = [...by.values()]; }
     for (const d of list) {
@@ -5898,6 +5912,10 @@ function openPage(pid) {
     /* the layers of a page arrive one after another just after turning to it: drawn once per frame, not once per layer;
        a save of this page coming back unchanged is not drawn again at all */
     const isig = inkSig(); if (isig === S.inkSigDrawn) return;
+    /* another screen of this account (or the teacher) added lines: only those are painted, not the whole page again
+       (a full repaint of a page of handwriting after every line made the audience screen freeze) */
+    const added = upToDate && S.mine === mine0 && !S.sel ? linesAdded(others0, S.others) : null;
+    if (added) { const c = cInk.getContext('2d'); c.setTransform(S.res, 0, 0, S.res, 0, 0); for (const st of added) drawStroke(c, st); S.inkSigDrawn = isig; if (typeof refreshCurThumb === 'function') refreshCurThumb(); if (cSharp && (!cSharp.hidden || S.zoom > 1.2)) sharpLater(); return; }
     if (!S.inkRaf) S.inkRaf = requestAnimationFrame(() => { S.inkRaf = 0; drawInkSoon(); });
   });
   hideLoading();
@@ -22719,7 +22737,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793603731';
+const BUILD = '1793604550';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
@@ -23350,7 +23368,10 @@ function presentFit() {
   S.zoom = 1; S.tx = (vw - W * S.base) / 2; S.ty = 0; S.pull = 0; applyT(); resizeCanvases(true);
   followView();
 }
+/* the audience screen is off for now: a window left in that mode (or opened with #present) opens as a normal notebook */
+const PRESENT_OFF = true;
 function enterPresent() {
+  if (PRESENT_OFF) { store_ls.set('tp-present', '0'); return; }
   if (S.present) return;
   if (document.body.classList.contains('focus')) setFocus(false);
   S.present = true; document.body.classList.add('present');
