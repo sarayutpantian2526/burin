@@ -21303,8 +21303,13 @@ async function placeQuestions(qs, near, opt) {
   const unitH = (u) => u.parts.reduce((a, p) => a + p.h + 6, 0);
   /* a question with a large figure that would not fit on one page: the figure is made smaller until it does */
   for (const u of units) { const over = unitH(u) - (bottom - top); if (over > 0) for (const p of u.parts) if (p.type === 'svg' || p.type === 'img') { const k = Math.max(0.35, (p.h - over) / p.h); p.w = Math.round(p.w * k); p.h = Math.round(p.h * k); if (p.x != null) p.x = Math.round((W - p.w) / 2); break; } }
-  let y = clamp(Math.round(near ? near[1] : (TRAY.lastBottom[S.pid] || top)), top, bottom);
-  if (!opt.newPage) { cur = { here: true, items: [] }; }
+  /* a set of questions is a worksheet: on an empty page it starts there, otherwise on a new page after this one, so it never
+     squeezes into what is left under the lesson; one question, or questions put under a chosen part, go right here */
+  const blank = !((S.page.items || []).length) && !allStrokes().length;
+  const sheet = units.filter((u) => !u.head).length >= 2 && !near && !opt.here;
+  const newPage = opt.newPage || (sheet && !blank);
+  let y = blank ? top : clamp(Math.round(near ? near[1] : (TRAY.lastBottom[S.pid] || top)), top, bottom);
+  if (!newPage) { cur = { here: true, items: [] }; }
   units.forEach((u, k) => { u.k = k; });
   for (const u of units) {
     const h = unitH(u);
@@ -21323,7 +21328,7 @@ async function placeQuestions(qs, near, opt) {
   /* each new page is shared out evenly: the room left at the bottom becomes working space under every question on that
      page, so the questions fill the paper instead of bunching at the top */
   for (const pg of pagesOut) {
-    if (pg.here) continue;
+    if (pg.here && !blank) continue;
     const ks = [...new Set(pg.items.map((it) => it._u))], us = ks.map((k) => units[k]), qn = us.filter((u) => !u.head).length;
     if (!qn) continue;
     const used = us.reduce((a, u) => a + unitH(u) + u.gap, 0), extra = Math.max(0, bottom - top - used), add = Math.min(extra / qn, 600);
@@ -21340,7 +21345,7 @@ async function placeQuestions(qs, near, opt) {
     pages.splice(++at, 0, pid); TRAY.lastBottom[pid] = y;
   }
   if (newPages) {
-    try { await S.store.update('notebooks/' + S.nid, { pages, updatedAt: now() }); S.nb = Object.assign({}, S.nb, { pages }); renderPageList(); renderTitle(); if (!here || opt.newPage) openPage(firstNew); } catch (e) { onStoreError(e); }
+    try { await S.store.update('notebooks/' + S.nid, { pages, updatedAt: now() }); S.nb = Object.assign({}, S.nb, { pages }); renderPageList(); renderTitle(); if (!here || newPage) openPage(firstNew); } catch (e) { onStoreError(e); }
   }
   return { here, pages: newPages };
 }
@@ -22777,7 +22782,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793615617';
+const BUILD = '1793616163';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
