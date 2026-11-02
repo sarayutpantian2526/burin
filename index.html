@@ -3925,6 +3925,18 @@ async function diaryAsk() {
     /* under what they wrote, at its left edge, about half a line below (placeNear); never past the edge of the paper:
        when this page has no room the reply starts at the top of the next page, at the same left edge */
     let apid = pid, at = h ? placeNear(box, w, h, { fs, minW: Math.min(w, Math.max(360, fs * 14)), measure: (ww) => estTextH(text, ww, fs) * 1.25 + 10 }) : [clamp(box[0], PAGE_M, W - w - PAGE_M), box[3]];
+    /* a short reply may go on at the end of what they wrote, on the same lines, instead of starting a new line under it:
+       whichever uses less of the page going down is taken, so the paper fills up slowly and needs less scrolling */
+    if (h && at) {
+      const lh0 = fs * 1.4, x1 = Math.round(box[2] + clamp(lh0 * 0.8, 20, 56)), ww = Math.round(W - PAGE_M - x1);
+      if (ww >= Math.max(220, fs * 8)) {
+        const hh = estTextH(text, ww, fs) * 1.25 + 10;
+        if (hh <= Math.max(box[3] - box[1], fs * 1.6) + fs * 2.2) {
+          const side = placeNear(box, ww, hh, { fs, side: true, sideAny: true, measure: () => hh });
+          if (side && side[0] > box[2] && side[1] + side[3] < at[1] + at[3] - 4) at = side;
+        }
+      }
+    }
     if (at && at[2]) w = at[2];
     if (!at) { const np = await addPage(); if (!np) return; apid = np; at = [W - PAGE_M - w, PAGE_M + 16]; toast('หน้าเต็มแล้ว สมุดเขียนตอบในหน้าถัดไป', 2400); }
     const ink = '#2B3A67', id = 'i' + uid();
@@ -3957,7 +3969,18 @@ async function diaryAsk() {
         /* under the words, at the same left edge (or under the writing when there are no words) */
         const src = text ? [at[0], at[1], at[0] + w, at[1] + estTextH(text, w, fs)] : box;
         let dw = Math.round(clamp(fs * 16, 320, Math.min(640, W - 2 * PAGE_M))), spot = null;
-        while (!spot && dw >= 240) { const dh0 = Math.round(dw * 0.6); spot = placeNear(src, dw, dh0, { fs }); if (!spot) dw = Math.round(dw * 0.85); }
+        /* under the words or beside them, a little smaller if that lets it sit higher: the spot that leaves the most of
+           the page free below wins (a shrunken drawing only wins when it really saves room) */
+        { const dw0 = dw, dh0 = Math.round(dw0 * 0.6); let best = null;
+          for (let ww = dw0; ww >= 240; ww = Math.round(ww * 0.85)) {
+            const hh = Math.round(ww * 0.6);
+            for (const o of [{ fs }, { fs, side: true, sideAny: true }]) {
+              const sp = placeNear(src, ww, hh, o); if (!sp) continue;
+              const score = sp[1] + dh0 + (dh0 - hh) * 0.6;
+              if (!best || score < best.score - 2) best = { score, sp, ww };
+            }
+          }
+          if (best) { spot = best.sp; dw = best.ww; } }
         let pg = apid;
         if (!spot) { dw = Math.round(clamp(fs * 16, 320, Math.min(640, W - 2 * PAGE_M))); const np = await addPage(); if (!np) return; pg = np; spot = [clamp(src[0], PAGE_M, W - dw - PAGE_M), PAGE_M + 16]; toast('หน้าเต็มแล้ว สมุดวาดต่อในหน้าถัดไป', 2400); }
         diaryDraw(sketch, spot[0], spot[1], dw, Math.round(dw * 0.6), lw, ink, fs, pg);
@@ -4157,22 +4180,14 @@ function diaryWriteIn(id, from) {
   svg.style.fontFamily = cs.fontFamily; svg.style.fontSize = fsz + 'px'; svg.style.fontWeight = cs.fontWeight;
   el.appendChild(svg);
   const ink = cs.color, L = Math.round(fsz * 7);
-  /* a pen point, as when the notebook draws: it moves through each letter as the ink is laid down, lifts a little and
-     glides to the next letter, and is put away when the writing ends */
+  /* a pen point, as when the notebook draws: it sits exactly on the line being inked, lifts between strokes and letters,
+     and is put away when the writing ends */
   const nib = document.createElementNS(NS, 'g'); nib.setAttribute('class', 'dnib');
   const halo = document.createElementNS(NS, 'circle'), dot = document.createElementNS(NS, 'circle');
   halo.setAttribute('r', Math.max(4, fsz * 0.2)); halo.style.fill = ink; halo.style.opacity = 0.15; dot.setAttribute('r', Math.max(1.8, fsz * 0.075)); dot.style.fill = ink; dot.style.opacity = 0.85;
   nib.append(halo, dot); nib.style.opacity = 0; svg.appendChild(nib);
-  const NB = { cur: null, from: null, at: null, raf: 0 };
-  const nibAt = (x, y, air) => { NB.at = [x, y]; nib.setAttribute('transform', 'translate(' + x.toFixed(1) + ' ' + y.toFixed(1) + ')'); dot.style.opacity = air ? 0.35 : 0.85; halo.style.opacity = air ? 0.08 : 0.15; };
-  const nibTick = () => {
-    NB.raf = 0; if (!el.isConnected || !NB.cur) return;
-    const q = NB.cur, tn = performance.now();
-    if (tn < q.t0) { /* lifted, gliding from the last letter to this one */ const f = NB.from ? clamp(1 - (q.t0 - tn) / Math.max(1, q.t0 - q.ts), 0, 1) : 1; const a = NB.from || [q.x, q.y + q.h * 0.5]; nibAt(a[0] + (q.x - a[0]) * f, a[1] + (q.y + q.h * 0.5 - a[1]) * f, true); }
-    else { const u = clamp((tn - q.t0) / q.d, 0, 1), k = Math.max(1.5, q.w / Math.max(4, q.h * 0.45)); nibAt(q.x + q.w * u, q.y + q.h * (0.5 + 0.36 * Math.sin(u * Math.PI * 2 * k)), false); }
-    NB.raf = requestAnimationFrame(nibTick);
-  };
-  const nibLetter = (t, dur) => { let b; try { b = t.getBBox(); } catch (e) { b = null; } if (!b || !b.width) return; NB.from = NB.at; const tn = performance.now(); NB.cur = { x: b.x, y: b.y, w: b.width, h: b.height, ts: tn, t0: tn + (NB.from ? 90 : 0), d: dur * 0.7 }; nib.style.opacity = 1; if (!NB.raf) NB.raf = requestAnimationFrame(nibTick); };
+  let nibXY = null;
+  const nibAt = (x, y, air) => { nibXY = [x, y]; nib.setAttribute('transform', 'translate(' + x.toFixed(1) + ' ' + y.toFixed(1) + ')'); dot.style.opacity = air ? 0.35 : 0.85; halo.style.opacity = air ? 0.08 : 0.15; };
   /* where the baseline sits inside a line box, measured once on a copy outside the text: putting a marker inside the
      text itself would add a place to break the line, and a Thai line could then wrap differently from the real text */
   let base = fsz * 0.8;
@@ -4180,36 +4195,159 @@ function diaryWriteIn(id, from) {
     const sp0 = document.createElement('span'); sp0.textContent = 'กก'; const pb = document.createElement('i'); pb.className = 'dbase'; sp0.appendChild(pb); m.appendChild(sp0);
     (marks[0] && marks[0].parentElement || el).appendChild(m); base = pb.offsetTop - sp0.offsetTop; m.remove(); }
   const offs = (n) => { let x = 0, y = 0; while (n && n !== el) { x += n.offsetLeft; y += n.offsetTop; const p = n.offsetParent; if (!p || !el.contains(p) && p !== el) break; n = p; } return [x, y]; };
+  const font = cs.fontStyle + ' ' + cs.fontWeight + ' ' + fsz + 'px ' + cs.fontFamily;
+  let mk = 0;
+  /* the letter is drawn as the hand would: its shape is rendered once off screen, thinned to the centre line of each
+     stroke, and that line is followed by the pen while the ink appears along it (the letter itself shows through a
+     mask that grows behind the pen), so the pen point is always on the ink */
   const place = (g) => {
     if (!g.textContent.trim()) return null;
     const [x, y0] = offs(g), y = y0 + base;
     const t = document.createElementNS(NS, 'text'); t.setAttribute('x', x); t.setAttribute('y', y); t.textContent = g.textContent;
-    t.style.stroke = ink; t.style.strokeWidth = Math.max(0.6, fsz * 0.03) + 'px'; t.style.fill = ink; t.style.strokeDasharray = L; t.style.strokeDashoffset = L;
-    svg.appendChild(t); return t;
+    t.style.fill = ink; svg.insertBefore(t, nib);
+    const paths = writeLines(g.textContent, font, fsz, x, y, g.offsetWidth || fsz);
+    if (!paths) { /* no centre line to follow: the old way, outline then fill */
+      t.style.stroke = ink; t.style.strokeWidth = Math.max(0.6, fsz * 0.03) + 'px'; t.style.strokeDasharray = L; t.style.strokeDashoffset = L;
+      return { t, paths: null };
+    }
+    const id = 'dm' + uid() + (mk++), m = document.createElementNS(NS, 'mask');
+    m.setAttribute('id', id); m.setAttribute('maskUnits', 'userSpaceOnUse');
+    const bx = x - fsz, by = y0 - fsz, bw = (g.offsetWidth || fsz) + 2 * fsz, bh = fsz * 4;
+    m.setAttribute('x', bx); m.setAttribute('y', by); m.setAttribute('width', bw); m.setAttribute('height', bh);
+    for (const P of paths.list) {
+      const pe = document.createElementNS(NS, 'path');
+      pe.setAttribute('d', 'M' + P.pts.map((q) => q[0].toFixed(2) + ' ' + q[1].toFixed(2)).join('L'));
+      pe.setAttribute('fill', 'none'); pe.setAttribute('stroke', '#fff'); pe.setAttribute('stroke-width', paths.wide.toFixed(2));
+      pe.setAttribute('stroke-linecap', 'round'); pe.setAttribute('stroke-linejoin', 'round');
+      pe.style.strokeDasharray = (P.len + 2) + ' ' + (P.len + 2); pe.style.strokeDashoffset = P.len + 2;
+      m.appendChild(pe); P.el = pe;
+    }
+    svg.insertBefore(m, t); t.setAttribute('mask', 'url(#' + id + ')');
+    return { t, paths, m };
+  };
+  /* the pen goes along each stroke in turn with a hand's speed curve, and lifts and glides between strokes */
+  const trace = (r, done) => {
+    const list = r.paths.list, AIR = 70, speed = fsz * 0.0062; /* letter heights per ms, an everyday writing pace */
+    const segs = []; let tt = nibXY ? 90 : 0;
+    for (const P of list) { const d = clamp(P.len / speed, 70, 900); segs.push({ P, a: tt, d }); tt += d + AIR; }
+    const total = tt - AIR, from = nibXY, t0 = performance.now();
+    nib.style.opacity = 1;
+    const at = (P, u) => { const q = P.pts, c = P.cum, s = u * P.len; let k = 1; while (k < q.length - 1 && c[k] < s) k++; const f = c[k] > c[k - 1] ? (s - c[k - 1]) / (c[k] - c[k - 1]) : 0; return [q[k - 1][0] + (q[k][0] - q[k - 1][0]) * clamp(f, 0, 1), q[k - 1][1] + (q[k][1] - q[k - 1][1]) * clamp(f, 0, 1)]; };
+    const tick = () => {
+      if (!el.isConnected) return;
+      const e = performance.now() - t0;
+      let air = null;
+      for (let j = 0; j < segs.length; j++) {
+        const S0 = segs[j], u0 = clamp((e - S0.a) / S0.d, 0, 1), u = u0 * u0 * (3 - 2 * u0);
+        S0.P.el.style.strokeDashoffset = (S0.P.len + 2) * (1 - u);
+        if (e >= S0.a && e < S0.a + S0.d) nibAt(...at(S0.P, u), false);
+        else if (e < S0.a && air == null) { const prev = j ? at(segs[j - 1].P, 1) : (from || S0.P.pts[0]), gap = j ? AIR : S0.a, f = gap ? clamp(1 - (S0.a - e) / gap, 0, 1) : 1, nx = S0.P.pts[0]; air = j; nibAt(prev[0] + (nx[0] - prev[0]) * f, prev[1] + (nx[1] - prev[1]) * f, true); }
+      }
+      if (e < total) requestAnimationFrame(tick); else done();
+    };
+    requestAnimationFrame(tick);
+    return total;
   };
   let i = from; for (let k = 0; k < from && k < marks.length; k++) marks[k].classList.add('on');
   const step = () => {
     if (!el.isConnected) return;
-    if (i >= marks.length) { delete DIARY.anim[id]; NB.cur = null; nib.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 400, fill: 'forwards' }); setTimeout(() => { svg.remove(); el.classList.remove('writing'); }, 900); return; }
+    if (i >= marks.length) { delete DIARY.anim[id]; nib.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 400, fill: 'forwards' }); setTimeout(() => { svg.remove(); el.classList.remove('writing'); }, 900); return; }
     DIARY.anim[id] = i;
-    const g = marks[i++], c = g.textContent, t = place(g);
-    const dur = t ? 520 + Math.random() * 260 + (c.length > 1 ? 220 : 0) : 0;
-    if (t) {
-      nibLetter(t, dur);
-      /* the outline is traced first, then the ink fills in, then the real letter takes over */
-      t.animate([{ strokeDashoffset: L, fillOpacity: 0, strokeOpacity: 1 }, { strokeDashoffset: 0, fillOpacity: 0, strokeOpacity: 1, offset: 0.7 }, { strokeDashoffset: 0, fillOpacity: 1, strokeOpacity: 0 }], { duration: dur, easing: 'ease-in-out', fill: 'forwards' })
-        .finished.then(() => { g.classList.add('on'); t.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 300, fill: 'forwards' }); }).catch(() => { g.classList.add('on'); });
+    const g = marks[i++], c = g.textContent, r = place(g);
+    let dur = 0;
+    const settle = () => { g.classList.add('on'); if (r) r.t.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 250, fill: 'forwards' }).finished.then(() => { r.t.remove(); if (r.m) r.m.remove(); }).catch(() => {}); };
+    if (r && r.paths) dur = trace(r, settle);
+    else if (r) {
+      dur = 520 + Math.random() * 260 + (c.length > 1 ? 220 : 0); nib.style.opacity = 0;
+      r.t.animate([{ strokeDashoffset: L, fillOpacity: 0, strokeOpacity: 1 }, { strokeDashoffset: 0, fillOpacity: 0, strokeOpacity: 1, offset: 0.7 }, { strokeDashoffset: 0, fillOpacity: 1, strokeOpacity: 0 }], { duration: dur, easing: 'ease-in-out', fill: 'forwards' })
+        .finished.then(settle).catch(settle);
     } else g.classList.add('on');
-    /* the next letter starts before this one is quite finished, the way a hand moves on; longer breaths between words and sentences */
-    /* an everyday writing pace: about two letters a second */
-    let ms = dur * 0.8 + Math.random() * 80;
-    if (c === ' ') ms = 320 + Math.random() * 260;
+    /* the next letter starts when the pen is free; longer breaths between words and sentences */
+    let ms = dur + 40 + Math.random() * 60;
+    if (c === ' ') ms = 260 + Math.random() * 220;
     else if (/[,;:]/.test(c)) ms += 450;
     else if (/[.!?ฯ]/.test(c)) ms += 900 + Math.random() * 400;
-    if (Math.random() < 0.06) ms += 350;
+    if (Math.random() < 0.05) ms += 300;
     setTimeout(step, ms);
   };
   if (from) step(); else setTimeout(step, 250);
+}
+/* the centre lines of a written letter (a grapheme), in page units: rendered off screen at a workable size, thinned
+   (Zhang-Suen) to one-pixel lines, then followed from end to end. letter bodies go left to right, marks above and below
+   last, the way Thai is written. returns { list: [{pts, cum, len}], wide } or null */
+const WL = { cv: null, cache: new Map() };
+function writeLines(ch, font, fsz, ox, oy, gw) {
+  const key = ch + '|' + font, hit = WL.cache.get(key);
+  const mapOut = (h) => h && { wide: h.wide, list: h.list.map((P) => { const pts = P.pts.map((q) => [q[0] + ox, q[1] + oy]); return { pts, cum: P.cum, len: P.len }; }) };
+  if (hit !== undefined) return mapOut(hit);
+  let res = null;
+  try {
+    const k = clamp(64 / fsz, 0.6, 4), pad = Math.ceil(fsz * 0.6);
+    const cw = Math.ceil((gw + 2 * pad) * k), chh = Math.ceil(fsz * 2.6 * k), bx = pad, by = fsz * 1.3; /* the baseline at by */
+    const cv = WL.cv || (WL.cv = document.createElement('canvas')); cv.width = cw; cv.height = chh;
+    const cx = cv.getContext('2d', { willReadFrequently: true }); cx.setTransform(k, 0, 0, k, 0, 0); cx.clearRect(0, 0, cw, chh);
+    cx.font = font; cx.textBaseline = 'alphabetic'; cx.fillStyle = '#000'; cx.fillText(ch, bx, by);
+    const A = cx.getImageData(0, 0, cw, chh).data, n = cw * chh, im = new Uint8Array(n);
+    let ink = 0; for (let p = 0; p < n; p++) if (A[p * 4 + 3] > 110) { im[p] = 1; ink++; }
+    if (ink > 3) {
+      /* thinning */
+      const W0 = cw, at = (x, y) => (x < 0 || y < 0 || x >= W0 || y >= chh ? 0 : im[y * W0 + x]);
+      let changed = true, it = 0; const del = [];
+      while (changed && it++ < 60) {
+        changed = false;
+        for (let pass = 0; pass < 2; pass++) {
+          del.length = 0;
+          for (let y = 0; y < chh; y++) for (let x = 0; x < W0; x++) {
+            if (!im[y * W0 + x]) continue;
+            const p2 = at(x, y - 1), p3 = at(x + 1, y - 1), p4 = at(x + 1, y), p5 = at(x + 1, y + 1), p6 = at(x, y + 1), p7 = at(x - 1, y + 1), p8 = at(x - 1, y), p9 = at(x - 1, y - 1);
+            const B = p2 + p3 + p4 + p5 + p6 + p7 + p8 + p9; if (B < 2 || B > 6) continue;
+            const s = [p2, p3, p4, p5, p6, p7, p8, p9, p2]; let Aa = 0; for (let q = 0; q < 8; q++) if (!s[q] && s[q + 1]) Aa++;
+            if (Aa !== 1) continue;
+            if (pass === 0 ? (p2 * p4 * p6 || p4 * p6 * p8) : (p2 * p4 * p8 || p2 * p6 * p8)) continue;
+            del.push(y * W0 + x);
+          }
+          if (del.length) { changed = true; for (const q of del) im[q] = 0; }
+        }
+      }
+      let sk = 0; for (let p = 0; p < n; p++) sk += im[p];
+      const thick = ink / Math.max(1, sk) / k; /* stroke width in page units */
+      /* follow the lines: from line ends first, then whatever is left (closed loops) */
+      const seen = new Uint8Array(n), NB8 = [[1, 0], [0, 1], [-1, 0], [0, -1], [1, 1], [-1, 1], [-1, -1], [1, -1]];
+      const nbs = (p) => { const x = p % W0, y = (p / W0) | 0, o = []; for (const [dx, dy] of NB8) { const xx = x + dx, yy = y + dy; if (xx >= 0 && yy >= 0 && xx < W0 && yy < chh && im[yy * W0 + xx]) o.push(yy * W0 + xx); } return o; };
+      const walk = (p) => { const out = [p]; seen[p] = 1; let cur = p, dir = null; for (;;) { const c = nbs(cur).filter((q) => !seen[q]); if (!c.length) break; let nx = c[0]; if (dir && c.length > 1) { let best = -9; for (const q of c) { const dx = q % W0 - cur % W0, dy = ((q / W0) | 0) - ((cur / W0) | 0), v = (dx * dir[0] + dy * dir[1]) / Math.hypot(dx, dy); if (v > best) { best = v; nx = q; } } } dir = [nx % W0 - cur % W0, ((nx / W0) | 0) - ((cur / W0) | 0)]; seen[nx] = 1; out.push(nx); cur = nx; } return out; };
+      const ends = [], all = [];
+      for (let p = 0; p < n; p++) if (im[p]) { all.push(p); if (nbs(p).length === 1) ends.push(p); }
+      /* a Thai letter starts at its head, low down: the pen begins from the lowest line end, then the next lowest */
+      ends.sort((a, b) => ((b / W0) | 0) - ((a / W0) | 0) || (a % W0) - (b % W0));
+      const raw = [];
+      for (const p of ends) if (!seen[p]) raw.push(walk(p));
+      for (const p of all) if (!seen[p]) raw.push(walk(p));
+      const minLen = Math.max(2, 1.2 * k);
+      const list = [];
+      for (const r of raw) {
+        if (r.length < minLen) continue;
+        let pts = r.map((p) => [(p % W0) / k - bx, ((p / W0) | 0) / k - by]);
+        /* smooth the pixel steps, keep the ends */
+        for (let pass = 0; pass < 2; pass++) pts = pts.map((q, j) => (j === 0 || j === pts.length - 1 ? q : [(pts[j - 1][0] + 2 * q[0] + pts[j + 1][0]) / 4, (pts[j - 1][1] + 2 * q[1] + pts[j + 1][1]) / 4]));
+        const step = Math.max(1, Math.round(k * 0.8)), thin = pts.filter((q, j) => j % step === 0 || j === pts.length - 1);
+        const cum = [0]; for (let j = 1; j < thin.length; j++) cum.push(cum[j - 1] + Math.hypot(thin[j][0] - thin[j - 1][0], thin[j][1] - thin[j - 1][1]));
+        const len = cum[cum.length - 1]; if (len < 0.5) { thin.push([thin[0][0] + 0.5, thin[0][1]]); cum.push(0.5); }
+        const ys = thin.map((q) => q[1]), xs = thin.map((q) => q[0]);
+        list.push({ pts: thin, cum, len: Math.max(0.5, len), minx: Math.min(...xs), maxy: Math.max(...ys), miny: Math.min(...ys) });
+      }
+      /* specks left by the thinning are not strokes (a full stop or a dot keeps its one speck) */
+      { const big = list.filter((P) => P.len >= Math.max(1.5, fsz * 0.06)); if (big.length) list.splice(0, list.length, ...big); else if (list.length > 1) list.splice(1); }
+      if (list.length) {
+        /* the body of the letter first, left to right; marks over the letter, then under it, come last */
+        const kind = (P) => (P.maxy < -fsz * 0.62 ? 1 : P.miny > fsz * 0.08 ? 2 : 0);
+        list.sort((a, b) => kind(a) - kind(b) || a.minx - b.minx);
+        res = { wide: clamp(thick * 1.7 + 1.5, 1.5, fsz * 0.45), list: list.map((P) => ({ pts: P.pts, cum: P.cum, len: P.len })) };
+      }
+    }
+  } catch (e) { res = null; }
+  if (WL.cache.size > 400) WL.cache.clear();
+  WL.cache.set(key, res);
+  return mapOut(res);
 }
 function addItem(it) {
   const before = clone((S.page && S.page.items) || []);
@@ -19471,7 +19609,7 @@ function placeNear(src, w, h, opt) {
   const occ = occupiedBoxes().filter((b) => !(opt.skip && opt.skip(b)));
   const fits = (x, y, ww, hh) => x >= M - 1 && y >= PAGE_M - 1 && x + ww <= W - PAGE_M + 1 && y + hh <= H - PAGE_M + 1 && !occ.some((b) => x < b[2] + clr && x + ww > b[0] - clr && y < b[3] + clr && y + hh > b[1] - clr);
   /* beside: a figure next to a short piece of writing, level with it */
-  if (opt.side && src[2] - src[0] <= W * 0.55) {
+  if (opt.side && (opt.sideAny || src[2] - src[0] <= W * 0.55)) {
     const x = snapX(Math.round(src[2] + gapH)), ww = ws[0], hh = meas(ww);
     if (x + ww <= W - PAGE_M) for (let y = snapY(Math.round(Math.max(PAGE_M, src[1]))); y <= Math.max(src[1], src[3] - hh * 0.3); y += 8) if (fits(x, y, ww, hh)) return [x, y, ww, hh];
   }
@@ -22166,7 +22304,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793547336';
+const BUILD = '1793582084';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
