@@ -5631,6 +5631,28 @@ function itemBox(it) {
   const h = d ? d.offsetHeight : 60;
   return [it.x, it.y, it.x + (it.w || 600), it.y + h];
 }
+/* the part of a text box that has words in it: a box is usually much wider (and a little taller) than its words, and
+   treating the empty part as taken pushed replies and drawings far away from what they answer */
+function tightItemBox(it) {
+  const b = itemBox(it);
+  const el = itemsEl.querySelector('[data-id="' + it.id + '"]'); if (!el) return b;
+  /* a drawing's picture: only where its lines are (a figure on its white card keeps the whole card) */
+  if (it.type === 'svg' && !isExItem(it)) {
+    try { const sv = el.querySelector('svg'), bb = sv && sv.getBBox(), vb = sv && sv.viewBox && sv.viewBox.baseVal; if (bb && vb && vb.width > 0 && bb.width > 0) { const k = (b[2] - b[0]) / vb.width; return [Math.max(b[0], b[0] + (bb.x - vb.x) * k - 6), Math.max(b[1], b[1] + (bb.y - vb.y) * k - 6), Math.min(b[2], b[0] + (bb.x - vb.x + bb.width) * k + 6), Math.min(b[3], b[1] + (bb.y - vb.y + bb.height) * k + 6)]; } } catch (e) { /* whole box */ }
+    return b;
+  }
+  if (it.type && it.type !== 'text') return b;
+  let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9; const r = document.createRange();
+  try {
+    for (const ch of el.childNodes) {
+      if (ch.nodeType === 1 && (ch.tagName === 'BUTTON' || ch.classList.contains('credit') || ch.classList.contains('tsize'))) continue;
+      r.selectNodeContents(ch);
+      for (const q of r.getClientRects()) { if (q.width < 1 || q.height < 1) continue; const a = toLogical(q.left, q.top), c = toLogical(q.right, q.bottom); if (a[0] < x0) x0 = a[0]; if (a[1] < y0) y0 = a[1]; if (c[0] > x1) x1 = c[0]; if (c[1] > y1) y1 = c[1]; }
+    }
+  } catch (e) { return b; }
+  if (x1 <= x0 || y1 <= y0) return b;
+  return [Math.max(b[0], x0 - 4), Math.max(b[1], y0 - 2), Math.min(b[2], x1 + 4), Math.min(b[3], y1 + 2)];
+}
 function finishLasso(poly) {
   const rect = rectFromDrag(poly);
   if (rect) poly = rect;
@@ -20036,7 +20058,7 @@ function occupiedBoxes() {
   const out = [];
   /* a drawing the notebook is still making already owns its place */
   for (const b of (typeof DIARY !== 'undefined' && DIARY.hold[S.pid]) || []) out.push(b);
-  for (const it of (S.page && S.page.items) || []) if (!it.lock && !(it.spec && it.spec.bare)) out.push(it.type === 'life' && it.B ? it.B : itemBox(it));
+  for (const it of (S.page && S.page.items) || []) if (!it.lock && !(it.spec && it.spec.bare)) out.push(it.type === 'life' && it.B ? it.B : tightItemBox(it));
   for (const r of allStrokes()) { const b = sbox(r.s); out.push([b[0], b[1], b[2], b[3]]); }
   return out;
 }
@@ -20061,7 +20083,7 @@ function inkSize(box) {
 function placeNear(src, w, h, opt) {
   opt = opt || {};
   const fs = opt.fs || inkSize(src), lh = fs * 1.4;
-  const gapV = Math.round(clamp(lh * 0.5, 14, 40)), gapH = Math.round(clamp(lh * 0.8, 20, 56)), clr = Math.round(clamp(lh * 0.35, 10, 24));
+  const gapV = Math.round(clamp(lh * 0.3, 8, 28)), gapH = Math.round(clamp(lh * 0.6, 16, 44)), clr = Math.round(clamp(lh * 0.2, 6, 16)); /* close, the way a hand carries on writing: only the written parts of other things are kept clear */
   const paper = (S.page && S.page.paper) || 'grid', M = paper === 'cornell' && src[0] >= 250 ? 262 : PAGE_M;
   /* it sits on the paper the way a careful hand would: on the grid or dot lines, between the rules of lined paper */
   const snapX = (x) => (paper === 'grid' || paper === 'dot') && Math.abs(x - Math.round(x / 25) * 25) <= 12 ? Math.round(x / 25) * 25 : x;
@@ -20075,7 +20097,7 @@ function placeNear(src, w, h, opt) {
   /* beside: a figure next to a short piece of writing, level with it */
   if (opt.side && (opt.sideAny || src[2] - src[0] <= W * 0.55)) {
     const x = snapX(Math.round(src[2] + gapH)), ww = ws[0], hh = meas(ww);
-    if (x + ww <= W - PAGE_M) for (let y = snapY(Math.round(Math.max(PAGE_M, src[1]))); y <= Math.max(src[1], src[3] - hh * 0.3); y += 8) if (fits(x, y, ww, hh)) return [x, y, ww, hh];
+    if (x + ww <= W - PAGE_M) { const y0 = snapY(Math.round(Math.max(PAGE_M, src[1] - 8))); for (let y = y0; y <= Math.max(y0, src[3] - hh * 0.3); y += 8) if (fits(x, y, ww, hh)) return [x, y, ww, hh]; }
   }
   /* under: same left edge as the writing, then the page margin; the nearest row that has room wins */
   const xs = [snapX(Math.round(clamp(src[0], M, W - PAGE_M - ws[ws.length - 1])))]; if (xs[0] !== M) xs.push(M);
@@ -22800,7 +22822,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793618647';
+const BUILD = '1793635449';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
