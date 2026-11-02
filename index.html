@@ -216,6 +216,8 @@ body.flow:not(.flowlast) #bAddBelow { display: none; }
 .item.teacher.svg { background: rgba(255, 250, 230, 0.6); }
 .item.teacher::before { content: "เฉลย"; display: block; font-family: var(--ui); font-size: 13px; font-weight: 700; color: #8A4A0C; }
 .item.svg { padding: 0; }
+/* a question's figure sits on its own white card: its graph lines do not mix with the lines of the paper */
+.item.exq.svg { background: #FFFFFF; border-radius: 6px; box-shadow: 0 0 0 1px rgba(20, 24, 31, 0.08); }
 .item.svg svg { width: 100%; height: auto; display: block; }
 .item.diary { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
 .item.editing { -webkit-user-select: text; user-select: text; -webkit-touch-callout: default; cursor: text; outline: 2px dashed #2F4BB8; background: rgba(229, 234, 250, 0.6); white-space: pre-wrap; font-family: var(--doc); }
@@ -3869,10 +3871,13 @@ function renderItems() {
   if (needMath) loadLib('math').then(() => { if (!window.math) return; for (const el of itemsEl.querySelectorAll('.item.graph')) el._sig = null; renderItems(); }).catch(() => {});
 }
 const okAsset = (id) => /^[A-Za-z0-9_-]{8,80}$/.test(String(id || ''));
+/* a question box or its figure, put on the page from a question set */
+function isExItem(it) { return !!(it && (it.ex || it.qref)); }
 function buildItemEl(it, forExport) {
   const d = document.createElement('div');
+  if (isExItem(it)) d.classList.add('exq');
   const media = it.type === 'img' || it.type === 'video';
-  d.className = 'item' + (it.diary ? ' diary' : '') + (it.type === 'graph' ? ' gplain' : '') + (it.lock ? ' locked' : '') + (it.teacher ? ' teacher' : '') + (it.type === 'svg' ? ' svg' : '') + (media ? ' media' : '')
+  d.className = (isExItem(it) ? 'exq ' : '') + 'item' + (it.diary ? ' diary' : '') + (it.type === 'graph' ? ' gplain' : '') + (it.lock ? ' locked' : '') + (it.teacher ? ' teacher' : '') + (it.type === 'svg' ? ' svg' : '') + (media ? ' media' : '')
     + (it.type === 'graph' || it.type === 'sim' || it.type === 'lab' || it.type === 'scene' ? ' graph' : '') + (it.type === 'sim' || it.type === 'scene' ? ' sim' : '') + ((it.type === 'graph' || it.type === 'video' || it.type === 'sim' || it.type === 'lab' || it.type === 'scene') && !forExport ? ' live no-ink' : '');
   d.style.left = it.x + 'px'; d.style.top = it.y + 'px'; d.style.width = (it.w || 600) + 'px';
   if (it.fs) d.style.fontSize = clamp(+it.fs || 24, 12, 80) + 'px';
@@ -4766,7 +4771,7 @@ function onDown(e) {
       if (S.sel && S.sel.box && nearHandle(S.sel.box, x, y) >= 0) { startScale(pt, nearHandle(S.sel.box, x, y)); return; }
       if (S.sel && S.sel.box && inBox(S.sel.box, x, y)) { pt.mode = 'move'; pt.last = [x, y]; pt.dx = 0; pt.dy = 0; return; }
       pt.mode = 'pan';
-      const hit0 = itemAt(x, y), hit = hit0 && !hit0.lock && !(isStudentSide() && hit0.by === 'teacher') ? hit0 : null;
+      const hit0 = itemAt(x, y), hit = hit0 && !hit0.lock && !isExItem(hit0) && !(isStudentSide() && hit0.by === 'teacher') ? hit0 : null; /* question boxes are written on and scrolled over: they move only by their handle */
       const grp = hit ? null : (() => { const r0 = strokeAt(x, y); return r0 && r0.length && (findStroke(r0[0]) || {}).g ? r0 : null; })();
       if (grp) pt.tapStrokes = grp;
       if (hit || grp) {
@@ -4806,7 +4811,7 @@ function beginTool(pt, e) {
     armHold(pt, x, y);
     /* press and hold on a picture, graph or text box (without moving) to pick it up;
        the notebook's own replies are written on, not picked up: they move only by their handle */
-    const hit0 = itemAt(x, y), hit = hit0 && !hit0.diary ? hit0 : null;
+    const hit0 = itemAt(x, y), hit = hit0 && !hit0.diary && !isExItem(hit0) ? hit0 : null;
     const shp = hit0 ? null : (() => { const r = strokeAt(x, y); return r && r.length && (findStroke(r[0]) || {}).g ? r : null; })();
     if (hit || shp) pt.itemT = setTimeout(() => {
       if (P.get(pt.id) !== pt || pt.mode !== 'draw' || pt.moved > 10) return;
@@ -21296,15 +21301,17 @@ async function placeQuestions(qs, near, opt) {
   const freeRect = (y, h) => y + h <= bottom && !occ.some((b) => x0 < b[2] + m && x0 + w > b[0] - m && y < b[3] + m && y + h > b[1] - m);
   const pagesOut = []; let cur = null;
   const unitH = (u) => u.parts.reduce((a, p) => a + p.h + 6, 0);
+  /* a question with a large figure that would not fit on one page: the figure is made smaller until it does */
+  for (const u of units) { const over = unitH(u) - (bottom - top); if (over > 0) for (const p of u.parts) if (p.type === 'svg' || p.type === 'img') { const k = Math.max(0.35, (p.h - over) / p.h); p.w = Math.round(p.w * k); p.h = Math.round(p.h * k); if (p.x != null) p.x = Math.round((W - p.w) / 2); break; } }
   let y = clamp(Math.round(near ? near[1] : (TRAY.lastBottom[S.pid] || top)), top, bottom);
   if (!opt.newPage) { cur = { here: true, items: [] }; }
   for (const u of units) {
     const h = unitH(u);
     if (cur && cur.here) { let yy = y; while (yy + h <= bottom && !freeRect(yy, h)) yy += 10; if (yy + h <= bottom) y = yy; else { pagesOut.push(cur); cur = null; } }
-    else if (cur && y + h > bottom) { pagesOut.push(cur); cur = null; }
+    else if (cur && y + h > bottom && cur.items.length) { pagesOut.push(cur); cur = null; } /* a question taller than a page starts its own page, never after an empty one */
     if (!cur) { cur = { here: false, items: [] }; y = top; }
     for (const p of u.parts) {
-      const it = { id: 'i' + uid(), by: DEV, type: p.type, x: p.x != null ? p.x : p.type === 'svg' ? x0 + 30 : x0, y: Math.round(y), w: p.w };
+      const it = { id: 'i' + uid(), by: DEV, ex: 1, type: p.type, x: p.x != null ? p.x : p.type === 'svg' ? x0 + 30 : x0, y: Math.round(y), w: p.w };
       if (p.type === 'svg') it.svg = p.svg; else if (p.type === 'img') { it.asset = p.asset; it.ar = p.ar; if (p.qref) it.qref = p.qref; } else { it.md = p.md; it.fs = p.fs; if (p.qref) it.qref = p.qref; }
       cur.items.push(it); y += p.h + 6;
     }
@@ -22758,7 +22765,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793609841';
+const BUILD = '1793611794';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
