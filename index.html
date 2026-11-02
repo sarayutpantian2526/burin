@@ -22594,7 +22594,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793597618';
+const BUILD = '1793597844';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
@@ -22630,13 +22630,13 @@ async function doAuth(signup) {
   say(signup ? 'กำลังสร้างบัญชี' : 'กำลังเข้าสู่ระบบ');
   try {
     const sb = await cloudClient();
-    let r = signup ? await sb.auth.signUp({ email, password }) : await sb.auth.signInWithPassword({ email, password });
+    let r = signup ? await sb.auth.signUp({ email, password, options: { emailRedirectTo: location.origin + location.pathname } }) : await sb.auth.signInWithPassword({ email, password });
     if (r.error && !signup && migOn() && /invalid login/i.test(String(r.error.message || ''))) {
       /* not on the new server yet: the same email and password on the old server move the account across */
       say('กำลังตรวจบัญชีกับเซิร์ฟเวอร์เดิม');
       const old = await migOldClient(), o = await old.auth.signInWithPassword({ email, password });
       if (o.error) throw r.error;
-      r = await sb.auth.signUp({ email, password });
+      r = await sb.auth.signUp({ email, password, options: { emailRedirectTo: location.origin + location.pathname } });
       if (!r.error && !(r.data && r.data.session)) { say('ย้ายบัญชีแล้ว เปิดอีเมลยืนยันจาก Supabase แล้วกดลิงก์ จากนั้นกลับมากดเข้าสู่ระบบอีกครั้ง สมุดทั้งหมดจะย้ายตามมาเอง', 'ok'); return; }
     }
     if (r.error) throw r.error;
