@@ -2834,7 +2834,7 @@ function makeCloudRoom(sb, user) {
   const ch = sb.channel('room-' + user.id, { config: { broadcast: { self: false }, presence: { key: TAB } } });
   const topics = {}, peerCbs = [];
   let pres = null, ready = false, prev = {};
-  for (const t of ['view', 'ink', 'laser']) ch.on('broadcast', { event: t }, (m) => (topics[t] || []).forEach((f) => f({ data: m.payload, sameTab: false })));
+  for (const t of ['view', 'ink', 'laser', 'page']) ch.on('broadcast', { event: t }, (m) => (topics[t] || []).forEach((f) => f({ data: m.payload, sameTab: false })));
   const peersNow = () => {
     const st = ch.presenceState(), out = [];
     for (const k in st) { if (k === TAB) continue; const metas = st[k] || []; const m = metas[metas.length - 1] || {}; out.push({ id: k, presence: m.p || null, sameTab: false }); }
@@ -5763,7 +5763,7 @@ function openNotebook(nid, pidWanted) {
 const flipOn = () => store_ls.get('tp-flip') !== '0';
 function pageFlip(pid) {
   try {
-    if (!flipOn() || !S.pid || S.present || FLOW.on || (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches)) return;
+    if (!flipOn() || !S.pid || S.present || S.focus || S.watchers || FLOW.on || (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches)) return;
     const pages = (S.nb && S.nb.pages) || [], a = pages.indexOf(S.pid), b = pages.indexOf(pid);
     if (a < 0 || b < 0) return;
     const pg = $('#page'), bg = $('#cBg'), ink = $('#cInk'); if (!pg || !bg || !pg.offsetWidth) return;
@@ -5789,6 +5789,8 @@ function openPage(pid) {
   saveMine.flush(); savePage.flush();
   if (editing) commitEdit();
   S.pid = pid; store_ls.set('tp-last-page-' + S.nid, pid);
+  /* audience screens turn with the teacher at once, over the live channel (the saved 'current page' follows later as a fallback) */
+  if (S.room && S.watchers && !S.present) { S.room.emit('page', { nid: S.nid, pid }).catch(() => {}); setTimeout(emitView, 60); }
   if (!$('#ai').hidden) setTimeout(renderAIPages, 0);
   if (!S.present) publishLiveLater();
   PV.ink = {}; PV.laser = null; { const c = cRemote.getContext('2d'); c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, cRemote.width, cRemote.height); }
@@ -22614,7 +22616,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793599069';
+const BUILD = '1793599498';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
@@ -23224,6 +23226,11 @@ function setupRoom(room) {
     S.watchers = ch.peers.filter((p) => !p.sameTab && p.presence && p.presence.role === 'present').length;
     S.peersAny = ch.peers.filter((p) => !p.sameTab).length; /* any other screen of this account shows the laser too */
     if (ch.joined.some((p) => p.presence && p.presence.role === 'present') || ch.updated.some((p) => p.presence && p.presence.role === 'present')) { publishLive(); setTimeout(emitView, 300); }
+  }, () => {});
+  room.on('page', (m) => {
+    if (!S.present || m.sameTab || !m.data || typeof m.data.pid !== 'string') return;
+    $('#presentWait').hidden = true;
+    if (m.data.nid && m.data.nid !== S.nid) openNotebook(m.data.nid, m.data.pid); else if (m.data.pid !== S.pid) openPage(m.data.pid);
   }, () => {});
   room.on('view', (m) => { if (!S.present || m.sameTab || !m.data || m.data.pid !== S.pid) return; const v = m.data; if (isFinite(v.y0) && isFinite(v.y1)) { PV.view = { y0: +v.y0, y1: +v.y1 }; if (isFinite(v.x0) && isFinite(v.x1) && v.x1 > v.x0 && v.y1 > v.y0) { PV.view.x0 = +v.x0; PV.view.x1 = +v.x1; } followView(); } }, () => {});
   /* the writing shows live on every screen of the account open on the same page; the saved line takes over when it
