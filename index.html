@@ -123,9 +123,15 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .sidepill.tch { color: var(--accent, #2F4BB8); border-color: color-mix(in srgb, var(--accent, #2F4BB8) 35%, transparent); }
 .sidepill.stu { color: #2E7D4F; border-color: rgba(46,125,79,0.35); }
 .sidepill + .avbtn { margin-left: 8px; }
+@media (max-width: 600px) { .sidepill .lfull { display: none; } .sidepill .lshort { display: inline; } .sidepill { padding: 0 8px; } }
+.sidepill.aichip { color: #2E7D4F; border-color: rgba(46,125,79,0.35); }
+.sidepill.aichip:not([hidden]) + .sidepill { margin-left: 6px; }
+.aistate { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 12px 14px; border-radius: 12px; border: 1px solid rgba(46,125,79,0.35); background: color-mix(in srgb, #2E7D4F 7%, var(--surface)); margin: 4px 0 8px; }
+.aistate b { color: #2E7D4F; }
+.aistate span { flex: 1 1 220px; min-width: 0; font-size: 13.5px; line-height: 1.45; }
+.aistate .btn { min-height: 34px; }
 /* a small mark on the account picture when AI is connected */
 .avbtn { position: relative; }
-.avbtn.ai::after { content: ''; position: absolute; right: -2px; bottom: -2px; width: 10px; height: 10px; border-radius: 50%; background: #2E7D4F; border: 2px solid var(--surface); }
 .acpop .ailine { display: flex; align-items: center; gap: 8px; padding: 10px 0; margin: 2px 0 10px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); font-size: 13px; }
 .acpop .ailine .dotai { flex: 0 0 9px; width: 9px; height: 9px; border-radius: 50%; background: var(--line); }
 .acpop .ailine.on .dotai { background: #2E7D4F; }
@@ -1681,6 +1687,7 @@ body.role-student .scnpill .sbtns button[data-s="back"], body.role-student .scnp
   <div class="tabrow" id="tabRow">
     <button class="tabbtn" id="bAllNb" type="button" aria-label="สมุดทั้งหมด" title="สมุดทั้งหมด แตะเพื่อเลือกและจัดลำดับ"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="3" y="3" width="5.5" height="5.5" rx="1.4" fill="none" stroke="currentColor" stroke-width="1.6"/><rect x="11.5" y="3" width="5.5" height="5.5" rx="1.4" fill="none" stroke="currentColor" stroke-width="1.6"/><rect x="3" y="11.5" width="5.5" height="5.5" rx="1.4" fill="none" stroke="currentColor" stroke-width="1.6"/><rect x="11.5" y="11.5" width="5.5" height="5.5" rx="1.4" fill="none" stroke="currentColor" stroke-width="1.6"/></svg><span class="lbl">สมุดทั้งหมด</span></button>
     <div class="tabs" id="tabs" role="group" aria-label="สมุดที่เปิดค้างไว้ แตะเพื่อสลับ ลากเพื่อย้าย แตะค้างเพื่อดูคู่กัน"></div>
+    <button class="sidepill aichip" id="bAIChip" type="button" hidden><span class="lfull">AI พร้อมใช้</span><span class="lshort">AI</span></button>
     <button class="sidepill" id="bSide" type="button" aria-label="ฝั่งที่ใช้อยู่"></button>
     <button class="avbtn" id="bAcct" type="button" hidden aria-label="บัญชีบนเครื่องนี้" aria-haspopup="dialog"><i></i></button>
   </div>
@@ -1872,7 +1879,7 @@ body.role-student .scnpill .sbtns button[data-s="back"], body.role-student .scnp
       <input type="file" id="fImg" accept="image/*" hidden>
       <input type="file" id="fPdf" accept="application/pdf,.pdf" hidden>
       <input type="file" id="fVid" accept="video/mp4,video/webm,video/quicktime,video/*" hidden>
-      <div class="loading no-ink" id="loading"><span class="logo" style="width:64px;height:64px;border-radius:18px" aria-hidden="true"><svg viewBox="0 0 32 32" style="width:42px;height:42px"><path d="M9 6.5h8.2c3.6 0 5.8 1.9 5.8 4.8 0 2-1.1 3.4-2.8 4 2.3.5 3.8 2.2 3.8 4.6 0 3.3-2.5 5.6-6.4 5.6H9z M13.2 10.2v4.5h3.4c1.6 0 2.5-.9 2.5-2.3 0-1.4-.9-2.2-2.5-2.2z M13.2 18v5.3h3.9c1.8 0 2.8-1 2.8-2.7 0-1.6-1-2.6-2.8-2.6z" fill="currentColor" fill-rule="evenodd"/><g transform="translate(23.6 8.6) rotate(-45) scale(0.86)"><path d="M2.8 -1.45H9.6V1.45H2.8z" fill="#F6C343"/><path d="M2.8 0.5H9.6V1.45H2.8z" fill="#E0A82A"/><path d="M9.6 -1.45h1.2v2.9h-1.2z" fill="#C9CFDA"/><path d="M10.8 -1.45h1a.6 .6 0 0 1 .6 .6v1.7a.6 .6 0 0 1-.6 .6h-1z" fill="#F28CA0"/><path d="M0 0L2.8 -1.45V1.45z" fill="#F1D3A6"/><path d="M0 0L1.05 -.55V.55z" fill="#26282E"/></g></svg></span><span>กำลังเปิดสมุด</span></div>
+      <div class="loading no-ink" id="loading"><span class="logo" style="width:64px;height:64px;border-radius:18px" aria-hidden="true"><svg viewBox="0 0 32 32" style="width:42px;height:42px"><path d="M9 6.5h8.2c3.6 0 5.8 1.9 5.8 4.8 0 2-1.1 3.4-2.8 4 2.3.5 3.8 2.2 3.8 4.6 0 3.3-2.5 5.6-6.4 5.6H9z M13.2 10.2v4.5h3.4c1.6 0 2.5-.9 2.5-2.3 0-1.4-.9-2.2-2.5-2.2z M13.2 18v5.3h3.9c1.8 0 2.8-1 2.8-2.7 0-1.6-1-2.6-2.8-2.6z" fill="currentColor" fill-rule="evenodd"/><g transform="translate(23.6 8.6) rotate(-45) scale(0.86)"><path d="M2.8 -1.45H9.6V1.45H2.8z" fill="#F6C343"/><path d="M2.8 0.5H9.6V1.45H2.8z" fill="#E0A82A"/><path d="M9.6 -1.45h1.2v2.9h-1.2z" fill="#C9CFDA"/><path d="M10.8 -1.45h1a.6 .6 0 0 1 .6 .6v1.7a.6 .6 0 0 1-.6 .6h-1z" fill="#F28CA0"/><path d="M0 0L2.8 -1.45V1.45z" fill="#F1D3A6"/><path d="M0 0L1.05 -.55V.55z" fill="#26282E"/></g></svg></span><span id="loadMsg">กำลังเปิดสมุด</span></div>
       <section class="peek no-ink" id="peek" hidden aria-label="ดูคู่กัน">
         <header id="peekHead">
           <div class="t"><b id="peekTitle"></b><span id="peekSub"></span></div>
@@ -1987,6 +1994,7 @@ body.role-student .scnpill .sbtns button[data-s="back"], body.role-student .scnp
       </details>
     </div>
     <h3>ผู้ช่วย AI</h3>
+    <div class="aistate" id="aiConnState" hidden></div>
     <button class="btn solid" id="bAIConnect" type="button">เชื่อมต่อ AI ของคุณ (เข้าระบบแล้วกดอนุญาต หรือวางคีย์)</button>
     <div id="aiModelBox" class="mpick"></div>
     <div class="note" id="aiSrcNote"></div>
@@ -5835,7 +5843,7 @@ function pageFlip(pid) {
   } catch (e) { /* the page still changes, just without the turn */ }
 }
 function openPage(pid) {
-  if (LIVE.role === 'teacher') setTimeout(liveSendPage, 400);
+  if (LIVE.role === 'teacher') { if (pid !== S.pid) setTimeout(() => liveSendPageNow(), 30); else setTimeout(liveSendPage, 400); } /* a new page goes to the room at once */
   if (pid === S.pid) return;
   pageFlip(pid);
   saveMine.flush(); savePage.flush();
@@ -8399,7 +8407,7 @@ function renderLevels() {
 }
 const AI_INFO = 'อ่านหน้าที่กำลังสอน แล้วสร้างตัวอย่าง โจทย์ฝึก และข้อสอบที่ใช้สถานการณ์และตัวเลขเดียวกัน ทุกคำตอบคำนวณซ้ำด้วยเครื่องคำนวณก่อนแสดง ครั้งแรกที่ใช้ ระบบจะขออนุญาตใช้ Claude ในบัญชีของผู้ใช้';
 function renderAIAvail(state) {
-  try { const ba = $('#bAcct'); if (ba) ba.classList.toggle('ai', !!aiStatus().on); } catch (e) { /* early */ }
+  try { renderAIState(); } catch (e) { /* early */ }
   const el = $('#aiAvail');
   const st = state || (AI.anyReady() ? 'ok' : 'none');
   if (st === 'checking') { el.className = 'note'; el.textContent = 'กำลังเชื่อมต่อผู้ช่วย AI'; $('#bGenPage').disabled = true; }
@@ -19112,6 +19120,7 @@ function joinRecent() {
 /* only the 6-letter room code goes in the box, even when something longer is pasted */
 $('#jCodeIn').addEventListener('input', () => { const v = $('#jCodeIn').value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6); if (v !== $('#jCodeIn').value) $('#jCodeIn').value = v; });
 function leaveClass() {
+  store_ls.del('tp-live-join');
   if (LIVE.ch && LIVE.role === 'student') { try { CLOUD.client.removeChannel(LIVE.ch); } catch (e) { /* closed */ } }
   LIVE.ch = null; LIVE.ready = false; if (LIVE.role === 'student') LIVE.role = null; $('#livePill').hidden = true;
   toast('ออกจากห้องแล้ว สมุดที่จดยังอยู่ครบ', 2000);
@@ -19617,6 +19626,8 @@ async function studentNbFor(d) {
   }
   if (!nid) { nid = 'n' + uid(); await S.store.set('notebooks/' + nid, { title, titleSet: true, level: d.level || 'mp', subject: d.subject || 'phys', subjectName: d.subjectName || null, pages: [], color: COVERS[1], createdAt: now(), updatedAt: now(), from: key, side: 'student' }); }
   store_ls.set('tp-snb-' + key, nid); store_ls.set('tp-snb-last-' + LIVE.code, key);
+  /* the empty notebook made when joining is not left behind on the shelf once the lesson has its own */
+  { const prev = LIVE.nid; if (prev && prev !== nid) { const pn = await S.store.get('notebooks/' + prev).catch(() => null); if (pn && !(pn.pages || []).length && pn.from === 'class-' + LIVE.code) { S.tabs = (S.tabs || []).filter((t) => t !== prev); try { saveTabs(); } catch (e) { /* fine */ } await Promise.resolve(S.store.del('notebooks/' + prev)).catch(() => {}); } } }
   LIVE.tkey = key; if (LIVE.nid !== nid) { LIVE.nid = nid; openNotebook(nid); }
 }
 /* the teacher's pictures reach the student as signed links that run out (one day in a live class);
@@ -19675,6 +19686,8 @@ async function studentPutPage(nid, lpid, idx, d, strokes) {
 }
 async function studentJoin(code) {
   LIVE.code = code; LIVE.role = 'student';
+  /* remembered for a few hours: reopening the app (or it reloading for an update) joins the same room again by itself */
+  if (!S.student) store_ls.set('tp-live-join', JSON.stringify({ code, at: now() }));
   if (!LIVE.name) { openJoin(code); return; }
   $('#joinSheet').hidden = true;
   /* back in the same room: open the notebook of the last lesson from this room */
@@ -19812,6 +19825,9 @@ function studentApply(tpid) { LIVE.sq = (LIVE.sq || Promise.resolve()).then(() =
 async function studentApplyNow(tpid) {
   const P = LIVE.parts[tpid]; if (!P) return; delete LIVE.parts[tpid];
   const strokes = [].concat(...P.got.filter(Boolean)).filter((s) => s && Array.isArray(s.p) && typeof s.id === 'string');
+  /* lines that arrived live while this copy of the page was on its way are newer than the copy: they stay */
+  { const lp = 'T' + tpid.replace(/[^A-Za-z0-9]/g, ''), have = new Set(strokes.map((s) => s.id)), cur = await stuTeacherLines(lp).catch(() => []), t = now();
+    for (const s of cur || []) if (!have.has(s.id) && (LIVE.inkAt || {})[s.id] && t - LIVE.inkAt[s.id] < 15000) strokes.push(s); }
   const lpid = 'T' + tpid.replace(/[^A-Za-z0-9]/g, '');
   await studentNbFor(P.d);
   await studentPutPage(LIVE.nid, lpid, P.d.idx, P.d, strokes);
@@ -19863,13 +19879,22 @@ function inkTick() {
 const studentSaveInk = debounce(() => { const pid = S.pid; if (!/^T/.test(pid || '')) return; Promise.resolve(S.store.set('pages/' + pid + '/layers/teacher', { strokes: (S.others.teacher || []).slice(), rev: now(), dev: 'teacher' })).catch(() => {}); }, 1500);
 function studentInk(d) {
   if (d && typeof d.e === 'string' && !Array.isArray(d.p)) { const p = ptsDec(d.e); if (!p) return; d = Object.assign({}, d, { p }); }
-  if (!d || typeof d.id !== 'string' || !Array.isArray(d.p) || S.pid !== 'T' + String(d.pid || '').replace(/[^A-Za-z0-9]/g, '')) return;
+  if (!d || typeof d.id !== 'string' || !Array.isArray(d.p)) return;
+  if (S.pid !== 'T' + String(d.pid || '').replace(/[^A-Za-z0-9]/g, '')) {
+    /* writing on a page this learner is not on (yet): the pieces are gathered and the finished line goes into that page */
+    const O = LIVE.offInk || (LIVE.offInk = {}), q = O[d.id] || (O[d.id] = { p: [], gap: false, t: now() });
+    if (d.whole || d.replace) q.p = d.p.slice(); else { if (isFinite(d.at) && +d.at !== q.p.length) q.gap = true; q.p.push(...d.p); }
+    if (d.done) { delete O[d.id]; if (!q.gap && q.p.length >= 3) { (LIVE.inkAt || (LIVE.inkAt = {}))[d.id] = now(); const st = { id: d.id, k: d.k === 'h' ? 'h' : 'p', c: okHex(d.c) ? d.c : '#14181F', w: clamp(+d.w || 3, 1, 40), p: q.p.map(Number) }; if (typeof d.t === 'string') st.t = d.t; if (isFinite(d.o)) st.o = +d.o; LIVE.sq = (LIVE.sq || Promise.resolve()).then(() => stuAdd({ tpid: String(d.pid), strokes: [st] })).catch(() => {}); } }
+    for (const k in O) if (now() - O[k].t > 60000) delete O[k];
+    return;
+  }
   const pid = S.pid;
   inkFeed(d, (id, s) => {
     delete PV.ink[id];
     if (S.pid !== pid) return;
     const arr = layerArr('teacher');
     if (s.gap) { LIVE.gapAsk = LIVE.gapAsk || setTimeout(async () => { LIVE.gapAsk = 0; const cur = layerArr('teacher'); liveSend('need', { sid: LIVE.sid, tpid: String(d.pid), have: cur.map(stKey) }); }, 300); }
+    (LIVE.inkAt || (LIVE.inkAt = {}))[id] = now();
     if (!arr.some((x) => x.id === id)) { const st = { id, k: s.k, c: s.c, w: s.w, p: s.p.slice() }; if (s.t) st.t = s.t; if (s.o) st.o = s.o; arr.push(st);
       try { const c = cInk.getContext('2d'); c.setTransform(S.res, 0, 0, S.res, 0, 0); drawStroke(c, st); } catch (e) { drawInk(); }
       drawInkLater(); studentSaveInk(); }
@@ -19920,7 +19945,7 @@ function renderStudentQuiz() {
 }
 async function openLecture(id) {
   let sb; try { sb = await cloudClient(); } catch (e) { toast('เชื่อมต่อไม่ได้', 3000); return; }
-  $('#loading').querySelector('span').textContent = 'กำลังรับเลคเชอร์';
+  $('#loadMsg').textContent = 'กำลังรับเลคเชอร์';
   const { data, error } = await sb.from('shares').select('title,data').eq('id', id).maybeSingle();
   if (error || !data) { toast('ไม่พบเลคเชอร์นี้ หรือผู้สอนยังไม่ได้แชร์', 4000); return; }
   const D = data.data || {}, nid = await studentNotebook('lecture-' + id, 'เลคเชอร์ ' + (D.title || data.title || ''), D.level);
@@ -22672,7 +22697,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793601966';
+const BUILD = '1793602620';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
@@ -22776,13 +22801,13 @@ function avFill(el, on, em) {
 /* the side label: teacher or student; a learner who came by class link stays a learner */
 function renderSide() {
   const b = $('#bSide'); if (!b) return; const st = isStudentSide();
-  b.textContent = S.student ? 'ผู้เรียน' : st ? 'ฝั่งนักเรียน' : 'ฝั่งครู';
+  b.innerHTML = S.student ? 'ผู้เรียน' : st ? '<span class="lfull">ฝั่งนักเรียน</span><span class="lshort">นักเรียน</span>' : '<span class="lfull">ฝั่งครู</span><span class="lshort">ครู</span>';
   b.className = 'sidepill ' + (st ? 'stu' : 'tch');
   b.title = S.student ? 'เข้าห้องเรียนในฐานะผู้เรียน' : 'เครื่องนี้ใช้' + (st ? 'ฝั่งนักเรียน' : 'ฝั่งครู') + ' แตะเพื่อสลับ';
 }
 function renderAcct() {
   renderSide();
-  { const ba = $('#bAcct'); if (ba) { const st = aiStatus(); ba.classList.toggle('ai', !!st.on); } }
+  try { renderAIState(); } catch (e) { /* early */ }
   const inClaude = !!(window.claude && window.claude.use), on = !!(CLOUD.state === 'on' && CLOUD.user), can = CLOUD.ready() || on, em = on ? CLOUD.user.email || 'บัญชีคลาวด์' : '';
   const b = $('#bAcct');
   if (b) { b.hidden = inClaude || !can; b.classList.toggle('out', !on); avFill(b.querySelector('i'), on, em); b.title = on ? em + ' บนเครื่องนี้ (' + devName() + ') แตะเพื่อดูรายละเอียด' : 'ยังไม่เข้าระบบ แตะเพื่อเข้าระบบ'; b.setAttribute('aria-label', on ? 'บัญชี ' + em : 'ยังไม่เข้าระบบ'); }
@@ -22814,6 +22839,16 @@ function acctPop() {
     else { b.textContent = 'ตั้งค่า'; b.onclick = () => { p.hidden = true; openAISetup(); }; }
     line.appendChild(b); p.insertBefore(line, row); }
   p.hidden = false;
+}
+/* AI connected: a quiet green label at the top, and in the menu a clear line with change and disconnect */
+function renderAIState() {
+  const st = aiStatus(), chip = $('#bAIChip'); if (chip) { chip.hidden = !st.on; chip.title = st.on ? 'เชื่อมต่อ AI แล้ว: ' + st.from : ''; }
+  const box = $('#aiConnState'), btn = $('#bAIConnect'); if (!box || !btn) return;
+  box.hidden = !st.on; btn.hidden = !!st.on;
+  if (!st.on) return;
+  box.innerHTML = '<span><b>เชื่อมต่อ AI แล้ว</b><br></span>'; box.querySelector('span').appendChild(document.createTextNode(st.from));
+  const ch = document.createElement('button'); ch.type = 'button'; ch.className = 'btn'; ch.textContent = 'เปลี่ยนการเชื่อมต่อ'; ch.onclick = () => openAISetup(); box.appendChild(ch);
+  if (st.key) { const x = document.createElement('button'); x.type = 'button'; x.className = 'btn'; x.textContent = 'ยกเลิกการเชื่อมต่อ'; x.onclick = () => popMenu(x, 'ยกเลิกการเชื่อมต่อ AI ของบัญชีนี้ทุกเครื่อง', [['ยืนยันยกเลิก', aiDisconnect], ['ไม่ยกเลิก', () => {}]]); box.appendChild(x); }
 }
 /* what the account uses for AI */
 function aiStatus() {
@@ -22882,6 +22917,7 @@ function openAcct() {
   $('#acctSheet').hidden = false;
 }
 $('#bAcct').onclick = acctPop;
+$('#bAIChip').onclick = () => acctPop();
 $('#bSide').onclick = (e) => { if (S.student) { toast('เข้าห้องเรียนในฐานะผู้เรียน', 1800); return; } const st = isStudentSide(); popMenu(e.currentTarget, 'เครื่องนี้ใช้' + (st ? 'ฝั่งนักเรียน' : 'ฝั่งครู'), [[st ? 'สลับไปฝั่งครู' : 'สลับไปฝั่งนักเรียน', () => setRole(st ? 'teacher' : 'student')], ['ไม่เปลี่ยน', () => {}]]); }; $('#bAnimAll').onclick = (e) => { e.stopPropagation(); animSet(!animAny()); }; $('#bAcctX').onclick = () => { $('#acctSheet').hidden = true; };
 function renderCloud() {
   const box = $('#cloudBox');
@@ -23738,7 +23774,7 @@ async function boot() {
       if (user) {
         CLOUD.user = user; CLOUD.state = 'on'; acctRemember(user.email);
         if (migOn() && store_ls.get('tp-migrated-' + user.id) !== '1') {
-          const say = (t) => { $('#loading').querySelector('span').textContent = t; };
+          const say = (t) => { $('#loadMsg').textContent = t; };
           try { const r = await migRun(sb, user, say); if (r && !r.skipped && !r.needLogin && !r.otherAccount) setTimeout(() => toast('ย้ายข้อมูลจากเซิร์ฟเวอร์เดิมครบแล้ว สมุด ' + r.docs + ' รายการ ไฟล์ ' + r.files + ' ไฟล์' + (r.skip ? ' (ข้าม ' + r.skip + ' รายการที่ย้ายไม่ได้)' : ''), 6000), 1500); }
           catch (e) { console.warn('migrate', e); setTimeout(() => toast('ย้ายข้อมูลจากเซิร์ฟเวอร์เดิมยังไม่ครบ จะลองต่อให้เองเมื่อเปิดแอปครั้งหน้า', 5000), 1500); }
         }
@@ -23746,7 +23782,7 @@ async function boot() {
         { const ou = migOn() ? migOldUser() : null; if (ou && AI.cfg.owner === ou.id && (ou.email || '').toLowerCase() === (user.email || '').toLowerCase()) AI.cfg.owner = user.id; }
         if (AI.cfg.owner && AI.cfg.owner !== user.id) { AI.cfg.key = { vendor: 'gemini', url: '', model: '', key: '' }; AI.cfg.kat = 0; }
         AI.cfg.owner = user.id; AI.save(true);
-        $('#loading').querySelector('span').textContent = 'กำลังโหลดสมุดจากคลาวด์';
+        $('#loadMsg').textContent = 'กำลังโหลดสมุดจากคลาวด์';
         S.store = await makeCloudStore(sb, user);
       } else CLOUD.state = 'signedout';
       sb.auth.onAuthStateChange((ev) => { if (ev === 'SIGNED_OUT' && CLOUD.state === 'on') location.reload(); });
@@ -23770,6 +23806,11 @@ async function boot() {
   renderAcct();
   if (store_ls.get('tp-auth-next') != null && CLOUD.state === 'signedout') { const em = store_ls.get('tp-auth-next'); store_ls.del('tp-auth-next'); setTimeout(() => { openAuth(); if (em) { $('#aEmail').value = em; setTimeout(() => $('#aPass').focus({ preventScroll: true }), 80); } }, 300); }
   if (mC && CLOUD.ready()) studentJoin(mC[1].toUpperCase());
+  else if (!S.student && CLOUD.state === 'on' && isStudentSide()) {
+    /* a learner signed in on their own account was in a room a little while ago: back in it without asking */
+    let j = null; try { j = JSON.parse(store_ls.get('tp-live-join') || 'null'); } catch (e) { j = null; }
+    if (j && /^[A-Z2-9]{6}$/.test(j.code || '') && now() - (+j.at || 0) < 4 * 3600 * 1000 && LIVE.name) setTimeout(() => { if (!LIVE.ch) studentJoin(j.code); }, 1200);
+  }
   else if (mL && CLOUD.ready()) openLecture(mL[1].toLowerCase());
   else if (mH && CLOUD.ready()) openHomework(mH[1].toLowerCase());
   else if (mT && CLOUD.ready()) openTermPage(mT[1]);
@@ -23788,7 +23829,7 @@ async function boot() {
   try { const qp = new URLSearchParams(location.search); if (qp.get('code') && store_ls.get('tp-or')) { const c = qp.get('code'), st = qp.get('state'); history.replaceState(null, '', location.pathname + location.hash); setTimeout(() => orFinish(c, st), 600); } } catch (e) { /* no query */ }
   if (CLOUD.state === 'signedout' && !S.present && !S.student) openStart();
   else if (!S.student && !S.present && !store_ls.get('tp-role') && CLOUD.state === 'on') setTimeout(() => { if (!store_ls.get('tp-role')) { closeSheets(); $('#roleSheet').hidden = false; } }, 900);
-  setTimeout(() => { if (!S.pid) { const l = $('#loading'); l.querySelector('span').textContent = 'ยังเชื่อมต่อไม่ได้ ตรวจอินเทอร์เน็ตแล้วเปิดหน้านี้ใหม่'; } }, 12000);
+  setTimeout(() => { if (!S.pid) { const l = $('#loading'); $('#loadMsg').textContent = 'ยังเชื่อมต่อไม่ได้ ตรวจอินเทอร์เน็ตแล้วเปิดหน้านี้ใหม่'; } }, 12000);
 }
 exTidyWatch();
 boot();
