@@ -21563,21 +21563,25 @@ function openAssign(set) {
   const cf = exEl('label', 'field', '<span>ห้องเรียน (ผู้เรียนยืนยันตัวด้วยรหัสหรือเลขที่ คะแนนเข้าสมุดคะแนนของห้องเอง)</span>'); b.appendChild(cf);
   const fillCls = () => { const old = $('#hwCls'); if (old) old.remove(); cf.appendChild(classSelect('hwCls', true)); };
   if (CLS.loaded) fillCls(); else clsLoad().then(fillCls);
-  const opt = { online: true, files: true, instant: false, paper: false };
+  const opt = { online: true, files: true, instant: false, paper: false, work: false, wt: 0.5 };
   HW.opt = opt;
-  exChips(b, [['online', 'ให้ตอบตัวเลือกในแอป'], ['files', 'ให้ส่งรูปถ่ายหรือไฟล์งานกระดาษ'], ['instant', 'ให้เห็นคะแนนและเฉลยทันทีหลังส่ง'], ['paper', 'มีผู้เรียนทำใส่กระดาษ ครูจะบันทึกให้เอง']], (v) => !!opt[v], (v) => { opt[v] = !opt[v]; openAssignRefresh(); });
+  exChips(b, [['online', 'ให้ตอบตัวเลือกในแอป'], ['files', 'ให้ส่งรูปถ่ายหรือไฟล์งานกระดาษ'], ['instant', 'ให้เห็นคะแนนและเฉลยทันทีหลังส่ง'], ['paper', 'มีผู้เรียนทำใส่กระดาษ ครูจะบันทึกให้เอง'], ['work', 'ต้องแสดงวิธีทำ ให้คะแนนวิธีทำด้วย']], (v) => !!opt[v], (v) => { opt[v] = !opt[v]; if (opt.work) opt.files = true; openAssignRefresh(); }).classList.add('hwopt');
+  const wtBox = exEl('div', 'note small', 'ถ้าต้องแสดงวิธีทำ คะแนนแต่ละข้อแบ่งให้วิธีทำเท่าไร ที่เหลือเป็นคะแนนคำตอบ ผู้เรียนต้องแนบรูปวิธีทำก่อนส่ง และระบบให้ AI อ่านวิธีทำแยกจากคำตอบ ครูแก้คะแนนวิธีทำรายข้อได้ทุกข้อ<br>');
+  const WTS = [[0.3, 'วิธีทำ 30%'], [0.5, 'วิธีทำ 50%'], [0.7, 'วิธีทำ 70%']];
+  const wtc = exChips(wtBox, WTS, (v) => opt.wt === v, (v) => { opt.wt = v; wtc.querySelectorAll('.chip').forEach((c, i) => c.setAttribute('aria-pressed', WTS[i][0] === v ? 'true' : 'false')); }); b.appendChild(wtBox);
   b.appendChild(exEl('div', 'note small', 'ถ้าเปิด "ให้เห็นคะแนนและเฉลยทันที" เฉลยจะอยู่ในงานที่ผู้เรียนเปิด เหมาะกับแบบฝึก ไม่เหมาะกับการสอบ<br>ผู้เรียนที่ไม่มีอุปกรณ์ทำใส่กระดาษได้ ครูพิมพ์กระดาษคำตอบแจก แล้วกรอกตัวเลือกหรือถ่ายรูปกองงานเข้าระบบแทนได้ที่แท็บ "การบ้าน" เลือกงานนี้ ถ้าจะรับเฉพาะงานกระดาษ ให้ปิดสองข้อแรกและเปิดข้อนี้'));
   const go = exEl('button', 'btn solid', 'มอบหมายงาน ' + set.qs.length + ' ข้อ'); go.onclick = createAssignment; b.appendChild(go);
   const out = exEl('div', ''); out.id = 'hwOut'; b.appendChild(out);
 }
-function openAssignRefresh() { const o = HW.opt; document.querySelectorAll('#hwBody .chips .chip').forEach((c, i) => c.setAttribute('aria-pressed', [o.online, o.files, o.instant, o.paper][i] ? 'true' : 'false')); }
+function openAssignRefresh() { const o = HW.opt; document.querySelectorAll('#hwBody .hwopt .chip').forEach((c, i) => c.setAttribute('aria-pressed', [o.online, o.files, o.instant, o.paper, o.work][i] ? 'true' : 'false')); }
 async function createAssignment() {
   const set = HW.set, o = HW.opt, out = $('#hwOut');
   if (!o.online && !o.files && !o.paper) { out.innerHTML = '<div class="note err">เลือกอย่างน้อยหนึ่งวิธีส่งงาน</div>'; return; }
+  if (o.work && o.instant) { out.innerHTML = '<div class="note err">ถ้าต้องแสดงวิธีทำ ไม่ควรเปิดให้เห็นเฉลยทันที เพราะผู้เรียนจะลอกเฉลยมาเขียนวิธีทำได้ ปิดข้อ "เห็นคะแนนและเฉลยทันที" ก่อน</div>'; return; }
   const id = Array.from({ length: 9 }, () => CODE_ABC[Math.floor(Math.random() * CODE_ABC.length)]).join('').toLowerCase();
   const due = $('#hwDue').value ? new Date($('#hwDue').value).toISOString() : null;
   const qs = set.qs.map((q) => { const x = { id: q.id, t: q.t, ch: q.ch, q: q.q, c: q.c, d: q.d, fig: q.fig }; if (o.instant) { x.a = q.a || 0; x.e = q.e || ''; } return x; });
-  const data = { title: $('#hwTitle').value.trim() || set.title, setId: set.id, qs, online: o.online, files: o.files, instant: o.instant, paper: !!o.paper, teacher: (S.nb && S.nb.title) || '' };
+  const data = { title: $('#hwTitle').value.trim() || set.title, setId: set.id, qs, online: o.online, files: o.files || o.work, instant: o.instant, paper: !!o.paper, work: !!o.work, wt: o.work ? o.wt : 0, teacher: (S.nb && S.nb.title) || '' };
   const cls = CLS.list.find((c) => c.id === ($('#hwCls') && $('#hwCls').value));
   if (S.nid && S.nb) data.nb = { id: S.nid, title: S.nb.title || '', room: liveRoomCode(S.nid, cls ? cls.id : null) };
   if (cls) { data.clsId = cls.id; data.cls = await rosterHashed(cls); }
@@ -21612,6 +21616,15 @@ function hwScore(a, s) {
   for (const q of qs) {
     const key = hwKeyFor(a, q), on = s.data.answers && s.data.answers[q.id], ai = s.data.ai && s.data.ai.q && s.data.ai.q[q.id], man = s.data.manual && s.data.manual[q.id];
     let ok = null, src = '';
+    const W = a.data.work ? (a.data.wt || 0.5) : 0;
+    if (W) { /* answer and working are scored apart; a question counts once both are known */
+      let ans = null;
+      if (on && on[0] >= 0 && key != null) { ans = on[0] === key ? 1 : 0; src = s.data.by === 'teacher' ? 'ครูกรอกจากกระดาษ' : 'ตอบในแอป'; }
+      else if (ai) { ans = ai.choice != null && ai.choice >= 0 && key != null ? (ai.choice === key ? 1 : 0) : (ai.score != null ? (ai.score >= 1 ? 1 : 0) : null); src = 'AI อ่านจากกระดาษ'; }
+      const wm = s.data.manualWork && s.data.manualWork[q.id], wk = wm != null ? wm : (ai && ai.work != null ? ai.work : null);
+      if (man != null) { ok = man; src = 'ครูตัดสิน'; } else if (ans != null && wk != null) ok = (1 - W) * ans + W * wk;
+      res.push({ q, key, ok, src, ans, wk, choice: on ? on[0] : (ai && ai.choice != null ? ai.choice : -1), note: ai && ai.note }); continue;
+    }
     if (man != null) { ok = man; src = 'ครูตัดสิน'; }
     else if (on && on[0] >= 0 && key != null) { ok = on[0] === key ? 1 : 0; src = s.data.by === 'teacher' ? 'ครูกรอกจากกระดาษ' : 'ตอบในแอป'; }
     else if (ai) { ok = ai.score; src = 'AI อ่านจากกระดาษ'; }
@@ -21683,7 +21696,8 @@ async function hwCheckOne(a, s) {
   const qs = a.data.qs.map((q, i) => { const k = hwKeyFor(a, q); return (i + 1) + ') ' + q.q + '\n   choices: ' + q.c.map((c, j) => L[j] + '. ' + c).join(' | ') + (k != null ? '\n   correct: ' + L[k] + ' (' + q.c[k] + ')' : ''); }).join('\n');
   const prompt = 'These images are a Thai student\'s handed-in paper work for this physics assignment:\n' + qs + '\n'
     + 'For every question, find what the student answered (a marked choice letter ก ข ค ง, or a final numeric answer, or their working). Compare with the correct answer. Give score 1 if correct, 0 if wrong or missing, or 0.5 if the method is right but the final answer is wrong. Add a short Thai note on the mistake or the good point.\n'
-    + 'Reply in exactly this format and nothing else, one block per question:\n@@Q number\nCHOICE: letter or -\nSCORE: 1 or 0.5 or 0\nNOTE: short Thai note\nThen finish with:\n@@SUMMARY\n(2 to 3 short Thai sentences: what this student understands and what to improve)';
+    + (a.data.work ? 'This assignment requires shown working. Also judge the working apart from the final answer: WORK is 1 if the method is complete and logical (right formula, substitution, units, steps), 0.5 if partly right or steps are missing, 0 if there is no working or it is wrong or only copied answer. A correct final answer with no working still gets WORK 0. Do not give credit for working that is not on the paper.\n' : '')
+    + 'Reply in exactly this format and nothing else, one block per question:\n@@Q number\nCHOICE: letter or -\nSCORE: 1 or 0.5 or 0\n' + (a.data.work ? 'WORK: 1 or 0.5 or 0\n' : '') + 'NOTE: short Thai note\nThen finish with:\n@@SUMMARY\n(2 to 3 short Thai sentences: what this student understands and what to improve)';
   const ctl = new AbortController(), lim = setTimeout(() => ctl.abort(), 150000);
   let r; try { r = await AI.run('read', prompt, { images: imgs, signal: ctl.signal }); } finally { clearTimeout(lim); }
   const q = {}; let summary = '';
@@ -21693,7 +21707,9 @@ async function hwCheckOne(a, s) {
     const n = parseInt(p.arg, 10) - 1, qq = a.data.qs[n]; if (!qq) continue;
     const g = (k) => { const m = (p.text || '').match(new RegExp('^\\s*' + k + '\\s*:\\s*(.*)$', 'mi')); return m ? m[1].trim() : ''; };
     const ch = L.indexOf(g('CHOICE').charAt(0)), sc = parseFloat(g('SCORE'));
+    const wk = parseFloat(g('WORK'));
     q[qq.id] = { choice: ch, score: isFinite(sc) ? clamp(sc, 0, 1) : 0, note: g('NOTE') };
+    if (a.data.work) q[qq.id].work = isFinite(wk) ? clamp(wk, 0, 1) : 0;
   }
   const ai = { q, summary, at: now() };
   const data = Object.assign({}, s.data, { ai });
@@ -21711,7 +21727,7 @@ async function hwImport(a, subs) {
   for (const s of subs) {
     const sc = hwScore(a, s); if (!sc.checked) continue;
     const key = 'hw_' + a.id + '_' + s.name.trim().replace(/[^\wก-๙]/g, '_').slice(0, 30);
-    const items = sc.res.filter((r) => r.ok != null).map((r) => [r.q.id, (r.q.t || 'olymp') + ':' + (r.q.ch || 0), r.ok >= 1 ? 1 : 0, 0, r.choice]);
+    const items = sc.res.filter((r) => r.ok != null).map((r) => [r.q.id, (r.q.t || 'olymp') + ':' + (r.q.ch || 0), (r.ans != null ? r.ans : r.ok >= 1 ? 1 : 0), 0, r.choice]);
     const rec = { key, who: s.name.trim(), at: Date.parse(s.created_at) || now(), setId: a.data.setId, title: a.title, mode: 'homework', n: items.length, ok: items.filter((x) => x[2]).length, items };
     EX.att = EX.att.filter((x) => x.key !== key); EX.att.push(rec); await S.store.set('exa/' + key, rec).catch(() => {});
     if (!EX.people.includes(rec.who)) { EX.people.push(rec.who); }
@@ -21750,6 +21766,7 @@ async function hwPaperEntry(a, subs) {
   const back = exEl('button', 'btn', 'กลับไปรายชื่อ'); back.onclick = () => exRender(); box.appendChild(back);
   box.appendChild(exEl('h3', '', 'บันทึกงานกระดาษแทนผู้เรียน'));
   box.appendChild(exEl('div', 'note', 'พิมพ์ตัวเลือกที่เด็กเลือกเรียงตามข้อ เช่น <b>กขคงก</b> หรือ <b>abcda</b> ใช้ <b>-</b> แทนข้อที่ไม่ได้ตอบ งานนี้มี ' + qs.length + ' ข้อ ระบบตรวจตามเฉลยให้ทันที ถ้ามีวิธีทำที่อยากให้ AI ช่วยดู ให้กดแนบรูปของคนนั้นด้วย แล้วกดตรวจด้วย AI ในหน้ารายชื่อ'));
+  if (A.work) box.appendChild(exEl('div', 'note advice', '<b>งานนี้ให้คะแนนวิธีทำ ' + Math.round((A.wt || 0.5) * 100) + '%</b> กรอกตัวเลือกแล้วต้องแนบรูปวิธีทำของเด็กด้วย จากนั้นกด "ตรวจรูปและไฟล์ด้วย AI" ในหน้ารายชื่อ หรือเปิดดูงานแล้วให้คะแนนวิธีทำเองรายข้อ ข้อที่ยังไม่ได้ตรวจวิธีทำจะขึ้น "รอตรวจ" และยังไม่นับคะแนน'));
   if (!a.open) box.appendChild(exEl('div', 'note err', 'งานนี้ปิดรับอยู่ ระบบบันทึกไม่ได้ กลับไปกด "เปิดรับงานอีกครั้ง" ก่อน'));
   const dl = exEl('label', 'field', '<span>วันที่เด็กส่งงาน (เว้นว่างใช้วันนี้ ใช้ตัดสินว่าส่งช้าหรือไม่)</span>'); const di = document.createElement('input'); di.type = 'date'; dl.appendChild(di); box.appendChild(dl);
   const had = new Set(subs.map((s) => (s.data.stu && s.data.stu.sid) || s.name.trim()));
@@ -21822,6 +21839,12 @@ async function hwDetail(a, s) {
     const i = sc.res.indexOf(r);
     const d = exEl('div', 'exrev', '<div class="exq"><b>' + (i + 1) + '.</b> ' + mdToHtml(r.q.q) + '</div><div class="note">ตอบ ' + (r.choice >= 0 ? L[r.choice] + '. ' + mdToHtml(r.q.c[r.choice] || '') : 'ไม่พบคำตอบ') + (r.key != null ? ' เฉลย ' + L[r.key] : '') + (r.src ? ' (' + r.src + ')' : '') + '</div>' + (r.note ? '<div class="note">' + mdToHtml(r.note) + '</div>' : ''));
     const row = exEl('div', 'row2');
+    if (a.data.work) {
+      const W = a.data.wt || 0.5;
+      d.insertBefore(exEl('div', 'note', 'คำตอบ ' + (r.ans == null ? 'ยังไม่มีข้อมูล' : r.ans ? 'ถูก' : 'ผิด') + ' (ได้ ' + Math.round((1 - W) * 100) + '%) วิธีทำ ' + (r.wk == null ? 'ยังไม่ได้ตรวจ' : r.wk >= 1 ? 'ครบ' : r.wk > 0 ? 'บางส่วน' : 'ไม่มีหรือผิด') + ' (ได้ ' + Math.round(W * 100) + '%) คะแนนข้อนี้ ' + (r.ok == null ? 'รอตรวจ' : +r.ok.toFixed(2))), row);
+      for (const [v, t] of [[1, 'วิธีทำครบ'], [0.5, 'วิธีทำบางส่วน'], [0, 'ไม่มีวิธีทำหรือผิด']]) { const b = exEl('button', 'btn' + (r.wk === v ? ' solid' : ''), t); b.onclick = async () => { const mw = Object.assign({}, s.data.manualWork || {}, { [r.q.id]: v }); s.data = Object.assign({}, s.data, { manualWork: mw }); await CLOUD.client.from('submissions').update({ data: s.data }).eq('id', s.id); hwDetail(a, s); }; row.appendChild(b); }
+      d.appendChild(row); box.appendChild(d); continue;
+    }
     for (const [v, t] of [[1, 'ให้ถูก'], [0.5, 'ให้ครึ่งคะแนน'], [0, 'ให้ผิด']]) { const b = exEl('button', 'btn' + (r.ok === v ? ' solid' : ''), t); b.onclick = async () => { const man = Object.assign({}, s.data.manual || {}, { [r.q.id]: v }); s.data = Object.assign({}, s.data, { manual: man }); await CLOUD.client.from('submissions').update({ data: s.data }).eq('id', s.id); hwDetail(a, s); }; row.appendChild(b); }
     d.appendChild(row); box.appendChild(d);
   }
@@ -21856,7 +21879,8 @@ async function openHomework(id, termCls) {
     b.appendChild(w);
   });
   if (A.files) {
-    b.appendChild(exEl('h3', '', 'แนบรูปถ่ายกระดาษคำตอบหรือไฟล์'));
+    b.appendChild(exEl('h3', '', A.work ? 'แนบรูปวิธีทำ' : 'แนบรูปถ่ายกระดาษคำตอบหรือไฟล์'));
+    if (A.work) b.appendChild(exEl('div', 'note', '<b>งานนี้ให้คะแนนวิธีทำ ' + Math.round((A.wt || 0.5) * 100) + '% ของแต่ละข้อ</b> เขียนวิธีทำทีละข้อบนกระดาษ ระบุเลขข้อกำกับ แสดงสูตร การแทนค่า และหน่วย แล้วถ่ายรูปแนบ ตอบถูกแต่ไม่มีวิธีทำจะได้คะแนนเฉพาะส่วนคำตอบ'));
     b.appendChild(exEl('div', 'note', 'ถ่ายรูปให้เห็นทั้งหน้า แสงพอ ตัวหนังสือชัด แนบได้หลายรูปหรือไฟล์ PDF รวมไม่เกิน 6 ไฟล์ ไฟล์ละไม่เกิน 10 MB'));
     const fi = document.createElement('input'); fi.type = 'file'; fi.accept = 'image/*,application/pdf'; fi.multiple = true; fi.className = 'hwfile';
     const lst = exEl('div', 'hwfiles');
@@ -21867,6 +21891,7 @@ async function openHomework(id, termCls) {
   const go = exEl('button', 'btn solid', 'ส่งงาน'); go.onclick = async () => {
     const name = ni.value.trim(); if (!name) { ni.focus(); toast('ใส่ชื่อก่อนส่ง', 1800); return; }
     if (A.files && !A.online && !st.files.length) { toast('แนบรูปหรือไฟล์งานก่อนส่ง', 2200); return; }
+    if (A.work && !st.files.length) { toast('งานนี้ต้องแสดงวิธีทำ แนบรูปวิธีทำก่อนส่ง', 2800); return; }
     store_ls.set('tp-sname', name); go.disabled = true;
     const W8 = waitCard(res, 'กำลังส่งงาน', ['อัปโหลดรูปและไฟล์', 'บันทึกคำตอบ']);
     try {
