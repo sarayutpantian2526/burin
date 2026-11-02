@@ -768,8 +768,6 @@ body.present .updbar { display: none !important; }
 .livepill button[aria-pressed="true"] { background: var(--ok); color: #FFFFFF; }
 .sqq { display: flex; flex-direction: column; gap: 8px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
 body.student #bLive, body.student #bPresent, body.student #bViewer { display: none; }
-/* the audience screen is switched off for now (it stuttered and froze); the button comes back when it is ready */
-#bViewer, #bPresent { display: none !important; }
 #qmBody textarea { min-height: 70px; }
 .pagenav .zsep { width: 1px; align-self: stretch; margin: 6px 2px; background: var(--line); }
 body.writing .pagenav, body.writing .diarybar { pointer-events: none; opacity: 0.35; transition: opacity 0.15s; }
@@ -3308,6 +3306,8 @@ const widthsLater = debounce(() => { if (typeof renderWidths === 'function') ren
    simply carries on into the next one, and that page becomes the one you write on ----- */
 const FLOW = { gap: 28, on: store_ls.get('tp-flow') === '1', ver: 0, dims: { prev: null, next: null }, busy: false };
 const PEEKS = new Map();
+/* the continuous view: the audience screen follows what the teacher's screen uses, not its own setting */
+function flowWanted() { return S.present ? !!PV.flow : FLOW.on; }
 function flowNb() { const pages = (S.nb && S.nb.pages) || [], i = pages.indexOf(S.pid); return { prev: i > 0 ? pages[i - 1] : null, next: i >= 0 && i < pages.length - 1 ? pages[i + 1] : null }; }
 /* a neighbouring page drawn as a picture with its boxes on top; kept for reuse while unchanged, and the pages two away are
    drawn ahead while nothing else is happening, so scrolling quickly through a notebook finds them ready */
@@ -3353,7 +3353,7 @@ async function peekBuild(pid) {
 }
 async function renderPeeks() {
   const P1 = $('#peekPrev'), P2 = $('#peekNext'); if (!P1) return; const v = ++FLOW.ver;
-  const off = !FLOW.on || S.present || !S.nb;
+  const off = !flowWanted() || !S.nb;
   document.body.classList.toggle('flow', !off);
   if (off) { P1.hidden = P2.hidden = true; P1.innerHTML = P2.innerHTML = ''; FLOW.dims = { prev: null, next: null }; return; }
   const nb = flowNb(); document.body.classList.toggle('flowlast', !nb.next);
@@ -3367,10 +3367,11 @@ async function renderPeeks() {
     if (!pk.typeset) { pk.typeset = true; pk.lay.querySelectorAll('.item').forEach((x) => { try { typeset(x); } catch (e) { /* plain */ } }); }
     el.hidden = false;
   }
-  clampT(); applyT();
+  if (!S.present) clampT(); applyT(); /* the audience screen is placed by the teacher's view, not held inside the pages */
   /* draw ahead the pages two away, one at a time, while the pen and fingers are off the glass */
   clearTimeout(FLOW.ahead);
   const pages = S.nb.pages || [], i = pages.indexOf(S.pid), ahead = [pages[i + 2], pages[i - 2]].filter(Boolean);
+  if (S.present) return; /* the audience screen keeps only the pages next to it (less memory on a TV or iPad) */
   const step = () => { if (v !== FLOW.ver || !ahead.length) return; if (P.size) { FLOW.ahead = setTimeout(step, 300); return; } peekBuild(ahead.shift()).catch(() => {}).finally(() => { FLOW.ahead = setTimeout(step, 250); }); };
   FLOW.ahead = setTimeout(step, 400);
 }
@@ -3407,7 +3408,7 @@ function flowSet(on) {
   document.querySelectorAll('#flowSeg button').forEach((b) => b.setAttribute('aria-pressed', (b.dataset.f === '1') === !!on ? 'true' : 'false'));
   renderPeeks().catch(() => {}); if (!on) { clampT(); applyT(); }
 }
-function applyT() { if (FLOW.on) flowCheckLater(); const zn = document.getElementById('zNum'); if (zn) { const pc = Math.round(S.zoom * 100); zn.classList.toggle('off', Math.abs(pc - 100) > 1); zn.title = pc === 100 ? 'พอดีหน้า' : 'ตอนนี้ ' + pc + '% แตะเพื่อกลับมาพอดีหน้า'; zn.setAttribute('aria-label', zn.title); } itemsEl.style.setProperty('--hk', (1 / ((S.base || 1) * (S.zoom || 1))).toFixed(3)); wrapEl.style.willChange = 'transform'; { const dpr = window.devicePixelRatio || 1, rx = Math.round(S.tx * dpr) / dpr, ry = Math.round((S.ty + rubber(S.pull || 0)) * dpr) / dpr; wrapEl.style.transform = 'translate(' + rx + 'px,' + ry + 'px) scale(' + S.zoom + ')'; } if (S.watchers && !S.present) emitView(); /* throttled inside, with a last update when the movement stops: the audience screen follows while the teacher is still scrolling, not only after */ sharpLater(); }
+function applyT() { if (FLOW.on) flowCheckLater(); const zn = document.getElementById('zNum'); if (zn) { const pc = Math.round(S.zoom * 100); zn.classList.toggle('off', Math.abs(pc - 100) > 1); zn.title = pc === 100 ? 'พอดีหน้า' : 'ตอนนี้ ' + pc + '% แตะเพื่อกลับมาพอดีหน้า'; zn.setAttribute('aria-label', zn.title); } { const hk = (1 / ((S.base || 1) * (S.zoom || 1))).toFixed(3); if (hk !== S.hk) { S.hk = hk; itemsEl.style.setProperty('--hk', hk); } } /* set only when the zoom changed: setting it restyled every box on the page each frame */ wrapEl.style.willChange = 'transform'; { const dpr = window.devicePixelRatio || 1, rx = Math.round(S.tx * dpr) / dpr, ry = Math.round((S.ty + rubber(S.pull || 0)) * dpr) / dpr; wrapEl.style.transform = 'translate(' + rx + 'px,' + ry + 'px) scale(' + S.zoom + ')'; } if (S.watchers && !S.present) emitView(); /* throttled inside, with a last update when the movement stops: the audience screen follows while the teacher is still scrolling, not only after */ sharpLater(); }
 function topY() { return S.tv ? 12 : 72; }
 function bounds() {
   const vw = vp.clientWidth, vh = vp.clientHeight;
@@ -3415,8 +3416,8 @@ function bounds() {
   const mx = Math.min(80, vw / 3);
   return {
     x0: pw < vw ? mx - pw * 0.5 : vw - pw - mx, x1: pw < vw ? vw - mx - pw * 0.5 : mx,
-    y0: Math.min(vh - ph - 16, topY()) - (FLOW.on && FLOW.dims.next ? (FLOW.dims.next[1] * S.base + FLOW.gap) * S.zoom : 0),
-    y1: topY() + (FLOW.on && FLOW.dims.prev ? (FLOW.dims.prev[1] * S.base + FLOW.gap) * S.zoom : 0)
+    y0: Math.min(vh - ph - 16, topY()) - (flowWanted() && FLOW.dims.next ? (FLOW.dims.next[1] * S.base + FLOW.gap) * S.zoom : 0),
+    y1: topY() + (flowWanted() && FLOW.dims.prev ? (FLOW.dims.prev[1] * S.base + FLOW.gap) * S.zoom : 0)
   };
 }
 function clampT() { const b = bounds(); S.tx = clamp(S.tx, b.x0, b.x1); S.ty = clamp(S.ty, b.y0, b.y1); }
@@ -3475,7 +3476,7 @@ function fit() {
   S.ty = topY(); S.pull = 0;
   applyT();
   resizeCanvases(true);
-  if (FLOW.on) renderPeeksLater();
+  if (flowWanted()) renderPeeksLater();
 }
 function resizeCanvases(force) {
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -5795,7 +5796,9 @@ function watchNotebooks() {
   S.unsub.nbs = S.store.watchCollection('notebooks', async (list, meta) => {
     S.nbsAll = shelfSort(list);
     S.nbs = S.nbsAll.filter(sideMatch);
-    renderLibrary();
+    /* every saved line touches its notebook (its edit time), so this runs on each stroke: the library list is drawn again
+       only while it is open, and the notebook tabs only when a title, colour or tab changed */
+    if (!$('#menu').hidden) renderLibrary(); else { LIBV.stale = true; if (tabsSig() !== S.tabsSig) renderTabs(); }
     if (S.nid || (meta && meta.fromCache)) return;
     const last = store_ls.get('tp-last-nb');
     const pick = S.nbs.find((n) => n.id === last) || S.nbs[0];
@@ -5870,7 +5873,7 @@ function openPage(pid) {
   if (editing) commitEdit();
   S.pid = pid; store_ls.set('tp-last-page-' + S.nid, pid);
   /* audience screens turn with the teacher at once, over the live channel (the saved 'current page' follows later as a fallback) */
-  if (S.room && S.watchers && !S.present) { S.room.emit('page', { nid: S.nid, pid }).catch(() => {}); setTimeout(emitView, 60); }
+  if (S.room && S.watchers && !S.present) { S.room.emit('page', { nid: S.nid, pid, f: FLOW.on ? 1 : 0 }).catch(() => {}); setTimeout(emitView, 60); }
   if (!$('#ai').hidden) setTimeout(renderAIPages, 0);
   if (!S.present) publishLiveLater();
   PV.ink = {}; PV.laser = null; if (cRemote.width > 2) drawPresentLive(); /* clears only where live lines were (making the page-size layer again on every page cost a stutter) */
@@ -5879,7 +5882,7 @@ function openPage(pid) {
   if (S.unsub.page) S.unsub.page();
   if (S.unsub.layers) S.unsub.layers();
   /* the page list (thumbnails) is rebuilt once the turning stops; its page number right away */
-  drawBg(); drawInk(); renderItems(); renderTitle(); { const pages = (S.nb && S.nb.pages) || [], cur = pages.indexOf(pid), cl = $('#curPageLabel'); if (cl) cl.textContent = cur >= 0 ? 'หน้า ' + (cur + 1) : 'หน้านี้'; } renderPageListLater(); if (FLOW.on && !FLOW.busy) renderPeeksLater();
+  drawBg(); drawInk(); renderItems(); renderTitle(); { const pages = (S.nb && S.nb.pages) || [], cur = pages.indexOf(pid), cl = $('#curPageLabel'); if (cl) cl.textContent = cur >= 0 ? 'หน้า ' + (cur + 1) : 'หน้านี้'; } renderPageListLater(); if (flowWanted() && !FLOW.busy) renderPeeksLater();
   S.unsub.page = S.store.watchDoc('pages/' + pid, (doc, meta) => {
     if (pid !== S.pid || !doc) return;
     if (savePage.pending() || (meta && meta.hasPendingWrites)) return;
@@ -7767,7 +7770,9 @@ function holdable(el, onTap, onHold) {
 /* the open notebook already has its name on its tab: the top bar then keeps the space instead of repeating it */
 window.addEventListener('resize', () => setTimeout(titleDup, 50));
 function titleDup() { const t = $('#tabs'); document.body.classList.toggle('hastabs', !!(t && t.querySelector('[aria-current="true"], .on, .cur') && t.offsetParent)); }
+function tabsSig() { const ids = S.tabs.slice(); if (S.nid && !ids.includes(S.nid)) ids.unshift(S.nid); return S.nid + '|' + ids.map((id) => { const nb = S.nbs.find((n) => n.id === id); return nb ? id + ':' + (nb.title || '') + ':' + coverColor(nb) : ''; }).join(','); }
 function renderTabs() {
+  S.tabsSig = tabsSig();
   setTimeout(fitTop, 0); setTimeout(titleDup, 0);
   const el = $('#tabs'); el.innerHTML = '';
   /* the notebook being written in is shown too, highlighted, so every colour on the bar matches its cover */
@@ -8056,7 +8061,7 @@ function shelfMoveIds(visible, from, to) {
   shelfSave(full); S.nbs = shelfSort(S.nbs); renderLibrary(); renderNbPicker();
 }
 function renderLibrary() {
-  renderTabs();
+  LIBV.stale = false; renderTabs();
   const el = $('#nbList'); if (!el) return;
   if (S.nbEditing && el.querySelector('.nbedit')) return; /* do not wipe a name being typed when another device syncs */
   S.nbEditing = null; el.innerHTML = ''; el.className = 'shelf';
@@ -22737,7 +22742,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793604550';
+const BUILD = '1793606084';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
@@ -23251,7 +23256,7 @@ function emitView() {
   const r = vp.getBoundingClientRect();
   /* the whole rectangle the teacher sees, so the viewer screen can match zoom and position exactly */
   const a = toLogical(r.left, r.top), b = toLogical(r.right, r.bottom);
-  S.room.emit('view', { pid: S.pid, x0: Math.round(a[0]), y0: Math.round(a[1]), x1: Math.round(b[0]), y1: Math.round(b[1]) }).catch(() => {});
+  S.room.emit('view', { f: FLOW.on ? 1 : 0, pid: S.pid, x0: Math.round(a[0]), y0: Math.round(a[1]), x1: Math.round(b[0]), y1: Math.round(b[1]) }).catch(() => {});
 }
 const viewLater = debounce(emitView, 80);
 const liveOn = () => LIVE.role === 'teacher' && LIVE.ready;
@@ -23368,10 +23373,15 @@ function presentFit() {
   S.zoom = 1; S.tx = (vw - W * S.base) / 2; S.ty = 0; S.pull = 0; applyT(); resizeCanvases(true);
   followView();
 }
-/* the audience screen is off for now: a window left in that mode (or opened with #present) opens as a normal notebook */
-const PRESENT_OFF = true;
+/* the audience screen moves onto the next or previous page the way the teacher's continuous view does: that page is
+   already on screen as a picture, so the view carries on without a jump and without drawing the page from nothing */
+function presentTurn(pid) {
+  const nb = flowNb(), d = pid === nb.next ? 1 : pid === nb.prev ? -1 : 0;
+  if (PV.flow && d && !FLOW.busy) { const ty0 = S.ty; if (flowGo(d)) { if (PV.to) PV.to.ty += S.ty - ty0; return; } }
+  openPage(pid);
+}
+function presentFlow(on) { if (on === !!PV.flow) return; PV.flow = on; renderPeeksLater(); }
 function enterPresent() {
-  if (PRESENT_OFF) { store_ls.set('tp-present', '0'); return; }
   if (S.present) return;
   if (document.body.classList.contains('focus')) setFocus(false);
   S.present = true; document.body.classList.add('present');
@@ -23397,7 +23407,7 @@ function watchLiveDoc() {
     if (!S.present || !d || d.by === TAB) return;
     $('#presentWait').hidden = true;
     if (d.nid !== S.nid) openNotebook(d.nid, d.pid);
-    else if (d.pid && d.pid !== S.pid) openPage(d.pid);
+    else if (d.pid && d.pid !== S.pid) presentTurn(d.pid);
   });
 }
 function setupRoom(room) {
@@ -23410,9 +23420,10 @@ function setupRoom(room) {
   room.on('page', (m) => {
     if (!S.present || m.sameTab || !m.data || typeof m.data.pid !== 'string') return;
     $('#presentWait').hidden = true;
-    if (m.data.nid && m.data.nid !== S.nid) openNotebook(m.data.nid, m.data.pid); else if (m.data.pid !== S.pid) openPage(m.data.pid);
+    if (typeof m.data.f === 'number') presentFlow(!!m.data.f);
+    if (m.data.nid && m.data.nid !== S.nid) openNotebook(m.data.nid, m.data.pid); else if (m.data.pid !== S.pid) presentTurn(m.data.pid);
   }, () => {});
-  room.on('view', (m) => { if (!S.present || m.sameTab || !m.data || m.data.pid !== S.pid) return; const v = m.data; if (isFinite(v.y0) && isFinite(v.y1)) { PV.view = { y0: +v.y0, y1: +v.y1 }; if (isFinite(v.x0) && isFinite(v.x1) && v.x1 > v.x0 && v.y1 > v.y0) { PV.view.x0 = +v.x0; PV.view.x1 = +v.x1; } followView(); } }, () => {});
+  room.on('view', (m) => { if (!S.present || m.sameTab || !m.data || m.data.pid !== S.pid) return; const v = m.data; if (typeof v.f === 'number') presentFlow(!!v.f); if (isFinite(v.y0) && isFinite(v.y1)) { PV.view = { y0: +v.y0, y1: +v.y1 }; if (isFinite(v.x0) && isFinite(v.x1) && v.x1 > v.x0 && v.y1 > v.y0) { PV.view.x0 = +v.x0; PV.view.x1 = +v.x1; } followView(); } }, () => {});
   /* the writing shows live on every screen of the account open on the same page; the saved line takes over when it
      arrives through the notebook's own sync, so the live copy is kept until then */
   room.on('ink', (m) => {
@@ -23495,6 +23506,7 @@ $('#bDelPage').onclick = () => { $('#delConfirm').hidden = false; };
 $('#bDelNo').onclick = () => { $('#delConfirm').hidden = true; };
 $('#bDelYes').onclick = () => { $('#delConfirm').hidden = true; deletePage(); };
 function menuTab(t) {
+  if (t === 'nb' && LIBV.stale) renderLibrary();
   $('#menuTabs').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', b.dataset.m === t ? 'true' : 'false'));
   document.querySelectorAll('#menu [data-mp]').forEach((p) => { p.hidden = p.dataset.mp !== t; });
   if (t === 'set') renderLangSettings();
