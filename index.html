@@ -4230,9 +4230,10 @@ function diaryWriteIn(id, from) {
   };
   /* the pen goes along each stroke in turn with a hand's speed curve, and lifts and glides between strokes */
   const trace = (r, done) => {
-    const list = r.paths.list, AIR = 70, speed = fsz * 0.0062; /* letter heights per ms, an everyday writing pace */
-    const segs = []; let tt = nibXY ? 90 : 0;
-    for (const P of list) { const d = clamp(P.len / speed, 70, 900); segs.push({ P, a: tt, d }); tt += d + AIR; }
+    /* a brisk hand: about three letters a second, a little quicker still for a long reply so it is not a long wait */
+    const list = r.paths.list, AIR = Math.round(40 / SP), speed = fsz * 0.0105 * SP;
+    const segs = []; let tt = nibXY ? Math.round(60 / SP) : 0;
+    for (const P of list) { const d = clamp(P.len / speed, 40, 500); segs.push({ P, a: tt, d }); tt += d + AIR; }
     const total = tt - AIR, from = nibXY, t0 = performance.now();
     nib.style.opacity = 1;
     const at = (P, u) => { const q = P.pts, c = P.cum, s = u * P.len; let k = 1; while (k < q.length - 1 && c[k] < s) k++; const f = c[k] > c[k - 1] ? (s - c[k - 1]) / (c[k] - c[k - 1]) : 0; return [q[k - 1][0] + (q[k][0] - q[k - 1][0]) * clamp(f, 0, 1), q[k - 1][1] + (q[k][1] - q[k - 1][1]) * clamp(f, 0, 1)]; };
@@ -4251,6 +4252,7 @@ function diaryWriteIn(id, from) {
     requestAnimationFrame(tick);
     return total;
   };
+  const SP = clamp(marks.length / 60, 1, 1.8);
   let i = from; for (let k = 0; k < from && k < marks.length; k++) marks[k].classList.add('on');
   const step = () => {
     if (!el.isConnected) return;
@@ -4261,16 +4263,16 @@ function diaryWriteIn(id, from) {
     const settle = () => { g.classList.add('on'); if (r) r.t.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 250, fill: 'forwards' }).finished.then(() => { r.t.remove(); if (r.m) r.m.remove(); }).catch(() => {}); };
     if (r && r.paths) dur = trace(r, settle);
     else if (r) {
-      dur = 520 + Math.random() * 260 + (c.length > 1 ? 220 : 0); nib.style.opacity = 0;
+      dur = (300 + Math.random() * 150 + (c.length > 1 ? 120 : 0)) / SP; nib.style.opacity = 0;
       r.t.animate([{ strokeDashoffset: L, fillOpacity: 0, strokeOpacity: 1 }, { strokeDashoffset: 0, fillOpacity: 0, strokeOpacity: 1, offset: 0.7 }, { strokeDashoffset: 0, fillOpacity: 1, strokeOpacity: 0 }], { duration: dur, easing: 'ease-in-out', fill: 'forwards' })
         .finished.then(settle).catch(settle);
     } else g.classList.add('on');
     /* the next letter starts when the pen is free; longer breaths between words and sentences */
-    let ms = dur + 40 + Math.random() * 60;
-    if (c === ' ') ms = 260 + Math.random() * 220;
-    else if (/[,;:]/.test(c)) ms += 450;
-    else if (/[.!?ฯ]/.test(c)) ms += 900 + Math.random() * 400;
-    if (Math.random() < 0.05) ms += 300;
+    let ms = dur + (20 + Math.random() * 40) / SP;
+    if (c === ' ') ms = (160 + Math.random() * 120) / SP;
+    else if (/[,;:]/.test(c)) ms += 300 / SP;
+    else if (/[.!?ฯ]/.test(c)) ms += (500 + Math.random() * 250) / SP;
+    if (Math.random() < 0.04) ms += 200;
     setTimeout(step, ms);
   };
   if (from) step(); else setTimeout(step, 250);
@@ -22307,7 +22309,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793582287';
+const BUILD = '1793583004';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
