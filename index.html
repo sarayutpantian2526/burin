@@ -1729,7 +1729,7 @@ body.role-student .scnpill .sbtns button[data-s="back"], body.role-student .scnp
           <canvas id="cBg" aria-hidden="true"></canvas>
           <canvas id="cInk" role="img" aria-label="ลายมือในหน้านี้"></canvas>
           <canvas id="cSharp" aria-hidden="true" hidden></canvas>
-          <canvas id="cRemote" aria-hidden="true"></canvas>
+          <canvas id="cRemote" width="1" height="1" aria-hidden="true"></canvas>
           <canvas id="cLive" aria-hidden="true"></canvas>
           <div id="items"></div>
           <svg id="sel" viewBox="0 0 1000 1414" preserveAspectRatio="none" aria-hidden="true"></svg>
@@ -3454,7 +3454,9 @@ function resizeCanvases(force) {
   if (!force && Math.abs(res - S.res) / (S.res || 1) < 0.08) return;
   /* the paper is drawn as sharp as the ink: soft grid lines made the whole page look blurred next to apps like GoodNotes */
   S.res = res; S.bgRes = res;
-  for (const c of [cInk, cRemote].concat(LV.part ? [] : [cLive])) { c.width = Math.round(W * res); c.height = Math.round(H * res); }
+  /* the layer for other screens' live writing and laser takes memory only once something is drawn on it */
+  for (const c of [cInk].concat(cRemote.width > 2 ? [cRemote] : [], LV.part ? [] : [cLive])) { c.width = Math.round(W * res); c.height = Math.round(H * res); }
+  if (cRemote.width <= 2) { cRemote.width = 1; cRemote.height = 1; }
   cBg.width = Math.round(W * S.bgRes); cBg.height = Math.round(H * S.bgRes);
   drawBg(); drawInk();
 }
@@ -3672,16 +3674,21 @@ function drawStroke(c, s) {
     c.stroke(); c.restore(); return;
   }
   if (n === 1) { c.beginPath(); c.arc(p[0] / 10, p[1] / 10, penW(s, p[2]) / 2, 0, 6.2832); c.fill(); return; }
-  let x0 = p[0] / 10, y0 = p[1] / 10, mx0 = x0, my0 = y0;
+  /* runs of segments of the same width are drawn as one path (one stroke call instead of one per segment: a page of
+     handwriting draws many times faster); a path with round joins covers exactly what the separate round-capped
+     segments covered, so the ink looks the same. Widths are taken to 1/32 of a pixel to form the runs. */
+  let x0 = p[0] / 10, y0 = p[1] / 10, mx0 = x0, my0 = y0, cw = -1;
   for (let i = 1; i < n; i++) {
     const x1 = p[i * 3] / 10, y1 = p[i * 3 + 1] / 10;
     const mx1 = (x0 + x1) / 2, my1 = (y0 + y1) / 2;
-    c.lineWidth = penW(s, (p[(i - 1) * 3 + 2] + p[i * 3 + 2]) / 2);
-    c.beginPath(); c.moveTo(mx0, my0); c.quadraticCurveTo(x0, y0, mx1, my1); c.stroke();
+    const w = Math.round(penW(s, (p[(i - 1) * 3 + 2] + p[i * 3 + 2]) / 2) * 32) / 32;
+    if (w !== cw) { if (cw >= 0) c.stroke(); c.lineWidth = w; cw = w; c.beginPath(); c.moveTo(mx0, my0); }
+    c.quadraticCurveTo(x0, y0, mx1, my1);
     mx0 = mx1; my0 = my1; x0 = x1; y0 = y1;
   }
-  c.lineWidth = penW(s, p[(n - 1) * 3 + 2]);
-  c.beginPath(); c.moveTo(mx0, my0); c.lineTo(x0, y0); c.stroke();
+  const wl = Math.round(penW(s, p[(n - 1) * 3 + 2]) * 32) / 32;
+  if (wl !== cw) { if (cw >= 0) c.stroke(); c.lineWidth = wl; c.beginPath(); c.moveTo(mx0, my0); }
+  c.lineTo(x0, y0); c.stroke();
 }
 function allStrokes() {
   const out = S.mine.map((s) => ({ s, layer: DEV }));
@@ -3695,12 +3702,40 @@ function drawInto(c, list, selected) {
     else drawStroke(c, r.s);
   }
 }
+/* a cheap fingerprint of every line on the page: how many, and where each starts and how long it is */
+function layerSame(a, b) { if (a.length !== b.length) return false; for (let i = 0; i < a.length; i++) { const x = a[i], y = b[i]; if (x.id !== y.id || x.c !== y.c || x.w !== y.w) return false; const p = x.p, q = y.p; if (p.length !== q.length || p[0] !== q[0] || p[1] !== q[1] || p[p.length - 2] !== q[q.length - 2] || p[p.length - 3] !== q[q.length - 3]) return false; } return true; }
+function inkSig() { let a = 0, b = 0, n = 0; for (const r of allStrokes()) { const p = r.s.p; n++; a = (a * 31 + p.length + (p[0] | 0)) % 2147483647; b = (b * 17 + (p[1] | 0) + (p[p.length - 2] | 0) + (r.s.c ? r.s.c.length : 0)) % 2147483647; } return n + ':' + a + ':' + b + ':' + S.pid; }
+/* a page full of handwriting is drawn a slice at a time (about 8 ms of each frame) when it opens, so turning pages and
+   scrolling never freeze while the lines are painted; the picture is exactly what drawInk makes */
+function drawInkSoon() {
+  const list = allStrokes();
+  if (list.length < 120 || S.sel) { drawInk(); return; }
+  const gen = ++S.inkGen, c = cInk.getContext('2d'), sig = inkSig();
+  c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, cInk.width, cInk.height);
+  /* a picture of this page drawn earlier (the continuous view keeps one) shows at once while the lines are painted */
+  const pk = PEEKS.get(S.pid); if (pk && pk.nodes && pk.nodes[0] && pk.dims && pk.dims[0] === W && pk.dims[1] === H) { try { c.drawImage(pk.nodes[0], 0, 0, cInk.width, cInk.height); } catch (e) { /* lines come anyway */ } }
+  const order = list.filter((r) => r.s.k === 'h').concat(list.filter((r) => r.s.k !== 'h'));
+  let i = 0, first = true;
+  const step = () => {
+    if (gen !== S.inkGen) return;
+    if (first) { first = false; c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, cInk.width, cInk.height); }
+    c.setTransform(S.res, 0, 0, S.res, 0, 0);
+    const t0 = performance.now();
+    while (i < order.length && performance.now() - t0 < 8) drawStroke(c, order[i++].s);
+    if (i < order.length) { requestAnimationFrame(step); return; }
+    S.inkSigDrawn = sig; if (typeof refreshCurThumb === 'function') refreshCurThumb();
+    if (cSharp && (!cSharp.hidden || S.zoom > 1.2)) drawSharp();
+  };
+  requestAnimationFrame(step);
+}
 function drawInk() {
+  S.inkGen = (S.inkGen || 0) + 1;
   if (typeof refreshCurThumb === 'function') refreshCurThumb();
   const c = cInk.getContext('2d');
   c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, cInk.width, cInk.height);
   c.setTransform(S.res, 0, 0, S.res, 0, 0);
   drawInto(c, allStrokes(), S.sel ? new Set(S.sel.strokes.map((r) => r.id)) : null);
+  S.inkSigDrawn = inkSig();
   if (cSharp && (!cSharp.hidden || S.zoom > 1.2)) drawSharp();
 }
 const drawInkLater = debounce(() => drawInk(), 1500);
@@ -4856,7 +4891,9 @@ function onUp(e) {
   if (pt.mode === 'draw') {
     if (S.watchers || S.peersAny || liveOn()) emitInkDone(pt);
     /* a snapped shape keeps all its points: thinned to its corners, the smooth pen would round them off */
-    if (!pt.snapped) inkSimplify(pt.stroke); S.mine.push(pt.stroke); clearLive(); drawInk();
+    if (!pt.snapped) inkSimplify(pt.stroke); S.mine.push(pt.stroke); clearLive();
+    /* only the finished line is added to the page picture: redrawing the whole page after every stroke was the main delay */
+    if (pt.stroke.k === 'h' || S.sel) drawInk(); else { const c = cInk.getContext('2d'); c.setTransform(S.res, 0, 0, S.res, 0, 0); drawStroke(c, pt.stroke); S.inkSigDrawn = inkSig(); if (typeof refreshCurThumb === 'function') refreshCurThumb(); if (cSharp && (!cSharp.hidden || S.zoom > 1.2)) drawSharp(); }
     pushUndo({ t: 'add', stroke: pt.stroke }); saveMine(); diaryStroke(pt.stroke);
     if (S.convMode && S.autoConv && pt.stroke.k !== 'h') { S.autoQueue.add(pt.stroke.id); autoConvert(); }
   } else if (pt.mode === 'erase' && pt.snap && Object.keys(pt.snap).length) {
@@ -5773,7 +5810,7 @@ function pageFlip(pid) {
     const leaf = document.createElement('div'); leaf.className = 'pleaf ' + (b > a ? 'fwd' : 'back'); leaf.setAttribute('aria-hidden', 'true');
     leaf.style.left = pg.offsetLeft + 'px'; leaf.style.top = pg.offsetTop + 'px'; leaf.style.width = pg.offsetWidth + 'px'; leaf.style.height = pg.offsetHeight + 'px';
     /* the turning leaf is in motion: half the pixels are plenty and copy four times faster */
-    const c = document.createElement('canvas'); c.width = Math.round(bg.width / 2); c.height = Math.round(bg.height / 2); const x = c.getContext('2d');
+    const c = document.createElement('canvas'); c.width = Math.round(bg.width / 3); c.height = Math.round(bg.height / 3); const x = c.getContext('2d');
     x.drawImage(bg, 0, 0, c.width, c.height); if (ink.width) x.drawImage(ink, 0, 0, c.width, c.height);
     leaf.appendChild(c);
     const it = $('#items'); if (it) { const k = it.cloneNode(true); k.removeAttribute('id'); k.className = 'pleafitems'; k.style.cssText = it.style.cssText; k.querySelectorAll('[id]').forEach((n) => n.removeAttribute('id')); leaf.appendChild(k); }
@@ -5819,7 +5856,7 @@ function openPage(pid) {
         const rev = d.rev || 0;
         if (!S.ownLoaded && S.mine.length) { /* written on this page before its saved lines arrived (just moved onto it): keep both */ const have = new Set((d.strokes || []).map((x) => x.id)); S.mine = clone(d.strokes || []).concat(S.mine.filter((x) => !have.has(x.id))); S.myRev = rev; saveMine(); }
         else if (!S.ownLoaded || (!saveMine.pending() && !S.saving && rev > S.myRev)) { S.mine = clone(d.strokes || []); S.myRev = rev; }
-      } else others[d.id] = clone(d.strokes || []);
+      } else { const prev = S.others[d.id], nx = d.strokes || []; others[d.id] = prev && layerSame(prev, nx) ? prev : clone(nx); } /* an unchanged layer is not copied again */
     }
     S.ownLoaded = true;
     S.others = others;
@@ -5829,8 +5866,10 @@ function openPage(pid) {
       if (!S.sel.strokes.length && !S.sel.items.length) clearSel();
       else { S.sel.box = selBox(S.sel); drawSelBox(); showSelbar(); }
     }
-    /* the layers of a page arrive one after another just after turning to it: drawn once per frame, not once per layer */
-    if (!S.inkRaf) S.inkRaf = requestAnimationFrame(() => { S.inkRaf = 0; drawInk(); });
+    /* the layers of a page arrive one after another just after turning to it: drawn once per frame, not once per layer;
+       a save of this page coming back unchanged is not drawn again at all */
+    const isig = inkSig(); if (isig === S.inkSigDrawn) return;
+    if (!S.inkRaf) S.inkRaf = requestAnimationFrame(() => { S.inkRaf = 0; drawInkSoon(); });
   });
   hideLoading();
 }
@@ -22616,7 +22655,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793599498';
+const BUILD = '1793600822';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
@@ -23147,6 +23186,7 @@ function lzGlide() {
   if (!PV.lzRaf) { const loop = () => { PV.lzRaf = 0; drawPresentLive(); const M = PV.laser; if (M && performance.now() - M.at < M.gap) PV.lzRaf = requestAnimationFrame(loop); }; PV.lzRaf = requestAnimationFrame(loop); }
 }
 function drawPresentLive() {
+  if (cRemote.width <= 2) { if (!Object.keys(PV.ink).length && !PV.laser && !(PV.lzKept && PV.lzKept.list.length)) return; cRemote.width = Math.round(W * S.res); cRemote.height = Math.round(H * S.res); }
   const c = cRemote.getContext('2d');
   c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, cRemote.width, cRemote.height);
   c.setTransform(S.res, 0, 0, S.res, 0, 0);
