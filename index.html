@@ -19020,11 +19020,17 @@ async function rkLoadTeacher(code, force) {
 async function rkFromTeacher(ev, p) {
   if (!rkOn()) return true;
   if (!p || typeof p !== 'object') return false;
-  if (typeof p._s !== 'string') { if (!RK.tpub) await rkLoadTeacher(LIVE.code); return !RK.tpub; }
-  if (!RK.tpub) await rkLoadTeacher(LIVE.code, now() - RK.tload > 2000); /* at most one fetch every 2 s while the key is missing */
-  let ok = await rkCheck(RK.tpub, ev, p);
-  if (!ok && now() - RK.tload > 8000) { await rkLoadTeacher(LIVE.code, true); ok = await rkCheck(RK.tpub, ev, p); }
-  if (!ok || p._t < RK.tmax - 120000) return false;
+  /* fetching the key never holds up the pages: it runs on the side, and only the very first signed message waits for
+     it, at most a moment; while no key can be had, messages are taken as from a teacher on an older version */
+  if (typeof p._s !== 'string') { if (!RK.tpub) rkLoadTeacher(LIVE.code); return !RK.tpub; }
+  if (!RK.tpub) {
+    if (!RK.firstWait) RK.firstWait = Promise.race([rkLoadTeacher(LIVE.code, true), new Promise((r) => setTimeout(r, 1500))]);
+    await RK.firstWait;
+    if (!RK.tpub) { rkLoadTeacher(LIVE.code); return true; }
+  }
+  const ok = await rkCheck(RK.tpub, ev, p);
+  if (!ok) { rkLoadTeacher(LIVE.code); return false; } /* maybe a new key: look again on the side */
+  if (p._t < RK.tmax - 120000) return false;
   RK.tmax = Math.max(RK.tmax, p._t); return true;
 }
 /* learner: receive a teacher event only when it checks out, in the order it came */
@@ -22309,7 +22315,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793583004';
+const BUILD = '1793583665';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
