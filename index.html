@@ -6686,7 +6686,7 @@ async function generateRun(fromSel, more) {
       const kind = names[it.kind] ? it.kind : 'example';
       const q = { id: 'g' + uid(), t, ch, d: kind === 'mcq' ? 2 : 3, k: kind === 'example' ? 'ex' : '', q: '**' + names[kind] + '** ' + String(it.question).trim(), c: [], a: 0, ans: '', e: '', src: 'assist', kind };
       const opt = Array.isArray(it.options) ? it.options.map((x) => x.replace(/^\s*[กขคงabcdABCD][.)]\s*/, '').trim()).filter(Boolean) : [];
-      if (kind === 'mcq' && opt.length >= 2) { q.c = opt.slice(0, 4); const m = String(it.answer || '').match(/[กขคง]/); q.a = m ? Math.max(0, 'กขคง'.indexOf(m[0])) : 0; }
+      if (kind === 'mcq' && opt.length >= 2) { q.c = opt.slice(0, 4); const m = String(it.answer || '').match(/[กขคง]/); q.a = m ? Math.max(0, 'กขคง'.indexOf(m[0])) : 0; Object.assign(q, shuffleChoices(q)); }
       else q.ans = String(it.answer || '').trim();
       q.e = [String(it.solution || '').trim(), String(it.notes || '').trim()].filter(Boolean).join('\n\n');
       return q;
@@ -18970,6 +18970,9 @@ async function exAIFromPage() {
   } catch (e) { if (box()) box().innerHTML = '<div class="note err">' + esc(aiErr(e)) + '</div>'; }
 }
 async function exSaveSet(qs, title0) {
+  /* questions from the bank are stored with the right choice first: a set where every key is still ก is mixed here, in place,
+     so the page, the key and the saved set all show the same order */
+  { const mc = qs.filter((q) => q && Array.isArray(q.c) && q.c.length >= 2); if (mc.length >= 2 && mc.every((q) => !q.a)) for (const q of mc) Object.assign(q, shuffleChoices(q)); }
   const id = 's' + now().toString(36) + uid().slice(0, 3);
   const title = title0 ? String(title0).slice(0, 60) : 'ชุด ' + [...new Set(qs.map((q) => exChName(q.t, q.ch)))].slice(0, 2).join(' + ') + ' ' + new Date().toLocaleDateString(LOC, { day: 'numeric', month: 'short' });
   const set = { id, title, at: now(), nb: S.nid || null, qs: qs.map((q) => ({ id: q.id, t: q.t, ch: q.ch, d: q.d, k: q.k, q: q.q, c: q.c, a: q.a || 0, e: q.e || '', fig: q.fig || undefined, src: q.src, o: q.o, s: q.s, b: q.b, w: q.w, ans: q.ans || undefined, given: q.given || undefined, lab: q.lab || undefined, img: q.img || undefined })) };
@@ -20136,7 +20139,20 @@ function detectFromText(tx, track) {
   const sc = TOPIC_KW.map((kw, i) => [i, kw.reduce((n, w) => n + (tx.split(w.toLowerCase()).length - 1), 0)]).filter((x) => x[1] > 0).sort((a, b) => b[1] - a[1]).slice(0, 3);
   return sc.map(([i]) => (track === 'ijso' ? (IJSO_OF[i] != null ? IJSO_OF[i] : -1) : i)).filter((c, k, a) => c >= 0 && a.indexOf(c) === k);
 }
-function shuffleChoices(q) { const o = q.c.map((_, i) => i).sort(() => Math.random() - 0.5); return Object.assign({}, q, { c: o.map((i) => q.c[i]), a: o.indexOf(q.a || 0) }); }
+/* the choices are mixed so the key is not always the same letter; a choice that points at others ("ถูกทุกข้อ", "ก และ ข")
+   keeps its place, and numbers stay in order from small to large the way exams print them */
+const CH_FIXED = /ทุกข้อ|ไม่มีข้อ|ถูกทั้ง|ผิดทั้ง|ทั้งข้อ|ข้อ\s*[กขคง]\b|(^|[\s(])[กขคง]\s*(และ|หรือ|,)\s*[กขคง]|all of the above|none of the above/i;
+function chNum(s) { const m = String(s).replace(/[,\s]/g, '').replace(/\$|\\[a-z]+\{?|[{}]/gi, '').match(/^[-+]?\d*\.?\d+(e[-+]?\d+)?/i); return m ? parseFloat(m[0]) : NaN; }
+function shuffleChoices(q) {
+  if (!q || !Array.isArray(q.c) || q.c.length < 2) return q;
+  const n = q.c.length, free = q.c.map((c, i) => i).filter((i) => !CH_FIXED.test(String(q.c[i])));
+  const mixed = free.slice().sort(() => Math.random() - 0.5), o = q.c.map((_, i) => i);
+  free.forEach((pos, k) => { o[pos] = mixed[k]; });
+  const nums = q.c.map(chNum);
+  if (!free.length || free.length < n) { /* fixed choices stay where they are */ }
+  else if (nums.every((v) => isFinite(v)) && new Set(nums).size === n) o.sort((x, y) => nums[x] - nums[y]);
+  return Object.assign({}, q, { c: o.map((i) => q.c[i]), a: o.indexOf(q.a || 0) });
+}
 function pickByLevel(pool, n, level, order, have) {
   const lv = (q) => effLevel(q), out = (have || []).slice(), used = new Set(out.map((q) => q.id));
   const quota = level === 'mix' ? { 1: 0.4, 2: 0.4, 3: 0.2 } : { [{ easy: 1, mid: 2, hard: 3 }[level]]: 1 };
@@ -20636,7 +20652,7 @@ function brsRow(q, B, sync) {
   const putOne = async (typed) => {
     if (!S.page) { toast('เปิดหน้าสมุดที่จะวางโจทย์ก่อน', 2800); return; }
     $('#examSheet').hidden = true;
-    const res = await placeQuestions([q], null, typed ? { typed: true } : {});
+    const res = await placeQuestions([shuffleChoices(q)], null, typed ? { typed: true } : {});
     toast(placedMsg(res, 1) + ' เปิดแท็บเปิดดูและเลือกข้อใหม่เพื่อดึงข้อต่อไป', 3200);
   };
   const p1 = exEl('button', 'btn sm solid', q.img ? 'วางภาพข้อนี้ลงหน้า' : 'วางข้อนี้ลงหน้า'); p1.type = 'button'; p1.onclick = () => putOne(false); act.appendChild(p1);
@@ -20706,7 +20722,7 @@ function exRenderBrowse(body) {
   const mkb = (t, cls, fn) => { const b = exEl('button', 'btn ' + cls, t); b.type = 'button'; b.onclick = () => fn(b); btns.push(b); return b; };
   const sync = () => { const n = B.sel.size; cnt.textContent = n ? 'เลือกแล้ว ' + n + ' ข้อ' : 'ยังไม่ได้เลือกข้อ'; btns.forEach((b) => { b.disabled = !n; }); };
   const gate = (btn, go) => { const bad = picked().filter((q) => q.src === 'pdf' && !VER_OK.includes(brsState(q))); if (!bad.length) { go(); return; } popMenu(btn, 'มี ' + bad.length + ' ข้อจาก PDF ที่ยังไม่ได้ตรวจเฉลย จะส่งให้ผู้เรียนเลยไหม', [['ส่งต่อ', go], ['ยกเลิก', () => {}]]); };
-  const mkSet = async () => { const set = await exSaveSet(picked(), nm.value.trim() || null); setUse(set); return set; };
+  const mkSet = async () => { const set = await exSaveSet(picked().map(shuffleChoices), nm.value.trim() || null); setUse(set); return set; };
   bar.appendChild(cnt); bar.appendChild(nm);
   bar.appendChild(mkb('เก็บเป็นชุด เปิดสอนทีละข้อ', 'solid', async () => { const set = await mkSet(); $('#examSheet').hidden = true; TRAY.placed[set.id] = {}; openTray(set.id); }));
   bar.appendChild(mkb('วางลงหน้าเป็นใบงาน', '', async () => { const set = await mkSet(); $('#examSheet').hidden = true; const res = await placeQuestions(set.qs, null, { setId: set.id, header: '## ' + set.title }); toast(placedMsg(res, set.qs.length) + ' เฉลยดูได้จากแผงชุดโจทย์', 3200); }));
@@ -22742,7 +22758,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793606084';
+const BUILD = '1793609841';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
