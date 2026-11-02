@@ -528,6 +528,17 @@ body.fs-ios .dock { left: 96px; }
 .dock.vert > .grip, .dock.vert > #toolRow, .dock.vert > #recent, .dock.vert > #dockWidths, .dock.vert > .sep, .dock.vert > .fonly { grid-column: 1 / -1; }
 .dock.vert #toolRow, .dock.vert #recent, .dock.vert #dockWidths, body.focus .dock.vert .fonly:not(.sep) { display: grid !important; grid-template-columns: repeat(2, 46px); justify-items: center; align-items: center; gap: 2px; overflow: visible !important; max-width: none; touch-action: none; }
 .dock.vert #toolRow[hidden] { display: none !important; }
+/* full screen is for writing: the writing tools always show whole (the laser and the hand never scroll out of sight);
+   inserting, converting, making questions and the page list wait outside full screen; when space is short the row
+   of colours gives way first, then the widths */
+body.focus #fqInsert, body.focus #fqConvert, body.focus #fqAI, body.focus #fqPages { display: none !important; }
+@media (min-width: 701px) {
+  .dock:not(.vert):not(.mini) > #toolRow { flex: 0 0 auto !important; overflow: visible !important; }
+  .dock:not(.vert) > #recent { flex: 0 1 auto; min-width: 112px; overflow: hidden; }
+}
+/* a narrower screen: the three quick line widths step aside (the width button stays), so colours keep their room */
+@media (min-width: 701px) and (max-width: 1000px) { .dock:not(.vert):not(.mini) > #dockWidths { display: none !important; } }
+@media (min-width: 701px) and (max-width: 900px) { body.focus .dock:not(.vert) .tool, body.focus .dock:not(.vert) .curc { width: 38px; min-width: 38px; } body.focus .dock:not(.vert) > #recent { min-width: 76px; } }
 /* the way out of full screen is the one button at the top right (#bExitFull), not in the toolbar under the hand */
 body.focus #fqExit, #fqExit { display: none !important; }
 .dock.vert.mini #toolRow { grid-template-columns: 46px; }
@@ -8195,7 +8206,7 @@ function renderTools() {
   S.recent.forEach((c, i) => { const b = mkSw(c, 'rsw', null); b.dataset.i = i; b.title = colorName(c) + ' : ลากเพื่อย้ายตำแหน่ง กดค้างเพื่อเอาออก';
     dragItem(b, { items: () => [...rc.querySelectorAll('.rsw')], onMove: (from, to) => { S.recent = moveIn(S.recent, from, to); store_ls.set('tp-recent', JSON.stringify(S.recent)); renderTools(); }, onTap: () => useColor(c, false), tapOnDown: true, holdMs: 650,
       onHold: () => popMenu(b, colorName(c), [['เอาสีนี้ออกจากแถบ', () => { if (S.recent.length > 1) { S.recent = S.recent.filter((_, k) => k !== i); store_ls.set('tp-recent', JSON.stringify(S.recent)); renderTools(); } }]]) });
-    rc.appendChild(b); }); }
+    rc.appendChild(b); }); requestAnimationFrame(() => { try { fitRecent(); } catch (e) { /* later */ } }); }
   const sw = $('#swatches');
   if (sw._sig === 'p') markActive(sw); else { sw._sig = 'p'; sw.innerHTML = ''; for (const [c] of PALETTE) sw.appendChild(mkSw(c, 'sw', () => { useColor(c, true); closePops(); })); }
   const mine = $('#mine'), msig = S.myColors.join(',');
@@ -22603,7 +22614,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793598697';
+const BUILD = '1793599031';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
@@ -23401,7 +23412,15 @@ function dockRefit() { dockTight(); try { const p = JSON.parse(store_ls.get('tp-
 function dockMin(on) { closePops(); $('#dock').classList.toggle('mini', on); store_ls.set('tp-dockmin', on ? '1' : '0'); $('#dockMin').setAttribute('aria-pressed', on ? 'true' : 'false'); $('#dockMin').setAttribute('aria-label', on ? 'กางแถบเครื่องมือ' : 'ย่อแถบเครื่องมือ'); requestAnimationFrame(dockRefit); }
 /* dragged against the left or right side of the page the tool bar stands upright along it; dragged back toward the middle it lies flat again */
 /* on a short screen the upright bar drops its quick width row, then its quick colours (both still in the pickers) */
+/* colours that do not fit are left out whole, never shown cut in half */
+function fitRecent() {
+  const rc = $('#recent'), d = $('#dock'); if (!rc || !d) return;
+  const sw = [...rc.querySelectorAll('.rsw')]; sw.forEach((x) => { x.style.display = ''; });
+  if (d.classList.contains('vert')) return;
+  for (let i = sw.length - 1; i >= 1 && rc.scrollWidth > rc.clientWidth + 1; i--) sw[i].style.display = 'none';
+}
 function dockTight() {
+  requestAnimationFrame(fitRecent);
   const d = $('#dock'); d.classList.remove('tight', 'tighter'); if (!d.classList.contains('vert')) return;
   const room = vp.clientHeight - 12; if (room < 200) return;
   if (d.offsetHeight > room) d.classList.add('tight');
