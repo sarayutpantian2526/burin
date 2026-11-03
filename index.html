@@ -1879,7 +1879,7 @@ body.role-student .scnpill .sbtns button[data-s="back"], body.role-student .scnp
       </div>
       <div class="toast no-ink" id="toast" hidden></div>
       <div class="peekcard no-ink" id="peekCard" hidden></div>
-      <div class="livepill no-ink mini" id="livePill" hidden><button id="lpDot" class="lpdot" type="button" aria-expanded="false" aria-label="แสดงคำสั่งห้องเรียน"><i></i><span id="lpMsg"></span></button><button id="lpFollow" aria-pressed="true">ตามผู้สอน</button><button id="lpQuiz">แบบฝึก</button><button id="lpHw" hidden>การบ้าน</button><button id="lpPull">ดึงทุกหน้า</button><button id="lpLeave">ออก</button></div>
+      <div class="livepill no-ink mini" id="livePill" hidden><button id="lpDot" class="lpdot" type="button" aria-expanded="false" aria-label="แสดงคำสั่งห้องเรียน"><i></i><span id="lpMsg"></span></button><button id="lpFollow" aria-pressed="false">ตามผู้สอน</button><button id="lpQuiz">แบบฝึก</button><button id="lpHw" hidden>การบ้าน</button><button id="lpPull">ดึงทุกหน้า</button><button id="lpLeave">ออก</button></div>
       <input type="file" id="fImg" accept="image/*" hidden>
       <input type="file" id="fPdf" accept="application/pdf,.pdf" hidden>
       <input type="file" id="fVid" accept="video/mp4,video/webm,video/quicktime,video/*" hidden>
@@ -19292,7 +19292,7 @@ async function liveSendAll() {
   liveSendPageNow(true);
 }
 /* ---------- live class: students follow the lecture on their own device, keep their own notes, answer the same exercises ---------- */
-const LIVE = { streamed: new Set(), sig: '', ch: null, code: null, role: null, peers: [], follow: store_ls.get('tp-follow') !== '0', set: null, ans: {}, revealed: false, parts: {}, signed: new Map(), sid: store_ls.get('tp-sid') || ('s' + uid()), name: store_ls.get('tp-sname') || '' };
+const LIVE = { streamed: new Set(), sig: '', ch: null, code: null, role: null, peers: [], follow: store_ls.get('tp-follow2') === '1' /* learners keep their own page unless they turn following on */, set: null, ans: {}, revealed: false, parts: {}, signed: new Map(), sid: store_ls.get('tp-sid') || ('s' + uid()), name: store_ls.get('tp-sname') || '' };
 store_ls.set('tp-sid', LIVE.sid);
 const CODE_ABC = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const newCode = () => Array.from({ length: 6 }, () => CODE_ABC[Math.floor(Math.random() * CODE_ABC.length)]).join('');
@@ -19892,7 +19892,8 @@ function lpFold(on) { const p = $('#livePill'); p.classList.toggle('mini', on); 
 $('#lpDot').onclick = () => lpFold(!$('#livePill').classList.contains('mini'));
 ['#lpFollow', '#lpQuiz', '#lpPull'].forEach((q) => $(q).addEventListener('click', () => lpFold(true)));
 $('#lpHw').onclick = (e) => { const L = LIVE.hwList || []; if (!L.length) return; popMenu(e.currentTarget, 'การบ้านของห้องนี้', L.map((a) => [a.title + (a.due ? ' (ส่ง ' + new Date(a.due).toLocaleDateString(LOC, { day: 'numeric', month: 'short' }) + ')' : ''), () => { const w = window.open(hwLink(a.id), '_blank'); if (!w) location.href = hwLink(a.id); }])); };
-function liveStudentPill(msg) { $('#lpMsg').textContent = 'ห้อง ' + LIVE.code + (/^(เชื่อมต่อแล้ว|กำลังเชื่อมต่อ)$/.test(msg) ? '' : ' ' + msg); $('#lpDot').title = 'ห้อง ' + LIVE.code + ' ' + msg; $('#livePill').dataset.s = /เชื่อมต่อแล้ว/.test(msg) ? 'on' : 'wait'; $('#lpFollow').setAttribute('aria-pressed', LIVE.follow ? 'true' : 'false'); }
+function liveStudentPill(msg) {
+  { const f = $('#lpFollow'); if (f) f.setAttribute('aria-pressed', LIVE.follow ? 'true' : 'false'); } $('#lpMsg').textContent = 'ห้อง ' + LIVE.code + (/^(เชื่อมต่อแล้ว|กำลังเชื่อมต่อ)$/.test(msg) ? '' : ' ' + msg); $('#lpDot').title = 'ห้อง ' + LIVE.code + ' ' + msg; $('#livePill').dataset.s = /เชื่อมต่อแล้ว/.test(msg) ? 'on' : 'wait'; $('#lpFollow').setAttribute('aria-pressed', LIVE.follow ? 'true' : 'false'); }
 /* ----- learner side of version 2 ----- */
 const lpidOf = (tpid) => 'T' + String(tpid || '').replace(/[^A-Za-z0-9]/g, '');
 /* the learner's copy of the teacher's lines on a page: on screen when that page is open, else from the notebook */
@@ -20007,8 +20008,9 @@ async function studentApplyNow(tpid) {
 /* following the teacher means turning when the teacher turns: the same page sent again (after every save, or to fill in
    something missing) never pulls a learner back from a page they went to themselves, and never in the middle of writing */
 function stuFollow(lpid) {
-  const turned = LIVE.cur !== lpid; LIVE.cur = lpid;
-  if (!LIVE.follow || !turned || S.pid === lpid) return;
+  /* on joining, the learner is put on the teacher's page once; after that the page changes only with "ตามผู้สอน" on */
+  const first = !LIVE.cur || !String(S.pid || '').startsWith('T'), turned = LIVE.cur !== lpid; LIVE.cur = lpid;
+  if (!(first || (LIVE.follow && turned)) || S.pid === lpid) return;
   const go = () => { if (LIVE.cur !== lpid || S.pid === lpid) return; if (penBusy() || now() - (S.lastPen || 0) < 900) { setTimeout(go, 500); return; } openPage(lpid); };
   go();
 }
@@ -22936,7 +22938,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793674423';
+const BUILD = '1793674774';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
@@ -23298,7 +23300,7 @@ $('#lpLeave').onclick = () => { if (S.student) { toast('ปิดหน้าน
 document.querySelectorAll('#roleSeg button').forEach((b) => { b.onclick = () => setRole(b.dataset.r); });
 $('#jName').onkeydown = (e) => { if (e.key === 'Enter') $('#jGo').click(); };
 $('#sqHide').onclick = () => { $('#sqSheet').hidden = true; };
-$('#lpFollow').onclick = () => { LIVE.follow = !LIVE.follow; store_ls.set('tp-follow', LIVE.follow ? '1' : '0'); $('#lpFollow').setAttribute('aria-pressed', LIVE.follow ? 'true' : 'false'); if (LIVE.follow && LIVE.cur && S.pid !== LIVE.cur) openPage(LIVE.cur); };
+$('#lpFollow').onclick = () => { LIVE.follow = !LIVE.follow; store_ls.set('tp-follow2', LIVE.follow ? '1' : '0'); $('#lpFollow').setAttribute('aria-pressed', LIVE.follow ? 'true' : 'false'); if (LIVE.follow && LIVE.cur && S.pid !== LIVE.cur) openPage(LIVE.cur); };
 $('#lpQuiz').onclick = () => { if (LIVE.quiz) { renderStudentQuiz(); $('#sqSheet').hidden = false; } else toast('ยังไม่มีแบบฝึกจากผู้สอน', 1600); };
 $('#exClose').onclick = () => { $('#examSheet').hidden = true; exMiniSync(); };
 $('#emOpen').onclick = () => { $('#examSheet').hidden = false; $('#exMini').hidden = true; exRender(); };
