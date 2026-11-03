@@ -602,12 +602,12 @@ body.tv .grip { height: 68px; width: 32px; }
 #tabMenu button { min-height: 44px; text-align: left; padding: 0 12px; border: 0; border-radius: 10px; background: transparent; cursor: pointer; font-size: 14px; }
 #tabMenu button:hover { background: var(--surface-2); }
 #tabMenu .askrow { display: flex; gap: 6px; align-items: center; padding: 2px 6px 6px; }
-#tabMenu .askname { flex: 1 1 auto; min-width: 0; width: 200px; height: 40px; box-sizing: border-box; padding: 0 10px; font: inherit; font-size: 15px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--fg); }
+#tabMenu .askname { flex: 1 1 200px; min-width: 150px; width: 200px; height: 40px; box-sizing: border-box; padding: 0 10px; font: inherit; font-size: 15px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--fg); }
 #tabMenu .askrow .btn { flex: none; min-height: 40px; padding: 0 14px; text-align: center; }
 #tabMenu .askrow .btn.solid, #tabMenu .askrow .btn.solid:hover { background: var(--accent); color: var(--accent-fg); font-weight: 600; }
 #tabMenu.tight { min-width: 190px; padding: 4px; gap: 0; }
-#tabMenu.tight button { min-height: 40px; font-size: 14px; white-space: nowrap; width: 100%; }
-#tabMenu.tight button.sep { margin-top: 4px; border-top: 1px solid var(--line); border-radius: 0 0 10px 10px; }
+#tabMenu.tight > button { min-height: 40px; font-size: 14px; white-space: nowrap; width: 100%; }
+#tabMenu.tight > button.sep { margin-top: 4px; border-top: 1px solid var(--line); border-radius: 0 0 10px 10px; }
 #tabMenu.cards { width: 360px; max-width: calc(100vw - 16px); padding: 8px; gap: 6px; }
 #tabMenu.cards > b { white-space: normal; max-width: none; font-size: 15px; padding: 6px 8px 2px; }
 #tabMenu > p.mnote { margin: 0 8px 6px; font-size: 13px; color: var(--muted); line-height: 1.5; }
@@ -8131,7 +8131,7 @@ function folderEl(f, n) {
   d.style.color = f.color || FOLDER_COLORS[0]; d.querySelector('b').textContent = n; return d;
 }
 function askName(anchor, title, value, cb) {
-  const m = $('#tabMenu'); m.innerHTML = '';
+  const m = $('#tabMenu'); m.innerHTML = ''; m.className = ''; /* no style left over from the menu shown before */
   const t = document.createElement('b'); t.textContent = title; m.appendChild(t);
   /* one line to type the name and a save button beside it (the search box style made the field grow tall in the menu) */
   const row = document.createElement('div'); row.className = 'askrow'; m.appendChild(row);
@@ -22993,7 +22993,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793685108';
+const BUILD = '1793685290';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
