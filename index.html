@@ -1249,6 +1249,8 @@ body.present .peekcard { display: none !important; }
 .xmch > span { line-height: 1.35; }
 .xmch b { font-weight: 600; }
 .pqsel { display: inline-flex; align-items: center; gap: 8px; margin: 0 14px 0 0; font-size: 14px; }
+.xmratio { display: flex; flex-wrap: wrap; gap: 8px 4px; align-items: center; }
+.xmratiot { flex-basis: 100%; margin-top: 4px; }
 .exrow > .label small { display: block; font-weight: 400; margin-top: 2px; }
 .exrow > .chips, .exrow > .note, .exrow > div { grid-column: 2; }
 .exrow .chip { white-space: nowrap; }
@@ -21019,7 +21021,12 @@ function exRenderExam(body) {
     row.appendChild(num(X.ch[c] || 0, 0, Math.min(60, my.length), 1, (v) => { X.ch[c] = v; X.built = null; })); cw.appendChild(row);
   }
   cr.appendChild(cw); cr.appendChild(tot);
-  const rr = rw('สัดส่วนความยาก ง่าย : กลาง : ยาก *'); ['ง่าย', 'กลาง', 'ยาก'].forEach((n, k) => { const l = exEl('label', 'pqsel'); l.appendChild(exEl('span', '', n)); l.appendChild(num(X.ratio[k], 0, 20, 1, (v) => { X.ratio[k] = v; X.built = null; })); rr.appendChild(l); });
+  /* a ratio, not a number of questions: each box says "ส่วน", and the line under it shows what the ratio becomes
+     (the share of the exam, and the questions it gives for the chapters chosen above) */
+  const rr = rw('สัดส่วนความยาก *'); rr.querySelector('.label').innerHTML = 'สัดส่วนความยาก *<small>เป็นสัดส่วน ไม่ใช่จำนวนข้อ</small>';
+  const rbox = exEl('div', 'xmratio'); rr.appendChild(rbox);
+  ['ง่าย', 'กลาง', 'ยาก'].forEach((n, k) => { const l = exEl('label', 'pqsel'); l.appendChild(exEl('span', '', n)); l.appendChild(num(X.ratio[k], 0, 20, 1, (v) => { X.ratio[k] = v; X.built = null; })); l.appendChild(exEl('span', '', 'ส่วน')); rbox.appendChild(l); });
+  const rnote = exEl('div', 'note small xmratiot', ''); rbox.appendChild(rnote);
   exChips(rw('ระดับประยุกต์ขึ้นไปอย่างน้อย', 'exlist'), [[0, 'ไม่กำหนด'], [30, 'ร้อยละ 30'], [50, 'ร้อยละ 50']], (v) => v === X.apply, (v) => { X.apply = v; X.built = null; exRender(); });
   exChips(rw('อำนาจจำแนก D ขั้นต่ำ', 'exlist'), [[0, 'ไม่กำหนด'], [0.2, '0.20 ขึ้นไป'], [0.3, '0.30 ขึ้นไป']], (v) => v === X.minD, (v) => { X.minD = v; X.built = null; exRender(); });
   exChips(rw('ข้อที่ยังไม่มีข้อมูลจากห้อง ใช้ได้ไม่เกิน', 'exlist'), [[100, 'ทั้งหมด'], [50, 'ครึ่งหนึ่ง'], [25, 'หนึ่งในสี่'], [0, 'ไม่ใช้เลย']], (v) => v === X.uncal, (v) => { X.uncal = v; X.built = null; exRender(); });
@@ -21031,7 +21038,8 @@ function exRenderExam(body) {
   let go = null;
   const upd = () => {
     const N = Object.values(X.ch).reduce((a, b) => a + (b || 0), 0), r = X.ratio, al = xmAlloc(N, r), m = xmMissing(), mins = Math.ceil(al[0] * XM_MIN[1] + al[1] * XM_MIN[2] + al[2] * XM_MIN[3]);
-    tot.innerHTML = 'รวม ' + N + ' ข้อ แบ่งเป็นง่าย ' + al[0] + ' กลาง ' + al[1] + ' ยาก ' + al[2]; sugT.textContent = N ? 'ควรใช้ราว ' + mins + ' นาที' : '';
+    tot.innerHTML = 'รวม ' + N + ' ข้อ แบ่งเป็นง่าย ' + al[0] + ' กลาง ' + al[1] + ' ยาก ' + al[2];
+    { const rs = r[0] + r[1] + r[2], pc = (k) => Math.round(r[k] / rs * 100); rnote.textContent = !rs ? 'ใส่อย่างน้อยหนึ่งช่อง' : 'คิดเป็นง่าย ' + pc(0) + '% กลาง ' + pc(1) + '% ยาก ' + pc(2) + '% ของข้อสอบ' + (N ? ' ข้อสอบ ' + N + ' ข้อ จึงได้ง่าย ' + al[0] + ' กลาง ' + al[1] + ' ยาก ' + al[2] + ' ข้อ' : ' จำนวนข้อจริงขึ้นกับจำนวนข้อของบทที่ใส่ไว้ด้านบน'); } sugT.textContent = N ? 'ควรใช้ราว ' + mins + ' นาที' : '';
     sug.onclick = () => { X.minutes = mins; exRender(); };
     miss.hidden = !m.length; miss.textContent = 'ยังต้องระบุ: ' + m.join(', '); if (go) go.disabled = !!m.length;
   };
@@ -22824,7 +22832,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793666407';
+const BUILD = '1793667374';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
