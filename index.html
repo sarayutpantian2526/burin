@@ -20669,7 +20669,7 @@ async function openPdfFile(file) {
   } catch (e) { toast(/password/i.test(String(e && e.name)) ? 'PDF นี้มีรหัสผ่าน ปลดรหัสก่อนแล้วนำเข้าใหม่' : 'เปิด PDF ไม่ได้ ไฟล์อาจเสียหาย', 4000); return; }
   const n = PDFI.doc.numPages;
   $('#pdfInfo').textContent = PDFI.name + ' มี ' + n + ' หน้า';
-  $('#pdfFrom').max = $('#pdfTo').max = n; $('#pdfFrom').value = 1; $('#pdfTo').value = Math.min(n, 20);
+  $('#pdfFrom').max = $('#pdfTo').max = n; $('#pdfFrom').value = 1; $('#pdfTo').value = Math.min(n, PDF_MAX); /* the whole file by default */
   pdfRangeUI();
   $('#pdfMsg').innerHTML = ''; $('#pdfHere').disabled = $('#pdfNew').disabled = $('#pdfSplit').disabled = false; $('#pdfSheet .panel').classList.remove('wide');
   $('#toast').hidden = true; $('#pdfSheet').hidden = false;
@@ -20680,8 +20680,8 @@ function pdfRangeUI() {
   const doc = PDFI.doc, box = $('#pdfRange'); if (!doc || !box) return;
   const n = doc.numPages; box.innerHTML = '';
   const chips = exEl('div', 'chips pdfchips');
+  if (n > 20) { const c = exEl('button', 'chip', 'ทั้งเล่ม ' + n + ' หน้า'); c.type = 'button'; c.onclick = () => { $('#pdfFrom').value = 1; $('#pdfTo').value = Math.min(n, PDF_MAX); paint(); }; chips.appendChild(c); }
   for (let a = 1; a <= n; a += 20) { const b = Math.min(n, a + 19), c = exEl('button', 'chip', 'หน้า ' + a + ' ถึง ' + b); c.type = 'button'; c.onclick = () => { $('#pdfFrom').value = a; $('#pdfTo').value = b; paint(); const el = strip.querySelector('[data-n="' + a + '"]'); if (el) strip.scrollLeft = el.offsetLeft - strip.offsetLeft; }; chips.appendChild(c); }
-  if (n > 20) { const c = exEl('button', 'chip', 'ทั้งเล่ม ' + n + ' หน้า'); c.type = 'button'; c.onclick = () => { $('#pdfFrom').value = 1; $('#pdfTo').value = n; paint(); }; chips.appendChild(c); }
   box.appendChild(chips);
   const info = exEl('div', 'note small pdfsel'); box.appendChild(info);
   const strip = exEl('div', 'pdfstrip'); box.appendChild(strip);
@@ -20710,18 +20710,22 @@ function pdfRangeUI() {
   }
   paint();
 }
+const PDF_MAX = 600; /* pages brought in at one time; a long book comes in page by page, with a way to stop */
 async function pdfImport(newNb) {
   const doc = PDFI.doc; if (!doc) return;
-  const a = clamp(parseInt($('#pdfFrom').value, 10) || 1, 1, doc.numPages), b = clamp(parseInt($('#pdfTo').value, 10) || a, a, Math.min(doc.numPages, a + 59));
+  const a = clamp(parseInt($('#pdfFrom').value, 10) || 1, 1, doc.numPages), b = clamp(parseInt($('#pdfTo').value, 10) || a, a, Math.min(doc.numPages, a + PDF_MAX - 1));
   const A = await getAssets(); $('#pdfHere').disabled = $('#pdfNew').disabled = true;
-  const msg = (t) => { $('#pdfMsg').innerHTML = '<div class="note">' + esc(t) + '</div>'; };
+  PDFI.stop = false;
+  const msg = (t) => { $('#pdfMsg').innerHTML = '<div class="note">' + esc(t) + ' <button class="btn sm" type="button" id="pdfStop">หยุด</button></div>'; const st = $('#pdfStop'); if (st) st.onclick = () => { PDFI.stop = true; st.disabled = true; st.textContent = 'กำลังหยุด'; }; };
   try {
     let nid = S.nid, pages, at, firstSpare = null;
     if (newNb) { nid = await createNotebook(PDFI.name, (S.nb && S.nb.level) || 'mp'); const nb = await S.store.get('notebooks/' + nid); pages = []; firstSpare = (nb.pages || [])[0]; at = -1; }
     else { pages = ((S.nb && S.nb.pages) || []).slice(); at = pages.indexOf(S.pid); }
     let firstPid = null;
+    let last = b;
     for (let i = a; i <= b; i++) {
-      msg('กำลังนำเข้าหน้า ' + i + ' จาก ' + b);
+      if (PDFI.stop) { last = i - 1; break; }
+      msg('กำลังนำเข้าหน้า ' + i + ' จาก ' + b + ' (เสร็จแล้ว ' + (i - a) + ' หน้า)');
       const pg = await doc.getPage(i), v1 = pg.getViewport({ scale: 1 }), sc = Math.min(3, 1600 / v1.width), vw = pg.getViewport({ scale: sc });
       const cv = document.createElement('canvas'); cv.width = Math.round(vw.width); cv.height = Math.round(vw.height);
       const c = cv.getContext('2d'); c.fillStyle = '#FFFFFF'; c.fillRect(0, 0, cv.width, cv.height);
@@ -20739,10 +20743,12 @@ async function pdfImport(newNb) {
       await S.store.set('pages/' + pid, { nb: nid, paper: 'blank', items: [Object.assign({ id: 'i' + uid(), by: DEV, type: 'img', asset: up.id, x: Math.round((W - w) / 2), y: 0, w, ar: Math.round(ar * 1000) / 1000, lock: true }, tb.length ? { tb } : {})], rev: now() });
       pages.splice(++at, 0, pid);
       if (newNb || i === b || (i - a) % 5 === 4) await S.store.update('notebooks/' + nid, { pages: pages.slice(), updatedAt: now() });
+      if (i % 10 === 0) await new Promise((r) => setTimeout(r, 0)); /* the screen stays responsive through a long book */
     }
     $('#pdfSheet').hidden = true; PDFI.doc = null;
     if (newNb) openNotebook(nid, firstPid); else { S.nb = Object.assign({}, S.nb, { pages }); openPage(firstPid); renderPageList(); renderTitle(); }
-    toast('นำเข้า ' + (b - a + 1) + ' หน้าแล้ว เขียนทับได้เลย', 3000);
+    await S.store.update('notebooks/' + nid, { pages: pages.slice(), updatedAt: now() }).catch(() => {});
+    toast('นำเข้า ' + Math.max(0, last - a + 1) + ' หน้าแล้ว เขียนทับได้เลย', 3000);
   } catch (e) { $('#pdfMsg').innerHTML = '<div class="note err">นำเข้าไม่สำเร็จ ' + esc(assetErr(e)) + '</div>'; $('#pdfHere').disabled = $('#pdfNew').disabled = false; }
 }
 
@@ -23266,7 +23272,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793690964';
+const BUILD = '1793691339';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
