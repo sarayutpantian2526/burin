@@ -194,7 +194,9 @@ body.flow:not(.flowlast) #bAddBelow { display: none; }
 #page > canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 #page > #cSharp { inset: auto; pointer-events: none; }
 #page > #cSharp[hidden] { display: none; }
-#items { position: absolute; left: 0; top: 0; width: 1000px; height: 1414px; transform-origin: 0 0; pointer-events: none; }
+#items, #itemsBg { position: absolute; left: 0; top: 0; width: 1000px; height: 1414px; transform-origin: 0 0; pointer-events: none; }
+/* a page picture (an imported PDF page) lies on the paper, under the writing: ink drawn on it shows on top */
+#itemsBg .item { pointer-events: none !important; }
 .pleaf { position: absolute; z-index: 4; background: #FFFFFF; border-radius: 4px; overflow: hidden; pointer-events: none; backface-visibility: hidden; box-shadow: 0 10px 34px rgba(20, 26, 34, 0.18); will-change: transform; }
 .pleaf canvas { position: absolute; left: 0; top: 0; width: 100%; height: 100%; }
 .pleaf .pleafitems { position: absolute; left: 0; top: 0; width: 1000px; height: 1414px; transform-origin: 0 0; }
@@ -229,7 +231,10 @@ body.showscr #livePill, body.showscr #presentExit, body.showscr .exitfull, body.
 .item mjx-container { display: inline-block; }
 .item { overflow-wrap: break-word; word-break: normal; line-break: auto; hyphens: manual; }
 .item .mh { display: block; font-weight: 700; font-size: 1.15em; margin: 0.1em 0 0.3em; }
-.item .chrow { display: flex; flex-wrap: wrap; gap: 0.2em 1.6em; margin: 0.15em 0 0.2em 1.4em; }
+.item .chrow { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.15em 1.4em; margin: 0.15em 0 0.2em 1.4em; }
+.item .chrow.c4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.item .chrow.c1 { grid-template-columns: minmax(0, 1fr); }
+.item .chrow .ch { padding-left: 1.4em; text-indent: -1.4em; } /* a long choice wraps under its own text, not under its letter */
 .item .ch { display: inline-block; max-width: 100%; }
 /* handles keep the same small size on screen at any zoom: --hk undoes the page scale */
 .item .tgrab { position: absolute; left: calc(-14px * var(--hk, 1)); top: calc(-14px * var(--hk, 1)); width: calc(26px * var(--hk, 1)); height: calc(26px * var(--hk, 1)); border-radius: 999px; border: 1px solid #C9D2E3; background: rgba(255,255,255,0.92); color: #5F6F94; display: grid; place-items: center; pointer-events: auto; cursor: grab; padding: 0; opacity: 0.75; touch-action: none; z-index: 2; }
@@ -1765,6 +1770,7 @@ body.role-student .scnpill .sbtns button[data-s="back"], body.role-student .scnp
         <div class="fpeek" id="peekPrev" hidden aria-hidden="true"></div>
         <div id="page">
           <canvas id="cBg" aria-hidden="true"></canvas>
+          <div id="itemsBg" aria-hidden="true"></div>
           <canvas id="cInk" role="img" aria-label="ลายมือในหน้านี้"></canvas>
           <canvas id="cSharp" aria-hidden="true" hidden></canvas>
           <canvas id="cRemote" width="1" height="1" aria-hidden="true"></canvas>
@@ -2443,7 +2449,11 @@ function mdLine(line) {
     h = h.replace(/(\d)\s+(?=(?:[a-zA-Zμ°Ω]|\$\\[a-z]))/g, '$1\u00a0').replace(/(^|\s)([กขคง]\.)\s+/g, '$1$2\u00a0');
     if (/^##\s+/.test(line)) return '<span class="mh">' + h.replace(/^##\s+/, '') + '</span>';
     const parts = line.split(CHOICE_SEP);
-    if (parts.length >= 2 && parts.every((x) => /^\s*[กขคงABCD]\.\s/.test(x))) return '<span class="chrow">' + h.split(CHOICE_SEP).map((x) => '<span class="ch">' + x.trim() + '</span>').join('') + '</span>';
+    if (parts.length >= 2 && parts.every((x) => /^\s*[กขคงABCD]\.\s/.test(x))) {
+      /* laid out as on a printed exam: four across when all are short, two across (ก ข, then ค ง) when medium, one per line when long */
+      const mx = Math.max(...parts.map((x) => chLen(x.replace(/^\s*[กขคงABCD]\.\s*/, '')))), cols = mx <= 14 && parts.length === 4 ? 'c4' : mx <= 34 ? 'c2' : 'c1';
+      return '<span class="chrow ' + cols + '">' + h.split(CHOICE_SEP).map((x) => '<span class="ch">' + x.trim() + '</span>').join('') + '</span>';
+    }
     return h;
   })[0];
 }
@@ -3311,6 +3321,9 @@ const S = {
 
 /* ---------- elements ---------- */
 const vp = $('#viewport'), wrapEl = $('#wrap'), pageEl = $('#page');
+const itemsBgEl = $('#itemsBg');
+const isBgItem = (it) => !!(it && it.lock && it.type === 'img');
+function itemElOf(id) { return itemsEl.querySelector('[data-id="' + id + '"]') || itemsBgEl.querySelector('[data-id="' + id + '"]'); }
 const cBg = $('#cBg'), cInk = $('#cInk'), cLive = $('#cLive'), cRemote = $('#cRemote'), itemsEl = $('#items'), selEl = $('#sel');
 
 /* ---------- toast & sync ---------- */
@@ -3346,7 +3359,10 @@ function peekFromScreen() {
     const pw = W, ph = H, sig = peekSig(pid, S.page, allStrokes().length, pw, ph), hit = PEEKS.get(pid); if (hit && hit.sig === sig) return;
     const dpr = Math.min(2, window.devicePixelRatio || 1), k = Math.min(pw * S.base * dpr * clamp(S.zoom, 1, 1.6), 1500) / pw;
     const cv = document.createElement('canvas'); cv.width = Math.round(pw * k); cv.height = Math.round(ph * k);
-    const c = cv.getContext('2d'); c.drawImage(cBg, 0, 0, cv.width, cv.height); c.drawImage(cInk, 0, 0, cv.width, cv.height);
+    const c = cv.getContext('2d'); c.drawImage(cBg, 0, 0, cv.width, cv.height);
+    /* a page picture is copied between the paper and the ink, as on the page */
+    for (const it of (S.page.items || []).filter(isBgItem)) { const im = itemsBgEl.querySelector('[data-id="' + it.id + '"] img'); if (im && im.complete && im.naturalWidth) { try { c.drawImage(im, it.x * k, it.y * k, (it.w || 600) * k, (it.w || 600) * (it.ar || 1.414) * k); } catch (e) { /* skip */ } } }
+    c.drawImage(cInk, 0, 0, cv.width, cv.height);
     const lay = itemsEl.cloneNode(true); lay.removeAttribute('id'); lay.className = 'fitems'; lay.style.cssText = ''; lay.style.width = pw + 'px'; lay.style.height = ph + 'px'; lay.style.transform = 'scale(' + S.base + ')';
     lay.querySelectorAll('[id]').forEach((n) => n.removeAttribute('id')); lay.querySelectorAll('.dsvg, .diarydots').forEach((n) => n.remove());
     const lb = document.createElement('div'); lb.className = 'plabel'; lb.textContent = 'หน้า ' + ((S.nb.pages || []).indexOf(pid) + 1);
@@ -3369,11 +3385,18 @@ async function peekBuild(pid) {
   cv.width = Math.round(pw * k); cv.height = Math.round(ph * k);
   const c = cv.getContext('2d'); c.setTransform(k, 0, 0, k, 0, 0); const keep = [W, H]; W = pw; H = ph; c.fillStyle = '#FFFFFF'; c.fillRect(0, 0, W, H); try { paper(c, (page && page.paper) || 'grid'); } catch (e) { /* plain */ } [W, H] = keep;
   /* the neighbouring page's lines are drawn a few at a time, so scrolling on never stutters while it is made */
-  await drawIntoSliced(c, strokes);
+  const bgs = ((page && page.items) || []).filter(isBgItem);
+  /* a page with a page picture (an imported PDF): paper, then the picture, then the ink on a see-through canvas */
+  let ink = null, bgLay = null;
+  if (bgs.length) {
+    ink = document.createElement('canvas'); ink.width = cv.width; ink.height = cv.height; const ci = ink.getContext('2d'); ci.setTransform(k, 0, 0, k, 0, 0); await drawIntoSliced(ci, strokes);
+    bgLay = document.createElement('div'); bgLay.className = 'fitems'; bgLay.style.width = pw + 'px'; bgLay.style.height = ph + 'px'; bgLay.style.transform = 'scale(' + S.base + ')';
+    for (const it of bgs) { try { bgLay.appendChild(buildItemEl(it, true)); } catch (e) { /* skip */ } }
+  } else await drawIntoSliced(c, strokes);
   const lay = document.createElement('div'); lay.className = 'fitems'; lay.style.width = pw + 'px'; lay.style.height = ph + 'px'; lay.style.transform = 'scale(' + S.base + ')';
-  for (const it of (page && page.items) || []) { if (it.teacher && isStudentSide()) continue; try { lay.appendChild(buildItemEl(it, true)); } catch (e) { /* skip */ } }
+  for (const it of (page && page.items) || []) { if ((it.teacher && isStudentSide()) || isBgItem(it)) continue; try { lay.appendChild(buildItemEl(it, true)); } catch (e) { /* skip */ } }
   const lb = document.createElement('div'); lb.className = 'plabel'; lb.textContent = 'หน้า ' + ((S.nb.pages || []).indexOf(pid) + 1);
-  const out = { sig, dims: [pw, ph], nodes: [cv, lay, lb], lay, typeset: false };
+  const out = { sig, dims: [pw, ph], nodes: bgs.length ? [cv, bgLay, ink, lay, lb] : [cv, lay, lb], lay, typeset: false, split: !!bgs.length };
   PEEKS.set(pid, out); while (PEEKS.size > 4) PEEKS.delete(PEEKS.keys().next().value);
   return out;
 }
@@ -3496,7 +3519,7 @@ function fit() {
   S.base = Math.max(0.25, Math.min((vw - 24) / W, S.tv ? 2.4 : 1.3));
   pageEl.style.width = W * S.base + 'px';
   pageEl.style.height = H * S.base + 'px';
-  itemsEl.style.transform = 'scale(' + S.base + ')';
+  itemsEl.style.transform = itemsBgEl.style.transform = 'scale(' + S.base + ')';
   S.zoom = 1;
   S.tx = (vw - W * S.base) / 2;
   S.ty = topY(); S.pull = 0;
@@ -3584,6 +3607,8 @@ function drawSharp() {
   c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, bw, bh);
   c.setTransform(k, 0, 0, k, -(x0 - pr.left) * dq, -(y0 - pr.top) * dq);
   c.fillStyle = '#FFFFFF'; c.fillRect(0, 0, W, H); paper(c, (S.page && S.page.paper) || 'grid');
+  /* the page picture (imported PDF) between the paper and the ink here too, or zooming in would hide it */
+  for (const it of ((S.page && S.page.items) || []).filter(isBgItem)) { const im = itemsBgEl.querySelector('[data-id="' + it.id + '"] img'); if (im && im.complete && im.naturalWidth) { try { c.drawImage(im, it.x, it.y, it.w || 600, (it.w || 600) * (it.ar || 1.414)); } catch (e) { /* skip */ } } }
   drawInto(c, allStrokes(), S.sel && !S.sel.quiet ? new Set(S.sel.strokes.map((r) => r.id)) : null);
   cSharp.hidden = false;
   /* the live canvas follows the same visible region (not while a pen is down: resizing would wipe the stroke) */
@@ -3786,7 +3811,7 @@ function drawInkSoon() {
   const gen = ++S.inkGen, c = cInk.getContext('2d'), sig = inkSig();
   c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, cInk.width, cInk.height);
   /* a picture of this page drawn earlier (the continuous view keeps one) shows at once while the lines are painted */
-  const pk = PEEKS.get(S.pid); if (pk && pk.nodes && pk.nodes[0] && pk.dims && pk.dims[0] === W && pk.dims[1] === H) { try { c.drawImage(pk.nodes[0], 0, 0, cInk.width, cInk.height); } catch (e) { /* lines come anyway */ } }
+  const pk = PEEKS.get(S.pid); if (pk && !pk.split && pk.nodes && pk.nodes[0] && pk.dims && pk.dims[0] === W && pk.dims[1] === H) { try { c.drawImage(pk.nodes[0], 0, 0, cInk.width, cInk.height); } catch (e) { /* lines come anyway */ } }
   const order = list.filter((r) => r.s.k === 'h').concat(list.filter((r) => r.s.k !== 'h'));
   let i = 0, first = true;
   const step = () => {
@@ -3896,19 +3921,21 @@ function renderItems0() {
   /* reuse the element of every item whose content did not change; only its position and width are updated.
      Pictures and videos are then not reloaded each time something on the page is saved or moved. */
   const old = new Map();
-  for (const el of [...itemsEl.children]) { if (el.dataset && el.dataset.id && el._sig) old.set(el.dataset.id, el); else el.remove(); }
-  let needMath = false; const fresh = []; let i = 0;
+  for (const host of [itemsEl, itemsBgEl]) for (const el of [...host.children]) { if (el.dataset && el.dataset.id && el._sig) old.set(el.dataset.id, el); else el.remove(); }
+  let needMath = false; const fresh = []; let i = 0, j = 0;
   for (const it of visibleItems()) {
     if (it.type === 'graph' && !window.math) needMath = true;
     const sig = JSON.stringify(Object.assign({}, it, { x: 0, y: 0, w: 0 }));
     let el = old.get(it.id);
     if (el && el._sig === sig) { old.delete(it.id); el.style.left = it.x + 'px'; el.style.top = it.y + 'px'; el.style.width = (it.w || 600) + 'px'; }
     else { el = buildItemEl(it, false); el._sig = sig; fresh.push(el); }
-    if (itemsEl.children[i] !== el) itemsEl.insertBefore(el, itemsEl.children[i] || null);
-    i++;
+    /* page pictures go under the ink, everything else over it */
+    if (isBgItem(it)) { if (itemsBgEl.children[j] !== el) itemsBgEl.insertBefore(el, itemsBgEl.children[j] || null); j++; }
+    else { if (itemsEl.children[i] !== el) itemsEl.insertBefore(el, itemsEl.children[i] || null); i++; }
   }
   for (const el of old.values()) el.remove();
   while (itemsEl.children.length > i) itemsEl.lastChild.remove();
+  while (itemsBgEl.children.length > j) itemsBgEl.lastChild.remove();
   for (const el of fresh) typeset(el);
   try { for (const id of Object.keys(DIARY.anim)) { const el = itemsEl.querySelector('.item[data-id="' + id + '"]'); if (el && !el._writing) diaryWriteIn(id, DIARY.anim[id]); else if (!el) delete DIARY.anim[id]; } } catch (e) { /* not ready yet at start */ }
   if (typeof animSync === 'function') animSync();
@@ -5707,7 +5734,7 @@ function inPoly(poly, x, y) {
   return inside;
 }
 function itemBox(it) {
-  const d = itemsEl.querySelector('[data-id="' + it.id + '"]');
+  const d = itemElOf(it.id);
   const h = d ? d.offsetHeight : 60;
   return [it.x, it.y, it.x + (it.w || 600), it.y + h];
 }
@@ -5988,7 +6015,9 @@ function pageFlip(pid) {
     leaf.style.left = pg.offsetLeft + 'px'; leaf.style.top = pg.offsetTop + 'px'; leaf.style.width = pg.offsetWidth + 'px'; leaf.style.height = pg.offsetHeight + 'px';
     /* the turning leaf is in motion: half the pixels are plenty and copy four times faster */
     const c = document.createElement('canvas'); c.width = Math.round(bg.width / 3); c.height = Math.round(bg.height / 3); const x = c.getContext('2d');
-    x.drawImage(bg, 0, 0, c.width, c.height); if (ink.width) x.drawImage(ink, 0, 0, c.width, c.height);
+    x.drawImage(bg, 0, 0, c.width, c.height);
+    { const kk = c.width / W; for (const it of ((S.page && S.page.items) || []).filter(isBgItem)) { const im = itemsBgEl.querySelector('[data-id="' + it.id + '"] img'); if (im && im.complete && im.naturalWidth) { try { x.drawImage(im, it.x * kk, it.y * kk, (it.w || 600) * kk, (it.w || 600) * (it.ar || 1.414) * kk); } catch (e) { /* skip */ } } } }
+    if (ink.width) x.drawImage(ink, 0, 0, c.width, c.height);
     leaf.appendChild(c);
     const it = $('#items'); if (it) { const k = it.cloneNode(true); k.removeAttribute('id'); k.className = 'pleafitems'; k.style.cssText = it.style.cssText; k.querySelectorAll('[id]').forEach((n) => n.removeAttribute('id')); leaf.appendChild(k); }
     const sh = document.createElement('i'); sh.className = 'pshade'; leaf.appendChild(sh);
@@ -7596,10 +7625,15 @@ async function exportPdf() {
       const cv = document.createElement('canvas'); cv.width = Math.round(pw * 1.6); cv.height = Math.round(ph * 1.6);
       cv.style.cssText = 'position:absolute;left:0;top:0;width:' + pw + 'px;height:' + ph + 'px';
       const c = cv.getContext('2d'); c.setTransform(1.6, 0, 0, 1.6, 0, 0);
-      W = pw; H = ph; c.fillStyle = '#FFFFFF'; c.fillRect(0, 0, W, H); { const pk = (page && page.paper) || 'grid'; paper(c, expLines() || pk === 'board' || pk === 'art' ? pk : 'blank'); } drawInto(c, strokes, null); [W, H] = keep; /* without lines the page keeps its colour (a chalkboard stays dark), only the grid, dots or rules go */
+      const bgs = ((page && page.items) || []).filter(isBgItem), ci = bgs.length ? document.createElement('canvas') : null;
+      W = pw; H = ph; c.fillStyle = '#FFFFFF'; c.fillRect(0, 0, W, H); { const pk = (page && page.paper) || 'grid'; paper(c, expLines() || pk === 'board' || pk === 'art' ? pk : 'blank'); }
+      /* a page picture (imported PDF) goes between the paper and the writing, so the writing on it is in the file */
+      if (ci) { ci.width = cv.width; ci.height = cv.height; ci.style.cssText = cv.style.cssText; const x2 = ci.getContext('2d'); x2.setTransform(1.6, 0, 0, 1.6, 0, 0); drawInto(x2, strokes, null); } else drawInto(c, strokes, null);
+      [W, H] = keep; /* without lines the page keeps its colour (a chalkboard stays dark), only the grid, dots or rules go */
       pg.appendChild(cv);
+      if (ci) { const bl = document.createElement('div'); bl.style.cssText = 'position:absolute;left:0;top:0;width:' + pw + 'px;height:' + ph + 'px'; for (const it of bgs) bl.appendChild(buildItemEl(it, true)); for (const im of bl.querySelectorAll('img')) { if (!im.complete) await new Promise((r) => { im.onload = r; im.onerror = r; setTimeout(r, 6000); }); } pg.appendChild(bl); pg.appendChild(ci); }
       const its = document.createElement('div'); its.style.cssText = 'position:absolute;left:0;top:0;width:' + pw + 'px;height:' + ph + 'px';
-      for (const it of ((page && page.items) || [])) its.appendChild(buildItemEl(it, true));
+      for (const it of ((page && page.items) || [])) if (!isBgItem(it)) its.appendChild(buildItemEl(it, true));
       for (const im of its.querySelectorAll('img')) { if (!im.complete) await new Promise((r) => { im.onload = r; im.onerror = r; setTimeout(r, 6000); }); }
       pg.appendChild(its);
       host.appendChild(pg);
@@ -19123,7 +19157,7 @@ async function exAIFromPage() {
 async function exSaveSet(qs, title0) {
   /* questions from the bank are stored with the right choice first: a set where every key is still ก is mixed here, in place,
      so the page, the key and the saved set all show the same order */
-  { const mc = qs.filter((q) => q && Array.isArray(q.c) && q.c.length >= 2); if (mc.length >= 2 && mc.every((q) => !q.a)) for (const q of mc) Object.assign(q, shuffleChoices(q)); }
+  balanceSet(qs);
   const id = 's' + now().toString(36) + uid().slice(0, 3);
   const title = title0 ? String(title0).slice(0, 60) : 'ชุด ' + [...new Set(qs.map((q) => exChName(q.t, q.ch)))].slice(0, 2).join(' + ') + ' ' + new Date().toLocaleDateString(LOC, { day: 'numeric', month: 'short' });
   const set = { id, title, at: now(), nb: S.nid || null, qs: qs.map((q) => ({ id: q.id, t: q.t, ch: q.ch, d: q.d, k: q.k, q: q.q, c: q.c, a: q.a || 0, e: q.e || '', fig: q.fig || undefined, src: q.src, o: q.o, s: q.s, b: q.b, w: q.w, ans: q.ans || undefined, given: q.given || undefined, lab: q.lab || undefined, img: q.img || undefined })) };
@@ -20327,15 +20361,43 @@ function detectFromText(tx, track) {
    keeps its place, and numbers stay in order from small to large the way exams print them */
 const CH_FIXED = /ทุกข้อ|ไม่มีข้อ|ถูกทั้ง|ผิดทั้ง|ทั้งข้อ|ข้อ\s*[กขคง]\b|(^|[\s(])[กขคง]\s*(และ|หรือ|,)\s*[กขคง]|all of the above|none of the above/i;
 function chNum(s) { const m = String(s).replace(/[,\s]/g, '').replace(/\$|\\[a-z]+\{?|[{}]/gi, '').match(/^[-+]?\d*\.?\d+(e[-+]?\d+)?/i); return m ? parseFloat(m[0]) : NaN; }
-function shuffleChoices(q) {
+/* choices the way an exam is set: from the shortest to the longest (numbers from small to large), a choice that points at
+   others ("ถูกทุกข้อ") last; choices of about the same length may trade places, which is how the key is moved so that
+   across a set every letter is the answer about equally often */
+function chLen(c) { return String(c).replace(/\$|\\[a-zA-Z]+|[{}\s]/g, '').length; }
+function chPlan(q) {
+  const n = q.c.length, idx = q.c.map((c, i) => i), fixed = idx.filter((i) => CH_FIXED.test(String(q.c[i]))), free = idx.filter((i) => !fixed.includes(i));
+  const nums = q.c.map(chNum), allNum = free.length > 1 && free.every((i) => isFinite(nums[i]));
+  const key = (i) => (allNum ? nums[i] : chLen(q.c[i]));
+  free.sort((a, b) => key(a) - key(b) || a - b);
+  /* groups of nearly equal length can be put in any order; numbers keep their order */
+  const groups = []; for (const i of free) { const g = groups[groups.length - 1], k = key(i); if (!allNum && g && Math.abs(k - key(g[0])) <= Math.max(3, key(g[0]) * 0.2)) g.push(i); else groups.push([i]); }
+  return { groups, fixed, n };
+}
+function chArrange(q, want) {
   if (!q || !Array.isArray(q.c) || q.c.length < 2) return q;
-  const n = q.c.length, free = q.c.map((c, i) => i).filter((i) => !CH_FIXED.test(String(q.c[i])));
-  const mixed = free.slice().sort(() => Math.random() - 0.5), o = q.c.map((_, i) => i);
-  free.forEach((pos, k) => { o[pos] = mixed[k]; });
-  const nums = q.c.map(chNum);
-  if (!free.length || free.length < n) { /* fixed choices stay where they are */ }
-  else if (nums.every((v) => isFinite(v)) && new Set(nums).size === n) o.sort((x, y) => nums[x] - nums[y]);
-  return Object.assign({}, q, { c: o.map((i) => q.c[i]), a: o.indexOf(q.a || 0) });
+  const { groups, fixed } = chPlan(q), a = q.a || 0;
+  let order = [];
+  for (const g of groups) { const gg = g.slice().sort(() => Math.random() - 0.5); order = order.concat(gg); }
+  order = order.concat(fixed);
+  /* the key goes to the wanted letter when its group allows it */
+  if (want != null && !fixed.includes(a)) {
+    let start = 0; for (const g of groups) { if (g.includes(a)) { const lo = start, hi = start + g.length - 1; if (want >= lo && want <= hi) { const cur = order.indexOf(a); [order[cur], order[want]] = [order[want], order[cur]]; } break; } start += g.length; }
+  }
+  return Object.assign({}, q, { c: order.map((i) => q.c[i]), a: order.indexOf(a) });
+}
+function chAllowed(q) { const { groups, fixed } = chPlan(q), a = q.a || 0; if (fixed.includes(a)) return null; let start = 0; for (const g of groups) { if (g.includes(a)) return [start, start + g.length - 1]; start += g.length; } return null; }
+function shuffleChoices(q) { return chArrange(q, null); }
+/* a whole set: each key is put on the letter used least so far, among the places its choice may take */
+function balanceSet(qs) {
+  const cnt = [0, 0, 0, 0, 0, 0];
+  for (const q of qs) {
+    if (!q || !Array.isArray(q.c) || q.c.length < 2) continue;
+    const r = chAllowed(q); let want = null;
+    if (r) { let best = null; for (let p = r[0]; p <= r[1]; p++) if (best == null || cnt[p] < cnt[best] || (cnt[p] === cnt[best] && Math.random() < 0.5)) best = p; want = best; }
+    Object.assign(q, chArrange(q, want)); cnt[q.a] = (cnt[q.a] || 0) + 1;
+  }
+  return qs;
 }
 function pickByLevel(pool, n, level, order, have) {
   const lv = (q) => effLevel(q), out = (have || []).slice(), used = new Set(out.map((q) => q.id));
@@ -22993,7 +23055,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793685290';
+const BUILD = '1793688814';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
@@ -23623,7 +23685,7 @@ function presentFit() {
   const vw = vp.clientWidth || 800;
   S.base = Math.max(0.25, vw / W);
   pageEl.style.width = W * S.base + 'px'; pageEl.style.height = H * S.base + 'px';
-  itemsEl.style.transform = 'scale(' + S.base + ')';
+  itemsEl.style.transform = itemsBgEl.style.transform = 'scale(' + S.base + ')';
   S.zoom = 1; S.tx = (vw - W * S.base) / 2; S.ty = 0; S.pull = 0; applyT(); resizeCanvases(true);
   followView();
 }
