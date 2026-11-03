@@ -1939,7 +1939,7 @@ body.role-student .scnpill .sbtns button[data-s="back"], body.role-student .scnp
   <div class="panel" role="dialog" aria-label="จอแสดงผลแบบนักเรียน">
     <div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><h2>จอแสดงผลแบบนักเรียน</h2><button class="btn" id="bShowX" type="button">ปิด</button></div>
     <div class="note">บนเครื่องที่ต่อจอใหญ่ (คอมพิวเตอร์ ทีวีที่มีเบราว์เซอร์ หรือแชร์จอในโปรแกรมประชุม) สแกนคิวอาร์หรือเปิดลิงก์นี้ ไม่ต้องเข้าระบบ จอนั้นจะเห็นแบบนักเรียน ไม่มีแถบเครื่องมือและเฉลย เปลี่ยนหน้าและเลื่อนตามเครื่องนี้ทันที</div>
-    <div class="showbox"><div id="showQR" class="showqr"></div><div><span class="label">รหัสห้อง</span><b id="showCode" class="showcode"></b><span class="label">ลิงก์</span><span id="showLinkTxt" class="showlink"></span><div class="row"><button class="btn solid" id="bShowCopy" type="button">คัดลอกลิงก์</button><button class="btn" id="bShowWin" type="button">เปิดในหน้าต่างใหม่</button></div></div></div>
+    <div class="showbox"><div id="showQR" class="showqr"></div><div><span class="label">รหัสห้อง</span><b id="showCode" class="showcode"></b><span class="label">ลิงก์</span><span id="showLinkTxt" class="showlink"></span><div class="row"><button class="btn solid" id="bShowCopy" type="button">คัดลอกลิงก์</button><button class="btn" id="bShowWin" type="button">เปิดบนจอที่สองของเครื่องนี้</button></div></div></div>
     <div class="note small">ใช้ห้องเดียวกับห้องเรียนสด ปิดห้องเรียนสดเมื่อไหร่ จอแสดงผลก็หยุดทันที</div>
   </div>
 </div>
@@ -19871,7 +19871,7 @@ function showLink(code) { return location.origin + location.pathname + '#show=' 
 async function showShare(win) {
   if (LIVE.role !== 'teacher' || !LIVE.ready) { await liveOpen(); if (LIVE.role !== 'teacher') return; }
   const link = showLink(LIVE.code);
-  if (win) { window.open(link, 'burin-show', 'width=1280,height=800'); toast('เปิดจอแสดงผลในหน้าต่างใหม่แล้ว ลากไปไว้บนจอที่สองแล้วกดเต็มจอ', 3600); return; }
+  if (win) { window.open(link, 'burin-show', 'width=1280,height=800'); toast('เปิดจอแสดงผลแบบนักเรียนในหน้าต่างใหม่แล้ว ลากไปไว้บนจอที่สอง แล้วกดเต็มจอ', 3600); return; }
   closeSheets(); const sh = $('#showSheet'); sh.hidden = false;
   $('#showCode').textContent = LIVE.code; $('#showLinkTxt').textContent = link.replace(/^https?:\/\//, '');
   drawQR($('#showQR'), link, 220);
@@ -22982,7 +22982,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793677966';
+const BUILD = '1793678100';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
@@ -23721,8 +23721,8 @@ $('#bViewer').onclick = (e) => {
   const ic3b = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="4" width="19" height="13" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M7 9h10 M7 12.5h6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
   popMenu(e.currentTarget, 'นำเสนอ', [
     ['เห็นทุกอย่างเหมือนจอนี้', () => { setFocus(true); }, 'ต่อสายหรือสะท้อนจอจากเครื่องนี้ จอใหญ่เห็นหน้าจริงของเครื่องนี้ทั้งหมด หน้ากระดาษเต็มจอ เขียนต่อได้', ic2],
-    ['จอแสดงผลแบบนักเรียน', () => { showShare(false); }, 'เปิดลิงก์หรือสแกนคิวอาร์บนคอมพิวเตอร์ ทีวี หรือแชร์ในโปรแกรมประชุม จอนั้นไม่มีแถบเครื่องมือและเฉลย ตามหน้าที่เครื่องนี้เขียน', ic3b],
-    ['เปิดหน้าต่างใหม่เป็นจอแสดงผล', () => { showShare(true); }, 'คอมพิวเตอร์ที่ต่อจอที่สอง ลากหน้าต่างใหม่ไปไว้บนจอนั้น', ic1]
+    ['จอแสดงผลแบบนักเรียนบนอีกเครื่อง', () => { showShare(false); }, 'เปิดลิงก์หรือสแกนคิวอาร์บนคอมพิวเตอร์ ทีวี หรือแชร์ในโปรแกรมประชุม จอนั้นไม่มีแถบเครื่องมือและเฉลย ตามหน้าที่เครื่องนี้เขียน', ic3b],
+    ['จอแสดงผลแบบนักเรียนบนจอที่สอง', () => { showShare(true); }, 'เหมาะกับคอมพิวเตอร์ที่ต่อสองจอ เปิดหน้าต่างใหม่แบบนักเรียน แล้วลากไปไว้บนจอที่สอง จอแรกใช้เขียนแบบครูตามปกติ', ic1]
   ]);
   const m = $('#tabMenu'), n = document.createElement('p'); n.className = 'mnote';
   n.textContent = 'จอแสดงผลแบบนักเรียนใช้ห้องเรียนสด ต้องเข้าระบบคลาวด์ ถ้ายังไม่ได้เปิดห้อง ระบบจะเปิดให้เอง';
