@@ -3541,9 +3541,9 @@ function paper(c, kind, bg) {
     }
   } else if (kind === 'dot') {
     /* small grey dots about 7 mm apart on A4, the size of the dotted paper in common note apps */
-    c.fillStyle = dk ? 'rgba(255,255,255,0.34)' : '#A3ACB8';
+    c.fillStyle = dk ? 'rgba(255,255,255,0.28)' : '#B3BBC5';
     const st = DOT_STEP, o = (W % st) / 2 || st / 2;
-    for (let x = o; x < W; x += st) for (let y = o; y < H; y += st) { c.beginPath(); c.arc(x, y, 1.6, 0, 6.2832); c.fill(); }
+    for (let x = o; x < W; x += st) for (let y = o; y < H; y += st) { c.beginPath(); c.arc(x, y, 1.05, 0, 6.2832); c.fill(); }
   } else if (kind === 'lined' || kind === 'cornell') {
     c.strokeStyle = dk ? 'rgba(255,255,255,0.16)' : bg === 'white' || bg === 'ivory' ? '#D6DCE4' : 'rgba(60,80,110,0.2)'; c.lineWidth = 1.1; c.beginPath();
     for (let y = 120; y < H - 40; y += 38) { c.moveTo(0, y); c.lineTo(W, y); }
@@ -5195,7 +5195,7 @@ vp.addEventListener('pointerleave', () => { if (!activeLive() && S.tool === 'era
 
 /* laser: a dot, or a line of even strength while held. Lines stay a few seconds after the pen lifts, so several can be
    drawn one after another (circle a word, then an arrow); they fade out together once the pen rests */
-const LZ_HOLD = 1500, LZ_FADE = 450;
+const LZ_HOLD = 700, LZ_FADE = 350; /* the laser stays a moment after the pen lifts, then fades quickly */
 const LZK = { list: [], at: 0, raf: 0 };
 function lzAlpha(at) { const age = now() - at; return age < LZ_HOLD ? 1 : Math.max(0, 1 - (age - LZ_HOLD) / LZ_FADE); }
 function drawLzLine(c, pts, a) {
@@ -5205,16 +5205,16 @@ function drawLzLine(c, pts, a) {
   /* a sharp laser: a red line with a soft red glow round it and a thin white core, like a lit tube */
   /* the glow is drawn as wider see-through strokes, not a canvas blur: as quick to draw as before on an iPad */
   for (const [w, al] of LZ_GLOW) { c.strokeStyle = 'rgba(255,40,28,' + al + ')'; c.lineWidth = w; c.stroke(); }
-  c.strokeStyle = '#FF3426'; c.lineWidth = 6.5; c.stroke();
-  c.strokeStyle = 'rgba(255,246,244,0.97)'; c.lineWidth = 2.6; c.stroke();
+  c.strokeStyle = '#FF3426'; c.lineWidth = 8.5; c.stroke();
+  c.strokeStyle = 'rgba(255,246,244,0.97)'; c.lineWidth = 3.2; c.stroke();
   c.restore();
 }
-const LZ_GLOW = [[26, 0.04], [22, 0.05], [18, 0.07], [15, 0.09], [12, 0.13], [9.5, 0.2]];
+const LZ_GLOW = [[34, 0.04], [28, 0.05], [23, 0.07], [19, 0.09], [15.5, 0.13], [12, 0.2]];
 function lzDot(c, x, y) {
   c.save();
   for (const [w, al] of LZ_GLOW) { c.fillStyle = 'rgba(255,40,28,' + al + ')'; c.beginPath(); c.arc(x, y, w / 2 + 4, 0, 6.2832); c.fill(); }
-  c.fillStyle = '#FF3426'; c.beginPath(); c.arc(x, y, 7, 0, 6.2832); c.fill();
-  c.fillStyle = '#FFFFFF'; c.beginPath(); c.arc(x, y, 3, 0, 6.2832); c.fill(); c.restore();
+  c.fillStyle = '#FF3426'; c.beginPath(); c.arc(x, y, 8.5, 0, 6.2832); c.fill();
+  c.fillStyle = '#FFFFFF'; c.beginPath(); c.arc(x, y, 3.6, 0, 6.2832); c.fill(); c.restore();
 }
 function lzKeep(pts) { if (pts && pts.length > 1) { LZK.list.push(pts); if (LZK.list.length > 40) LZK.list.shift(); } LZK.at = now(); lzLoop(); }
 function lzLoop() { if (LZK.raf) return; LZK.raf = requestAnimationFrame(() => { LZK.raf = 0; if (lzAlpha(LZK.at) <= 0) { LZK.list = []; drawLasers(); return; } drawLasers(); lzLoop(); }); }
@@ -22982,7 +22982,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793678100';
+const BUILD = '1793684180';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
