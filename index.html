@@ -3505,6 +3505,7 @@ function toLogical(cx, cy) {
 }
 
 /* ---------- drawing ---------- */
+const DOT_STEP = 34;
 function paper(c, kind, bg) {
   c.save();
   bg = bg || curBg(); const dk = darkBg(bg) && kind !== 'art';
@@ -3526,8 +3527,10 @@ function paper(c, kind, bg) {
       c.stroke();
     }
   } else if (kind === 'dot') {
-    c.fillStyle = dk ? 'rgba(255,255,255,0.32)' : '#B8C1CC';
-    for (let x = 25; x < W; x += 25) for (let y = 25; y < H; y += 25) { c.beginPath(); c.arc(x, y, 1.5, 0, 6.2832); c.fill(); }
+    /* small grey dots about 7 mm apart on A4, the size of the dotted paper in common note apps */
+    c.fillStyle = dk ? 'rgba(255,255,255,0.34)' : '#A3ACB8';
+    const st = DOT_STEP, o = (W % st) / 2 || st / 2;
+    for (let x = o; x < W; x += st) for (let y = o; y < H; y += st) { c.beginPath(); c.arc(x, y, 1.6, 0, 6.2832); c.fill(); }
   } else if (kind === 'lined' || kind === 'cornell') {
     c.strokeStyle = dk ? 'rgba(255,255,255,0.16)' : bg === 'white' || bg === 'ivory' ? '#D6DCE4' : 'rgba(60,80,110,0.2)'; c.lineWidth = 1.1; c.beginPath();
     for (let y = 120; y < H - 40; y += 38) { c.moveTo(0, y); c.lineTo(W, y); }
@@ -3828,8 +3831,7 @@ function laserFrame() {
   }
   const last = lasers[lasers.length - 1];
   if (last) {
-    c.fillStyle = 'rgba(229,72,60,0.25)'; c.beginPath(); c.arc(last.x, last.y, 16, 0, 6.2832); c.fill();
-    c.fillStyle = '#E5483C'; c.beginPath(); c.arc(last.x, last.y, 7, 0, 6.2832); c.fill();
+    lzDot(c, last.x, last.y);
     laserRAF = requestAnimationFrame(laserFrame);
   }
 }
@@ -5142,9 +5144,19 @@ function drawLzLine(c, pts, a) {
   if (pts.length < 2 || a <= 0) return;
   c.save(); c.lineCap = 'round'; c.lineJoin = 'round'; c.globalAlpha = a;
   c.beginPath(); c.moveTo(pts[0][0], pts[0][1]); for (let i = 1; i < pts.length; i++) c.lineTo(pts[i][0], pts[i][1]);
-  c.strokeStyle = 'rgba(229,72,60,0.25)'; c.lineWidth = 16; c.stroke();
-  c.strokeStyle = 'rgba(229,72,60,0.95)'; c.lineWidth = 5; c.stroke();
+  /* a sharp laser: a red line with a soft red glow round it and a thin white core, like a lit tube */
+  /* the glow is drawn as wider see-through strokes, not a canvas blur: as quick to draw as before on an iPad */
+  for (const [w, al] of LZ_GLOW) { c.strokeStyle = 'rgba(255,40,28,' + al + ')'; c.lineWidth = w; c.stroke(); }
+  c.strokeStyle = '#FF3426'; c.lineWidth = 6.5; c.stroke();
+  c.strokeStyle = 'rgba(255,246,244,0.97)'; c.lineWidth = 2.6; c.stroke();
   c.restore();
+}
+const LZ_GLOW = [[26, 0.04], [22, 0.05], [18, 0.07], [15, 0.09], [12, 0.13], [9.5, 0.2]];
+function lzDot(c, x, y) {
+  c.save();
+  for (const [w, al] of LZ_GLOW) { c.fillStyle = 'rgba(255,40,28,' + al + ')'; c.beginPath(); c.arc(x, y, w / 2 + 4, 0, 6.2832); c.fill(); }
+  c.fillStyle = '#FF3426'; c.beginPath(); c.arc(x, y, 7, 0, 6.2832); c.fill();
+  c.fillStyle = '#FFFFFF'; c.beginPath(); c.arc(x, y, 3, 0, 6.2832); c.fill(); c.restore();
 }
 function lzKeep(pts) { if (pts && pts.length > 1) { LZK.list.push(pts); if (LZK.list.length > 40) LZK.list.shift(); } LZK.at = now(); lzLoop(); }
 function lzLoop() { if (LZK.raf) return; LZK.raf = requestAnimationFrame(() => { LZK.raf = 0; if (lzAlpha(LZK.at) <= 0) { LZK.list = []; drawLasers(); return; } drawLasers(); lzLoop(); }); }
@@ -5158,8 +5170,7 @@ function drawLasers() {
     if (p.mode !== 'laser' || !p.lz || !p.lz.length) continue;
     if (S.laserMode === 'line' && p.lz.length > 1) drawLzLine(c, p.lz, 1);
     const [x, y] = p.lz[p.lz.length - 1];
-    c.fillStyle = 'rgba(229,72,60,0.25)'; c.beginPath(); c.arc(x, y, 16, 0, 6.2832); c.fill();
-    c.fillStyle = '#E5483C'; c.beginPath(); c.arc(x, y, 7, 0, 6.2832); c.fill();
+    lzDot(c, x, y);
   }
 }
 
@@ -20089,8 +20100,9 @@ function placeNear(src, w, h, opt) {
   const gapV = Math.round(clamp(lh * 0.3, 8, 28)), gapH = Math.round(clamp(lh * 0.6, 16, 44)), clr = Math.round(clamp(lh * 0.2, 6, 16)); /* close, the way a hand carries on writing: only the written parts of other things are kept clear */
   const paper = (S.page && S.page.paper) || 'grid', M = paper === 'cornell' && src[0] >= 250 ? 262 : PAGE_M;
   /* it sits on the paper the way a careful hand would: on the grid or dot lines, between the rules of lined paper */
-  const snapX = (x) => (paper === 'grid' || paper === 'dot') && Math.abs(x - Math.round(x / 25) * 25) <= 12 ? Math.round(x / 25) * 25 : x;
-  const snapY = (y) => paper === 'grid' || paper === 'dot' ? Math.ceil(y / 25) * 25 : paper === 'lined' || paper === 'cornell' ? (y <= 126 ? y : 120 + Math.ceil((y - 126) / 38) * 38 + 6) : y;
+  const gs = paper === 'dot' ? DOT_STEP : 25, go = paper === 'dot' ? ((W % DOT_STEP) / 2 || DOT_STEP / 2) % DOT_STEP : 0;
+  const snapX = (x) => (paper === 'grid' || paper === 'dot') && Math.abs(x - (Math.round((x - go) / gs) * gs + go)) <= gs / 2 ? Math.round((x - go) / gs) * gs + go : x;
+  const snapY = (y) => paper === 'grid' || paper === 'dot' ? Math.ceil((y - go) / gs) * gs + go : paper === 'lined' || paper === 'cornell' ? (y <= 126 ? y : 120 + Math.ceil((y - 126) / 38) * 38 + 6) : y;
   /* words keep a comfortable reading width, and may narrow (down to opt.minW) to stay close under the writing
      instead of dropping far down below something beside it */
   const meas = opt.measure || (() => h), ws = [];
@@ -22857,7 +22869,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793667907';
+const BUILD = '1793668853';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
@@ -23454,8 +23466,7 @@ function drawPresentLive() {
     if (L.mode === 'line' && L.pts.length > 1) drawLzLine(c, L.pts, 1);
     let q = L.pts[L.pts.length - 1];
     if (L.mode !== 'line' && L.pts.length > 1 && L.at) { const a = L.pts[L.pts.length - 2], u = clamp((performance.now() - L.at) / (L.gap || 60), 0, 1); q = [a[0] + (q[0] - a[0]) * u, a[1] + (q[1] - a[1]) * u]; }
-    c.fillStyle = 'rgba(229,72,60,0.25)'; c.beginPath(); c.arc(q[0], q[1], 16, 0, 6.2832); c.fill();
-    c.fillStyle = '#E5483C'; c.beginPath(); c.arc(q[0], q[1], 7, 0, 6.2832); c.fill();
+    lzDot(c, q[0], q[1]);
   }
 }
 function followView() {
