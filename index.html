@@ -3843,6 +3843,24 @@ function visibleItems() { const a = (S.page && S.page.items) || []; return S.pre
 let editing = null;
 function renderItems() {
   if (editing) return;
+  renderItems0();
+  edgeCheckLater();
+}
+/* a box or picture already on the page that runs past the edge of the paper (made before this check, or arriving from an
+   older version) is brought back inside once, so its handle can be reached and it can be moved again */
+const edgeCheckLater = debounce(() => {
+  if (!S.page || S.present || editing || penBusy() || S.sel) return;
+  const items = S.page.items || []; let moved = false;
+  for (const it of items) {
+    if (it.lock || it.type === 'life' || (it.spec && it.spec.bare) || (isStudentSide() && it.by === 'teacher')) continue;
+    const d = itemsEl.querySelector('[data-id="' + it.id + '"]'); if (!d) continue;
+    const h = d.offsetHeight, w = it.w || 600;
+    if (it.x >= 0 && it.y >= 0 && it.x + w <= W + 1 && it.y + h <= H + 1) continue;
+    if (fitInPage(it, true)) moved = true;
+  }
+  if (moved) { S.page = Object.assign({}, S.page, { items: items.slice() }); savePage(); renderItems0(); }
+}, 400);
+function renderItems0() {
   /* replies written before the full-width layout are opened out across the page once */
   if (S.page && S.page.items && S.page.items.some((it) => it.diary && !it.dv) && !isStudentSide()) {
     const fw = Math.round(clamp(W - 80, 320, 1100)), items = S.page.items.map((it) => Object.assign({}, it));
@@ -3955,10 +3973,33 @@ function removeItem(id) {
 }
 function setItems(items, before) {
   if (!S.page) return;
+  const had = new Set((before || []).map((x) => x.id)), fresh = items.filter((x) => x && !had.has(x.id) && x.type !== 'life');
+  for (const it of fresh) fitInPage(it, false);
   S.page = Object.assign({}, S.page, { items });
   pushUndo({ t: 'items', before: before, after: clone(items) });
   savePage();
   renderItems();
+  /* once drawn, its real height is known: anything new that still runs past the bottom moves up, or a picture shrinks */
+  if (fresh.length) { const pid = S.pid; requestAnimationFrame(() => { if (S.pid !== pid) return; let moved = false; for (const it0 of fresh) { const it = findItem(it0.id); if (it && fitInPage(it, true)) moved = true; } if (moved) { savePage(); renderItems(); } }); }
+}
+/* nothing new on a page goes past the edge of the paper: it is kept inside a small margin, made narrower when it is wider
+   than the page, and a picture, drawing or graph that is taller than the room left is made smaller */
+function fitInPage(it, measured) {
+  const m = 12, x0 = it.x, y0 = it.y, w0 = it.w; let changed = false;
+  if (!isFinite(it.x) || !isFinite(it.y)) return false;
+  const scal = ['img', 'video', 'svg', 'scene', 'sim', 'graph', 'lab'].includes(it.type);
+  if (it.w && it.w > W - 2 * m) it.w = Math.round(W - 2 * m);
+  const w = it.w || 600;
+  it.x = Math.round(clamp(it.x, m, Math.max(m, W - m - w)));
+  let h = it.ar ? w * it.ar : 0;
+  if (measured) { const d = itemsEl.querySelector('[data-id="' + it.id + '"]'); if (d) h = d.offsetHeight; }
+  if (h > 0) {
+    if (it.y + h > H - m) it.y = Math.round(Math.max(m, H - m - h));
+    if (it.y + h > H - m && scal) { const k = Math.max(0.35, (H - 2 * m) / h); it.w = Math.round(w * k); it.x = Math.round(clamp(it.x, m, W - m - it.w)); }
+  }
+  it.y = Math.round(clamp(it.y, m, H - m - 20));
+  changed = it.x !== x0 || it.y !== y0 || it.w !== w0;
+  return changed;
 }
 const savePage = debounce(() => {
   if (!S.page || !S.pid) return;
@@ -4322,7 +4363,7 @@ function diaryDraw(sketch, x0, y0, dw, dh, lw, ink, fs, pid) {
     /* the page was left before the drawing finished: it is kept and put on that page when it is opened again */
     if (S.pid !== pid) { (DIARY.later[pid] = DIARY.later[pid] || []).push({ strokes, labels: labels.map((lb) => ({ x: clamp(x0 + lb.n[0] * sx, 10, W - 120), y: clamp(y0 + lb.n[1] * sy - fs * 0.45, 10, H - fs * 1.4), w: clamp(lb.label.length * fs * 0.62 + 20, 40, 260), md: lb.label, fs: Math.round(clamp(fs * 0.8, 14, 60)), ink: lb.col || ink })) }); return; }
     if (strokes.length) { const before = { [DEV]: clone(S.mine) }; for (const st of strokes) S.mine.push(st); pushUndo({ t: 'layers', before, after: { [DEV]: clone(S.mine) } }); saveMine(); drawInk(); }
-    for (const lb of labels) addItem({ type: 'text', x: Math.round(clamp(x0 + lb.n[0] * sx, 10, W - 120)), y: Math.round(clamp(y0 + lb.n[1] * sy - fs * 0.45, 10, H - fs * 1.4)), w: Math.round(clamp(lb.label.length * fs * 0.62 + 20, 40, 260)), md: lb.label, fs: Math.round(clamp(fs * 0.8, 14, 60)), hand: DIARY_HAND(), ink: lb.col || ink, diary: true, dv: 2 });
+    for (const lb of labels) addItem({ type: 'text', x: Math.round(clamp(x0 + lb.n[0] * sx, 10, W - 10 - clamp(lb.label.length * fs * 0.62 + 20, 40, 260))), y: Math.round(clamp(y0 + lb.n[1] * sy - fs * 0.45, 10, H - fs * 1.4)), w: Math.round(clamp(lb.label.length * fs * 0.62 + 20, 40, 260)), md: lb.label, fs: Math.round(clamp(fs * 0.8, 14, 60)), hand: DIARY_HAND(), ink: lb.col || ink, diary: true, dv: 2 });
   };
   if (diaryInstant() || !strokes.length || S.pid !== pid) { commit(); return; }
   /* drawn as a person draws: the pen point travels along each line with a hand's rhythm (slow to start, quicker in
@@ -22888,7 +22929,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793671064';
+const BUILD = '1793673544';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
