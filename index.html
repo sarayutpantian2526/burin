@@ -601,6 +601,9 @@ body.tv .grip { height: 68px; width: 32px; }
 #tabMenu b { font-size: 13px; padding: 6px 12px 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 260px; }
 #tabMenu button { min-height: 44px; text-align: left; padding: 0 12px; border: 0; border-radius: 10px; background: transparent; cursor: pointer; font-size: 14px; }
 #tabMenu button:hover { background: var(--surface-2); }
+#tabMenu.tight { min-width: 190px; padding: 4px; gap: 0; }
+#tabMenu.tight button { min-height: 40px; font-size: 14px; white-space: nowrap; width: 100%; }
+#tabMenu.tight button.sep { margin-top: 4px; border-top: 1px solid var(--line); border-radius: 0 0 10px 10px; }
 #tabMenu.cards { width: 360px; max-width: calc(100vw - 16px); padding: 8px; gap: 6px; }
 #tabMenu.cards > b { white-space: normal; max-width: none; font-size: 15px; padding: 6px 8px 2px; }
 #tabMenu > p.mnote { margin: 0 8px 6px; font-size: 13px; color: var(--muted); line-height: 1.5; }
@@ -5917,6 +5920,9 @@ function watchNotebooks() {
   S.unsub.nbs = S.store.watchCollection('notebooks', async (list, meta) => {
     S.nbsAll = shelfSort(list);
     S.nbs = S.nbsAll.filter(sideMatch);
+    /* an empty notebook made on joining a room, left behind when the lesson came in its own notebook, is removed */
+    { const old = list.filter((n) => /^class-[A-Z2-9]{6}$/.test(n.from || '') && !(n.pages || []).length && n.id !== S.nid && n.id !== LIVE.nid && now() - (n.createdAt || 0) > 600000 && list.some((o) => o.id !== n.id && String(o.from || '').startsWith(n.from + ':')));
+      for (const n of old) Promise.resolve(S.store.del('notebooks/' + n.id)).catch(() => {}); if (old.length) { const g = new Set(old.map((n) => n.id)); S.nbsAll = S.nbsAll.filter((n) => !g.has(n.id)); S.nbs = S.nbs.filter((n) => !g.has(n.id)); } }
     /* every saved line touches its notebook (its edit time), so this runs on each stroke: the library list is drawn again
        only while it is open, and the notebook tabs only when a title, colour or tab changed */
     if (!$('#menu').hidden) renderLibrary(); else { LIBV.stale = true; if (tabsSig() !== S.tabsSig) renderTabs(); }
@@ -7871,7 +7877,7 @@ function dragItem(el, o) {
 }
 const moveIn = (arr, from, to) => { const a = arr.slice(); a.splice(to, 0, a.splice(from, 1)[0]); return a; };
 function popMenu(anchor, title, actions) {
-  const m = $('#tabMenu'); m.innerHTML = '';
+  const m = $('#tabMenu'); m.innerHTML = ''; m.classList.remove('tight');
   const t = document.createElement('b'); t.textContent = title; m.appendChild(t);
   /* an action may carry a short explanation and an icon: it then shows as a card */
   m.classList.toggle('cards', actions.some((a) => a[2]));
@@ -8172,17 +8178,16 @@ function nbMoveSide(nb) {
   renderLibrary();
 }
 function nbMenu(anchor, nb, card) {
+  /* short and complete: opening is a tap on the cover and the favourite is its star, so the menu holds the rest */
   popMenu(anchor, nb.title || 'สมุด', [
-    ['เปิดสมุด', () => { openNotebook(nb.id); closeSheets(); }],
-    [nb.fav ? 'เอาออกจากรายการโปรด' : 'เพิ่มในรายการโปรด', () => nbSet(nb, { fav: !nb.fav })],
-    ['ย้ายไปโฟลเดอร์', () => moveToFolderMenu(anchor, nb)],
-    ...(S.student ? [] : [[nb.side === 'student' ? 'ย้ายไปฝั่งครู' : 'ย้ายไปฝั่งนักเรียน', () => nbMoveSide(nb)]]),
+    ['แก้ชื่อและปก', () => editNotebookRow(card, nb)],
+    ['เปิดข้างหน้าที่เขียน', () => { closeSheets(); openPeek(nb.id); }],
     ['แชร์', () => shareNb(nb)],
-    ['แต่งปก แก้ชื่อ', () => editNotebookRow(card, nb)],
-    ['ดูคู่กับหน้าที่เขียนอยู่', () => { closeSheets(); openPeek(nb.id); }],
+    ['ย้ายโฟลเดอร์', () => moveToFolderMenu(anchor, nb)],
+    ...(S.student ? [] : [[nb.side === 'student' ? 'ย้ายไปฝั่งครู' : 'ย้ายไปฝั่งนักเรียน', () => nbMoveSide(nb)]]),
     ['ลบสมุด', () => askDelete(anchor, nb)]
   ]);
-  const del = [...$('#tabMenu').querySelectorAll('button')].pop(); if (del) del.classList.add('danger');
+  const m = $('#tabMenu'); m.classList.add('tight'); const del = [...m.querySelectorAll('button')].pop(); if (del) del.classList.add('danger', 'sep');
 }
 function folderMenu(anchor, f) {
   popMenu(anchor, f.name, [
@@ -22982,7 +22987,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793684180';
+const BUILD = '1793684911';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
