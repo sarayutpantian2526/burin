@@ -216,6 +216,11 @@ body.flow:not(.flowlast) #bAddBelow { display: none; }
 .item.teacher.svg { background: rgba(255, 250, 230, 0.6); }
 .item.teacher::before { content: "เฉลย"; display: block; font-family: var(--ui); font-size: 13px; font-weight: 700; color: #8A4A0C; }
 .item.svg { padding: 0; }
+body.showscr #livePill, body.showscr #presentExit, body.showscr .exitfull, body.showscr #bExitFull { display: none !important; }
+.showbox { display: flex; gap: 18px; align-items: center; flex-wrap: wrap; margin: 12px 0; }
+.showqr { width: 220px; height: 220px; background: #FFFFFF; padding: 8px; border-radius: 12px; }
+.showcode { display: block; font-size: 30px; letter-spacing: 4px; margin: 2px 0 8px; }
+.showlink { display: block; font-size: 13px; color: var(--muted); word-break: break-all; margin-bottom: 10px; }
 /* a question's figure sits on its own white card: its graph lines do not mix with the lines of the paper */
 .item.exq.svg { background: #FFFFFF; border-radius: 6px; box-shadow: 0 0 0 1px rgba(20, 24, 31, 0.08); }
 .item.svg svg { width: 100%; height: auto; display: block; }
@@ -1714,7 +1719,7 @@ body.role-student .scnpill .sbtns button[data-s="back"], body.role-student .scnp
     <button class="btn sonly" id="bJoin" aria-label="เข้าห้องเรียน" title="เข้าห้องเรียน"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M8 4H4.5v12H8 M11 6.5L14.5 10 11 13.5 M14.5 10H7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="lbl">เข้าห้องเรียน</span></button>
     <button class="btn" id="bTray" aria-pressed="false" aria-label="ชุดโจทย์" title="ชุดโจทย์"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="3" y="3" width="14" height="14" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M6.5 7h7 M6.5 10h7 M6.5 13h4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span class="lbl">ชุดโจทย์</span></button>
     <button class="btn" id="bLive" aria-label="ห้องเรียนสด" title="ห้องเรียนสด"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="2.5" y="4" width="15" height="9.5" rx="1.6" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M6 17h8 M10 13.5V17" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="8.7" r="1.9" fill="currentColor"/></svg><span class="lbl">ห้องสด</span><i id="bLiveN"></i></button>
-    <button class="btn" id="bViewer" aria-label="จอผู้ชม" title="จอผู้ชม: ฉายหน้ากระดาษขึ้นทีวีหรือแชร์จอ โดยไม่เห็นแถบเครื่องมือ"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="2.5" y="3.5" width="15" height="10" rx="1.4" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M7 17h6 M10 13.5V17" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M8.5 6.5v4l3.5-2z" fill="currentColor"/></svg><span class="lbl">จอผู้ชม</span></button>
+    <button class="btn" id="bViewer" aria-label="นำเสนอ" title="นำเสนอ: ต่อจอใหญ่ หรือเปิดจอแสดงผลแบบนักเรียนบนเครื่องอื่น"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="2.5" y="3.5" width="15" height="10" rx="1.4" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M7 17h6 M10 13.5V17" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M8.5 6.5v4l3.5-2z" fill="currentColor"/></svg><span class="lbl">นำเสนอ</span></button>
     <button class="btn" id="bExam" aria-label="ฝึกโจทย์และสอบ" title="ฝึกโจทย์และสอบ"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6 3.5h8v3.5a4 4 0 0 1-8 0z M6 5H3.5v1a3 3 0 0 0 3 3 M14 5h2.5v1a3 3 0 0 1-3 3 M10 11v3 M7 16.5h6 M8 14h4v2.5H8z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/></svg><span class="lbl">ฝึกแข่งขัน</span></button>
     <span class="tsep" aria-hidden="true"></span>
     <button class="btn" id="bExport" aria-label="ส่งออก PDF" title="ส่งออก PDF"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3v9 M6.5 8.5L10 12l3.5-3.5 M4 14.5V17h12v-2.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="lbl">ส่งออก</span></button>
@@ -1930,6 +1935,14 @@ body.role-student .scnpill .sbtns button[data-s="back"], body.role-student .scnp
   </div>
 </div>
 
+<div class="sheet" id="showSheet" hidden>
+  <div class="panel" role="dialog" aria-label="จอแสดงผลแบบนักเรียน">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><h2>จอแสดงผลแบบนักเรียน</h2><button class="btn" id="bShowX" type="button">ปิด</button></div>
+    <div class="note">บนเครื่องที่ต่อจอใหญ่ (คอมพิวเตอร์ ทีวีที่มีเบราว์เซอร์ หรือแชร์จอในโปรแกรมประชุม) สแกนคิวอาร์หรือเปิดลิงก์นี้ ไม่ต้องเข้าระบบ จอนั้นจะเห็นแบบนักเรียน ไม่มีแถบเครื่องมือและเฉลย เปลี่ยนหน้าและเลื่อนตามเครื่องนี้ทันที</div>
+    <div class="showbox"><div id="showQR" class="showqr"></div><div><span class="label">รหัสห้อง</span><b id="showCode" class="showcode"></b><span class="label">ลิงก์</span><span id="showLinkTxt" class="showlink"></span><div class="row"><button class="btn solid" id="bShowCopy" type="button">คัดลอกลิงก์</button><button class="btn" id="bShowWin" type="button">เปิดในหน้าต่างใหม่</button></div></div></div>
+    <div class="note small">ใช้ห้องเดียวกับห้องเรียนสด ปิดห้องเรียนสดเมื่อไหร่ จอแสดงผลก็หยุดทันที</div>
+  </div>
+</div>
 <div class="sheet" id="acctSheet" hidden>
   <div class="panel" role="dialog" aria-label="บัญชีบนเครื่องนี้">
     <div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><h2>บัญชีบนเครื่องนี้</h2><button class="btn" type="button" id="bAcctX">ปิด</button></div>
@@ -3313,7 +3326,7 @@ const widthsLater = debounce(() => { if (typeof renderWidths === 'function') ren
 const FLOW = { gap: 28, on: store_ls.get('tp-flow2') !== '0' /* continuous scrolling is the default (a choice made with the switch is kept) */, ver: 0, dims: { prev: null, next: null }, busy: false };
 const PEEKS = new Map();
 /* the continuous view: the audience screen follows what the teacher's screen uses, not its own setting */
-function flowWanted() { return S.present ? !!PV.flow : FLOW.on; }
+function flowWanted() { return S.present || S.show ? !!PV.flow : FLOW.on; }
 function flowNb() { const pages = (S.nb && S.nb.pages) || [], i = pages.indexOf(S.pid); return { prev: i > 0 ? pages[i - 1] : null, next: i >= 0 && i < pages.length - 1 ? pages[i + 1] : null }; }
 /* a neighbouring page drawn as a picture with its boxes on top; kept for reuse while unchanged, and the pages two away are
    drawn ahead while nothing else is happening, so scrolling quickly through a notebook finds them ready */
@@ -3373,7 +3386,7 @@ async function renderPeeks() {
     if (!pk.typeset) { pk.typeset = true; pk.lay.querySelectorAll('.item').forEach((x) => { try { typeset(x); } catch (e) { /* plain */ } }); }
     el.hidden = false;
   }
-  if (!S.present) clampT(); applyT(); /* the audience screen is placed by the teacher's view, not held inside the pages */
+  if (!S.present && !S.show) clampT(); applyT(); /* the audience screen is placed by the teacher's view, not held inside the pages */
   /* draw ahead the pages two away, one at a time, while the pen and fingers are off the glass */
   clearTimeout(FLOW.ahead);
   const pages = S.nb.pages || [], i = pages.indexOf(S.pid), ahead = [pages[i + 2], pages[i - 2]].filter(Boolean);
@@ -3399,7 +3412,7 @@ function flowGo(d) {
   return true;
 }
 function flowCheck() {
-  if (!FLOW.on || S.present || FLOW.busy || !S.nb) return;
+  if (!FLOW.on || S.present || S.show || FLOW.busy || !S.nb) return;
   for (const p of P.values()) if (p.mode && p.mode !== 'pan') return;
   /* after writing moved onto a page, stay on it until the page is actually scrolled */
   if (FLOW.lockTy != null) { if (Math.abs(S.ty - FLOW.lockTy) < 60) return; FLOW.lockTy = null; }
@@ -3414,7 +3427,7 @@ function flowSet(on) {
   document.querySelectorAll('#flowSeg button').forEach((b) => b.setAttribute('aria-pressed', (b.dataset.f === '1') === !!on ? 'true' : 'false'));
   renderPeeks().catch(() => {}); if (!on) { clampT(); applyT(); }
 }
-function applyT() { if (FLOW.on) flowCheckLater(); const zn = document.getElementById('zNum'); if (zn) { const pc = Math.round(S.zoom * 100); zn.classList.toggle('off', Math.abs(pc - 100) > 1); zn.title = pc === 100 ? 'พอดีหน้า' : 'ตอนนี้ ' + pc + '% แตะเพื่อกลับมาพอดีหน้า'; zn.setAttribute('aria-label', zn.title); } { const hk = (1 / ((S.base || 1) * (S.zoom || 1))).toFixed(3); if (hk !== S.hk) { S.hk = hk; itemsEl.style.setProperty('--hk', hk); } } /* set only when the zoom changed: setting it restyled every box on the page each frame */ wrapEl.style.willChange = 'transform'; { const dpr = window.devicePixelRatio || 1, rx = Math.round(S.tx * dpr) / dpr, ry = Math.round((S.ty + rubber(S.pull || 0)) * dpr) / dpr; wrapEl.style.transform = 'translate(' + rx + 'px,' + ry + 'px) scale(' + S.zoom + ')'; } if (S.watchers && !S.present) emitView(); /* throttled inside, with a last update when the movement stops: the audience screen follows while the teacher is still scrolling, not only after */ sharpLater(); }
+function applyT() { if (FLOW.on) flowCheckLater(); const zn = document.getElementById('zNum'); if (zn) { const pc = Math.round(S.zoom * 100); zn.classList.toggle('off', Math.abs(pc - 100) > 1); zn.title = pc === 100 ? 'พอดีหน้า' : 'ตอนนี้ ' + pc + '% แตะเพื่อกลับมาพอดีหน้า'; zn.setAttribute('aria-label', zn.title); } { const hk = (1 / ((S.base || 1) * (S.zoom || 1))).toFixed(3); if (hk !== S.hk) { S.hk = hk; itemsEl.style.setProperty('--hk', hk); } } /* set only when the zoom changed: setting it restyled every box on the page each frame */ wrapEl.style.willChange = 'transform'; { const dpr = window.devicePixelRatio || 1, rx = Math.round(S.tx * dpr) / dpr, ry = Math.round((S.ty + rubber(S.pull || 0)) * dpr) / dpr; wrapEl.style.transform = 'translate(' + rx + 'px,' + ry + 'px) scale(' + S.zoom + ')'; } if ((S.watchers || liveDisplays()) && !S.present) emitView(); /* throttled inside, with a last update when the movement stops: the audience screen follows while the teacher is still scrolling, not only after */ sharpLater(); }
 function topY() { return S.tv ? 12 : 72; }
 function bounds() {
   const vw = vp.clientWidth, vh = vp.clientHeight;
@@ -3471,7 +3484,7 @@ function topMoreMenu() {
 }
 function fit() {
   fitTop();
-  if (S.present) { presentFit(); return; }
+  if (S.present || S.show) { presentFit(); return; }
   const vw = vp.clientWidth || 800;
   S.base = Math.max(0.25, Math.min((vw - 24) / W, S.tv ? 2.4 : 1.3));
   pageEl.style.width = W * S.base + 'px';
@@ -4783,6 +4796,7 @@ function glideStart(pt) {
   GLIDE.raf = requestAnimationFrame(step);
 }
 function onDown(e) {
+  if (S.show) { e.preventDefault(); return; } /* the class display only shows */
   glideStop();
   if (DIARY.pending.length || (DIARY.spec && (e.pointerType === 'pen' || ((S.tool === 'pen' || S.tool === 'hl') && (e.pointerType !== 'touch' || S.finger))))) diaryPenDown();
   /* writing on the page shown above or below moves onto that page first */
@@ -19568,7 +19582,7 @@ async function liveOpen() {
   ch.on('broadcast', { event: 'need' }, (m) => liveGotNeed(rkStrip(m.payload)));
   ch.on('broadcast', { event: 'join' }, (m) => { rkJoin(m.payload); m = { payload: rkStrip(m.payload) }; liveSendRoster(m.payload); LIVE.forceFull = true; liveSendPage(); liveSendHw(); { const al = m.payload && liveNames()[m.payload.sid]; if (al && al !== m.payload.name) liveSend('rename', { sid: m.payload.sid, name: al }); } if (LIVE.set) liveSend('quiz', liveQuizPayload()); if (LIVE.revealed) liveSend('reveal', liveRevealPayload()); });
   ch.on('broadcast', { event: 'ans' }, (m) => { const p = m.payload; RK.vq = RK.vq.then(() => rkSoon(rkAnswer(p).catch(() => null), 2500, null)).then((r) => { if (r) liveGotAnswer(r.p); }).catch(() => {}); });
-  ch.on('presence', { event: 'sync' }, () => { const st = ch.presenceState(); const seen = LIVE.seen || (LIVE.seen = new Set()); let fresh = false; for (const k in st) if (!k.startsWith('teacher-') && !seen.has(k)) { seen.add(k); fresh = true; } if (fresh) { LIVE.forceFull = true; liveSendPage(); } LIVE.peers = []; for (const k in st) { const m = (st[k] || []).slice(-1)[0] || {}; if (m.role === 'student') { const al = liveNames()[k]; LIVE.peers.push({ sid: k, name: al || m.name || 'ไม่ระบุชื่อ', orig: m.name || '', no: m.no || null, stu: m.stu || null, v: m.v === 2 ? 2 : 1 }); } } LIVE.peers.sort((x, y) => (x.no || 999) - (y.no || 999)); liveRender(); });
+  ch.on('presence', { event: 'sync' }, () => { const st = ch.presenceState(); const seen = LIVE.seen || (LIVE.seen = new Set()); let fresh = false; for (const k in st) if (!k.startsWith('teacher-') && !seen.has(k)) { seen.add(k); fresh = true; } if (fresh) { LIVE.forceFull = true; liveSendPage(); } LIVE.displays = 0; for (const k in st) { const m0 = (st[k] || []).slice(-1)[0] || {}; if (m0.role === 'display') LIVE.displays++; } if (LIVE.displays && !LIVE.dispWas) setTimeout(() => { lastView = 0; emitView(); }, 400); LIVE.dispWas = LIVE.displays; LIVE.peers = []; for (const k in st) { const m = (st[k] || []).slice(-1)[0] || {}; if (m.role === 'student') { const al = liveNames()[k]; LIVE.peers.push({ sid: k, name: al || m.name || 'ไม่ระบุชื่อ', orig: m.name || '', no: m.no || null, stu: m.stu || null, v: m.v === 2 ? 2 : 1 }); } } LIVE.peers.sort((x, y) => (x.no || 999) - (y.no || 999)); liveRender(); });
   ch.subscribe((s) => { if (s === 'SUBSCRIBED') { LIVE.ready = true; ch.track({ role: 'teacher' }); LIVE.forceFull = true; liveSendPage(); liveSendRoster(); liveSendHw(true); liveRender(); } });
   clearInterval(V2.digT); V2.digT = setInterval(liveDigest, 2000); V2.sent.clear(); V2.full = null;
   LIVE.ch = ch; liveRender(); $('#bLive').classList.add('on');
@@ -19836,6 +19850,27 @@ async function studentPutPage(nid, lpid, idx, d, strokes) {
   }
   if (next.join() !== (nb.pages || []).join()) await S.store.update('notebooks/' + nid, { pages: next, updatedAt: now(), title: nb.title });
 }
+/* the class display: a computer, a TV with a browser, or a meeting screen share opens the room's display link and shows
+   what the learners see (no tools, no answer keys), turning and scrolling with the teacher; nothing can be written on it */
+function showStart(code) {
+  LIVE.name = 'จอแสดงผล'; LIVE.follow = true;
+  setTimeout(presentFit, 60);
+  studentJoin(code);
+}
+function showView(v) {
+  if (!S.show || !v || typeof v.tpid !== 'string' || S.pid !== 'T' + v.tpid.replace(/[^A-Za-z0-9]/g, '')) return;
+  if (typeof v.f === 'number') presentFlow(!!v.f);
+  if (isFinite(v.y0) && isFinite(v.y1)) { PV.view = { y0: +v.y0, y1: +v.y1 }; if (isFinite(v.x0) && isFinite(v.x1) && v.x1 > v.x0 && v.y1 > v.y0) { PV.view.x0 = +v.x0; PV.view.x1 = +v.x1; } followView(); }
+}
+function showLink(code) { return location.origin + location.pathname + '#show=' + code; }
+async function showShare(win) {
+  if (LIVE.role !== 'teacher' || !LIVE.ready) { await liveOpen(); if (LIVE.role !== 'teacher') return; }
+  const link = showLink(LIVE.code);
+  if (win) { window.open(link, 'burin-show', 'width=1280,height=800'); toast('เปิดจอแสดงผลในหน้าต่างใหม่แล้ว ลากไปไว้บนจอที่สองแล้วกดเต็มจอ', 3600); return; }
+  closeSheets(); const sh = $('#showSheet'); sh.hidden = false;
+  $('#showCode').textContent = LIVE.code; $('#showLinkTxt').textContent = link.replace(/^https?:\/\//, '');
+  drawQR($('#showQR'), link, 220);
+}
 async function studentJoin(code) {
   LIVE.code = code; LIVE.role = 'student';
   /* remembered for a few hours: reopening the app (or it reloading for an update) joins the same room again by itself */
@@ -19859,7 +19894,8 @@ async function studentJoin(code) {
   rkOnTeacher(ch, 'dig', (m) => stuDigest(m.payload));
   rkOnTeacher(ch, 'ink', (m) => studentInk(m.payload));
   rkOnTeacher(ch, 'laser', (m) => studentLaser(m.payload));
-  rkOnTeacher(ch, 'quiz', (m) => studentQuiz(m.payload));
+  rkOnTeacher(ch, 'view', (m) => showView(m.payload));
+  rkOnTeacher(ch, 'quiz', (m) => { if (!S.show) studentQuiz(m.payload); });
   rkOnTeacher(ch, 'reveal', (m) => studentReveal(m.payload));
   rkOnTeacher(ch, 'quizend', () => { $('#sqSheet').hidden = true; });
   rkOnTeacher(ch, 'roster', (m) => studentRoster(m.payload));
@@ -19875,12 +19911,13 @@ async function studentJoin(code) {
   clearInterval(LIVE.askT); let tries = 0;
   LIVE.askT = setInterval(() => { if (LIVE.gotPage || LIVE.ch !== ch || ++tries > 40) { clearInterval(LIVE.askT); return; } if (LIVE.ready) liveSend('join', { sid: LIVE.sid, name: LIVE.name }); if (tries === 3 && !teacherHere()) noTeacher(); }, 4000);
   ch.subscribe((s) => {
-    if (s === 'SUBSCRIBED') { LIVE.ready = true; ch.track({ role: 'student', name: LIVE.name, v: 2 }); liveSend('join', { sid: LIVE.sid, name: LIVE.name }); liveStudentPill('เชื่อมต่อแล้ว'); }
+    if (s === 'SUBSCRIBED') { LIVE.ready = true; ch.track({ role: S.show ? 'display' : 'student', name: LIVE.name, v: 2 }); liveSend('join', { sid: LIVE.sid, name: LIVE.name }); liveStudentPill('เชื่อมต่อแล้ว'); }
     else if (s === 'CHANNEL_ERROR' || s === 'TIMED_OUT' || s === 'CLOSED') { LIVE.ready = false; liveStudentPill('หลุดการเชื่อมต่อ กำลังต่อใหม่'); }
   });
   LIVE.ch = ch;
 }
 async function studentRoster(R) {
+  if (S.show) return;
   if (!R || !R.map || LIVE.asking || (LIVE.stu && LIVE.stuCls === R.id)) return;
   LIVE.asking = true; const who = await askIdentity(R); LIVE.asking = false;
   LIVE.stu = who.sid; LIVE.stuCls = R.id; LIVE.stuNo = who.no; LIVE.name = who.name;
@@ -19970,6 +20007,7 @@ function stuPartsLater(tpid) {
 }
 async function studentGotPage(d) {
   if (!d || typeof d.tpid !== 'string') return;
+  if (S.show) $('#presentWait').hidden = true;
   if (!LIVE.gotPage) { LIVE.gotPage = true; liveStudentPill('เชื่อมต่อแล้ว'); }
   /* only the page's boxes and paper changed: its lines stay as they are */
   (LIVE.mrev || (LIVE.mrev = {}))[d.tpid] = d.rev;
@@ -20012,7 +20050,7 @@ function stuFollow(lpid) {
   /* on joining, the learner is put on the teacher's page once; after that the page changes only with "ตามผู้สอน" on */
   const first = !LIVE.cur || !String(S.pid || '').startsWith('T'), turned = LIVE.cur !== lpid; LIVE.cur = lpid;
   if (!(first || (LIVE.follow && turned)) || S.pid === lpid) return;
-  const go = () => { if (LIVE.cur !== lpid || S.pid === lpid) return; if (penBusy() || now() - (S.lastPen || 0) < 900) { setTimeout(go, 500); return; } openPage(lpid); };
+  const go = () => { if (LIVE.cur !== lpid || S.pid === lpid) return; if (penBusy() || now() - (S.lastPen || 0) < 900) { setTimeout(go, 500); return; } if (S.show) presentTurn(lpid); else openPage(lpid); };
   go();
 }
 /* live ink is played back at the teacher's own pen speed, a fraction of a second behind, so it flows instead of jumping */
@@ -22939,7 +22977,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793675556';
+const BUILD = '1793677562';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
@@ -23447,13 +23485,17 @@ function publishLive() {
 }
 const publishLiveLater = debounce(publishLive, 300);
 let lastView = 0;
+function liveDisplays() { try { return LIVE.role === 'teacher' ? LIVE.displays || 0 : 0; } catch (e) { return 0; } }
 function emitView() {
-  if (!S.room || S.present || !S.watchers || !S.pid) return;
+  const toRoom = S.room && S.watchers, toShow = LIVE.role === 'teacher' && LIVE.ready && LIVE.displays > 0;
+  if (S.present || !S.pid || !(toRoom || toShow)) return;
   const t = now(); if (t - lastView < 60) { viewLater(); return; } lastView = t;
   const r = vp.getBoundingClientRect();
   /* the whole rectangle the teacher sees, so the viewer screen can match zoom and position exactly */
   const a = toLogical(r.left, r.top), b = toLogical(r.right, r.bottom);
-  S.room.emit('view', { f: FLOW.on ? 1 : 0, pid: S.pid, x0: Math.round(a[0]), y0: Math.round(a[1]), x1: Math.round(b[0]), y1: Math.round(b[1]) }).catch(() => {});
+  const v = { f: FLOW.on ? 1 : 0, pid: S.pid, x0: Math.round(a[0]), y0: Math.round(a[1]), x1: Math.round(b[0]), y1: Math.round(b[1]) };
+  if (toRoom) S.room.emit('view', v).catch(() => {});
+  if (toShow) liveSend('view', Object.assign({ tpid: S.pid }, v));
 }
 const viewLater = debounce(emitView, 80);
 const liveOn = () => LIVE.role === 'teacher' && LIVE.ready;
@@ -23664,24 +23706,24 @@ async function openAudienceWindow() {
   toast(feat.includes('left=') ? 'เปิดจอผู้ชมบนจอที่สองแล้ว แตะปุ่มเต็มจอบนจอนั้นครั้งเดียว' : 'ลากหน้าต่างใหม่ไปไว้บนจอโปรเจกเตอร์ แล้วแตะปุ่มเต็มจอ', 4000);
 }
 /* audience screen from the main bar: open it in a new window (drag that window to the TV or share it), or turn this window into it */
+$('#bShowX').onclick = () => { $('#showSheet').hidden = true; };
+$('#bShowCopy').onclick = async () => { try { await navigator.clipboard.writeText(showLink(LIVE.code)); toast('คัดลอกลิงก์จอแสดงผลแล้ว', 1600); } catch (e) { toast(showLink(LIVE.code), 5000); } };
+$('#bShowWin').onclick = () => showShare(true);
 $('#bViewer').onclick = (e) => {
   const ic1 = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="4" width="13" height="10" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.6"/><rect x="9" y="9" width="12.5" height="10" rx="1.5" fill="var(--surface-2)" stroke="currentColor" stroke-width="1.6"/></svg>';
   const ic2 = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="4" width="19" height="13" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M8 20.5h8 M12 17v3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
   const ic3 = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6z" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="12" r="2.8" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>';
-  popMenu(e.currentTarget, 'ฉายขึ้นจอผู้ชม', [
-    ['เต็มจอบนเครื่องนี้', () => { setFocus(true); }, 'ต่อจอใหญ่ด้วยสายหรือสะท้อนจอ ซ่อนแถบต่าง ๆ เหลือแค่หน้ากระดาษ ยังเขียนได้', ic2],
-    ['เปิดหน้าต่างใหม่เป็นจอผู้ชม', () => {
-      const standalone = (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone;
-      if (standalone && /iPad|iPhone|Macintosh/.test(navigator.userAgent) && 'ontouchend' in document) { toast('แอปที่ติดตั้งบน iPad เปิดหน้าต่างที่สองไม่ได้ ใช้แบบเต็มจอแทน หรือเปิดสมุดบนคอมพิวเตอร์ที่ต่อจอแล้วเลือกใช้หน้าต่างนั้นเป็นจอผู้ชม', 6000); return; }
-      openAudienceWindow();
-    }, 'คอมพิวเตอร์ที่มีจอที่สอง ลากหน้าต่างใหม่ไปไว้บนจอนั้น หรือแชร์ในโปรแกรมประชุม', ic1],
-    ['ให้หน้าต่างนี้เป็นจอผู้ชม', () => { store_ls.set('tp-present', '1'); enterPresent(); }, 'เครื่องนี้ต่อจอใหญ่ไว้ แล้วเขียนจากอีกเครื่องที่ใช้บัญชีเดียวกัน หน้าต่างนี้ดูได้อย่างเดียว', ic3]
+  const ic3b = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="4" width="19" height="13" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M7 9h10 M7 12.5h6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
+  popMenu(e.currentTarget, 'นำเสนอ', [
+    ['เห็นทุกอย่างเหมือนจอนี้', () => { setFocus(true); }, 'ต่อสายหรือสะท้อนจอจากเครื่องนี้ จอใหญ่เห็นหน้าจริงของเครื่องนี้ทั้งหมด หน้ากระดาษเต็มจอ เขียนต่อได้', ic2],
+    ['จอแสดงผลแบบนักเรียน', () => { showShare(false); }, 'เปิดลิงก์หรือสแกนคิวอาร์บนคอมพิวเตอร์ ทีวี หรือแชร์ในโปรแกรมประชุม จอนั้นไม่มีแถบเครื่องมือและเฉลย ตามหน้าที่เครื่องนี้เขียน', ic3b],
+    ['เปิดหน้าต่างใหม่เป็นจอแสดงผล', () => { showShare(true); }, 'คอมพิวเตอร์ที่ต่อจอที่สอง ลากหน้าต่างใหม่ไปไว้บนจอนั้น', ic1]
   ]);
   const m = $('#tabMenu'), n = document.createElement('p'); n.className = 'mnote';
-  n.textContent = 'ผู้ชมเห็นหน้ากระดาษ ลายมือ และเลเซอร์เหมือนจอครู แต่ไม่เห็นแถบเครื่องมือและเฉลยของครู';
+  n.textContent = 'จอแสดงผลแบบนักเรียนใช้ห้องเรียนสด ต้องเข้าระบบคลาวด์ ถ้ายังไม่ได้เปิดห้อง ระบบจะเปิดให้เอง';
   m.insertBefore(n, m.children[1]); menuFit(m, e.currentTarget.getBoundingClientRect());
 };
-window.addEventListener('resize', debounce(() => { if (S.present) presentFit(); }, 160));
+window.addEventListener('resize', debounce(() => { if (S.present || S.show) presentFit(); }, 160));
 document.addEventListener('keydown', (e) => { if (S.present && e.key === 'Escape') exitPresent(); });
 window.addEventListener('hashchange', () => { const h = (location.hash || '').replace('#', ''); if (h === 'present' && !S.present) enterPresent(); else if (h !== 'present' && S.present && store_ls.get('tp-present') !== '1') exitPresent(); });
 document.addEventListener('paste', (e) => {
@@ -24027,8 +24069,9 @@ async function boot() {
   renderTools(); renderLevels(); syncToggles(); fit(); updUndo();
   const C = window.claude && typeof window.claude.use === 'function' ? window.claude : null;
   renderAIAvail(C ? 'checking' : 'none');
-  const hs = (location.hash || '').replace('#', ''), mC = hs.match(/^class=([A-Z2-9]{6})$/i), mL = hs.match(/^lecture=([a-z0-9]{6,20})$/i), mH = hs.match(/^hw=([a-z0-9]{6,20})$/i), mT = hs.match(/^term=([a-z0-9]{4,30})$/i);
-  S.student = !!(mC || mL || mH || mT);
+  const hs = (location.hash || '').replace('#', ''), mS = hs.match(/^show=([A-Z2-9]{6})$/i), mC = hs.match(/^class=([A-Z2-9]{6})$/i), mL = hs.match(/^lecture=([a-z0-9]{6,20})$/i), mH = hs.match(/^hw=([a-z0-9]{6,20})$/i), mT = hs.match(/^term=([a-z0-9]{4,30})$/i);
+  S.student = !!(mC || mL || mH || mT || mS); S.show = !!mS;
+  if (S.show) { document.body.classList.add('present', 'showscr'); const w = $('#presentWait'); w.innerHTML = '<b>จอแสดงผลของห้อง ' + mS[1].toUpperCase() + '</b><br>กำลังเชื่อมต่อ หน้าที่ผู้สอนเปิดจะขึ้นที่นี่เอง'; w.hidden = false; }
   const db = C && !S.student ? await C.use('db').catch(() => null) : null;
  if (db) S.store = makeDbStore(db);
   else if (CLOUD.ready() && !S.student) {
@@ -24071,6 +24114,7 @@ async function boot() {
   renderAcct();
   if (store_ls.get('tp-auth-next') != null && CLOUD.state === 'signedout') { const em = store_ls.get('tp-auth-next'); store_ls.del('tp-auth-next'); setTimeout(() => { openAuth(); if (em) { $('#aEmail').value = em; setTimeout(() => $('#aPass').focus({ preventScroll: true }), 80); } }, 300); }
   if (mC && CLOUD.ready()) studentJoin(mC[1].toUpperCase());
+  if (mS && CLOUD.ready()) showStart(mS[1].toUpperCase());
   else if (!S.student && CLOUD.state === 'on' && isStudentSide()) {
     /* a learner signed in on their own account was in a room a little while ago: back in it without asking */
     let j = null; try { j = JSON.parse(store_ls.get('tp-live-join') || 'null'); } catch (e) { j = null; }
