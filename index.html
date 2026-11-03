@@ -8753,7 +8753,7 @@ bindAISettings();
 
 /* ---------- teaching media: from this device, from the web (Wikimedia Commons), or an automatic set for the page ---------- */
 const MD = { tab: 'auto', kind: 'all', busy: 0, lastAuto: null };
-const okRemote = (u) => /^https:\/\/upload\.wikimedia\.org\/[^\s"'<>]+$/.test(String(u || '')) || okSigned(u);
+const okRemote = (u) => /^https:\/\/(upload\.wikimedia\.org|api\.openverse\.org\/v1\/images|images-assets\.nasa\.gov)\/[^\s"'<>]+$/.test(String(u || '')) || okSigned(u);
 /* common Thai physics topics, so searching works even without AI */
 const TOPIC_EN = [
   ['โพรเจกไทล์', 'projectile motion'], ['ฟรีฟอลล์', 'free fall'], ['ตกอิสระ', 'free fall'], ['เสรี', 'free fall'],
@@ -8794,6 +8794,38 @@ async function commonsSearch(q, kind, limit) {
   const out = [];
   for (const pg of pages) { const m = mediaFromPage(pg, kind); if (m) out.push(m); }
   return out;
+}
+/* more free pictures than Wikimedia alone: Openverse gathers openly licensed images from many collections (only those
+   that may be used in a product), and NASA's library has public-domain pictures of space, Earth and the sky */
+async function openverseSearch(q, limit) {
+  try {
+    const r = await fetch('https://api.openverse.org/v1/images/?q=' + encodeURIComponent(q) + '&page_size=' + (limit || 12) + '&license_type=commercial&mature=false');
+    if (!r.ok) return [];
+    const j = await r.json();
+    return (j.results || []).filter((x) => x && x.id && /^[0-9a-f-]{20,60}$/i.test(x.id)).map((x) => {
+      const tags = (x.tags || []).map((t) => t && t.name).filter(Boolean).slice(0, 12).join(' ');
+      const lic = 'CC ' + String(x.license || '').toUpperCase() + (x.license_version ? ' ' + x.license_version : '');
+      return { kind: /diagram|illustration|vector|drawing|schematic/i.test((x.title || '') + ' ' + tags) ? 'drawing' : 'bitmap', name: String(x.title || 'ภาพ').slice(0, 120), desc: tags, cats: String(x.source || '') + ' ' + tags,
+        url: 'https://api.openverse.org/v1/images/' + x.id + '/thumb/', thumb: 'https://api.openverse.org/v1/images/' + x.id + '/thumb/', mime: 'image/jpeg', size: 0, w: x.width || 0, h: x.height || 0,
+        credit: (String(x.creator || 'ไม่ระบุผู้สร้าง').slice(0, 60)) + ', ' + (String(x.license || '') === 'pdm' || String(x.license || '') === 'cc0' ? 'สาธารณสมบัติ' : lic) + ', ' + (x.source || 'Openverse'),
+        page: /^https:\/\//.test(x.foreign_landing_url || '') ? x.foreign_landing_url : 'https://openverse.org/image/' + x.id, src: 'openverse' };
+    });
+  } catch (e) { return []; }
+}
+const NASA_WORDS = /space|planet|moon|lunar|sun|solar|star|galaxy|orbit|satellite|earth|eclipse|rocket|astronaut|telescope|comet|meteor|aurora|mars|jupiter|saturn|venus|universe|nebula|cloud|hurricane|volcano|ocean/i;
+async function nasaSearch(q, limit) {
+  if (!NASA_WORDS.test(q)) return [];
+  try {
+    const r = await fetch('https://images-api.nasa.gov/search?media_type=image&page_size=' + (limit || 8) + '&q=' + encodeURIComponent(q));
+    if (!r.ok) return [];
+    const j = await r.json();
+    return ((j.collection && j.collection.items) || []).slice(0, limit || 8).map((it) => {
+      const d = (it.data || [])[0] || {}, l = (it.links || []).find((x) => x && x.render === 'image') || (it.links || [])[0] || {};
+      if (!/^https:\/\/images-assets\.nasa\.gov\//.test(l.href || '')) return null;
+      return { kind: 'bitmap', name: String(d.title || 'NASA').slice(0, 120), desc: String(d.description || '').slice(0, 220), cats: (d.keywords || []).join(' '), url: l.href, thumb: l.href, mime: 'image/jpeg', size: 0, w: 0, h: 0,
+        credit: 'NASA' + (d.center ? ' (' + d.center + ')' : '') + ', สาธารณสมบัติ', page: 'https://images.nasa.gov/details/' + encodeURIComponent(d.nasa_id || ''), src: 'nasa' };
+    }).filter(Boolean);
+  } catch (e) { return []; }
 }
 const stripHtml = (h) => { const d = document.createElement('div'); d.innerHTML = String(h || ''); return (d.textContent || '').replace(/\s+/g, ' ').trim(); };
 function mediaFromPage(pg, kind) {
@@ -8937,7 +8969,7 @@ async function insertMedia(m, btn) {
       const ar = m.w && m.h ? Math.round(m.h / m.w * 1000) / 1000 : 0.5625, w = 560; const [x, y] = viewSpot(w, Math.round(w * ar));
       addItem({ type: 'video', url: m.play, poster: m.thumb, x, y, w, ar, credit: m.credit, src: m.page });
     } else {
-      const ar = m.w && m.h ? Math.round(m.h / m.w * 1000) / 1000 : 0.66, w = 480; const [x, y] = viewSpot(w, Math.round(w * ar));
+      let ar = m.w && m.h ? Math.round(m.h / m.w * 1000) / 1000 : 0.66; const w = 480; const [x, y] = viewSpot(w, Math.round(w * ar));
       /* keep a copy in the notebook so it works offline and in PDF; fall back to the web address */
       let asset = null;
       const A = await getAssets();
@@ -8947,6 +8979,7 @@ async function insertMedia(m, btn) {
           const r = await fetch(src); if (!r.ok) throw new Error('fetch');
           const blob = await r.blob();
           const p = m.kind === 'gif' || /svg/.test(blob.type) ? { blob, type: blob.type || 'image/png' } : await prepImage(new File([blob], 'web', { type: blob.type || 'image/jpeg' }));
+          if (!(m.w && m.h) && p.ar) ar = Math.round(p.ar * 1000) / 1000;
           asset = (await A.upload(p.blob, { type: p.type })).id;
         } catch (e) { asset = null; }
       }
@@ -14203,7 +14236,7 @@ async function lessonRender() {
 $('#iLesson').onclick = () => { $('#insSheet').hidden = true; openLesson(); };
 /* ---------- prepare a whole lesson from one chapter: title and objectives, the checked chapter summary, matching models,
    practice questions from the checked bank, and an answer key only the teacher sees ---------- */
-const PREP = { t: null, ch: 0, lesson: true, models: true, quiz: 10, key: true, plan: true };
+const PREP = { t: null, ch: 0, lesson: true, models: true, quiz: 10, key: true, plan: true, pics: true, notes: true };
 function prepTracks() { const st = subjTracks(); return byLevel(Object.keys(BANK_META).filter((t) => st.includes(t) && ((BANK_META[t].lessons || []).length || BANK_META[t].n)), S.nb); }
 function prepGrams(s) { s = String(s || '').replace(/การ|ของ|และ|ใน|กับ|แบบ|อย่าง|ง่าย/g, ' ').replace(/[\s()0-9.,:;\-]/g, ''); const g = new Set(); for (let i = 0; i + 3 <= s.length; i++) g.add(s.slice(i, i + 3)); return g; }
 /* models whose names share the most wording with the chapter */
@@ -14259,11 +14292,73 @@ function prepPaint() {
   const opt = (key, label, ok, extra) => { const l = document.createElement('label'); l.className = 'prepopt' + (ok ? '' : ' off'); l.innerHTML = '<input type="checkbox"><span><b></b><small></small></span>'; const i = l.querySelector('input'); i.checked = ok && !!PREP[key]; i.disabled = !ok; i.onchange = () => { PREP[key] = i.checked ? (key === 'quiz' ? PREP.quizN || 10 : true) : (key === 'quiz' ? 0 : false); }; l.querySelector('b').textContent = label; l.querySelector('small').textContent = extra; box.appendChild(l); return l; };
   opt('plan', 'หน้าเปิดคาบ', true, 'ชื่อบท จุดประสงค์การเรียนรู้ หัวข้อย่อย และลำดับการสอนสำหรับครู (ครูเห็นคนเดียว)');
   opt('lesson', 'บทเรียนสรุป', hasL, hasL ? 'นิยาม สูตร ตัวอย่างพร้อมวิธีทำ ความเข้าใจผิดที่พบบ่อย สรุปท้ายบท' : 'บทนี้ยังไม่มีบทเรียนสรุป');
+  opt('pics', 'รูปประกอบบทเรียน', hasL, hasL ? 'หารูปที่ตรงกับแต่ละหัวข้อจาก Wikimedia, Openverse และ NASA เก็บสำเนาไว้ในสมุด พร้อมที่มาของรูป' : 'ใช้ได้เมื่อบทนี้มีบทเรียนสรุป');
+  opt('notes', 'เว้นที่จดคำอธิบาย', hasL, 'เว้นที่ว่างใต้แต่ละหัวข้อให้เขียนอธิบายระหว่างสอน กระจายให้เต็มหน้าพอดี ใช้เป็นเอกสารประกอบการสอนได้ทันที');
   opt('models', 'แบบจำลองที่เกี่ยวข้อง', models.length > 0, models.length ? models.map((x) => x.name).join(', ') : 'ยังไม่พบแบบจำลองที่ตรงกับบทนี้');
   const q = opt('quiz', 'โจทย์ฝึกท้ายคาบ', nq > 0, nq ? 'เรียงจากง่ายไปยาก จากคลังที่ตรวจเฉลยแล้ว' : 'บทนี้ยังไม่มีโจทย์ในคลัง');
   if (nq) { const ch2 = exEl('span', 'chips'); for (const n of [5, 10, 20]) { const b = exEl('button', 'chip', n + ' ข้อ'); b.type = 'button'; b.setAttribute('aria-pressed', (PREP.quiz || 0) === n ? 'true' : 'false'); b.onclick = (e) => { e.preventDefault(); PREP.quiz = PREP.quizN = n; prepPaint(); }; ch2.appendChild(b); } q.appendChild(ch2); }
   opt('key', 'เฉลยสำหรับครู', nq > 0, 'หน้าเฉลยพร้อมคำอธิบาย ซ่อนจากจอผู้ชมและนักเรียน');
   PREP.foundModels = models;
+}
+/* the English words a picture search needs for a part of a lesson: the curriculum's own query for that topic name,
+   else words found in its text, else the chapter's English name */
+function prepQuery(sec, c) {
+  if (!PREP.qmap) { PREP.qmap = {}; for (const lv of Object.values(CURRIC)) for (const [, subs] of lv[1]) for (const [th, en] of subs) PREP.qmap[th] = en; }
+  const h = String(sec.h || '');
+  if (/ตัวอย่าง|เข้าใจผิด|สรุป|แบบฝึก|โจทย์/.test(h)) return '';
+  if (PREP.qmap[h]) return PREP.qmap[h];
+  for (const [th, en] of Object.entries(PREP.qmap)) if (th.length > 4 && (h.includes(th) || th.includes(h))) return en;
+  const g = guessQueries(h + ' ' + String(sec.md || '').slice(0, 300))[0]; if (g) return g;
+  return /ภาพรวม/.test(h) ? (c.en || '') : '';
+}
+async function prepPics(secs, c, t) {
+  const A = await getAssets(), lv = levelName(nbLv(S.nb));
+  const one = async (sec) => {
+    const q = prepQuery(sec, c); if (!q) return null;
+    const [d, bm, ov, na] = await Promise.all([commonsSearch(q, 'drawing', 8).catch(() => []), commonsSearch(q, 'bitmap', 6).catch(() => []), openverseSearch(q, 10), nasaSearch(q, 6)]);
+    let list = curateMedia(d.concat(bm, ov, na), q, 8); if (!list.length) return null;
+    if (AI.ready('gen') && list.length > 2) { const pk = await Promise.race([aiPickMedia(list, sec.h || q, lv), new Promise((r) => setTimeout(() => r(null), 15000))]); if (pk && pk.length) list = pk; else if (pk) return null; }
+    for (const m of list.slice(0, 3)) {
+      try {
+        const r = await fetch(m.thumb); if (!r.ok) continue;
+        const blob = await r.blob(); if (!/^image\//.test(blob.type || 'image/jpeg')) continue;
+        const pi = /svg/.test(blob.type) ? { blob, type: blob.type, ar: m.w && m.h ? m.h / m.w : 0.66 } : await prepImage(new File([blob], 'web', { type: blob.type || 'image/jpeg' }));
+        const ar = clamp(pi.ar || (m.w && m.h ? m.h / m.w : 0.66), 0.3, 1.6);
+        let asset = null; if (A) { try { asset = (await A.upload(pi.blob, { type: pi.type })).id; } catch (e) { asset = null; } }
+        if (!asset && !okRemote(m.thumb)) continue;
+        return { asset, url: asset ? null : m.thumb, ar: Math.round(ar * 1000) / 1000, credit: m.credit, src: m.page };
+      } catch (e) { /* the next one */ }
+    }
+    return null;
+  };
+  const out = [];
+  for (let i = 0; i < secs.length; i += 3) { const got = await Promise.all(secs.slice(i, i + 3).map((sc) => Promise.race([one(sc), new Promise((r) => setTimeout(() => r(null), 25000))]).catch(() => null))); out.push(...got); }
+  return out;
+}
+/* parts laid top to bottom on fresh pages; what is left at the bottom of each page is shared as writing space under the parts */
+async function prepLayout(units, fresh, x, w) {
+  const top = 50, bottom = H - 34, base = 90, gap = 14;
+  const uh = (u) => u.parts.reduce((a, p) => a + p.h + gap, 0);
+  const pages = []; let cur = null, used = 0;
+  for (const u of units) {
+    const h = uh(u) + (u.note ? base : 24);
+    if (!cur || (cur.length && used + h > bottom - top)) { cur = []; pages.push(cur); used = 0; }
+    cur.push(u); used += h;
+  }
+  for (const pg of pages) {
+    await fresh();
+    const need = pg.reduce((a, u) => a + uh(u) + (u.note ? base : 24), 0), notes = pg.filter((u) => u.note).length;
+    const add = notes ? Math.min(260, Math.max(0, (bottom - top - need) / notes)) : 0;
+    let y = top;
+    for (const u of pg) {
+      for (const p of u.parts) {
+        if (p.kind === 'text') addItem({ type: 'text', x, y: Math.round(y), w, md: p.md, fs: 22 });
+        else addItem(Object.assign({ type: 'img', x: Math.round(x + (w - p.w) / 2), y: Math.round(y), w: p.w, ar: p.p.ar, credit: p.p.credit, src: p.p.src }, p.p.asset ? { asset: p.p.asset } : { url: p.p.url }));
+        y += p.h + gap;
+      }
+      y += (u.note ? base + add : 24);
+    }
+  }
 }
 async function prepRun() {
   const t = PREP.t, ch = PREP.ch, m = BANK_META[t]; if (!m || !S.nb) return;
@@ -14287,12 +14382,28 @@ async function prepRun() {
       addItem({ type: 'text', x, y: py, w, md: pmd, fs: 18, teacher: true });
     }
     if (secs) {
-      await fresh(); let y = 50;
+      /* a handout ready to teach from: each part of the lesson with a picture that shows it (from Wikimedia, Openverse
+         and NASA, a copy kept in the notebook) and room under it to write the explanation in class; the parts are spread
+         over each page so the free space is shared out evenly */
+      const FL = PREP.pics ? floatLine('กำลังหารูปประกอบบทเรียน') : null;
+      let pics = []; try { pics = PREP.pics ? await prepPics(secs, c, t) : []; } finally { if (FL) FL(); }
+      const units = [];
+      const room = H - 34 - 50 - 120;
       for (const [i, sc] of secs.entries()) {
-        const md = (i === 0 && !PREP.plan ? '**' + title + '**\n' : '') + lessonMd(sc), h = estTextH(md, w, 22);
-        if (y > 50 && y + h > H - 30) { await fresh(); y = 50; }
-        addItem({ type: 'text', x, y, w, md, fs: 22 }); y += h + 30;
+        /* a long part is cut at its own sub-headings, and a piece still taller than a page at its paragraphs, so nothing runs off the paper */
+        const md0 = (i === 0 && !PREP.plan ? '**' + title + '**\n' : '') + lessonMd(sc), chunks = [];
+        for (const piece of md0.split(/\n(?=## )/)) {
+          if (await measureMd(piece, w, 22) <= room) { chunks.push(piece); continue; }
+          let acc = ''; for (const para of piece.split(/\n\n+/)) { const t2 = acc ? acc + '\n\n' + para : para; if (acc && await measureMd(t2, w, 22) > room) { chunks.push(acc); acc = para; } else acc = t2; } if (acc) chunks.push(acc);
+        }
+        const note = PREP.notes && !/ภาพรวม|สรุป/.test(sc.h || '');
+        for (const [k, md] of chunks.entries()) {
+          const parts = [{ kind: 'text', md, h: await measureMd(md, w, 22) }];
+          const p = k === 0 && pics[i]; if (p) { let pw2 = 420, ph2 = Math.round(pw2 * p.ar); if (ph2 > 330) { ph2 = 330; pw2 = Math.round(ph2 / p.ar); } parts.push({ kind: 'img', p, w: pw2, h: ph2 }); }
+          units.push({ parts, note });
+        }
       }
+      await prepLayout(units, fresh, x, w);
     }
     if (PREP.models) for (const md0 of PREP.foundModels || []) {
       await fresh();
@@ -14496,7 +14607,7 @@ async function libSearch() {
     want === 'all' || want === 'img' ? searchMedia(extra.concat([q, qd + ' diagram']).slice(0, 5), ['drawing', 'bitmap'], 16) : [],
     want === 'all' || want === 'gif' ? searchMedia([q, qd + ' animation'].concat(extra.slice(0, 2)), ['gif'], 12) : [],
     want === 'all' || want === 'video' ? searchMedia([q].concat(extra.slice(0, 2)), ['video'], 10) : [],
-    wikiArticleMedia(q), commonsCategoryMedia(q, topicWords(q))
+    wikiArticleMedia(q), commonsCategoryMedia(q, topicWords(q)).then((cat) => (want === 'all' || want === 'img' ? Promise.all([openverseSearch(q, 14), nasaSearch(q, 8)]).then(([ov, na]) => cat.concat(ov, na)) : cat))
   ]);
   if (my !== MD.busy) return;
   { const seen = new Set(imgs.concat(gifs, vids).map((m) => m.url));
@@ -23055,7 +23166,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793688814';
+const BUILD = '1793689234';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
