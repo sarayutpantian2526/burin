@@ -213,6 +213,13 @@ body.flow:not(.flowlast) #bAddBelow { display: none; }
 #sel { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
 
 .item { position: absolute; box-sizing: border-box; font-family: var(--doc); font-size: 24px; line-height: 1.6; color: #14181F; padding: 6px 10px; border-radius: 6px; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+/* a scroll bar for the whole notebook, on computers only (mouse or trackpad): drag it to any page instead of scrolling the wheel page after page */
+.nbscroll { position: absolute; right: 4px; top: 70px; bottom: 70px; width: 14px; z-index: 6; border-radius: 7px; background: rgba(20, 26, 34, 0.06); cursor: pointer; touch-action: none; }
+.nbscroll:hover, .nbscroll.drag { background: rgba(20, 26, 34, 0.12); width: 16px; }
+.nbsthumb { position: absolute; left: 2px; right: 2px; min-height: 28px; border-radius: 6px; background: rgba(20, 26, 34, 0.38); }
+.nbscroll:hover .nbsthumb, .nbscroll.drag .nbsthumb { background: rgba(20, 26, 34, 0.55); }
+.nbstip { position: absolute; right: 22px; transform: translateY(-50%); padding: 4px 10px; border-radius: 8px; background: var(--fg, #14181F); color: var(--surface, #FFFFFF); font-size: 13px; white-space: nowrap; pointer-events: none; }
+body.present .nbscroll, body.showscr .nbscroll { display: none !important; }
 #viewport { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
 .item.teacher { background: rgba(255, 243, 196, 0.8); color: #3E2F1C; box-shadow: 0 1px 4px rgba(20, 26, 34, 0.1); border-radius: 8px; padding: 6px 10px; }
 .item.teacher.svg { background: rgba(255, 250, 230, 0.6); }
@@ -1766,6 +1773,7 @@ body.role-student .scnpill .sbtns button[data-s="back"], body.role-student .scnp
 
     <div class="diarybar no-ink" id="diaryBar" hidden role="status"><button type="button" id="bDiaryFold" class="dfold" aria-expanded="true" title="แตะเพื่อย่อหรือขยายแถบ"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M15.5 2.8c-4.6.6-8.3 4.6-9.6 10.4l-.9 3.9 M15.5 2.8c.4 3.8-2.4 7.6-7.3 8.6 M5.3 13.6c1.8.2 3.4-.4 4.6-1.6 M3.5 17.2h7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><b>โหมดสมุดตอบได้</b></button><span>เขียนถึงสมุด แล้ววางปากกาสักครู่ สมุดจะเขียนตอบ</span><button type="button" id="bDiaryVoice" class="dstyle" title="เลือกว่าอยากให้สมุดตอบแบบไหน">ครูใจดี</button><button type="button" id="bDiaryStyle" class="dstyle" title="แตะเพื่อสลับวิธีที่คำตอบปรากฏ">เขียนลายมือ</button><button type="button" id="bDiaryOff">ปิดโหมด</button></div>
     <div id="viewport">
+      <div id="nbScroll" class="nbscroll no-ink" hidden aria-label="แถบเลื่อนทั้งเล่ม ลากเพื่อไปหน้าอื่น"><div class="nbsthumb"></div><span class="nbstip" hidden></span></div>
       <div id="wrap">
         <div class="fpeek" id="peekPrev" hidden aria-hidden="true"></div>
         <div id="page">
@@ -3461,7 +3469,41 @@ function flowSet(on) {
   document.querySelectorAll('#flowSeg button').forEach((b) => b.setAttribute('aria-pressed', (b.dataset.f === '1') === !!on ? 'true' : 'false'));
   renderPeeks().catch(() => {}); if (!on) { clampT(); applyT(); }
 }
-function applyT() { if (FLOW.on) flowCheckLater(); const zn = document.getElementById('zNum'); if (zn) { const pc = Math.round(S.zoom * 100); zn.classList.toggle('off', Math.abs(pc - 100) > 1); zn.title = pc === 100 ? 'พอดีหน้า' : 'ตอนนี้ ' + pc + '% แตะเพื่อกลับมาพอดีหน้า'; zn.setAttribute('aria-label', zn.title); } { const hk = (1 / ((S.base || 1) * (S.zoom || 1))).toFixed(3); if (hk !== S.hk) { S.hk = hk; itemsEl.style.setProperty('--hk', hk); } } /* set only when the zoom changed: setting it restyled every box on the page each frame */ wrapEl.style.willChange = 'transform'; { const dpr = window.devicePixelRatio || 1, rx = Math.round(S.tx * dpr) / dpr, ry = Math.round((S.ty + rubber(S.pull || 0)) * dpr) / dpr; wrapEl.style.transform = 'translate(' + rx + 'px,' + ry + 'px) scale(' + S.zoom + ')'; } if ((S.watchers || liveDisplays()) && !S.present) emitView(); /* throttled inside, with a last update when the movement stops: the audience screen follows while the teacher is still scrolling, not only after */ sharpLater(); }
+const NBS = { on: !!(window.matchMedia && matchMedia('(pointer: fine) and (hover: hover)').matches), drag: false };
+function nbsPos() {
+  const pages = (S.nb && S.nb.pages) || [], n = pages.length, i = pages.indexOf(S.pid); if (n < 2 || i < 0) return null;
+  const ph = H * S.base * (S.zoom || 1), frac = clamp((vp.clientHeight / 2 - S.ty) / (ph || 1), 0, 1);
+  return { n, i, f: (i + frac) / n };
+}
+function nbsSync() {
+  const el = $('#nbScroll'); if (!el) return;
+  const p = NBS.on && !S.present && !S.show ? nbsPos() : null; el.hidden = !p; if (!p) return;
+  const th = el.firstChild, tr = el.clientHeight, h = Math.max(28, tr / p.n);
+  if (!NBS.drag) th.style.top = Math.round(clamp(p.f * tr - h / 2, 0, tr - h)) + 'px'; th.style.height = Math.round(h) + 'px';
+}
+/* to a place in the notebook given as 0..1 of all its pages: that page, scrolled to that part of it */
+function nbsGo(f) {
+  const pages = (S.nb && S.nb.pages) || [], n = pages.length; if (!n) return;
+  const g = clamp(f, 0, 0.9999) * n, i = Math.floor(g), frac = g - i, tip = $('#nbScroll .nbstip');
+  if (tip) { tip.hidden = false; tip.textContent = 'หน้า ' + (i + 1) + ' จาก ' + n; }
+  const place = () => { const ph = H * S.base * (S.zoom || 1); S.ty = vp.clientHeight / 2 - frac * ph; clampT(); applyT(); };
+  if (pages[i] !== S.pid) { clearTimeout(NBS.t); NBS.t = setTimeout(() => { openPage(pages[i]); requestAnimationFrame(place); }, 60); } else place();
+}
+{
+  const el = $('#nbScroll');
+  if (el) {
+    const at = (e) => { const r = el.getBoundingClientRect(); return clamp((e.clientY - r.top) / (r.height || 1), 0, 1); };
+    el.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); NBS.drag = true; el.classList.add('drag'); try { el.setPointerCapture(e.pointerId); } catch (er) { /* fine */ }
+      const r = el.getBoundingClientRect(), th = el.firstChild, h = th.offsetHeight; th.style.top = Math.round(clamp(e.clientY - r.top - h / 2, 0, r.height - h)) + 'px';
+      const tip = el.querySelector('.nbstip'); tip.style.top = (e.clientY - r.top) + 'px'; nbsGo(at(e)); });
+    el.addEventListener('pointermove', (e) => { if (!NBS.drag) return; e.preventDefault(); const r = el.getBoundingClientRect(), th = el.firstChild, h = th.offsetHeight; th.style.top = Math.round(clamp(e.clientY - r.top - h / 2, 0, r.height - h)) + 'px'; el.querySelector('.nbstip').style.top = (e.clientY - r.top) + 'px'; nbsGo(at(e)); });
+    const end = () => { if (!NBS.drag) return; NBS.drag = false; el.classList.remove('drag'); const tip = el.querySelector('.nbstip'); setTimeout(() => { if (!NBS.drag) tip.hidden = true; }, 700); nbsSync(); };
+    el.addEventListener('pointerup', end); el.addEventListener('pointercancel', end);
+    el.addEventListener('wheel', (e) => e.stopPropagation(), { passive: true });
+    window.addEventListener('resize', () => nbsSync());
+  }
+}
+function applyT() { if (FLOW.on) flowCheckLater(); const zn = document.getElementById('zNum'); if (zn) { const pc = Math.round(S.zoom * 100); zn.classList.toggle('off', Math.abs(pc - 100) > 1); zn.title = pc === 100 ? 'พอดีหน้า' : 'ตอนนี้ ' + pc + '% แตะเพื่อกลับมาพอดีหน้า'; zn.setAttribute('aria-label', zn.title); } { const hk = (1 / ((S.base || 1) * (S.zoom || 1))).toFixed(3); if (hk !== S.hk) { S.hk = hk; itemsEl.style.setProperty('--hk', hk); } } /* set only when the zoom changed: setting it restyled every box on the page each frame */ wrapEl.style.willChange = 'transform'; { const dpr = window.devicePixelRatio || 1, rx = Math.round(S.tx * dpr) / dpr, ry = Math.round((S.ty + rubber(S.pull || 0)) * dpr) / dpr; wrapEl.style.transform = 'translate(' + rx + 'px,' + ry + 'px) scale(' + S.zoom + ')'; } if ((S.watchers || liveDisplays()) && !S.present) emitView(); /* throttled inside, with a last update when the movement stops: the audience screen follows while the teacher is still scrolling, not only after */ sharpLater(); if (NBS.on) nbsSync(); }
 function topY() { return S.tv ? 12 : 72; }
 function bounds() {
   const vw = vp.clientWidth, vh = vp.clientHeight;
@@ -23224,7 +23266,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793690107';
+const BUILD = '1793690964';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
