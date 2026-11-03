@@ -6770,6 +6770,20 @@ function renderAIPages() {
   });
   const n = sel.length; $('#bGenPage').textContent = n > 1 ? 'สร้างโจทย์จาก ' + n + ' หน้าที่เลือก' : (sel[0] === S.pid ? 'สร้างโจทย์จากหน้านี้' : 'สร้างโจทย์จากหน้า ' + (pages.indexOf(sel[0]) + 1));
 }
+/* a picture of a whole page as the AI should read it: the page picture of an imported PDF with the writing on top */
+async function pageShot(pid, strokes) {
+  const pg = pid === S.pid ? S.page : await S.store.get('pages/' + pid).catch(() => null);
+  const bgs = ((pg && pg.items) || []).filter(isBgItem); if (!bgs.length) return null;
+  const [pw, ph] = pageDims(pg), k = Math.min(1.4, 1400 / pw), cv = document.createElement('canvas'); cv.width = Math.round(pw * k); cv.height = Math.round(ph * k);
+  const c = cv.getContext('2d'); c.fillStyle = '#FFFFFF'; c.fillRect(0, 0, cv.width, cv.height); c.setTransform(k, 0, 0, k, 0, 0);
+  for (const it of bgs) {
+    let b = null; try { b = await getAssetBlob(it.asset); } catch (e) { b = null; } if (!b) continue;
+    try { const bm = await createImageBitmap(b); c.drawImage(bm, it.x || 0, it.y || 0, it.w || pw, (it.w || pw) * (it.ar || bm.height / bm.width)); } catch (e) { /* skip */ }
+  }
+  if (strokes && strokes.length) drawInto(c, strokes.map((x) => (x.s ? x : { s: x })), null);
+  const blob = await new Promise((r) => cv.toBlob(r, 'image/jpeg', 0.85)); cv.width = cv.height = 1;
+  return blob ? { blob } : null;
+}
 async function gaSource(fromSel) {
   const useImg = !AI.limits('gen') || !!AI.limits('gen').images;
   const pages = (S.nb && S.nb.pages) || [];
@@ -6780,7 +6794,7 @@ async function gaSource(fromSel) {
     const pg = pid === S.pid ? S.page : await S.store.get('pages/' + pid).catch(() => null);
     const tx = ((pg && pg.items) || []).filter((it) => !it.teacher && (!it.type || it.type === 'text') && it.md).map((it) => it.md).join('\n');
     if (tx) texts.push('[page ' + n + ']\n' + tx.slice(0, 2500));
-    if (useImg && c.strokes.length) { const b = await strokesBlob(c.strokes.map((x) => ({ s: x }))); if (b) images.push(b.blob); }
+    if (useImg) { const shot = await pageShot(pid, c.strokes); if (shot) images.push(shot.blob); else if (c.strokes.length) { const b = await strokesBlob(c.strokes.map((x) => ({ s: x }))); if (b) images.push(b.blob); } } /* an imported PDF page is read with its printed content */
   }
   return { images, text: texts.join('\n\n').slice(0, 6000), label: pids.length > 1 ? pids.length + ' notebook pages (pages ' + pids.map((p) => pages.indexOf(p) + 1).join(', ') + '), one image per page in that order' : 'the current notebook page' };
 }
@@ -20341,7 +20355,10 @@ function occupiedBoxes() {
   const out = [];
   /* a drawing the notebook is still making already owns its place */
   for (const b of (typeof DIARY !== 'undefined' && DIARY.hold[S.pid]) || []) out.push(b);
-  for (const it of (S.page && S.page.items) || []) if (!it.lock && !(it.spec && it.spec.bare)) out.push(it.type === 'life' && it.B ? it.B : tightItemBox(it));
+  for (const it of (S.page && S.page.items) || []) {
+    if (isBgItem(it) && Array.isArray(it.tb)) { const k = (it.w || 1000) / 1000; for (const b of it.tb) out.push([it.x + b[0] * k, it.y + b[1] * k, it.x + b[2] * k, it.y + b[3] * k]); continue; } /* printed lines of an imported PDF page */
+    if (!it.lock && !(it.spec && it.spec.bare)) out.push(it.type === 'life' && it.B ? it.B : tightItemBox(it));
+  }
   for (const r of allStrokes()) { const b = sbox(r.s); out.push([b[0], b[1], b[2], b[3]]); }
   return out;
 }
@@ -20635,8 +20652,14 @@ async function pdfImport(newNb) {
       const blob = await new Promise((r) => cv.toBlob(r, 'image/jpeg', 0.86)); cv.width = cv.height = 1;
       const up = await A.upload(blob, { type: 'image/jpeg' });
       const ar = vw.height / vw.width; let w = 1000; if (ar * w > H) w = Math.floor(H / ar);
+      /* the printed lines of the page (0..1000 across the picture), so the notebook's replies and pictures go into the free space */
+      let tb = [];
+      try { const tc = await pg.getTextContent(), rows = [];
+        for (const t of tc.items) { if (!String(t.str || '').trim()) continue; const m = t.transform, fh = Math.hypot(m[2], m[3]) || 10, x0 = m[4] / v1.width * 1000, x1 = (m[4] + (t.width || 10)) / v1.width * 1000, yb = (v1.height - m[5]) / v1.width * 1000, yt = yb - fh / v1.width * 1000 * 1.1;
+          const r0 = rows.find((r) => Math.abs(r[3] - yb) < 6 && x0 < r[2] + 30 && x1 > r[0] - 30); if (r0) { r0[0] = Math.min(r0[0], x0); r0[2] = Math.max(r0[2], x1); r0[1] = Math.min(r0[1], yt); } else rows.push([x0, yt, x1, yb]); }
+        tb = rows.slice(0, 400).map((r) => r.map((v) => Math.round(clamp(v, 0, 2000)))); } catch (e) { tb = []; }
       const pid = (i === a && firstSpare) ? firstSpare : 'p' + uid(); firstPid = firstPid || pid;
-      await S.store.set('pages/' + pid, { nb: nid, paper: 'blank', items: [{ id: 'i' + uid(), by: DEV, type: 'img', asset: up.id, x: Math.round((W - w) / 2), y: 0, w, ar: Math.round(ar * 1000) / 1000, lock: true }], rev: now() });
+      await S.store.set('pages/' + pid, { nb: nid, paper: 'blank', items: [Object.assign({ id: 'i' + uid(), by: DEV, type: 'img', asset: up.id, x: Math.round((W - w) / 2), y: 0, w, ar: Math.round(ar * 1000) / 1000, lock: true }, tb.length ? { tb } : {})], rev: now() });
       pages.splice(++at, 0, pid);
       if (newNb || i === b || (i - a) % 5 === 4) await S.store.update('notebooks/' + nid, { pages: pages.slice(), updatedAt: now() });
     }
@@ -21464,7 +21487,7 @@ async function qmRead() {
       if (QM.selData.typed) parts.push(QM.selData.typed);
       if (QM.selData.refs.length) { const im = await inkBlob(QM.selData.refs, 14); if (im) images.push(im.blob); }
     } else {
-      for (const pid of (QM.scope === 'page' ? [S.pid] : QM.pids)) { const c = await pageContent(pid); if (c.text) parts.push(c.text); const im = await blobFromStrokes(c.strokes); if (im) images.push(im.blob); }
+      for (const pid of (QM.scope === 'page' ? [S.pid] : QM.pids)) { const c = await pageContent(pid); if (c.text) parts.push(c.text); const shot = await pageShot(pid, c.strokes); const im = shot || await blobFromStrokes(c.strokes); if (im) images.push(im.blob); }
     }
     if (images.length) {
       if (!AI.ready('read')) QM.err = 'ลายมือบนหน้าต้องใช้ AI อ่าน ต่อ AI ก่อน หรือพิมพ์เนื้อหาเองในช่องด้านบน แล้วเลือกบท';
@@ -23166,7 +23189,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793689234';
+const BUILD = '1793689479';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
