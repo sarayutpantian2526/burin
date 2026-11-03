@@ -6132,12 +6132,20 @@ async function orStart() {
   store_ls.set('tp-or', JSON.stringify({ ver, st, at: Date.now() }));
   const standalone = (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone;
   const base = 'https://openrouter.ai/auth?code_challenge=' + ch + '&code_challenge_method=S256&state=' + st + '&key_label=' + encodeURIComponent('Burin');
-  if (standalone) {
-    /* an app opened from the home screen cannot receive the redirect back: show the code and let the person paste it */
-    window.open(base + '&callback_url=' + encodeURIComponent(location.origin + location.pathname), '_blank'); $('#qsORPaste').hidden = false;
-    $('#qsMsg').innerHTML = '<div class="note">ขั้นที่ 1 เข้าระบบ OpenRouter ในหน้าที่เปิดขึ้นในเบราว์เซอร์ แล้วกดอนุญาต<br>ขั้นที่ 2 เบราว์เซอร์จะเปิดหน้า Burin ที่มีรหัสยืนยันให้ กดคัดลอกรหัส<br>ขั้นที่ 3 กลับมาที่แอปนี้ วางรหัสในช่องด้านบน แล้วกดยืนยัน</div>';
-  } else location.href = base + '&callback_url=' + encodeURIComponent(location.origin + location.pathname);
+  /* the app goes to the sign-in page itself and comes back by itself, also when opened from the home screen (the iPad
+     shows the sign-in page over the app and returns to it); the box for a code appears only if the sign-in ended up in
+     a separate browser instead and the person comes back to the app without it finishing */
+  $('#qsORPaste').hidden = true;
+  if (standalone) store_ls.set('tp-or-away', '1');
+  location.href = base + '&callback_url=' + encodeURIComponent(location.origin + location.pathname);
 }
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState !== 'visible' || store_ls.get('tp-or-away') !== '1' || !store_ls.get('tp-or')) return;
+  store_ls.set('tp-or-away', '');
+  if ($('#aiSetup').hidden) return;
+  $('#qsORPaste').hidden = false;
+  $('#qsMsg').innerHTML = '<div class="note">ถ้ากดอนุญาตแล้วแต่ยังไม่เชื่อมต่อ แปลว่าการอนุญาตไปจบในเบราว์เซอร์อีกตัว หน้า Burin ในเบราว์เซอร์นั้นจะแสดงรหัสยืนยัน คัดลอกมาวางในช่องด้านบนแล้วกดยืนยัน หรือกดเชื่อมต่อใหม่อีกครั้ง</div>';
+});
 function orShowCode(code) {
   closeSheets(); $('#aiSetup').hidden = false;
   const out = $('#qsMsg'); out.innerHTML = '';
@@ -6157,7 +6165,7 @@ async function orFinish(code, state) {
   try {
     const r = await aiFetch('https://openrouter.ai/api/v1/auth/keys', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ code: code.trim(), code_verifier: saved.ver, code_challenge_method: 'S256' }) });
     if (!r.key) throw { code: 'bad_key' };
-    store_ls.set('tp-or', '');
+    store_ls.set('tp-or', ''); store_ls.set('tp-or-away', '');
     B.step(1); let model = '', free = false;
     try { const info = await orAccount(r.key); free = info.free; model = free ? await orFreeModel(r.key) : await pickModel('openrouter', '', r.key, true); } catch (e) { model = ''; }
     B.step(2); B.stop();
@@ -22880,7 +22888,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793670834';
+const BUILD = '1793671064';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
