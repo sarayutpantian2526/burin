@@ -3310,7 +3310,7 @@ function rubber(p) { return Math.sign(p) * Math.min(110, Math.abs(p) * 0.4); }
 const widthsLater = debounce(() => { if (typeof renderWidths === 'function') renderWidths(); }, 200);
 /* ----- continuous pages: the page before and after are shown above and below, scrolling past the edge of a page
    simply carries on into the next one, and that page becomes the one you write on ----- */
-const FLOW = { gap: 28, on: store_ls.get('tp-flow') === '1', ver: 0, dims: { prev: null, next: null }, busy: false };
+const FLOW = { gap: 28, on: store_ls.get('tp-flow2') !== '0' /* continuous scrolling is the default (a choice made with the switch is kept) */, ver: 0, dims: { prev: null, next: null }, busy: false };
 const PEEKS = new Map();
 /* the continuous view: the audience screen follows what the teacher's screen uses, not its own setting */
 function flowWanted() { return S.present ? !!PV.flow : FLOW.on; }
@@ -3409,7 +3409,7 @@ function flowCheck() {
 }
 const flowCheckLater = debounce(flowCheck, 60);
 function flowSet(on) {
-  FLOW.on = !!on; store_ls.set('tp-flow', on ? '1' : '0');
+  FLOW.on = !!on; store_ls.set('tp-flow2', on ? '1' : '0');
   const t = $('#tgFlow'); if (t) t.setAttribute('aria-checked', on ? 'true' : 'false');
   document.querySelectorAll('#flowSeg button').forEach((b) => b.setAttribute('aria-pressed', (b.dataset.f === '1') === !!on ? 'true' : 'false'));
   renderPeeks().catch(() => {}); if (!on) { clampT(); applyT(); }
@@ -19975,7 +19975,7 @@ async function studentGotPage(d) {
     const lpid = lpidOf(d.tpid), sig = JSON.stringify([d.items, d.paper, d.orient, d.idx, d.order]);
     /* the same boxes again (sent after every save of the teacher's page): nothing is redrawn, so nothing flickers */
     if ((LIVE.metaSig || {})[lpid] !== sig) { (LIVE.metaSig || (LIVE.metaSig = {}))[lpid] = sig; await studentNbFor(d); await studentPutPage(LIVE.nid, lpid, d.idx, d, null); }
-    if (!d.bg) { LIVE.cur = lpid; if (LIVE.follow && S.pid !== lpid) openPage(lpid); }
+    if (!d.bg) stuFollow(lpid);
     return;
   }
   (LIVE.metaSig || (LIVE.metaSig = {}))[lpidOf(d.tpid)] = JSON.stringify([d.items, d.paper, d.orient, d.idx, d.order]);
@@ -20002,8 +20002,15 @@ async function studentApplyNow(tpid) {
   if (!P.d.bg && P.d.n > 1 && LIVE.pulledFor !== LIVE.tkey) { LIVE.pulledFor = LIVE.tkey; const nb = await S.store.get('notebooks/' + LIVE.nid); const have = ((nb && nb.pages) || []).filter((x) => x.startsWith('T')).length; if (have < P.d.n) setTimeout(() => liveSend('pullall', { sid: LIVE.sid }), 600); }
   PV.ink = {}; if (S.pid === lpid) drawPresentLive();
   if (P.d.bg) return;
-  LIVE.cur = lpid;
-  if (LIVE.follow && S.pid !== lpid) openPage(lpid);
+  stuFollow(lpid);
+}
+/* following the teacher means turning when the teacher turns: the same page sent again (after every save, or to fill in
+   something missing) never pulls a learner back from a page they went to themselves, and never in the middle of writing */
+function stuFollow(lpid) {
+  const turned = LIVE.cur !== lpid; LIVE.cur = lpid;
+  if (!LIVE.follow || !turned || S.pid === lpid) return;
+  const go = () => { if (LIVE.cur !== lpid || S.pid === lpid) return; if (penBusy() || now() - (S.lastPen || 0) < 900) { setTimeout(go, 500); return; } openPage(lpid); };
+  go();
 }
 /* live ink is played back at the teacher's own pen speed, a fraction of a second behind, so it flows instead of jumping */
 const INK_LAG = 230; /* a little more delay absorbs uneven network timing, so the line flows instead of stuttering */
@@ -22929,7 +22936,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793673544';
+const BUILD = '1793674423';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
