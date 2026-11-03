@@ -3577,7 +3577,7 @@ function drawSharp() {
   c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, bw, bh);
   c.setTransform(k, 0, 0, k, -(x0 - pr.left) * dq, -(y0 - pr.top) * dq);
   c.fillStyle = '#FFFFFF'; c.fillRect(0, 0, W, H); paper(c, (S.page && S.page.paper) || 'grid');
-  drawInto(c, allStrokes(), S.sel ? new Set(S.sel.strokes.map((r) => r.id)) : null);
+  drawInto(c, allStrokes(), S.sel && !S.sel.quiet ? new Set(S.sel.strokes.map((r) => r.id)) : null);
   cSharp.hidden = false;
   /* the live canvas follows the same visible region (not while a pen is down: resizing would wipe the stroke) */
   if (!penBusy()) liveFit(true, (x0 - pr.left) / (pr.width / W), (y0 - pr.top) / (pr.height / H), (x1 - x0) / (pr.width / W), (y1 - y0) / (pr.height / H), k, (x0 - pr.left) / sc, (y0 - pr.top) / sc, (x1 - x0) / sc, (y1 - y0) / sc);
@@ -3800,7 +3800,7 @@ function drawInk() {
   const c = cInk.getContext('2d');
   c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, cInk.width, cInk.height);
   c.setTransform(S.res, 0, 0, S.res, 0, 0);
-  drawInto(c, allStrokes(), S.sel ? new Set(S.sel.strokes.map((r) => r.id)) : null);
+  drawInto(c, allStrokes(), S.sel && !S.sel.quiet ? new Set(S.sel.strokes.map((r) => r.id)) : null);
   S.inkSigDrawn = inkSig();
   if (cSharp && (!cSharp.hidden || S.zoom > 1.2)) drawSharp();
 }
@@ -4848,6 +4848,7 @@ function onDown(e) {
       /* the finger moves things as in other notebook apps: tap a box or picture to select it, drag the frame to move it,
          or press and hold on it for half a second and drag straight away; anywhere else the finger slides the page */
       const [x, y] = toLogical(e.clientX, e.clientY);
+      if (S.sel && S.sel.quiet) clearSel();
       if (S.sel && S.sel.box && nearHandle(S.sel.box, x, y) >= 0) { startScale(pt, nearHandle(S.sel.box, x, y)); return; }
       if (S.sel && S.sel.box && inBox(S.sel.box, x, y)) { pt.mode = 'move'; pt.last = [x, y]; pt.dx = 0; pt.dy = 0; return; }
       pt.mode = 'pan';
@@ -4876,6 +4877,7 @@ function beginTool(pt, e) {
   if (e.pointerType === 'pen' || (e.pointerType === 'touch' && S.finger)) writingOn();
   const [x, y] = toLogical(e.clientX, e.clientY);
   if ((S.tool === 'pen' || S.tool === 'hl') && S.sel && S.sel.box && nearHandle(S.sel.box, x, y) >= 0) { startScale(pt, nearHandle(S.sel.box, x, y)); return; }
+  if (S.sel && S.sel.quiet) clearSel();
   if ((S.tool === 'pen' || S.tool === 'hl') && S.sel && S.sel.box && inBox(S.sel.box, x, y)) {
     /* a picture or box picked by pressing and holding: drag it with the pen too */
     pt.mode = 'move'; pt.last = [x, y]; pt.dx = 0; pt.dy = 0; return;
@@ -5791,8 +5793,10 @@ function shiftBox(b, dx, dy) { return [b[0] + dx, b[1] + dy, b[2] + dx, b[3] + d
 function inBox(b, x, y) { return b && x >= b[0] && x <= b[2] && y >= b[1] && y <= b[3]; }
 function drawSelBox() {
   if (S.sel && !$('#selbar').hidden) requestAnimationFrame(placeSelbar);
-  const pend = (S.pending || []).map((p) => '<rect x="' + (p[0] - 6) + '" y="' + (p[1] - 6) + '" width="' + (p[2] - p[0] + 12) + '" height="' + (p[3] - p[1] + 12) + '" rx="10" fill="rgba(47,75,184,0.12)" stroke="#2F4BB8" stroke-width="2" stroke-dasharray="4 5" vector-effect="non-scaling-stroke"/>').join('');
-  const b = S.sel && S.sel.box; if (!b) { selEl.innerHTML = pend; return; }
+  /* while the app or the AI works on a part of the page, nothing is drawn over it (a floating note says it is busy):
+     a box round the writing while waiting does not look like a real notebook */
+  const pend = [].map((p) => '<rect x="' + (p[0] - 6) + '" y="' + (p[1] - 6) + '" width="' + (p[2] - p[0] + 12) + '" height="' + (p[3] - p[1] + 12) + '" rx="10" fill="rgba(47,75,184,0.12)" stroke="#2F4BB8" stroke-width="2" stroke-dasharray="4 5" vector-effect="non-scaling-stroke"/>').join('');
+  const b = S.sel && !S.sel.quiet && S.sel.box; if (!b) { selEl.innerHTML = pend; return; }
   const hr = handleR();
   selEl.innerHTML = pend + '<rect x="' + b[0] + '" y="' + b[1] + '" width="' + (b[2] - b[0]) + '" height="' + (b[3] - b[1]) + '" rx="10" fill="rgba(47,75,184,0.06)" stroke="#2F4BB8" stroke-width="2" stroke-dasharray="8 6" vector-effect="non-scaling-stroke"/>'
     + CORNERS.map((c) => '<circle cx="' + b[c[0]] + '" cy="' + b[c[1]] + '" r="' + (hr * 0.8).toFixed(1) + '" fill="#FFFFFF" stroke="#2F4BB8" stroke-width="2.5" vector-effect="non-scaling-stroke"/>').join('')
@@ -5813,6 +5817,7 @@ function moveRefs(refs, dx, dy, touched) {
   }
 }
 function showSelbar() {
+  if (S.sel && S.sel.quiet) { $('#selbar').hidden = true; return; }
   const n = S.sel.strokes.length, m = S.sel.items.length;
   $('#selCount').textContent = 'เลือก ' + (n ? n + ' เส้น' : '') + (n && m ? ' ' : '') + (m ? m + ' กล่อง' : '');
   $('#selbar').hidden = false;
@@ -22977,7 +22982,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793677562';
+const BUILD = '1793677966';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
@@ -23387,8 +23392,8 @@ $('#fVid').onchange = (e) => { const f = e.target.files && e.target.files[0]; if
 $('#bGClose').onclick = () => { $('#graphSheet').hidden = true; };
 $('#bGCheck').onclick = () => { if (!window.math) { loadLib('math').then(() => checkGraph(true)).catch(() => {}); return; } checkGraph(true); };
 $('#bGSave').onclick = () => { if (!window.math) { loadLib('math').then(saveGraph).catch(() => {}); return; } saveGraph(); };
-$('#sGraph').onclick = graphFromSelection;
-$('#sSolve').onclick = solveSelection;
+$('#sGraph').onclick = quietRun(graphFromSelection);
+$('#sSolve').onclick = quietRun(solveSelection);
 $('#sCut').onclick = openBgCut;
 $('#sTrace').onclick = () => openSketch();
 $('#iSketch').onclick = () => { $('#insSheet').hidden = true; openSketch(); };
@@ -23964,7 +23969,20 @@ $('#bAIClose').onclick = () => { $('#ai').hidden = true; $('#bAI').setAttribute(
 new MutationObserver(() => $('#bAI').setAttribute('aria-pressed', $('#ai').hidden ? 'false' : 'true')).observe($('#ai'), { attributes: true, attributeFilter: ['hidden'] });
 $('#bGenPage').onclick = () => generate(false);
 $('#bGenMore').onclick = () => generate(false, true);
-$('#sAnim').onclick = openMotionPick; $('#sQuiz').onclick = openQuizMaker; $('#sEq').onclick = eqSelection; $('#sRead').onclick = readSelection; $('#sHand').onclick = openHand; $('#sTidy').onclick = tidySelection; $('#sGen').onclick = () => generate(true);
+/* once a job on the chosen part has started (reading, redrawing, solving, making a graph or questions), the blue box and
+   its bar go away while it runs, so the page looks like paper; if the job could not start, the box comes back */
+function quietRun(fn) {
+  return async () => {
+    const sel = S.sel; if (!sel) return fn();
+    sel.quiet = true; selEl.innerHTML = ''; $('#selbar').hidden = true; if (sel.strokes.length) drawInk();
+    let done = false; const p = Promise.resolve().then(fn).finally(() => { done = true; });
+    await new Promise((r) => setTimeout(r, 400));
+    if (done && S.sel === sel && !document.querySelector('.sheet:not([hidden])')) { sel.quiet = false; drawSelBox(); showSelbar(); if (sel.strokes.length) drawInk(); }
+    p.finally(() => { if (S.sel === sel && sel.quiet) clearSel(); }).catch(() => {}); /* finished: no hidden selection is left behind */
+    return p;
+  };
+}
+$('#sAnim').onclick = openMotionPick; $('#sQuiz').onclick = openQuizMaker; $('#sEq').onclick = quietRun(eqSelection); $('#sRead').onclick = quietRun(readSelection); $('#sHand').onclick = openHand; $('#sTidy').onclick = quietRun(tidySelection); $('#sGen').onclick = quietRun(() => generate(true));
 $('#sFront').onclick = () => restackSel(true); $('#sBack').onclick = () => restackSel(false);
 $('#sDup').onclick = dupSel;
 $('#sKey').onclick = () => showPeek();
