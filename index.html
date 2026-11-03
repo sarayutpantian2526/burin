@@ -3359,7 +3359,7 @@ function peekFromScreen() {
     const pw = W, ph = H, sig = peekSig(pid, S.page, allStrokes().length, pw, ph), hit = PEEKS.get(pid); if (hit && hit.sig === sig) return;
     const dpr = Math.min(2, window.devicePixelRatio || 1), k = Math.min(pw * S.base * dpr * clamp(S.zoom, 1, 1.6), 1500) / pw;
     const cv = document.createElement('canvas'); cv.width = Math.round(pw * k); cv.height = Math.round(ph * k);
-    const c = cv.getContext('2d'); c.drawImage(cBg, 0, 0, cv.width, cv.height);
+    const c = cv.getContext('2d'); if (cBg.width > 1) c.drawImage(cBg, 0, 0, cv.width, cv.height); else { c.save(); c.setTransform(k, 0, 0, k, 0, 0); c.fillStyle = '#FFFFFF'; c.fillRect(0, 0, pw, ph); paper(c, (S.page && S.page.paper) || 'grid'); c.restore(); }
     /* a page picture is copied between the paper and the ink, as on the page */
     for (const it of (S.page.items || []).filter(isBgItem)) { const im = itemsBgEl.querySelector('[data-id="' + it.id + '"] img'); if (im && im.complete && im.naturalWidth) { try { c.drawImage(im, it.x * k, it.y * k, (it.w || 600) * k, (it.w || 600) * (it.ar || 1.414) * k); } catch (e) { /* skip */ } } }
     c.drawImage(cInk, 0, 0, cv.width, cv.height);
@@ -3408,6 +3408,10 @@ async function renderPeeks() {
   const nb = flowNb(); document.body.classList.toggle('flowlast', !nb.next);
   for (const [el, pid, which] of [[P1, nb.prev, 'prev'], [P2, nb.next, 'next']]) {
     if (!pid) { el.hidden = true; el.innerHTML = ''; el.dataset.pid = ''; FLOW.dims[which] = null; continue; }
+    /* the neighbouring page shows its paper at once (the same vector paper as this page), its writing a moment later:
+       scrolling quickly never shows a blank sheet */
+    el.style.backgroundImage = $('#page').style.backgroundImage; el.style.backgroundSize = '100% 100%';
+    if (!PEEKS.has(pid) && el.dataset.pid !== pid) { const d = FLOW.dims[which] || [W, H]; el.innerHTML = ''; el.dataset.pid = pid; el.style.width = d[0] * S.base + 'px'; el.style.height = d[1] * S.base + 'px'; el.style.top = (which === 'prev' ? -(d[1] * S.base + FLOW.gap) : H * S.base + FLOW.gap) + 'px'; el.hidden = false; }
     const pk = await peekBuild(pid); if (v !== FLOW.ver) return;
     const [pw, ph] = pk.dims; FLOW.dims[which] = [pw, ph];
     el.dataset.pid = pid; el.style.width = pw * S.base + 'px'; el.style.height = ph * S.base + 'px';
@@ -3538,7 +3542,7 @@ function resizeCanvases(force) {
   /* the layer for other screens' live writing and laser takes memory only once something is drawn on it */
   for (const c of [cInk].concat(cRemote.width > 2 ? [cRemote] : [], LV.part ? [] : [cLive])) { c.width = Math.round(W * res); c.height = Math.round(H * res); }
   if (cRemote.width <= 2) { cRemote.width = 1; cRemote.height = 1; }
-  cBg.width = Math.round(W * S.bgRes); cBg.height = Math.round(H * S.bgRes);
+  if (!paperSvg((S.page && S.page.paper) || 'grid', curBg(), W, H)) { cBg.width = Math.round(W * S.bgRes); cBg.height = Math.round(H * S.bgRes); } else { cBg.width = 1; cBg.height = 1; } S.bgKey = '';
   drawBg(); drawInk();
 }
 const resizeLater = debounce(() => resizeCanvases(false), 220);
@@ -3616,16 +3620,47 @@ function drawSharp() {
 }
 function redrawLiveBoxes() { try { if (typeof SCN !== 'undefined') for (const [id, r] of SCN) { const it = findItem(id); if (it && r.cv && r.cv.isConnected) scRender(it, r); } for (const el of itemsEl.querySelectorAll('.item.sim')) { const it = findItem(el.dataset.id), cv = el.querySelector('canvas.simcv:not(.scncv)'); if (it && it.type === 'sim' && cv) simRender(it, cv, el.querySelector('.sro')); } } catch (e) { /* not ready yet */ } }
 function sharpLater() { clearTimeout(sharpT); sharpT = setTimeout(() => { if (!P.size) wrapEl.style.willChange = 'auto'; drawSharp(); redrawLiveBoxes(); }, 160); }
+/* the paper's lines as a vector picture behind the page: it never vanishes while scrolling fast and costs no canvas
+   memory (a page-size paper canvas was one of the canvases an iPad drops when memory runs short, leaving the page blank);
+   the textured papers (chalkboard, art paper) stay on the canvas */
+function paperSvg(kind, bg, w, h) {
+  if (kind === 'board' || kind === 'art') return null;
+  const dk = darkBg(bg), fill = bgHex(bg), L = [];
+  L.push('<rect width="' + w + '" height="' + h + '" fill="' + fill + '"/>');
+  let defs = '';
+  if (kind === 'grid' || kind === 'mm') {
+    const steps = dk ? (kind === 'mm' ? [[10, 'rgba(255,255,255,0.07)', 0.8], [50, 'rgba(255,255,255,0.2)', 1.1]] : [[25, 'rgba(255,255,255,0.12)', 1]]) : kind === 'mm' ? [[10, '#EEF1F5', 0.8], [50, '#C9D2DE', 1.1]] : [[25, bg === 'white' || bg === 'ivory' ? '#E1E6EC' : 'rgba(60,80,110,0.14)', 1]];
+    steps.forEach(([st, col, lw], i) => { defs += '<pattern id="g' + i + '" width="' + st + '" height="' + st + '" patternUnits="userSpaceOnUse"><path d="M' + st + ' 0V' + st + 'M0 ' + st + 'H' + st + '" fill="none" stroke="' + col + '" stroke-width="' + lw + '"/></pattern>'; L.push('<rect width="' + w + '" height="' + h + '" fill="url(#g' + i + ')"/>'); });
+  } else if (kind === 'dot') {
+    const st = DOT_STEP, o = (w % st) / 2 || st / 2;
+    defs = '<pattern id="d" x="' + (o - st / 2) + '" y="' + (o - st / 2) + '" width="' + st + '" height="' + st + '" patternUnits="userSpaceOnUse"><circle cx="' + st / 2 + '" cy="' + st / 2 + '" r="1.05" fill="' + (dk ? 'rgba(255,255,255,0.28)' : '#B3BBC5') + '"/></pattern>';
+    L.push('<rect width="' + w + '" height="' + h + '" fill="url(#d)"/>');
+  } else if (kind === 'lined' || kind === 'cornell') {
+    let d = ''; for (let y = 120; y < h - 40; y += 38) d += 'M0 ' + y + 'H' + w;
+    L.push('<path d="' + d + '" fill="none" stroke="' + (dk ? 'rgba(255,255,255,0.16)' : bg === 'white' || bg === 'ivory' ? '#D6DCE4' : 'rgba(60,80,110,0.2)') + '" stroke-width="1.1"/>');
+    if (kind === 'cornell') L.push('<path d="M250 0V' + (h - 280) + 'M0 ' + (h - 280) + 'H' + w + '" fill="none" stroke="#E6A3A3" stroke-width="1.6"/>');
+  }
+  return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + w + ' ' + h + '" preserveAspectRatio="none">' + (defs ? '<defs>' + defs + '</defs>' : '') + L.join('') + '</svg>';
+}
 function drawBg() {
   if (!cSharp.hidden) sharpLater();
-  const c = cBg.getContext('2d');
-  /* turning to a page with the same paper: it is already drawn (a full-page redraw is slow on iPad) */
-  const key = [(S.page && S.page.paper) || 'grid', curBg(), W, H, cBg.width, cBg.height, S.bgRes || S.res].join('|');
-  if (key !== S.bgKey) {
-    S.bgKey = key;
-    c.setTransform(S.bgRes || S.res, 0, 0, S.bgRes || S.res, 0, 0);
-    c.fillStyle = '#FFFFFF'; c.fillRect(0, 0, W, H);
-    paper(c, (S.page && S.page.paper) || 'grid');
+  const kind = (S.page && S.page.paper) || 'grid', svg = paperSvg(kind, curBg(), W, H), pgEl = $('#page');
+  if (svg) {
+    const key = 'svg|' + kind + '|' + curBg() + '|' + W + '|' + H;
+    if (key !== S.bgKey) { S.bgKey = key; pgEl.style.backgroundImage = 'url("data:image/svg+xml,' + encodeURIComponent(svg) + '")'; pgEl.style.backgroundSize = '100% 100%'; pgEl.style.backgroundColor = bgHex(curBg()); }
+    if (cBg.width > 1) { cBg.width = 1; cBg.height = 1; } cBg.style.visibility = 'hidden';
+  } else {
+    pgEl.style.backgroundImage = ''; cBg.style.visibility = '';
+    if (cBg.width <= 1) { cBg.width = Math.round(W * (S.bgRes || S.res)); cBg.height = Math.round(H * (S.bgRes || S.res)); }
+    const c = cBg.getContext('2d');
+    /* turning to a page with the same paper: it is already drawn (a full-page redraw is slow on iPad) */
+    const key = [kind, curBg(), W, H, cBg.width, cBg.height, S.bgRes || S.res].join('|');
+    if (key !== S.bgKey) {
+      S.bgKey = key;
+      c.setTransform(S.bgRes || S.res, 0, 0, S.bgRes || S.res, 0, 0);
+      c.fillStyle = '#FFFFFF'; c.fillRect(0, 0, W, H);
+      paper(c, kind);
+    }
   }
   const dark = (S.page && S.page.paper === 'board') || darkBg(curBg());
   $('#page').classList.toggle('darkpaper', !!dark);
@@ -6014,8 +6049,8 @@ function pageFlip(pid) {
     const leaf = document.createElement('div'); leaf.className = 'pleaf ' + (b > a ? 'fwd' : 'back'); leaf.setAttribute('aria-hidden', 'true');
     leaf.style.left = pg.offsetLeft + 'px'; leaf.style.top = pg.offsetTop + 'px'; leaf.style.width = pg.offsetWidth + 'px'; leaf.style.height = pg.offsetHeight + 'px';
     /* the turning leaf is in motion: half the pixels are plenty and copy four times faster */
-    const c = document.createElement('canvas'); c.width = Math.round(bg.width / 3); c.height = Math.round(bg.height / 3); const x = c.getContext('2d');
-    x.drawImage(bg, 0, 0, c.width, c.height);
+    const c = document.createElement('canvas'); c.width = Math.round((ink.width || W) / 3); c.height = Math.round((ink.height || H) / 3); const x = c.getContext('2d');
+    if (bg.width > 1) x.drawImage(bg, 0, 0, c.width, c.height); else { x.save(); x.setTransform(c.width / W, 0, 0, c.width / W, 0, 0); x.fillStyle = '#FFFFFF'; x.fillRect(0, 0, W, H); paper(x, (S.page && S.page.paper) || 'grid'); x.restore(); }
     { const kk = c.width / W; for (const it of ((S.page && S.page.items) || []).filter(isBgItem)) { const im = itemsBgEl.querySelector('[data-id="' + it.id + '"] img'); if (im && im.complete && im.naturalWidth) { try { x.drawImage(im, it.x * kk, it.y * kk, (it.w || 600) * kk, (it.w || 600) * (it.ar || 1.414) * kk); } catch (e) { /* skip */ } } } }
     if (ink.width) x.drawImage(ink, 0, 0, c.width, c.height);
     leaf.appendChild(c);
@@ -6616,7 +6651,7 @@ function openHand() {
   def.onclick = () => def.setAttribute('aria-pressed', def.getAttribute('aria-pressed') === 'true' ? 'false' : 'true');
   $('#handCancel').onclick = () => { $('#handSheet').hidden = true; };
   $('#handGo').onclick = () => {
-    $('#handSheet').hidden = true;
+    $('#handSheet').hidden = true; selQuiet();
     if (n) { S.handDefault = def.getAttribute('aria-pressed') === 'true' ? (pick || null) : null; store_ls.set('tp-hand', S.handDefault || ''); }
     applyHand(pick || null);
   };
@@ -10627,7 +10662,7 @@ async function openMotionPick() {
   if (!sh) { sh = document.createElement('div'); sh.className = 'sheet'; sh.id = 'motionSheet'; sh.innerHTML = '<div class="panel wide mvpanel" role="dialog" aria-label="เลือกการเคลื่อนที่"><div class="mvhead"><h2>ให้ภาพนี้เคลื่อนที่แบบไหน</h2><button class="btn" type="button" data-a="x">ยกเลิก</button></div><div class="mvbody"></div></div>'; document.body.appendChild(sh); sh.querySelector('[data-a="x"]').onclick = () => { sh.hidden = true; }; }
   const body = sh.querySelector('.mvbody'); body.innerHTML = '';
   const url = URL.createObjectURL(sp.blob), pieces = motionPieces(sp);
-  const done = () => { sh.hidden = true; URL.revokeObjectURL(url); };
+  const done = () => { sh.hidden = true; URL.revokeObjectURL(url); if (typeof selQuiet === 'function') selQuiet(); };
   const go = async (make, person) => { done(); try { await placeMotion(sp, make, person); } catch (e) { toast('ทำให้ภาพเคลื่อนที่ไม่สำเร็จ ' + (e && e.code ? assetErr(e) : ''), 3500); } };
   let edge = 'bounce'; try { edge = store_ls.get('tp-edge') || 'bounce'; } catch (e) { /* default */ }
   const goHere = async (kind, act) => { done(); try { await placeInPlace(sp, kind, act, edge); } catch (e) { toast('ทำให้ภาพเคลื่อนที่ไม่สำเร็จ', 3000); } };
@@ -21545,7 +21580,7 @@ async function qmMake() {
   const msg = $('#qmMsg'), say = (h) => { msg.innerHTML = h; msg.scrollIntoView({ block: 'nearest' }); };
   const useAI = QM.useAI && (QM.text || '').trim().length > 3 && AI.ready('gen');
   if (!QM.picks.length && !useAI) { say('<div class="note err">เลือกบทอย่างน้อยหนึ่งบท หรือเปิดให้ AI ออกโจทย์จากเนื้อหา</div>'); return; }
-  $('#qmGo').disabled = true;
+  $('#qmGo').disabled = true; selQuiet();
   let qs = [];
   if (useAI) {
     let skipped = false, skipR = null;
@@ -23189,7 +23224,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793689479';
+const BUILD = '1793690107';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
@@ -24178,6 +24213,12 @@ $('#bGenPage').onclick = () => generate(false);
 $('#bGenMore').onclick = () => generate(false, true);
 /* once a job on the chosen part has started (reading, redrawing, solving, making a graph or questions), the blue box and
    its bar go away while it runs, so the page looks like paper; if the job could not start, the box comes back */
+/* the job chosen in a sheet (moving pictures, handwriting style) has started: the box and its bar go away while it runs */
+function selQuiet() {
+  const sel = S.sel; if (!sel) return;
+  sel.quiet = true; selEl.innerHTML = ''; $('#selbar').hidden = true; if (sel.strokes.length) drawInk();
+  setTimeout(() => { if (S.sel === sel && sel.quiet) clearSel(); }, 120000);
+}
 function quietRun(fn) {
   return async () => {
     const sel = S.sel; if (!sel) return fn();
