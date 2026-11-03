@@ -906,7 +906,7 @@ details.qsopt[open] { gap: 10px; }
 #painterBox[hidden] { display: none; }
 .sonly { display: none; }
 body.role-student .sonly { display: inline-flex; }
-body.role-student #bLive, body.role-student #bAI, body.role-student #bPresent, body.role-student #fqAI,
+body.role-student #bLive, body.role-student #bPresent, body.role-student #fqAI,
 body.role-student #exTabs button[data-t="build"], body.role-student #exTabs button[data-t="sets"], body.role-student #bTray, body.role-student #sKey, body.role-student #exTabs button[data-t="analysis"], body.role-student #exTabs button[data-t="bank"], body.role-student #exTabs button[data-t="grades"], body.role-student #exTabs button[data-t="hw"], body.role-student #exTabs button[data-t="cls"], body.role-student #iPrep { display: none !important; }
 /* one way to make questions from a selection: the question maker (the older direct button made the same thing) */
 #sGen { display: none !important; }
@@ -1545,7 +1545,7 @@ body.hastabs .top .title > * { display: none; }
 .item .qkey { position: absolute; bottom: -14px; right: -10px; z-index: 3; pointer-events: auto; min-height: 30px; padding: 0 10px; border-radius: 999px; border: 1.5px solid #E0B44C; background: #FFF6DA; color: #8A5A0C; font: 700 13px/1 var(--ui); cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.12); touch-action: manipulation; }
 .item .qkey:hover { background: #FFE9A8; }
 .item.qon { outline: 2px dashed #E0B44C; outline-offset: 6px; border-radius: 6px; }
-body.present .item .qkey, body.role-student .item .qkey, body.present .item.qon { display: none !important; outline: none !important; }
+body.present .item .qkey, body.role-student .item:not(.mineq) .qkey, body.present .item.qon { display: none !important; outline: none !important; }
 .peekcard .pkh small { font-weight: 500; color: #8A5A0C; opacity: 0.8; margin-left: 4px; }
 .peekcard .pknav { display: inline-flex; align-items: center; gap: 2px; flex: none; }
 .peekcard .pknav span { min-width: 34px; text-align: center; font-size: 13px; font-variant-numeric: tabular-nums; }
@@ -3922,7 +3922,8 @@ function buildItemEl(it, forExport) {
   else { d.innerHTML = mdToHtml(it.md || ''); if (it.hand && HAND_IDS.includes(it.hand)) { d.classList.add('hand', 'hand-' + it.hand); if (okHex(it.ink)) d.style.color = it.ink; } }
   if (!forExport && !it.lock && it.by !== 'teacher' && (['graph', 'sim', 'scene', 'lab', 'video', 'svg'].includes(it.type) || it.diary)) { const z = document.createElement('button'); z.type = 'button'; z.className = it.diary ? 'tsize br' : 'tsize'; z.setAttribute('aria-label', 'ลากเพื่อย่อหรือขยายกล่อง'); z.title = 'ลากเพื่อย่อหรือขยาย'; z.innerHTML = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M8 4h8v8 M16 4L4 16 M4 8v8h8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>'; d.appendChild(z); }
   if (!forExport && !it.lock && it.by !== 'teacher' && (!it.type || it.type === 'text' || it.type === 'img' || it.type === 'svg' || ['graph', 'sim', 'scene', 'lab', 'video'].includes(it.type))) { const g = document.createElement('button'); g.type = 'button'; g.className = 'tgrab'; g.setAttribute('aria-label', 'จับเพื่อเลือก ย้าย หรือลบ'); g.innerHTML = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 2.5v15 M2.5 10h15 M10 2.5l-2.2 2.2 M10 2.5l2.2 2.2 M10 17.5l-2.2-2.2 M10 17.5l2.2-2.2 M2.5 10l2.2-2.2 M2.5 10l2.2 2.2 M17.5 10l-2.2-2.2 M17.5 10l-2.2 2.2" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>'; d.appendChild(g); }
-  if (!forExport && it.qref && !isStudentSide()) {
+  if (!forExport && it.qref && (!isStudentSide() || it.by !== 'teacher')) {
+    if (isStudentSide()) d.classList.add('mineq'); /* a learner's own practice question: the key is theirs to open */
     const kb = document.createElement('button'); kb.type = 'button'; kb.className = 'qkey no-ink'; kb.textContent = 'เฉลย'; kb.title = 'ดูเฉลยข้อนี้ เห็นเฉพาะเครื่องนี้ ผู้เรียนและจอฉายไม่เห็น';
     kb.addEventListener('pointerdown', (e) => { e.stopPropagation(); }, true); kb.addEventListener('pointerup', (e) => e.stopPropagation());
     kb.onclick = (e) => { e.stopPropagation(); showPeek(it.id); };
@@ -8561,7 +8562,7 @@ function renderAIAvail(state) {
   const st = state || (AI.anyReady() ? 'ok' : 'none');
   if (st === 'checking') { el.className = 'note'; el.textContent = 'กำลังเชื่อมต่อผู้ช่วย AI'; $('#bGenPage').disabled = true; }
   else if (st === 'none') { el.className = 'note warn'; el.textContent = 'ยังไม่ได้เชื่อมผู้ช่วย AI เลือกได้ที่เมนู หัวข้อผู้ช่วย AI จะใช้ Claude, AI ในเครื่องของคุณ หรือคีย์ API ของคุณเองก็ได้ ส่วนการเขียนยังใช้ได้ตามปกติ'; $('#bGenPage').disabled = true; }
-  else { el.className = 'note'; el.textContent = AI_INFO.replace('ครั้งแรกที่ใช้ ระบบจะขออนุญาตใช้ Claude ในบัญชีของผู้ใช้', 'ตอนนี้ใช้ ' + AI.srcName(AI.src('gen'))); $('#bGenPage').disabled = !AI.ready('gen'); }
+  else { el.className = 'note'; el.textContent = (isStudentSide() ? AI_INFO.replace('อ่านหน้าที่กำลังสอน', 'อ่านหน้าที่จดไว้') : AI_INFO).replace('ครั้งแรกที่ใช้ ระบบจะขออนุญาตใช้ Claude ในบัญชีของผู้ใช้', 'ตอนนี้ใช้ ' + AI.srcName(AI.src('gen'))); $('#bGenPage').disabled = !AI.ready('gen'); }
 }
 function renderAISettings() {
   const C = AI.cfg;
@@ -22938,7 +22939,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793674774';
+const BUILD = '1793675556';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
