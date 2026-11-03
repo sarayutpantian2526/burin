@@ -4214,7 +4214,8 @@ async function diaryAsk() {
   if (!refs.length) return;
   if (refs.length < 2) { const st = findStroke(refs[0]), b = st && sbox(st); if (!b || (b[2] - b[0] < 24 && b[3] - b[1] < 24)) return; }
   const img = await inkBlob(refs, 20); if (!img) return;
-  DIARY.busy = true; const pid = S.pid, box = img.box;
+  /* replies are placed from where the ink really is, not from the padded picture sent to the AI */
+  DIARY.busy = true; const pid = S.pid, box = (() => { let a = 1e9, b = 1e9, c = -1e9, d = -1e9; for (const r of refs) { const st = findStroke(r), q = st && sbox(st); if (!q) continue; const hw = (st.w || 3) / 2; a = Math.min(a, q[0] - hw); b = Math.min(b, q[1] - hw); c = Math.max(c, q[2] + hw); d = Math.max(d, q[3] + hw); } return c > a ? [a, b, c, d] : img.box; })();
   const ctl = typeof AbortController !== 'undefined' ? new AbortController() : { abort() {}, signal: undefined };
   const dots = document.createElement('div'); const spec = DIARY.spec = { ctl, refs, dots, cancelled: false }; dots.className = 'diarydots no-ink'; dots.innerHTML = '<svg viewBox="0 0 30 26" aria-hidden="true"><circle class="dg" cx="15" cy="10" r="3.4"/><circle class="dd" cx="15" cy="10" r="2.6"/><path class="ds" pathLength="100" d="M8.8 15.2 Q 15 22.4, 21.2 15.2"/></svg>'; dots.setAttribute('role', 'status'); dots.setAttribute('aria-label', 'สมุดกำลังเขียนตอบ'); dots.style.left = box[0] + 'px'; dots.style.top = (box[3] + 14) + 'px'; /* shown a moment after the reading starts, and put back if the page is drawn again underneath (a save coming back from the cloud) */
   const keepDots = () => { if (spec.cancelled || DIARY.spec !== spec) return; if (!dots.isConnected) itemsEl.appendChild(dots); setTimeout(keepDots, 300); }; setTimeout(keepDots, 250);
@@ -4300,7 +4301,7 @@ async function diaryAsk() {
     const h = text ? estTextH(text, w, fs) * 1.25 + 10 : 0;
     /* under what they wrote, at its left edge, about half a line below (placeNear); never past the edge of the paper:
        when this page has no room the reply starts at the top of the next page, at the same left edge */
-    let apid = pid, at = h ? placeNear(box, w, h, { fs, minW: Math.min(w, Math.max(360, fs * 14)), measure: (ww) => estTextH(text, ww, fs) * 1.25 + 10 }) : [clamp(box[0], PAGE_M, W - w - PAGE_M), box[3]];
+    let apid = pid, at = h ? placeNear(box, w, h, { fs, minW: Math.min(w, Math.max(360, fs * 14)), measure: (ww) => estTextH(text, ww, fs) * 1.25 + 10, padTop: fs * 0.25, noSnap: !/lined|cornell/.test((S.page && S.page.paper) || '') }) : [clamp(box[0], PAGE_M, W - w - PAGE_M), box[3]];
     /* a short reply may go on at the end of what they wrote, on the same lines, instead of starting a new line under it:
        whichever uses less of the page going down is taken, so the paper fills up slowly and needs less scrolling */
     if (h && at) {
@@ -4369,17 +4370,18 @@ async function diaryAsk() {
       }
       const go = async () => {
         /* the page was left in the meantime: the drawing is still made, and appears when that page is opened again */
-        if (S.pid !== apid) { const dw0 = Math.round(clamp(fs * 16, 320, Math.min(640, W - 80))); diaryDraw(sketch, Math.round((W - dw0) / 2), clamp(near[1], 20, H - 20 - dw0 * 0.6), dw0, Math.round(dw0 * 0.6), lw, ink, fs, apid); return; }
+        if (S.pid !== apid) { const dw0 = Math.round(clamp(fs * 16, 320, Math.min(640, W - 80))); diaryDraw(sketch, Math.round((W - dw0) / 2), clamp(near[1], 20, H - 20 - sketchSize(sketch, fs, dw0)[1]), dw0, Math.round(dw0 * 0.6), lw, ink, fs, apid); return; }
         /* under the words, at the same left edge (or under the writing when there are no words) */
-        const src = text ? [at[0], at[1], at[0] + w, at[1] + estTextH(text, w, fs)] : box;
+        /* under the words as they were really written (their box on the page), not an estimate of their height */
+        const ti = text ? findItem(id) : null, src = ti ? tightItemBox(ti) : text ? [at[0], at[1], at[0] + w, at[1] + estTextH(text, w, fs)] : box;
         let dw = Math.round(clamp(fs * 16, 320, Math.min(640, W - 2 * PAGE_M))), spot = null;
         /* under the words or beside them, a little smaller if that lets it sit higher: the spot that leaves the most of
            the page free below wins (a shrunken drawing only wins when it really saves room) */
-        { const dw0 = dw, dh0 = Math.round(dw0 * 0.6), nq = exBelow(src); let best = null, late = null;
+        { const dw0 = dw, dh0 = sketchSize(sketch, fs, dw0)[1], nq = exBelow(src); let best = null, late = null;
           for (let ww = dw0; ww >= 240; ww = Math.round(ww * 0.85)) {
-            const hh = Math.round(ww * 0.6);
-            for (const o of [{ fs }, { fs, side: true, sideAny: true }]) {
-              const sp = placeNear(src, ww, hh, o); if (!sp) continue;
+            const [rw, hh] = sketchSize(sketch, fs, ww);
+            for (const o of [{ fs, noSnap: true }, { fs, side: true, sideAny: true, noSnap: true }]) {
+              const sp = placeNear(src, rw, hh, o); if (!sp) continue;
               if (nq != null && sp[1] + hh > nq - 8) { if (!late || sp[1] < late.sp[1]) late = { sp, ww }; continue; } /* would run into the next question */
               const score = sp[1] + dh0 + (dh0 - hh) * 0.6;
               if (!best || score < best.score - 2) best = { score, sp, ww };
@@ -4387,7 +4389,7 @@ async function diaryAsk() {
           }
           if (best) { spot = best.sp; dw = best.ww; } else if (late) { spot = late.sp; dw = late.ww; } }
         let pg = apid;
-        if (!spot && onPdfPage()) { for (let ww = Math.min(dw, 420); ww >= 200 && !spot; ww = Math.round(ww * 0.85)) { const sp = placeNear(src, ww, Math.round(ww * 0.6), { fs, skip: (b) => b.pdf }) || placeNear(src, ww, Math.round(ww * 0.6), { fs, side: true, sideAny: true, skip: (b) => b.pdf }); if (sp) { spot = sp; dw = ww; } } if (!spot) { dw = 260; spot = [clamp(src[0], PAGE_M, W - dw - PAGE_M), clamp(src[3] + 8, PAGE_M, H - PAGE_M - Math.round(dw * 0.6))]; } }
+        if (!spot && onPdfPage()) { for (let ww = Math.min(dw, 420); ww >= 200 && !spot; ww = Math.round(ww * 0.85)) { const [rw, hh] = sketchSize(sketch, fs, ww), sp = placeNear(src, rw, hh, { fs, noSnap: true, skip: (b) => b.pdf }) || placeNear(src, rw, hh, { fs, side: true, sideAny: true, noSnap: true, skip: (b) => b.pdf }); if (sp) { spot = sp; dw = ww; } } if (!spot) { dw = 260; spot = [clamp(src[0], PAGE_M, W - dw - PAGE_M), clamp(src[3] + 8, PAGE_M, H - PAGE_M - sketchSize(sketch, fs, dw)[1])]; } }
         if (!spot) { dw = Math.round(clamp(fs * 16, 320, Math.min(640, W - 2 * PAGE_M))); const np = await addPage(); if (!np) return; pg = np; spot = [clamp(src[0], PAGE_M, W - dw - PAGE_M), PAGE_M + 16]; toast('หน้าเต็มแล้ว สมุดวาดต่อในหน้าถัดไป', 2400); }
         diaryDraw(sketch, spot[0], spot[1], dw, Math.round(dw * 0.6), lw, ink, fs, pg);
       };
@@ -4466,12 +4468,29 @@ function diaryFlushLater() {
     for (const lb of d.labels) addItem({ type: 'text', x: Math.round(lb.x), y: Math.round(lb.y), w: Math.round(lb.w), md: lb.md, fs: lb.fs, hand: DIARY_HAND(), ink: lb.ink, diary: true, dv: 2 });
   }
 }
+/* where the lines and words of an AI drawing actually are, in its own 0..100 by 0..60 units (with a little air) */
+/* the size a drawing really takes when given a box this wide */
+function sketchSize(sketch, fs, ww) { const fb = sketchBounds(sketch, fs, ww), k = Math.min(ww / fb.w, ww * 0.6 / fb.h, ww / 100 * 1.25); return [Math.round(fb.w * k), Math.round(fb.h * k)]; }
+function sketchBounds(sketch, fs, dw) {
+  let a = 1e9, b = 1e9, c = -1e9, d = -1e9; const g = (x, y) => { if (x < a) a = x; if (x > c) c = x; if (y < b) b = y; if (y > d) d = y; };
+  const u = 100 / Math.max(120, dw || 520);
+  for (const sh of sketch) {
+    if (sh.kind === 'text') { if (Array.isArray(sh.n)) { const lw = String(sh.label || '').length * (fs || 24) * 0.62 * u, lh = (fs || 24) * 1.3 * u; g(sh.n[0], sh.n[1] - lh * 0.4); g(sh.n[0] + lw, sh.n[1] + lh * 0.6); } continue; }
+    try { for (const pts of diaryShapePts(sh)) for (const q of pts) g(clamp(q[0], 0, 100), clamp(q[1], 0, 60)); } catch (e) { /* skip */ }
+  }
+  if (c < a) return { x0: 0, y0: 0, w: 100, h: 60 };
+  const pd = Math.max(0.4, 5 * u); a = Math.max(0, a - pd); b = Math.max(0, b - pd); c = Math.min(100, c + pd); d = Math.min(60, d + pd);
+  return { x0: a, y0: b, w: Math.max(12, c - a), h: Math.max(8, d - b) };
+}
 function diaryDraw(sketch, x0, y0, dw, dh, lw, ink, fs, pid) {
   /* never past the edge of the paper */
   if (dw > W - 40) { dh = Math.round(dh * (W - 40) / dw); dw = W - 40; }
   if (dh > H - 40) { dw = Math.round(dw * (H - 40) / dh); dh = H - 40; }
   x0 = clamp(x0, 20, W - 20 - dw); y0 = clamp(y0, 20, H - 20 - dh);
-  const sx = dw / 100, sy = dh / 60;
+  /* only the part of the drawing box that has lines in it is used: the drawing is fitted to its own lines (kept in
+     proportion), so no empty band is left round it and the next thing sits right below */
+  const fb = sketchBounds(sketch, fs, dw), k0 = Math.min(dw / fb.w, dh / fb.h, dw / 100 * 1.25), sx = k0, sy = k0, ox = x0 - fb.x0 * k0, oy = y0 - fb.y0 * k0;
+  dw = Math.round(fb.w * k0); dh = Math.round(fb.h * k0);
   /* a hand never draws a perfectly straight line: a small, slow wobble and a pen pressure that swells and eases */
   let seed = 7; const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647 - 0.5; };
   const strokes = [], labels = [], g = 'g' + uid();
@@ -4489,7 +4508,7 @@ function diaryDraw(sketch, x0, y0, dw, dh, lw, ink, fs, pid) {
       dense.forEach((q0, i) => {
         const q = [clamp(q0[0], 0, 100), clamp(q0[1], 0, 60)];
         const t = dense.length > 1 ? i / (dense.length - 1) : 0, wob = Math.sin(ph + t * 5.5) * amp;
-        p.push(Math.round((x0 + q[0] * sx + wob) * 10), Math.round((y0 + q[1] * sy + wob * 0.6) * 10), Math.round(40 + 25 * Math.sin(Math.PI * t)));
+        p.push(Math.round((ox + q[0] * sx + wob) * 10), Math.round((oy + q[1] * sy + wob * 0.6) * 10), Math.round(40 + 25 * Math.sin(Math.PI * t)));
       });
       strokes.push({ id: 's' + uid(), k: 'p', c: sh.col || ink, w: lw, p, g });
     }
@@ -4500,9 +4519,9 @@ function diaryDraw(sketch, x0, y0, dw, dh, lw, ink, fs, pid) {
   const commit = () => {
     if (done) return; done = true; unhold();
     /* the page was left before the drawing finished: it is kept and put on that page when it is opened again */
-    if (S.pid !== pid) { (DIARY.later[pid] = DIARY.later[pid] || []).push({ strokes, labels: labels.map((lb) => ({ x: clamp(x0 + lb.n[0] * sx, 10, W - 120), y: clamp(y0 + lb.n[1] * sy - fs * 0.45, 10, H - fs * 1.4), w: clamp(lb.label.length * fs * 0.62 + 20, 40, 260), md: lb.label, fs: Math.round(clamp(fs * 0.8, 14, 60)), ink: lb.col || ink })) }); return; }
+    if (S.pid !== pid) { (DIARY.later[pid] = DIARY.later[pid] || []).push({ strokes, labels: labels.map((lb) => ({ x: clamp(ox + lb.n[0] * sx, 10, W - 120), y: clamp(oy + lb.n[1] * sy - fs * 0.45, 10, H - fs * 1.4), w: clamp(lb.label.length * fs * 0.62 + 20, 40, 260), md: lb.label, fs: Math.round(clamp(fs * 0.8, 14, 60)), ink: lb.col || ink })) }); return; }
     if (strokes.length) { const before = { [DEV]: clone(S.mine) }; for (const st of strokes) S.mine.push(st); pushUndo({ t: 'layers', before, after: { [DEV]: clone(S.mine) } }); saveMine(); drawInk(); }
-    for (const lb of labels) addItem({ type: 'text', x: Math.round(clamp(x0 + lb.n[0] * sx, 10, W - 10 - clamp(lb.label.length * fs * 0.62 + 20, 40, 260))), y: Math.round(clamp(y0 + lb.n[1] * sy - fs * 0.45, 10, H - fs * 1.4)), w: Math.round(clamp(lb.label.length * fs * 0.62 + 20, 40, 260)), md: lb.label, fs: Math.round(clamp(fs * 0.8, 14, 60)), hand: DIARY_HAND(), ink: lb.col || ink, diary: true, dv: 2 });
+    for (const lb of labels) addItem({ type: 'text', x: Math.round(clamp(ox + lb.n[0] * sx, 10, W - 10 - clamp(lb.label.length * fs * 0.62 + 20, 40, 260))), y: Math.round(clamp(oy + lb.n[1] * sy - fs * 0.45, 10, H - fs * 1.4)), w: Math.round(clamp(lb.label.length * fs * 0.62 + 20, 40, 260)), md: lb.label, fs: Math.round(clamp(fs * 0.8, 14, 60)), hand: DIARY_HAND(), ink: lb.col || ink, diary: true, dv: 2 });
   };
   if (diaryInstant() || !strokes.length || S.pid !== pid) { commit(); return; }
   /* drawn as a person draws: the pen point travels along each line with a hand's rhythm (slow to start, quicker in
@@ -6828,7 +6847,8 @@ async function tidySelection() {
       clearSel(); toast('แทนที่ด้วยภาพที่วาดใหม่แล้ว ย้อนกลับได้');
     };
     B.d.querySelector('[data-a="beside"]').onclick = () => {
-      const at = placeNear(box, w, w * 0.75, { side: true }) || [clamp(box[0], PAGE_M, W - w - PAGE_M), Math.min(box[3] + 16, H - 200)];
+      const hh = svgH(svg, w, 0.75);
+      const at = placeNear(box, w, hh, { side: true, noSnap: true }) || [clamp(box[0], PAGE_M, W - w - PAGE_M), clamp(box[3] + 10, PAGE_M, H - PAGE_M - hh)];
       addItem({ type: 'svg', x: Math.round(at[0]), y: Math.round(at[1]), w, svg });
       toast('วางภาพที่วาดใหม่แล้ว');
     };
@@ -7485,8 +7505,10 @@ async function moleculeSvg(mols) {
   });
   return s + '</svg>';
 }
+/* the height a picture really takes at this width, from its own proportions */
+function svgH(svg, w, def) { const vb = /viewBox\s*=\s*["']\s*[-\d.]+[\s,]+[-\d.]+[\s,]+([\d.]+)[\s,]+([\d.]+)/i.exec(svg || ''); return Math.round(w * (vb && +vb[1] > 0 ? clamp(+vb[2] / +vb[1], 0.15, 2.5) : def)); }
 function figPlace(svg, box, w, note, extra) {
-  const h = w * 0.82, at = placeNear(box, w, h, { side: true }) || [clamp(box[0], PAGE_M, W - w - PAGE_M), clamp(box[3] + 16, PAGE_M, H - 120)];
+  const h = svgH(svg, w, 0.82), at = placeNear(box, w, h, { side: true, noSnap: true }) || [clamp(box[0], PAGE_M, W - w - PAGE_M), clamp(box[3] + 10, PAGE_M, H - PAGE_M - h)];
   addItem(Object.assign({ type: 'svg', x: Math.round(at[0]), y: Math.round(at[1]), w: Math.round(w), svg }, extra || {}));
   toast(note || 'สร้างรูปแล้ว ย่อขยายหรือย้ายได้', 2600);
 }
@@ -20478,14 +20500,17 @@ function placeNear(src, w, h, opt) {
   const paper = (S.page && S.page.paper) || 'grid', M = paper === 'cornell' && src[0] >= 250 ? 262 : PAGE_M;
   /* it sits on the paper the way a careful hand would: on the grid or dot lines, between the rules of lined paper */
   const gs = paper === 'dot' ? DOT_STEP : 25, go = paper === 'dot' ? ((W % DOT_STEP) / 2 || DOT_STEP / 2) % DOT_STEP : 0;
-  const snapX = (x) => (paper === 'grid' || paper === 'dot') && Math.abs(x - (Math.round((x - go) / gs) * gs + go)) <= gs / 2 ? Math.round((x - go) / gs) * gs + go : x;
-  const snapY = (y) => paper === 'grid' || paper === 'dot' ? Math.ceil((y - go) / gs) * gs + go : paper === 'lined' || paper === 'cornell' ? (y <= 126 ? y : 120 + Math.ceil((y - 126) / 38) * 38 + 6) : y;
+  const snapX = (x) => !opt.noSnap && (paper === 'grid' || paper === 'dot') && Math.abs(x - (Math.round((x - go) / gs) * gs + go)) <= gs / 2 ? Math.round((x - go) / gs) * gs + go : x;
+  const snapY = (y) => opt.noSnap ? y : paper === 'grid' || paper === 'dot' ? Math.ceil((y - go) / gs) * gs + go : paper === 'lined' || paper === 'cornell' ? (y <= 126 ? y : 120 + Math.ceil((y - 126) / 38) * 38 + 6) : y;
   /* words keep a comfortable reading width, and may narrow (down to opt.minW) to stay close under the writing
      instead of dropping far down below something beside it */
   const meas = opt.measure || (() => h), ws = [];
   { const w0 = Math.min(w, W - 2 * PAGE_M); ws.push(w0); if (opt.minW) for (let q = 0.85; w0 * q >= opt.minW; q -= 0.15) ws.push(Math.round(w0 * q)); }
   const occ = occupiedBoxes().filter((b) => !(opt.skip && opt.skip(b)));
-  const fits = (x, y, ww, hh) => x >= M - 1 && y >= PAGE_M - 1 && x + ww <= W - PAGE_M + 1 && y + hh <= H - PAGE_M + 1 && !occ.some((b) => x < b[2] + clr && x + ww > b[0] - clr && y < b[3] + clr && y + hh > b[1] - clr);
+  /* words have empty air above their letters inside their box: that air may sit in the gap, so the letters keep the same distance as a drawing would */
+  const pt = Math.max(0, Math.round(opt.padTop || 0));
+  const fits0 = (x, y, ww, hh) => x >= M - 1 && y >= PAGE_M - 1 && x + ww <= W - PAGE_M + 1 && y + hh <= H - PAGE_M + 1 && !occ.some((b) => x < b[2] + clr && x + ww > b[0] - clr && y < b[3] + clr && y + hh > b[1] - clr);
+  const fits = (x, y, ww, hh) => fits0(x, y + pt, ww, hh - pt) && y >= PAGE_M - 1;
   /* beside: a figure next to a short piece of writing, level with it */
   if (opt.side && (opt.sideAny || src[2] - src[0] <= W * 0.55)) {
     const x = snapX(Math.round(src[2] + gapH)), ww = ws[0], hh = meas(ww);
@@ -20493,7 +20518,7 @@ function placeNear(src, w, h, opt) {
   }
   /* under: same left edge as the writing, then the page margin; the nearest row that has room wins */
   const xs = [snapX(Math.round(clamp(src[0], M, W - PAGE_M - ws[ws.length - 1])))]; if (xs[0] !== M) xs.push(M);
-  for (let y0 = Math.round(Math.max(PAGE_M, src[3] + gapV)); y0 <= H - PAGE_M; y0 += 8) {
+  for (let y0 = Math.round(Math.max(PAGE_M, src[3] + gapV - pt)); y0 <= H - PAGE_M; y0 += 8) {
     const y = snapY(y0);
     for (const x of xs) for (const ww0 of ws) { const ww = Math.min(ww0, W - PAGE_M - x), hh = meas(ww); if (ww >= (opt.minW || ws[0] * 0.98) && y + hh <= H - PAGE_M && fits(x, y, ww, hh)) return [x, y, ww, hh]; }
   }
@@ -23287,7 +23312,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793691654';
+const BUILD = '1793692720';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
