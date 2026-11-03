@@ -2246,7 +2246,7 @@ body.role-student .scnpill .sbtns button[data-s="back"], body.role-student .scnp
       <span>กดปุ่ม แล้วเข้าระบบด้วยบัญชี Google หรืออีเมล กดอนุญาต แล้วจะกลับมาที่ Burin เอง ผ่านบริการ OpenRouter ที่รวม AI หลายเจ้าไว้ (Gemini, Claude, ChatGPT)</span>
       <span>บัญชีที่เติมเงินแล้ว ระบบเลือกโมเดลที่เก่งให้เอง บัญชีที่ยังไม่เติมเงิน ใช้โมเดลฟรีได้วันละประมาณ 50 ครั้ง</span>
       <button class="btn solid qneed" id="qsOR">เชื่อมต่อ AI ด้วยบัญชีของฉัน</button>
-      <div id="qsORPaste" hidden><label class="field"><span>ถ้าหน้าอนุญาตแสดงรหัสให้คัดลอก วางรหัสนั้นที่นี่</span><span class="mrow"><input id="qsORCode" autocomplete="off" spellcheck="false"><button class="btn" id="qsORGo" type="button">ยืนยัน</button></span></label></div>
+      <div id="qsORPaste" hidden><label class="field"><span>รหัสยืนยัน: หลังกดอนุญาต เบราว์เซอร์จะเปิดหน้า Burin ที่มีรหัสให้คัดลอก นำมาวางที่นี่</span><span class="mrow"><input id="qsORCode" autocomplete="off" spellcheck="false"><button class="btn" id="qsORGo" type="button">ยืนยัน</button></span></label></div>
     </div>
     <details class="qsopt" id="qsKeyBox"><summary><b>มีคีย์ AI อยู่แล้ว (เสียเงินหรือฟรี)</b> <small>Gemini, Claude, ChatGPT หรือ OpenAI, Typhoon, OpenRouter</small></summary>
       <ol class="qsteps">
@@ -6134,9 +6134,20 @@ async function orStart() {
   const base = 'https://openrouter.ai/auth?code_challenge=' + ch + '&code_challenge_method=S256&state=' + st + '&key_label=' + encodeURIComponent('Burin');
   if (standalone) {
     /* an app opened from the home screen cannot receive the redirect back: show the code and let the person paste it */
-    window.open(base, '_blank'); $('#qsORPaste').hidden = false;
-    $('#qsMsg').innerHTML = '<div class="note">เข้าระบบ OpenRouter ในหน้าที่เปิดขึ้น กดอนุญาต แล้วคัดลอกรหัสที่แสดงมาวางในช่องด้านบน</div>';
+    window.open(base + '&callback_url=' + encodeURIComponent(location.origin + location.pathname), '_blank'); $('#qsORPaste').hidden = false;
+    $('#qsMsg').innerHTML = '<div class="note">ขั้นที่ 1 เข้าระบบ OpenRouter ในหน้าที่เปิดขึ้นในเบราว์เซอร์ แล้วกดอนุญาต<br>ขั้นที่ 2 เบราว์เซอร์จะเปิดหน้า Burin ที่มีรหัสยืนยันให้ กดคัดลอกรหัส<br>ขั้นที่ 3 กลับมาที่แอปนี้ วางรหัสในช่องด้านบน แล้วกดยืนยัน</div>';
   } else location.href = base + '&callback_url=' + encodeURIComponent(location.origin + location.pathname);
+}
+function orShowCode(code) {
+  closeSheets(); $('#aiSetup').hidden = false;
+  const out = $('#qsMsg'); out.innerHTML = '';
+  const n = document.createElement('div'); n.className = 'note ok orcode';
+  n.innerHTML = '<b>รหัสยืนยันของคุณ</b><span class="mrow"><input readonly></span><span>กดคัดลอก แล้วกลับไปที่แอป Burin บนหน้าจอโฮม วางในช่อง "รหัสยืนยัน" แล้วกดยืนยัน รหัสใช้ได้ภายใน 15 นาที</span>';
+  const inp = n.querySelector('input'); inp.value = code;
+  const cp = document.createElement('button'); cp.type = 'button'; cp.className = 'btn solid'; cp.textContent = 'คัดลอกรหัส';
+  cp.onclick = async () => { try { await navigator.clipboard.writeText(code); cp.textContent = 'คัดลอกแล้ว'; } catch (e) { inp.select(); toast('กดค้างที่รหัสแล้วเลือกคัดลอก', 2500); } };
+  n.querySelector('.mrow').appendChild(cp); out.appendChild(n);
+  n.scrollIntoView({ block: 'nearest' });
 }
 async function orFinish(code, state) {
   let saved = null; try { saved = JSON.parse(store_ls.get('tp-or') || 'null'); } catch (e) { saved = null; }
@@ -22869,7 +22880,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793668853';
+const BUILD = '1793670834';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
@@ -24021,7 +24032,16 @@ async function boot() {
     }).catch(() => { AI.claude = null; AI.claudeState = 'none'; renderAIAvail(); });
   } else { AI.claudeState = 'none'; setupRoom(CLOUD.state === 'on' ? makeCloudRoom(CLOUD.client, CLOUD.user) : makeLocalRoom()); renderAIAvail(); }
   renderAISettings(); renderCloud();
-  try { const qp = new URLSearchParams(location.search); if (qp.get('code') && store_ls.get('tp-or')) { const c = qp.get('code'), st = qp.get('state'); history.replaceState(null, '', location.pathname + location.hash); setTimeout(() => orFinish(c, st), 600); } } catch (e) { /* no query */ }
+  try {
+    const qp = new URLSearchParams(location.search);
+    if (qp.get('code')) {
+      const c = qp.get('code'), st = qp.get('state'); history.replaceState(null, '', location.pathname + location.hash);
+      if (store_ls.get('tp-or')) setTimeout(() => orFinish(c, st), 600);
+      /* the connection was started in the app on the home screen, which keeps its own storage: this browser page cannot
+         finish it, so it shows the code to copy back into the app */
+      else setTimeout(() => orShowCode(c), 600);
+    }
+  } catch (e) { /* no query */ }
   if (CLOUD.state === 'signedout' && !S.present && !S.student) openStart();
   else if (!S.student && !S.present && !store_ls.get('tp-role') && CLOUD.state === 'on') setTimeout(() => { if (!store_ls.get('tp-role')) { closeSheets(); $('#roleSheet').hidden = false; } }, 900);
   setTimeout(() => { if (!S.pid) { const l = $('#loading'); $('#loadMsg').textContent = 'ยังเชื่อมต่อไม่ได้ ตรวจอินเทอร์เน็ตแล้วเปิดหน้านี้ใหม่'; } }, 12000);
