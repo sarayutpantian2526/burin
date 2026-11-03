@@ -2313,6 +2313,8 @@ body.role-student .scnpill .sbtns button[data-s="back"], body.role-student .scnp
     <div class="chips" id="expScope"><button class="chip" data-v="all" aria-pressed="true">ทั้งเล่ม</button><button class="chip" data-v="page" aria-pressed="false">เฉพาะหน้านี้</button><button class="chip" data-v="none" aria-pressed="false">ไม่เลือกเลย</button></div>
     <label class="field exprange"><span>หรือพิมพ์เลขหน้า เช่น 1-3, 5, 8</span><input id="expRange" inputmode="numeric" autocomplete="off" placeholder="1-3, 5"></label>
     <div class="expgrid" id="expPages" aria-label="แตะหน้าเพื่อเลือกหรือไม่เลือก"></div>
+    <span class="label">เส้นพื้นหลังของหน้ากระดาษ</span>
+    <div class="chips" id="expLines"><button class="chip" data-v="1" aria-pressed="true">มีเส้นตามหน้ากระดาษ</button><button class="chip" data-v="0" aria-pressed="false">ไม่มีเส้น เหลือแต่สิ่งที่เขียน</button></div>
     <button class="btn solid" id="bExpGo">สร้างไฟล์ PDF</button>
     <div id="expMsg"></div>
     <h3>สไลด์นำเสนอ</h3>
@@ -7491,7 +7493,7 @@ async function exportPdf() {
       const cv = document.createElement('canvas'); cv.width = Math.round(pw * 1.6); cv.height = Math.round(ph * 1.6);
       cv.style.cssText = 'position:absolute;left:0;top:0;width:' + pw + 'px;height:' + ph + 'px';
       const c = cv.getContext('2d'); c.setTransform(1.6, 0, 0, 1.6, 0, 0);
-      W = pw; H = ph; c.fillStyle = '#FFFFFF'; c.fillRect(0, 0, W, H); paper(c, (page && page.paper) || 'grid'); drawInto(c, strokes, null); [W, H] = keep;
+      W = pw; H = ph; c.fillStyle = '#FFFFFF'; c.fillRect(0, 0, W, H); { const pk = (page && page.paper) || 'grid'; paper(c, expLines() || pk === 'board' || pk === 'art' ? pk : 'blank'); } drawInto(c, strokes, null); [W, H] = keep; /* without lines the page keeps its colour (a chalkboard stays dark), only the grid, dots or rules go */
       pg.appendChild(cv);
       const its = document.createElement('div'); its.style.cssText = 'position:absolute;left:0;top:0;width:' + pw + 'px;height:' + ph + 'px';
       for (const it of ((page && page.items) || [])) its.appendChild(buildItemEl(it, true));
@@ -22822,7 +22824,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793635449';
+const BUILD = '1793666407';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
@@ -23839,6 +23841,10 @@ $('#expRange').addEventListener('input', () => {
 });
 $('#bExpClose').onclick = closeSheets;
 $('#bExpGo').onclick = exportPdf;
+function expLines() { return store_ls.get('tp-exp-lines') !== '0'; }
+function expLinesSync() { $('#expLines').querySelectorAll('.chip').forEach((b) => b.setAttribute('aria-pressed', (b.dataset.v === '1') === expLines() ? 'true' : 'false')); }
+$('#expLines').querySelectorAll('.chip').forEach((b) => { b.onclick = () => { store_ls.set('tp-exp-lines', b.dataset.v); expLinesSync(); }; });
+expLinesSync();
 $('#expScope').querySelectorAll('.chip').forEach((b) => { b.onclick = () => {
   const pages = (S.nb && S.nb.pages) || [], v = b.dataset.v;
   if (v !== 'none') expScope = v;
