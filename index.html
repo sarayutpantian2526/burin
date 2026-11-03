@@ -4329,6 +4329,18 @@ async function diaryAsk() {
         }
         if (fit) { at = fit[0]; fs = fit[1]; w = at[2] || (at[0] > box[2] ? Math.round(W - PAGE_M - (box[2] + 30)) : w); }
       } }
+    /* on a page of an imported PDF the reply stays on that page, next to the writing: first in the free space, then
+       allowed over the printed text's margins with smaller letters, and at worst right under the writing */
+    if (!at && onPdfPage()) {
+      /* smaller letters in the real free space first (margins, gaps between printed lines), then over the print */
+      const fs0 = fs;
+      for (const loose of [false, true]) for (let f2 = loose ? Math.min(fs0, 26) : fs0; f2 >= (loose ? 16 : 20) && !at; f2 = f2 > 30 ? Math.round(f2 * 0.85) : f2 - 2) {
+        const m = (ww) => estTextH(text, ww, f2) * 1.25 + 10, ww0 = Math.min(w, Math.max(260, f2 * 16)), sk = loose ? (bx) => bx.pdf : null;
+        const sp = placeNear(box, ww0, m(ww0), { fs: f2, minW: Math.max(120, f2 * 5), measure: m, skip: sk }) || placeNear(box, ww0, m(ww0), { fs: f2, side: true, sideAny: true, measure: m, skip: sk });
+        if (sp) { at = sp; fs = f2; w = sp[2] || ww0; }
+      }
+      if (!at) { fs = Math.max(16, Math.round(fs * 0.7)); w = Math.min(w, 520); const hh = estTextH(text, w, fs) * 1.25 + 10; at = [clamp(box[0], PAGE_M, W - PAGE_M - w), clamp(box[3] + 8, PAGE_M, Math.max(PAGE_M, H - PAGE_M - hh)), w]; }
+    }
     if (!at) { const np = await addPage(); if (!np) return; apid = np; at = [W - PAGE_M - w, PAGE_M + 16]; toast('หน้าเต็มแล้ว สมุดเขียนตอบในหน้าถัดไป', 2400); }
     const ink = '#2B3A67', id = 'i' + uid();
     if (text) addItem({ id, type: 'text', x: Math.round(at[0]), y: Math.round(at[1]), w: Math.round(w), md: text, fs, hand: DIARY_HAND(), ink, diary: true, dv: 2 });
@@ -4348,6 +4360,7 @@ async function diaryAsk() {
         const goT = async () => {
           if (S.pid !== apid) { diaryDraw(tiny, clamp(Math.round(at[0] + w - dw), 20, W - 20 - dw), clamp(near[1] - 6, 20, H - 20 - dh), dw, dh, tlw, ink, fs, apid); return; }
           let spot = freeSpot(dw, dh, [Math.round(at[0] + w - dw), near[1] - 6], true), pg = apid;
+          if (!spot && onPdfPage()) spot = freeSpot(dw, dh, [Math.round(at[0] + w - dw), near[1] - 6], false, true) || [clamp(Math.round(at[0] + w - dw), 20, W - 20 - dw), clamp(near[1] - 6, 20, H - 20 - dh)];
           if (!spot) { const np = await addPage(); if (!np) return; pg = np; spot = [Math.round(W - 40 - dw), 60]; }
           diaryDraw(tiny, spot[0], spot[1], dw, dh, tlw, ink, fs, pg);
         };
@@ -4374,6 +4387,7 @@ async function diaryAsk() {
           }
           if (best) { spot = best.sp; dw = best.ww; } else if (late) { spot = late.sp; dw = late.ww; } }
         let pg = apid;
+        if (!spot && onPdfPage()) { for (let ww = Math.min(dw, 420); ww >= 200 && !spot; ww = Math.round(ww * 0.85)) { const sp = placeNear(src, ww, Math.round(ww * 0.6), { fs, skip: (b) => b.pdf }) || placeNear(src, ww, Math.round(ww * 0.6), { fs, side: true, sideAny: true, skip: (b) => b.pdf }); if (sp) { spot = sp; dw = ww; } } if (!spot) { dw = 260; spot = [clamp(src[0], PAGE_M, W - dw - PAGE_M), clamp(src[3] + 8, PAGE_M, H - PAGE_M - Math.round(dw * 0.6))]; } }
         if (!spot) { dw = Math.round(clamp(fs * 16, 320, Math.min(640, W - 2 * PAGE_M))); const np = await addPage(); if (!np) return; pg = np; spot = [clamp(src[0], PAGE_M, W - dw - PAGE_M), PAGE_M + 16]; toast('หน้าเต็มแล้ว สมุดวาดต่อในหน้าถัดไป', 2400); }
         diaryDraw(sketch, spot[0], spot[1], dw, Math.round(dw * 0.6), lw, ink, fs, pg);
       };
@@ -20433,7 +20447,7 @@ function occupiedBoxes() {
   /* a drawing the notebook is still making already owns its place */
   for (const b of (typeof DIARY !== 'undefined' && DIARY.hold[S.pid]) || []) out.push(b);
   for (const it of (S.page && S.page.items) || []) {
-    if (isBgItem(it) && Array.isArray(it.tb)) { const k = (it.w || 1000) / 1000; for (const b of it.tb) out.push([it.x + b[0] * k, it.y + b[1] * k, it.x + b[2] * k, it.y + b[3] * k]); continue; } /* printed lines of an imported PDF page */
+    if (isBgItem(it) && Array.isArray(it.tb)) { const k = (it.w || 1000) / 1000; for (const b of it.tb) { const r = [it.x + b[0] * k, it.y + b[1] * k, it.x + b[2] * k, it.y + b[3] * k]; r.pdf = true; out.push(r); } continue; } /* printed lines of an imported PDF page */
     if (!it.lock && !(it.spec && it.spec.bare)) out.push(it.type === 'life' && it.B ? it.B : tightItemBox(it));
   }
   for (const r of allStrokes()) { const b = sbox(r.s); out.push([b[0], b[1], b[2], b[3]]); }
@@ -20485,8 +20499,9 @@ function placeNear(src, w, h, opt) {
   }
   return null;
 }
-function freeSpot(w, h, near, below) {
-  const occ = occupiedBoxes(), m = 14;
+function onPdfPage() { return !!(S.page && (S.page.items || []).some(isBgItem)); }
+function freeSpot(w, h, near, below, loose) {
+  const occ = occupiedBoxes().filter((b) => !(loose && b.pdf)), m = loose ? 4 : 14;
   const fits = (x, y) => x >= 6 && y >= 6 && x + w <= W - 6 && y + h <= H - 6 && !occ.some((b) => x < b[2] + m && x + w > b[0] - m && y < b[3] + m && y + h > b[1] - m);
   const xs = []; if (near) xs.push(clamp(Math.round(near[0]), 6, W - w - 6)); xs.push(40, Math.round((W - w) / 2), W - w - 40);
   const y0 = near ? Math.round(near[1]) : Math.round(viewSpot(w, h)[1]);
@@ -23272,7 +23287,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793691339';
+const BUILD = '1793691654';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
