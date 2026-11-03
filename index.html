@@ -18986,8 +18986,8 @@ function exRenderBuilt(body) {
   const aiBox = exEl('div', ''); aiBox.id = 'gbAI'; body.appendChild(aiBox);
   const row = exEl('div', 'row2');
   const b1 = exEl('button', 'btn solid', 'เริ่มทำ'); b1.onclick = async () => { const set = await exSaveSet(qs); EX.mode = 'practice'; exStart(qs, set.title); EX.run.setId = set.id; }; row.appendChild(b1);
-  const b2 = exEl('button', 'btn', 'วางเป็นใบงานหน้าใหม่'); b2.onclick = () => exWorksheet(qs, false); row.appendChild(b2);
-  const b3 = exEl('button', 'btn', 'ใบงานพร้อมเฉลย'); b3.onclick = () => exWorksheet(qs, true); row.appendChild(b3);
+  const b2 = exEl('button', 'btn', 'วางเป็นใบงาน'); b2.onclick = () => exWorksheet(qs, false); row.appendChild(b2);
+  const b3 = exEl('button', 'btn', 'ใบงานพร้อมหน้าเฉลยท้ายชุด'); b3.onclick = () => exWorksheet(qs, true); row.appendChild(b3);
   if (typeof liveSendSet === 'function') { const b4 = exEl('button', 'btn', 'ส่งให้ผู้เรียนในห้องสด'); b4.onclick = async () => { const set = await exSaveSet(qs); liveSendSet(set); }; row.appendChild(b4); }
   body.appendChild(row);
   typeset(body);
@@ -19032,11 +19032,10 @@ async function exSaveSet(qs, title0) {
 async function exWorksheet(qs, withKey) {
   if (!S.nb) return;
   const L = 'กขคง';
-  const blocks = ['## แบบฝึก ' + GB.picks.map(([t, c]) => exChName(t, c)).join(', ') + '\nชื่อ ........................................ เลขที่ ........\n\n' + qBlock(qs[0], 0) + '\n\n'].concat(qs.slice(1).map((q, i) => qBlock(q, i + 1) + '\n\n'));
-  const r = await placeBlocks(blocks, null, { newPage: true, paper: 'lined', fs: 20, gap: 40 });
-  let k = 0;
-  if (withKey) { const kb = ['## เฉลย'].concat(qs.map((q, i) => (i + 1) + '. ' + L[q.a || 0] + '  ' + (q.e || ''))); const r2 = await placeBlocks(kb, null, { newPage: true, paper: 'lined', fs: 18, gap: 10 }); k = r2.pages; }
+  const nm = GB.picks.map(([t, c]) => exChName(t, c)).join(', ');
   $('#examSheet').hidden = true;
+  const res = await placeSheet(qs, 'แบบฝึก ' + nm, '## แบบฝึก ' + nm + '\nชื่อ ........................................ เลขที่ ........', withKey);
+  const r = { pages: res.pages }, k = res.keyPages; void L;
   toast('วางใบงาน ' + r.pages + ' หน้า' + (k ? ' และเฉลย ' + k + ' หน้า' : '') + ' เว้นที่ใต้แต่ละข้อให้เขียนวิธีทำ', 2800);
 }
 /* ---------- item analysis (classical test theory) ---------- */
@@ -20945,16 +20944,21 @@ function xmBlueprintMd(X, qs) {
   else rows.push('', 'เวลาสอบ ' + X.minutes + ' นาที');
   return rows.join('\n');
 }
+const XMP = { last: null };
 async function xmPlace(forms, title, withKey) {
+  XMP.last = null; XMP.first = null;
   if (!S.nb || !S.page) { toast('เปิดหน้าสมุดที่จะวางข้อสอบก่อน', 2800); return; }
   const L = 'กขคง', X = EX.xm; $('#examSheet').hidden = true; let pages = 0;
+  let kp = 0; void L;
   for (const f of forms) {
     const tag = forms.length > 1 ? ' ชุด ' + f.label : '';
-    const blocks = ['## ' + title + tag + '\nชื่อ ........................................ เลขที่ ........ คะแนน ........ / ' + f.qs.length + ' เวลา ' + X.minutes + ' นาที\n\n' + qBlock(f.qs[0], 0) + '\n\n'].concat(f.qs.slice(1).map((q, i) => qBlock(q, i + 1) + '\n\n'));
-    const r = await placeBlocks(blocks, null, { newPage: true, paper: 'lined', fs: 20, gap: 40 }); pages += r.pages || 0;
+    /* each form starts after the previous one (its key included), so the pages run form by form */
+    if (pages + kp && XMP.last) openPage(XMP.last);
+    const r = await placeSheet(f.qs, title + tag, '## ' + title + tag + '\nชื่อ ........................................ เลขที่ ........ คะแนน ........ / ' + f.qs.length + ' เวลา ' + X.minutes + ' นาที', withKey, 'เฉลย ' + title + tag, !!(pages + kp));
+    pages += r.pages || 0; kp += r.keyPages || 0; XMP.first = XMP.first || S.pid;
+    XMP.last = r.end;
   }
-  let kp = 0;
-  if (withKey) for (const f of forms) { const kb = ['## เฉลย ' + title + (forms.length > 1 ? ' ชุด ' + f.label : '')].concat(f.qs.map((q, i) => (i + 1) + '. ' + L[q.a || 0] + '  ' + (q.e || ''))); const r2 = await placeBlocks(kb, null, { newPage: true, paper: 'lined', fs: 18, gap: 10 }); kp += r2.pages || 0; }
+  if (XMP.first && XMP.first !== S.pid) openPage(XMP.first); /* back to the first page of the first form */
   toast('วางข้อสอบ ' + pages + ' หน้า' + (kp ? ' และเฉลย ' + kp + ' หน้า' : ''), 3000);
 }
 function xmRenderPreview(body) {
@@ -20993,7 +20997,8 @@ function xmRenderPreview(body) {
   const title = X.name.trim(), bar = exEl('div', 'brsbar');
   const mk = (t, cls, fn) => { const b = exEl('button', 'btn ' + cls, t); b.type = 'button'; b.onclick = () => fn(b); bar.appendChild(b); return b; };
   mk('บันทึกเป็นชุดข้อสอบ', 'solid', async () => { const fs = xmForms(qs); for (const f of fs) await exSaveSet(f.qs, title + (fs.length > 1 ? ' ชุด ' + f.label : '')); toast('บันทึก ' + fs.length + ' ชุดแล้ว ดูได้ที่แท็บชุดโจทย์ของฉัน', 3000); });
-  mk('วางเป็นข้อสอบพร้อมเฉลยลงสมุด', '', () => xmPlace(xmForms(qs), title, true));
+  mk('วางข้อสอบลงสมุด', '', () => xmPlace(xmForms(qs), title, false));
+  mk('วางข้อสอบพร้อมหน้าเฉลยท้ายชุด', '', () => xmPlace(xmForms(qs), title, true));
   mk('วางตารางวิเคราะห์ข้อสอบ', '', async () => { if (!S.page) { toast('เปิดหน้าสมุดก่อน', 2400); return; } $('#examSheet').hidden = true; const r = await placeBlocks([xmBlueprintMd(X, qs)], null, { newPage: true, fs: 20 }); toast('วางตารางแล้ว', 2000); });
   mk('ส่งให้ห้องสด', '', async () => { const set = await exSaveSet(qs, title); setUse(set); $('#examSheet').hidden = true; liveSendSet(set); });
   mk('มอบการบ้าน', '', async () => { const set = await exSaveSet(qs, title); setUse(set); openAssign(set); });
@@ -21335,6 +21340,7 @@ function figSize(svg, wMax) { const m = String(svg).match(/viewBox="[\d.\s-]*?\s
 /* place questions as separate boxes (figure and text per question), leaving room to work, adding pages when needed */
 async function placeQuestions(qs, near, opt) {
   opt = opt || {}; if (!qs.length || !S.page) return { pages: 0, here: 0 };
+  const startPid = S.pid;
   if (opt.setId && typeof setUse === 'function') { const st0 = setById(opt.setId); if (st0 && (!st0.used || now() - st0.used > 60000)) setUse(st0); }
   const fs = opt.fs || 20, w = opt.w || (W - 100), space = opt.space != null ? opt.space : TRAY.space, bottom = H - 30, top = 40, x0 = Math.round((W - w) / 2);
   const units = [];
@@ -21386,18 +21392,37 @@ async function placeQuestions(qs, near, opt) {
     for (const u of us) { const its = pg.items.filter((it) => it._u === u.k), dy = yy - Math.min(...its.map((it) => it.y)); for (const it of its) it.y = Math.round(it.y + dy); yy += unitH(u) + u.gap + (u.head ? 0 : add); }
   }
   for (const pg of pagesOut) for (const it of pg.items) delete it._u;
-  let newPages = 0, firstNew = null, here = 0;
+  let newPages = 0, firstNew = null, lastNew = null, here = 0;
   const pages = ((S.nb && S.nb.pages) || []).slice(); let at = pages.indexOf(S.pid);
   for (const pg of pagesOut) {
     if (pg.here) { const before = clone(S.page.items || []); setItems(before.concat(pg.items), before); here = pg.items.length; TRAY.lastBottom[S.pid] = y; continue; }
-    const pid = 'p' + uid(); newPages++; firstNew = firstNew || pid;
-    await S.store.set('pages/' + pid, { nb: S.nid, paper: opt.paper || (S.page && S.page.paper) || 'grid', items: pg.items, rev: now() }).catch(onStoreError);
+    const pid = 'p' + uid(); newPages++; firstNew = firstNew || pid; lastNew = pid;
+    /* a new page is the same paper as the one in use (grid stays grid), the same way up */
+    await S.store.set('pages/' + pid, Object.assign({ nb: S.nid, paper: opt.paper || (S.page && S.page.paper) || 'grid', items: pg.items, rev: now() }, S.page && S.page.orient === 'land' ? { orient: 'land' } : {})).catch(onStoreError);
     pages.splice(++at, 0, pid); TRAY.lastBottom[pid] = y;
   }
   if (newPages) {
     try { await S.store.update('notebooks/' + S.nid, { pages, updatedAt: now() }); S.nb = Object.assign({}, S.nb, { pages }); renderPageList(); renderTitle(); if (!here || newPage) openPage(firstNew); } catch (e) { onStoreError(e); }
   }
-  return { here, pages: newPages };
+  return { here, pages: newPages, first: firstNew, start: here ? startPid : firstNew, last: lastNew || (here ? startPid : null) };
+}
+/* a worksheet or an exam: every question its own box with the gold key button (seen only by the teacher), on the paper
+   in use; the key pages, when asked for, come after the last page of questions, never between them */
+async function placeSheet(qs, title, header, withKey, keyTitle, after) {
+  const set = await exSaveSet(qs, title); if (typeof setUse === 'function') setUse(set);
+  /* an empty page is used as it is, otherwise a new page; after another form it is always a new page (the page just
+     opened may not have loaded its boxes yet) */
+  const r = await placeQuestions(set.qs, null, Object.assign({ setId: set.id, header }, after ? { newPage: true } : {}));
+  let k = 0;
+  if (withKey && r.last) {
+    const back = r.start || S.pid, L = 'กขคง';
+    if (S.pid !== r.last) openPage(r.last);
+    const kb = ['## ' + (keyTitle || 'เฉลย')].concat(set.qs.map((q, i) => (i + 1) + '. ' + (q.c && q.c.length ? L[q.a || 0] : (q.ans || '')) + '  ' + (q.e || '')));
+    const r2 = await placeBlocks(kb, null, { newPage: true, fs: 18, gap: 10 }); k = r2.pages || 0;
+    openPage(back);
+  }
+  const P = (S.nb && S.nb.pages) || [], li = P.indexOf(r.last);
+  return { pages: r.pages, keyPages: k, set, end: li >= 0 ? P[Math.min(P.length - 1, li + k)] : null };
 }
 /* ----- tray beside the page ----- */
 function openTray(setId) {
@@ -22832,7 +22857,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793667374';
+const BUILD = '1793667907';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
