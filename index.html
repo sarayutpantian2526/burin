@@ -5143,6 +5143,12 @@ function beginTool(pt, e) {
     /* a picture or box picked by pressing and holding: drag it with the pen too */
     pt.mode = 'move'; pt.last = [x, y]; pt.dx = 0; pt.dy = 0; return;
   }
+  /* with a mouse a question box is picked up and dragged straight away (a mouse rarely writes on a printed question; the
+     answers go in the space around it). Pen and finger still write on it as before */
+  if ((S.tool === 'pen' || S.tool === 'hl') && e.pointerType === 'mouse' && !(e.target && e.target.closest && e.target.closest('button, a, input, textarea, .no-ink'))) {
+    const h0 = itemAt(x, y);
+    if (h0 && isExItem(h0) && !h0.lock && !(isStudentSide() && h0.by === 'teacher')) { if (S.sel) clearSel(); selectItem(h0); pt.mode = 'move'; pt.last = [x, y]; pt.dx = 0; pt.dy = 0; return; }
+  }
   if (S.tool === 'pen' || S.tool === 'hl') {
     if (S.sel) clearSel();
     pt.mode = 'draw';
@@ -23683,7 +23689,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793768560';
+const BUILD = '1793768838';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
