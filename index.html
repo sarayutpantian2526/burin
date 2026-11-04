@@ -192,7 +192,7 @@ body.flow:not(.flowlast) #bAddBelow { display: none; }
 .flowseg button { flex: 1 1 0; font-size: 12.5px; }
 #page { position: relative; background: #FFFFFF; box-shadow: 0 10px 34px rgba(20, 26, 34, 0.16); border-radius: 4px; }
 #page > canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
-#page > #cSharp { inset: auto; pointer-events: none; }
+#page > #cSharp { inset: auto; pointer-events: none; will-change: transform; }
 #page.exact > #cInk, #page.exact > #cLive, #page.exact > #cRemote { inset: 0 auto auto 0; width: var(--cw); height: var(--ch); }
 #page.px1 > #cInk, #page.px1 > #cRemote, #page.pxs > #cSharp { image-rendering: pixelated; }
 #page > #cSharp[hidden] { display: none; }
@@ -974,6 +974,15 @@ body.nodesk #tTitle::after { content: ''; }
 .nbselbar { position: sticky; bottom: 0; z-index: 3; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 10px 12px; margin-top: 10px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 -4px 16px rgba(20,26,34,0.12); }
 .nbselbar b { margin-right: auto; }
 .item .dink { opacity: 0; display: inline; }
+.item .dword { white-space: nowrap; }
+.stkpanel { width: min(640px, 100%); }
+.stkcats { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 2px; }
+.stkcats .chip { flex: none; }
+.stkgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 8px; max-height: min(52vh, 460px); overflow-y: auto; padding: 2px; }
+.stkgrid.wide { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+.stkb { border: 1px solid var(--line); background: #FBF8F4; border-radius: 14px; padding: 8px; cursor: pointer; display: grid; place-items: center; min-height: 84px; }
+.stkb:hover { background: #F6EFE6; }
+.stkb svg { width: 100%; height: auto; max-height: 72px; }
 .item .dink.on { opacity: 1; }
 .item .dsvg { position: absolute; left: 0; top: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
 .item .dsvg text { stroke-linecap: round; stroke-linejoin: round; }
@@ -2120,6 +2129,7 @@ body.role-student .scnpill .sbtns button[data-s="back"], body.role-student .scnp
       <button class="insb" id="iGraph"><b>กราฟจากสมการ</b><span>พิมพ์สมการ แล้วปรับค่าตัวแปรด้วยแถบเลื่อน</span></button>
       <button class="insb" id="iSim"><b>แบบจำลองการทดลอง</b><span>ทุกวิชา ฟิสิกส์ โลกและอวกาศ เคมี ชีวะ สุขภาพ คณิต สถิติ ปรับค่าแล้วกดเล่น หรือให้ AI สร้าง</span></button>
       <button class="insb" id="iLab"><b>การทดลองและตารางผล</b><span>วางแผนตัวแปร บันทึกผล พล็อตกราฟ หาความชันและค่าที่ต้องการพร้อมความไม่แน่นอน</span></button>
+      <button class="insb" id="iStk"><b>สติกเกอร์และเทปตกแต่ง</b><span>สัตว์ ขนม ท้องฟ้า อุปกรณ์เรียน ป้ายคำ และเทปวาชิ วางแล้วย้ายหรือย่อขยายได้</span></button>
       <button class="insb" id="iProof"><b>ตารางพิสูจน์เรขาคณิต</b><span>กำหนดให้ ต้องการพิสูจน์ ข้อความกับเหตุผลทีละขั้น พร้อมเหตุผลที่ใช้บ่อย</span></button>
       <button class="insb" id="iCalc"><b>เครื่องคิดเลขและแก้สมการ</b><span>คิดพร้อมหน่วย แก้สมการ อนุพันธ์ อินทิเกรต เมทริกซ์ สมการเชิงอนุพันธ์</span></button>
       <button class="insb" id="iLesson"><b>บทเรียนสรุป</b><span>สรุปเนื้อหาทุกบท นิยาม สูตร ตัวอย่างพร้อมวิธีทำ วางลงหน้าเพื่อใช้สอนได้</span></button>
@@ -3299,7 +3309,8 @@ const MATH_NOTATION = '\n\nNOTATION (follow exactly in every formula): a vector 
    other content into physics (a lesson on AI stays about AI, a poem stays a poem) */
 function subjectize(prompt) {
   const sj = curSubj();
-  const follow = '\n\nCONTENT FIRST: the notebook is labelled ' + (sj[2] || 'general studies') + ', but always work from what the text and images actually show. If they are about another subject or topic (for example artificial intelligence, mathematics, biology, chemistry, language, social studies), reply, explain, draw, check and write questions in that subject with its own terms and standards; never recast it as physics, and never add physics that is not there. Any instruction above that names physics applies to the subject the content actually shows.';
+  const wrapRule = '\n\nLINES: never put a line break inside a sentence or a word to make lines short; the page wraps the text itself by the rules of each language (Thai breaks only between words). Use a line break only between paragraphs, list items, steps or formulas.';
+  const follow = wrapRule + '\n\nCONTENT FIRST: the notebook is labelled ' + (sj[2] || 'general studies') + ', but always work from what the text and images actually show. If they are about another subject or topic (for example artificial intelligence, mathematics, biology, chemistry, language, social studies), reply, explain, draw, check and write questions in that subject with its own terms and standards; never recast it as physics, and never add physics that is not there. Any instruction above that names physics applies to the subject the content actually shows.';
   if (sj[0] === 'phys') return prompt + follow;
   return prompt.replace(/\bphysics\b/g, sj[2]).replace(/\bPhysics\b/g, sj[2][0].toUpperCase() + sj[2].slice(1)) + '\n\nSUBJECT: this notebook is about ' + sj[2] + '; adapt every instruction above to ' + sj[2] + '. ' + sj[3] + follow;
 }
@@ -3698,7 +3709,10 @@ function drawSharp() {
   if (x1 - x0 < 4 || y1 - y0 < 4) { cSharp.hidden = true; return; }
   const sc = pr.width / (pageEl.offsetWidth || 1);
   cSharp.style.left = (x0 - pr.left) / sc + 'px'; cSharp.style.top = (y0 - pr.top) / sc + 'px';
-  cSharp.style.width = (x1 - x0) / sc + 'px'; cSharp.style.height = (y1 - y0) / sc + 'px';
+  /* the sharp canvas undoes the page's zoom on itself, so it sits on the screen at its own size, pixel for pixel. Scaled up
+     with the page, iPad Safari paints a canvas into the zoomed page at the canvas's small size and enlarges that picture:
+     soft lines (or blocky ones) however sharp the canvas itself was drawn */
+  cSharp.style.width = (x1 - x0) + 'px'; cSharp.style.height = (y1 - y0) + 'px'; cSharp.style.transformOrigin = '0 0'; cSharp.style.transform = 'scale(' + (1 / sc) + ')';
   /* within the canvas memory an iPad allows */
   let dq = Math.min(dpr, Math.sqrt(7e6 / Math.max(1, (x1 - x0) * (y1 - y0))) * (S.sharpCut || 1));
   const bw = Math.round((x1 - x0) * dq), bh = Math.round((y1 - y0) * dq);
@@ -4055,7 +4069,7 @@ function liveFit(on, x0, y0, w, h, k, cssL, cssT, cssW, cssH) {
   if (on) {
     const bw = Math.round(w * k), bh = Math.round(h * k);
     if (cLive.width !== bw || cLive.height !== bh) { cLive.width = bw; cLive.height = bh; }
-    Object.assign(cLive.style, { inset: 'auto', left: cssL + 'px', top: cssT + 'px', width: cssW + 'px', height: cssH + 'px' });
+    { const z = (pageEl.getBoundingClientRect().width / (pageEl.offsetWidth || 1)) || 1; Object.assign(cLive.style, { inset: 'auto', left: cssL + 'px', top: cssT + 'px', width: cssW * z + 'px', height: cssH * z + 'px', transformOrigin: '0 0', transform: 'scale(' + (1 / z) + ')' }); }
     Object.assign(LV, { part: true, k, ox: x0, oy: y0 });
   } else if (LV.part) {
     LV.part = false; cLive.style.cssText = ''; cLive.width = Math.round(W * S.res); cLive.height = Math.round(H * S.res);
@@ -4736,9 +4750,19 @@ function diaryWriteIn(id, from) {
   const nodes = [], tw = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, { acceptNode: (n) => (n.parentElement.closest('button') ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT) });
   while (tw.nextNode()) nodes.push(tw.currentNode);
   const marks = [];
+  /* letters are wrapped one by one for the pen, but a line may only break between words, as the language itself breaks it
+     (Thai has no spaces: a span round every letter let the line break in the middle of a word). Each word is kept
+     together, with a break chance only between words */
+  const words = (t) => { try { if (typeof Intl !== 'undefined' && Intl.Segmenter) return [...new Intl.Segmenter('th', { granularity: 'word' }).segment(t)].map((x) => x.segment); } catch (e) { /* older browser */ } return t.split(/(\s+)/).filter(Boolean); };
   for (const n of nodes) {
-    const sp = document.createElement('span');
-    for (const c of seg(n.textContent)) { const g = document.createElement('span'); g.className = 'dink'; g.textContent = c; sp.appendChild(g); marks.push(g); }
+    const sp = document.createElement('span'); let prevWord = false;
+    for (const w of words(n.textContent)) {
+      if (/^\s+$/.test(w)) { for (const c of seg(w)) { const g = document.createElement('span'); g.className = 'dink'; g.textContent = c; sp.appendChild(g); marks.push(g); } prevWord = false; continue; }
+      if (prevWord) sp.appendChild(document.createElement('wbr'));
+      const ws = document.createElement('span'); ws.className = 'dword';
+      for (const c of seg(w)) { const g = document.createElement('span'); g.className = 'dink'; g.textContent = c; ws.appendChild(g); marks.push(g); }
+      sp.appendChild(ws); prevWord = true;
+    }
     n.replaceWith(sp);
   }
   el.classList.add('writing');
@@ -5205,7 +5229,10 @@ function beginTool(pt, e) {
     else if (S.sel && inBox(S.sel.box, x, y)) { pt.mode = 'move'; pt.last = [x, y]; pt.dx = 0; pt.dy = 0; if (!S.sel.strokes.length && S.sel.items.length === 1 && itemsAt(x, y).length > 1) pt.cyc = [x, y]; }
     else {
       const hit = itemAt(x, y), sh = hit ? null : strokeAt(x, y);
-      if (hit) { selectItem(hit); pt.mode = 'move'; pt.last = [x, y]; pt.dx = 0; pt.dy = 0; }
+      /* starting on a box (a question, a reply, a picture) still draws a lasso: the box is picked only by a tap, or by
+         pressing and holding before moving (a lasso round a drawing made over a question box used to grab the box instead) */
+      if (hit) { clearSel(); pt.mode = 'lasso'; pt.poly = [[x, y]]; pt.itemHit = hit;
+        pt.itemT = setTimeout(() => { if (P.get(pt.id) !== pt || pt.mode !== 'lasso' || pt.moved > 10) return; selEl.innerHTML = ''; selectItem(hit); pt.mode = 'move'; pt.last = [x, y]; pt.dx = 0; pt.dy = 0; }, 420); }
       else if (sh) { pt.pick = sh; clearSel(); pt.mode = 'lasso'; pt.poly = [[x, y]]; }
       else { clearSel(); pt.mode = 'lasso'; pt.poly = [[x, y]]; }
     }
@@ -5335,7 +5362,7 @@ function onUp(e) {
   } else if (pt.mode === 'erase' || pt.mode === 'palm') {
     clearLive();
   } else if (pt.mode === 'lasso') {
-    if (pt.pick && pt.moved < 12) { selDraw(); selectStrokes(pt.pick); } else finishLasso(pt.poly);
+    if (pt.itemHit && pt.moved < 12) { selEl.innerHTML = ''; selectItem(pt.itemHit); } else if (pt.pick && pt.moved < 12) { selDraw(); selectStrokes(pt.pick); } else finishLasso(pt.poly);
   } else if (pt.mode === 'move') {
     if (S.sel && S.sel.items.length && S.page) S.page = Object.assign({}, S.page, { items: S.page.items.map((it) => S.sel.items.includes(it.id) ? Object.assign({}, it, { x: Math.round(it.x), y: Math.round(it.y) }) : it) });
     if (pt.cyc && Math.abs(pt.dx) + Math.abs(pt.dy) < 2 && pt.moved < 10) { cycleItemAt(pt.cyc[0], pt.cyc[1]); return; }
@@ -14292,6 +14319,168 @@ function skGo() {
   SK.from = null;
 }
 
+/* ---------- stickers and washi tape: small cute decorations for notes, all drawn here (no pictures to download) ----------
+   Each sticker is a die-cut shape: a soft shadow, a white border, then the art. Placed as an ordinary picture box, so it moves,
+   resizes, deletes, undoes, exports and goes to the classroom like any other picture. */
+const STK_INK = '#5B4B49', STK_BLUSH = '#FF9DB4';
+const STK_C = { pink: '#FFC9D9', peach: '#FFD8B5', yellow: '#FFE89E', mint: '#C6EDD6', sky: '#CBE4FF', lilac: '#E2D4FF', cream: '#FFF6E3', white: '#FFFFFF', red: '#FF8A8A', green: '#9FD9A8', brown: '#C9A27E', orange: '#FFB879' };
+/* a sleepy-sweet face: dot eyes, blush, small smile; s scales it */
+function stkFace(cx, cy, s, o) {
+  o = o || {}; const e = 6.5 * s, r = 2.6 * s;
+  const eyes = o.happy
+    ? '<path d="M' + (cx - e - 2.6 * s) + ' ' + cy + ' q' + 2.6 * s + ' ' + (-3 * s) + ' ' + 5.2 * s + ' 0 M' + (cx + e - 2.6 * s) + ' ' + cy + ' q' + 2.6 * s + ' ' + (-3 * s) + ' ' + 5.2 * s + ' 0" fill="none" stroke="' + STK_INK + '" stroke-width="' + 2 * s + '" stroke-linecap="round"/>'
+    : '<circle cx="' + (cx - e) + '" cy="' + cy + '" r="' + r + '" fill="' + STK_INK + '"/><circle cx="' + (cx + e) + '" cy="' + cy + '" r="' + r + '" fill="' + STK_INK + '"/><circle cx="' + (cx - e + 0.9 * s) + '" cy="' + (cy - 0.9 * s) + '" r="' + 0.8 * s + '" fill="#FFFFFF"/><circle cx="' + (cx + e + 0.9 * s) + '" cy="' + (cy - 0.9 * s) + '" r="' + 0.8 * s + '" fill="#FFFFFF"/>';
+  const blush = '<ellipse cx="' + (cx - e - 4.5 * s) + '" cy="' + (cy + 4.5 * s) + '" rx="' + 3.6 * s + '" ry="' + 2.2 * s + '" fill="' + STK_BLUSH + '" opacity="0.75"/><ellipse cx="' + (cx + e + 4.5 * s) + '" cy="' + (cy + 4.5 * s) + '" rx="' + 3.6 * s + '" ry="' + 2.2 * s + '" fill="' + STK_BLUSH + '" opacity="0.75"/>';
+  const mouth = o.open
+    ? '<path d="M' + (cx - 2.6 * s) + ' ' + (cy + 4 * s) + ' q' + 2.6 * s + ' ' + 4.5 * s + ' ' + 5.2 * s + ' 0 z" fill="#E86A7E" stroke="' + STK_INK + '" stroke-width="' + 1.4 * s + '" stroke-linejoin="round"/>'
+    : '<path d="M' + (cx - 2.8 * s) + ' ' + (cy + 4 * s) + ' q' + 1.4 * s + ' ' + 2 * s + ' ' + 2.8 * s + ' 0 q' + 1.4 * s + ' ' + 2 * s + ' ' + 2.8 * s + ' 0" fill="none" stroke="' + STK_INK + '" stroke-width="' + 1.6 * s + '" stroke-linecap="round" stroke-linejoin="round"/>';
+  return blush + eyes + mouth;
+}
+const stkO = (w) => ' stroke="' + STK_INK + '" stroke-width="' + (w || 2.6) + '" stroke-linejoin="round" stroke-linecap="round"';
+/* body: the outline shapes (geometry only) the white border follows; art: the coloured drawing on top */
+function stkSvg(body, art, vb) {
+  vb = vb || '0 0 100 100';
+  return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="' + vb + '">'
+    + '<g transform="translate(1.2 2.4)" fill="#3A2C2A" stroke="#3A2C2A" stroke-width="11" stroke-linejoin="round" opacity="0.12">' + body + '</g>'
+    + '<g fill="#FFFFFF" stroke="#FFFFFF" stroke-width="11" stroke-linejoin="round">' + body + '</g>' + art + '</svg>';
+}
+const STK = [];
+function stk(cat, id, name, body, art, vb, w) { STK.push({ cat, id, name, svg: stkSvg(body, art, vb), w: w || 110 }); }
+/* ----- animals ----- */
+(() => {
+  const catHead = 'M22 44 L25 15 L42 30 Q50 28 58 30 L75 15 L78 44 Q86 56 80 68 Q71 86 50 86 Q29 86 20 68 Q14 56 22 44Z';
+  stk('animal', 'cat', 'แมว', '<path d="' + catHead + '"/>', '<path d="' + catHead + '" fill="' + STK_C.peach + '"' + stkO() + '/><path d="M27 22 L29 38 L38 31Z M73 22 L71 38 L62 31Z" fill="' + STK_C.pink + '"/><path d="M14 60 h10 M14 67 h10 M76 60 h10 M76 67 h10" stroke="' + STK_INK + '" stroke-width="1.6" stroke-linecap="round"/>' + stkFace(50, 58, 1));
+  const bear = '<circle cx="28" cy="30" r="12"/><circle cx="72" cy="30" r="12"/><circle cx="50" cy="56" r="31"/>';
+  stk('animal', 'bear', 'หมี', bear, '<circle cx="28" cy="30" r="12" fill="' + STK_C.brown + '"' + stkO() + '/><circle cx="72" cy="30" r="12" fill="' + STK_C.brown + '"' + stkO() + '/><circle cx="28" cy="30" r="6" fill="' + STK_C.pink + '"/><circle cx="72" cy="30" r="6" fill="' + STK_C.pink + '"/><circle cx="50" cy="56" r="31" fill="' + STK_C.brown + '"' + stkO() + '/><ellipse cx="50" cy="66" rx="13" ry="10" fill="' + STK_C.cream + '"/><ellipse cx="50" cy="61" rx="3.4" ry="2.4" fill="' + STK_INK + '"/>' + stkFace(50, 54, 1));
+  const bunny = '<ellipse cx="37" cy="26" rx="9" ry="22"/><ellipse cx="63" cy="26" rx="9" ry="22"/><ellipse cx="50" cy="62" rx="30" ry="26"/>';
+  stk('animal', 'bunny', 'กระต่าย', bunny, '<ellipse cx="37" cy="26" rx="9" ry="22" fill="#FFFFFF"' + stkO() + '/><ellipse cx="63" cy="26" rx="9" ry="22" fill="#FFFFFF"' + stkO() + '/><ellipse cx="37" cy="28" rx="4" ry="14" fill="' + STK_C.pink + '"/><ellipse cx="63" cy="28" rx="4" ry="14" fill="' + STK_C.pink + '"/><ellipse cx="50" cy="62" rx="30" ry="26" fill="#FFFFFF"' + stkO() + '/>' + stkFace(50, 60, 1, { open: true }));
+  const chick = '<path d="M50 14 q4 6 0 10 q-4 -4 0 -10z"/><ellipse cx="50" cy="56" rx="32" ry="30"/>';
+  stk('animal', 'chick', 'ลูกเจี๊ยบ', chick, '<path d="M48 16 q3 -6 7 -2 q-2 4 -5 10z" fill="' + STK_C.yellow + '"' + stkO(2.2) + '/><ellipse cx="50" cy="56" rx="32" ry="30" fill="' + STK_C.yellow + '"' + stkO() + '/><path d="M45 58 L55 58 L50 64Z" fill="' + STK_C.orange + '"' + stkO(1.6) + '/><path d="M20 62 q-8 -2 -6 -10 M80 62 q8 -2 6 -10" fill="none"' + stkO(2.2) + '/>' + stkFace(50, 50, 1).replace(/<path d="M[^"]*q[^"]*q[^"]*" fill="none"[^>]*\/>$/, ''));
+  const frog = '<circle cx="31" cy="34" r="13"/><circle cx="69" cy="34" r="13"/><ellipse cx="50" cy="62" rx="34" ry="24"/>';
+  stk('animal', 'frog', 'กบ', frog, '<circle cx="31" cy="34" r="13" fill="' + STK_C.green + '"' + stkO() + '/><circle cx="69" cy="34" r="13" fill="' + STK_C.green + '"' + stkO() + '/><ellipse cx="50" cy="62" rx="34" ry="24" fill="' + STK_C.green + '"' + stkO() + '/><circle cx="31" cy="34" r="5.5" fill="#FFFFFF"/><circle cx="69" cy="34" r="5.5" fill="#FFFFFF"/><circle cx="31" cy="35" r="3" fill="' + STK_INK + '"/><circle cx="69" cy="35" r="3" fill="' + STK_INK + '"/><ellipse cx="30" cy="66" rx="5" ry="3" fill="' + STK_BLUSH + '" opacity="0.75"/><ellipse cx="70" cy="66" rx="5" ry="3" fill="' + STK_BLUSH + '" opacity="0.75"/><path d="M38 66 q12 10 24 0" fill="none"' + stkO(2) + '/>');
+  const panda = '<circle cx="27" cy="30" r="12"/><circle cx="73" cy="30" r="12"/><ellipse cx="50" cy="57" rx="33" ry="30"/>';
+  stk('animal', 'panda', 'แพนด้า', panda, '<circle cx="27" cy="30" r="12" fill="' + STK_INK + '"/><circle cx="73" cy="30" r="12" fill="' + STK_INK + '"/><ellipse cx="50" cy="57" rx="33" ry="30" fill="#FFFFFF"' + stkO() + '/><ellipse cx="37" cy="54" rx="8" ry="10" transform="rotate(-25 37 54)" fill="' + STK_INK + '"/><ellipse cx="63" cy="54" rx="8" ry="10" transform="rotate(25 63 54)" fill="' + STK_INK + '"/><circle cx="38" cy="53" r="2.6" fill="#FFFFFF"/><circle cx="62" cy="53" r="2.6" fill="#FFFFFF"/><ellipse cx="50" cy="64" rx="3.4" ry="2.4" fill="' + STK_INK + '"/><path d="M46 69 q4 3 8 0" fill="none"' + stkO(1.6) + '/><ellipse cx="28" cy="68" rx="5" ry="3" fill="' + STK_BLUSH + '" opacity="0.75"/><ellipse cx="72" cy="68" rx="5" ry="3" fill="' + STK_BLUSH + '" opacity="0.75"/>');
+  const whale = 'M12 56 Q14 30 46 30 Q74 30 80 50 L92 40 Q94 54 86 60 L92 72 Q82 72 78 66 Q68 82 44 82 Q14 82 12 56Z';
+  stk('animal', 'whale', 'วาฬ', '<path d="' + whale + '"/>', '<path d="' + whale + '" fill="' + STK_C.sky + '"' + stkO() + '/><path d="M18 64 Q40 76 70 64" fill="none" stroke="#FFFFFF" stroke-width="5" stroke-linecap="round" opacity="0.9"/><path d="M40 22 q-2 -8 4 -10 M46 22 q2 -9 8 -8" fill="none"' + stkO(2) + '/>' + stkFace(40, 50, 0.9));
+  const cloudPup = 'M30 76 Q12 76 14 58 Q14 42 30 42 Q34 24 52 26 Q70 24 74 42 Q90 42 88 60 Q88 76 70 76Z';
+  stk('animal', 'puppy', 'ลูกหมา', '<path d="' + cloudPup + '"/>', '<path d="' + cloudPup + '" fill="' + STK_C.cream + '"' + stkO() + '/><path d="M24 46 Q10 52 18 70 Q26 66 30 52Z M76 46 Q90 52 82 70 Q74 66 70 52Z" fill="' + STK_C.brown + '"' + stkO(2.2) + '/><ellipse cx="50" cy="62" rx="3.6" ry="2.6" fill="' + STK_INK + '"/>' + stkFace(50, 54, 1));
+})();
+/* ----- food and drink ----- */
+(() => {
+  const cup = 'M28 36 L72 36 L66 88 Q50 92 34 88Z';
+  stk('food', 'boba', 'ชานมไข่มุก', '<path d="' + cup + '"/><rect x="24" y="28" width="52" height="10" rx="5"/><path d="M54 30 L62 6 L68 8 L60 32Z"/>', '<path d="M54 30 L62 6 L68 8 L60 32Z" fill="' + STK_C.pink + '"' + stkO(2) + '/><path d="' + cup + '" fill="' + STK_C.peach + '"' + stkO() + '/><rect x="24" y="28" width="52" height="10" rx="5" fill="#FFFFFF"' + stkO() + '/><circle cx="40" cy="80" r="3.4" fill="' + STK_INK + '"/><circle cx="50" cy="83" r="3.4" fill="' + STK_INK + '"/><circle cx="60" cy="80" r="3.4" fill="' + STK_INK + '"/><circle cx="45" cy="74" r="3.4" fill="' + STK_INK + '"/><circle cx="56" cy="74" r="3.4" fill="' + STK_INK + '"/>' + stkFace(50, 54, 0.85));
+  const berry = 'M50 90 Q20 70 22 44 Q24 30 50 32 Q76 30 78 44 Q80 70 50 90Z';
+  stk('food', 'strawberry', 'สตรอว์เบอร์รี', '<path d="' + berry + '"/><path d="M34 32 L50 18 L66 32Z"/>', '<path d="' + berry + '" fill="' + STK_C.red + '"' + stkO() + '/><path d="M32 34 Q38 22 50 26 Q62 22 68 34 Q58 30 50 36 Q42 30 32 34Z" fill="' + STK_C.green + '"' + stkO(2) + '/><path d="M50 26 L50 14" stroke="' + STK_INK + '" stroke-width="2.6" stroke-linecap="round"/><g fill="#FFF1B8"><ellipse cx="34" cy="50" rx="1.4" ry="2"/><ellipse cx="66" cy="50" rx="1.4" ry="2"/><ellipse cx="40" cy="74" rx="1.4" ry="2"/><ellipse cx="60" cy="74" rx="1.4" ry="2"/><ellipse cx="50" cy="80" rx="1.4" ry="2"/></g>' + stkFace(50, 54, 0.9));
+  const onigiri = 'M50 16 Q60 16 76 50 Q90 82 50 84 Q10 82 24 50 Q40 16 50 16Z';
+  stk('food', 'onigiri', 'ข้าวปั้น', '<path d="' + onigiri + '"/>', '<path d="' + onigiri + '" fill="#FFFFFF"' + stkO() + '/><path d="M34 84 L34 64 Q50 60 66 64 L66 84 Q50 86 34 84Z" fill="#3E4A44"' + stkO(2) + '/>' + stkFace(50, 46, 0.95));
+  const cake = 'M22 52 Q22 40 50 40 Q78 40 78 52 L74 84 L26 84Z';
+  stk('food', 'cupcake', 'คัพเค้ก', '<path d="' + cake + '"/><path d="M24 50 Q20 28 50 24 Q80 28 76 50Z"/><circle cx="50" cy="16" r="7"/>', '<path d="M26 56 L74 56 L70 86 L30 86Z" fill="' + STK_C.sky + '"' + stkO() + '/><path d="M38 58 L40 84 M50 58 L50 84 M62 58 L60 84" stroke="#FFFFFF" stroke-width="2.6" stroke-linecap="round"/><path d="M22 56 Q16 40 32 36 Q34 22 50 24 Q66 22 68 36 Q84 40 78 56Z" fill="' + STK_C.pink + '"' + stkO() + '/><circle cx="50" cy="17" r="6.5" fill="' + STK_C.red + '"' + stkO(2) + '/>' + stkFace(50, 42, 0.8));
+  stk('food', 'donut', 'โดนัท', '<circle cx="50" cy="52" r="34"/>', '<circle cx="50" cy="52" r="34" fill="' + STK_C.brown + '"' + stkO() + '/><path d="M20 50 Q18 22 50 20 Q82 22 80 50 Q78 60 72 56 Q66 66 58 60 Q50 70 42 60 Q34 66 28 56 Q22 60 20 50Z" fill="' + STK_C.pink + '"' + stkO(2) + '/><circle cx="50" cy="48" r="9" fill="#FFFFFF"' + stkO(2) + '/><g stroke-width="3" stroke-linecap="round"><path d="M30 34 l4 3" stroke="' + STK_C.yellow + '"/><path d="M66 30 l4 -2" stroke="' + STK_C.sky + '"/><path d="M38 26 l3 -3" stroke="' + STK_C.green + '"/><path d="M70 44 l3 3" stroke="#FFFFFF"/></g>');
+  const cone = 'M30 46 L50 92 L70 46Z';
+  stk('food', 'icecream', 'ไอศกรีม', '<path d="' + cone + '"/><circle cx="50" cy="38" r="24"/>', '<path d="' + cone + '" fill="' + STK_C.orange + '"' + stkO() + '/><path d="M38 56 L58 70 M44 50 L64 62 M36 64 L52 76" stroke="' + STK_INK + '" stroke-width="1.4" opacity="0.5"/><circle cx="50" cy="38" r="24" fill="' + STK_C.mint + '"' + stkO() + '/><path d="M27 44 Q34 52 40 46 Q46 54 52 46 Q58 54 64 46 Q70 52 73 44" fill="' + STK_C.mint + '"' + stkO(2) + '/>' + stkFace(50, 34, 0.85));
+})();
+/* ----- sky ----- */
+(() => {
+  const rays = []; for (let i = 0; i < 10; i++) { const a = i / 10 * Math.PI * 2; rays.push('M' + (50 + Math.cos(a) * 34).toFixed(1) + ' ' + (50 + Math.sin(a) * 34).toFixed(1) + ' L' + (50 + Math.cos(a) * 44).toFixed(1) + ' ' + (50 + Math.sin(a) * 44).toFixed(1)); }
+  stk('sky', 'sun', 'พระอาทิตย์', '<circle cx="50" cy="50" r="42"/>', '<path d="' + rays.join(' ') + '" stroke="' + STK_C.orange + '" stroke-width="6" stroke-linecap="round"/><circle cx="50" cy="50" r="27" fill="' + STK_C.yellow + '"' + stkO() + '/>' + stkFace(50, 48, 0.9));
+  const cloud = 'M26 74 Q8 74 10 58 Q12 44 28 46 Q30 28 50 28 Q68 28 72 44 Q90 42 90 60 Q90 74 74 74Z';
+  stk('sky', 'cloud', 'ก้อนเมฆ', '<path d="' + cloud + '"/>', '<path d="' + cloud + '" fill="#FFFFFF"' + stkO() + '/>' + stkFace(50, 56, 1));
+  const star = 'M50 10 L61 37 L90 39 L67 57 L75 86 L50 70 L25 86 L33 57 L10 39 L39 37Z';
+  stk('sky', 'star', 'ดาว', '<path d="' + star + '"/>', '<path d="' + star + '" fill="' + STK_C.yellow + '"' + stkO() + '/>' + stkFace(50, 52, 0.85));
+  const moon = 'M64 12 Q30 14 26 48 Q26 84 62 88 Q80 88 90 74 Q56 76 50 48 Q48 26 64 12Z';
+  stk('sky', 'moon', 'พระจันทร์', '<path d="' + moon + '"/>', '<path d="' + moon + '" fill="' + STK_C.lilac + '"' + stkO() + '/>' + stkFace(44, 52, 0.8, { happy: true }));
+  const rb = (r, c) => '<path d="M' + (50 - r) + ' 74 A' + r + ' ' + r + ' 0 0 1 ' + (50 + r) + ' 74" fill="none" stroke="' + c + '" stroke-width="8" stroke-linecap="round"/>';
+  stk('sky', 'rainbow', 'รุ้ง', '<path d="M8 74 A42 42 0 0 1 92 74 L92 82 L8 82Z"/>', rb(38, STK_C.red) + rb(30, STK_C.yellow) + rb(22, STK_C.green) + rb(14, STK_C.sky) + '<path d="M4 80 Q4 68 16 70 Q20 62 28 68 Q36 68 34 80Z M66 80 Q64 68 74 70 Q80 62 86 68 Q96 68 96 80Z" fill="#FFFFFF"' + stkO(2.2) + '/>');
+  const spark = 'M50 8 Q54 40 92 50 Q54 60 50 92 Q46 60 8 50 Q46 40 50 8Z';
+  stk('sky', 'sparkle', 'ประกาย', '<path d="' + spark + '"/>', '<path d="' + spark + '" fill="' + STK_C.yellow + '"' + stkO() + '/><path d="M78 16 Q79 24 86 25 Q79 26 78 34 Q77 26 70 25 Q77 24 78 16Z" fill="' + STK_C.pink + '"' + stkO(1.6) + '/>', null, 80);
+  const heart = 'M50 86 Q12 60 14 36 Q16 16 34 16 Q46 16 50 28 Q54 16 66 16 Q84 16 86 36 Q88 60 50 86Z';
+  stk('sky', 'heart', 'หัวใจ', '<path d="' + heart + '"/>', '<path d="' + heart + '" fill="' + STK_C.pink + '"' + stkO() + '/><path d="M26 34 Q28 26 36 26" fill="none" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round"/>' + stkFace(50, 46, 0.85), null, 90);
+  const flower = []; for (let i = 0; i < 5; i++) { const a = i / 5 * Math.PI * 2 - Math.PI / 2; flower.push('<circle cx="' + (50 + Math.cos(a) * 22).toFixed(1) + '" cy="' + (50 + Math.sin(a) * 22).toFixed(1) + '" r="17"/>'); }
+  stk('sky', 'flower', 'ดอกไม้', flower.join(''), flower.join('').replace(/\/>/g, ' fill="' + STK_C.pink + '"' + stkO() + '/>') + '<circle cx="50" cy="50" r="15" fill="' + STK_C.yellow + '"' + stkO() + '/>' + stkFace(50, 49, 0.6));
+})();
+/* ----- study ----- */
+(() => {
+  const pencil = 'M18 74 L66 26 L80 40 L32 88 L14 92Z';
+  stk('study', 'pencil', 'ดินสอ', '<path d="' + pencil + '"/>', '<path d="M60 32 L72 20 Q78 16 84 22 Q88 28 86 32 L74 46Z" fill="' + STK_C.pink + '"' + stkO() + '/><path d="M24 70 L64 30 L76 42 L36 82Z" fill="' + STK_C.yellow + '"' + stkO() + '/><path d="M24 70 L36 82 L16 90Z" fill="' + STK_C.peach + '"' + stkO() + '/><path d="M16 90 L20 80 L26 86Z" fill="' + STK_INK + '"/>' + stkFace(50, 56, 0.7));
+  const book = 'M12 24 Q30 18 50 26 Q70 18 88 24 L88 82 Q70 76 50 84 Q30 76 12 82Z';
+  stk('study', 'book', 'หนังสือ', '<path d="' + book + '"/>', '<path d="' + book + '" fill="' + STK_C.sky + '"' + stkO() + '/><path d="M50 26 L50 84" stroke="' + STK_INK + '" stroke-width="2.4"/><path d="M18 32 Q32 28 44 34 L44 76 Q32 70 18 74Z M82 32 Q68 28 56 34 L56 76 Q68 70 82 74Z" fill="#FFFFFF"/>' + stkFace(31, 52, 0.6) + '<path d="M62 44 h14 M62 52 h14 M62 60 h10" stroke="' + STK_C.sky + '" stroke-width="2.4" stroke-linecap="round"/>');
+  const bulb = 'M50 10 Q78 10 80 38 Q80 54 66 64 L64 74 L36 74 L34 64 Q20 54 20 38 Q22 10 50 10Z';
+  stk('study', 'idea', 'ไอเดีย', '<path d="' + bulb + '"/><rect x="36" y="72" width="28" height="18" rx="5"/>', '<path d="' + bulb + '" fill="' + STK_C.yellow + '"' + stkO() + '/><rect x="36" y="72" width="28" height="16" rx="5" fill="#D9DEE8"' + stkO(2.4) + '/><path d="M38 79 h24" stroke="' + STK_INK + '" stroke-width="1.6"/>' + stkFace(50, 38, 0.9) + '<path d="M8 20 l6 4 M92 20 l-6 4 M4 42 h7 M96 42 h-7" stroke="' + STK_C.orange + '" stroke-width="3.4" stroke-linecap="round"/>');
+  stk('study', 'clock', 'นาฬิกาปลุก', '<circle cx="50" cy="54" r="34"/><circle cx="24" cy="22" r="11"/><circle cx="76" cy="22" r="11"/>', '<circle cx="24" cy="22" r="10" fill="' + STK_C.red + '"' + stkO() + '/><circle cx="76" cy="22" r="10" fill="' + STK_C.red + '"' + stkO() + '/><circle cx="50" cy="54" r="33" fill="' + STK_C.red + '"' + stkO() + '/><circle cx="50" cy="54" r="25" fill="#FFFFFF"' + stkO(2) + '/><path d="M50 36 v4 M50 68 v4 M32 54 h4 M64 54 h4" stroke="' + STK_INK + '" stroke-width="2.2" stroke-linecap="round"/>' + stkFace(50, 52, 0.75));
+  stk('study', 'check', 'ถูกต้อง', '<circle cx="50" cy="50" r="40"/>', '<circle cx="50" cy="50" r="38" fill="' + STK_C.mint + '"' + stkO() + '/><path d="M30 52 L44 66 L72 36" fill="none" stroke="' + STK_INK + '" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>', null, 90);
+  const cup2 = 'M24 30 L72 30 L68 80 Q48 86 28 80Z';
+  stk('study', 'coffee', 'กาแฟ', '<path d="' + cup2 + '"/><path d="M70 40 Q90 40 88 56 Q86 70 68 66"/>', '<path d="M70 40 Q90 40 88 56 Q86 70 68 66" fill="none"' + stkO(5) + '/><path d="' + cup2 + '" fill="' + STK_C.cream + '"' + stkO() + '/><path d="M24 30 L72 30 L71 40 L25 40Z" fill="' + STK_C.brown + '"' + stkO(2) + '/><path d="M38 22 q-4 -6 0 -12 M50 22 q-4 -6 0 -12 M62 22 q-4 -6 0 -12" fill="none" stroke="' + STK_INK + '" stroke-width="2" stroke-linecap="round" opacity="0.6"/>' + stkFace(48, 58, 0.9, { happy: true }));
+  const pin = 'M50 92 Q22 58 22 38 Q22 12 50 12 Q78 12 78 38 Q78 58 50 92Z';
+  stk('study', 'pin', 'หมุด', '<path d="' + pin + '"/>', '<path d="' + pin + '" fill="' + STK_C.lilac + '"' + stkO() + '/>' + stkFace(50, 38, 0.9), null, 90);
+  const clip = 'M40 90 L40 26 Q40 12 54 12 Q68 12 68 26 L68 76 Q68 86 58 86 Q48 86 48 76 L48 32';
+  stk('study', 'clip', 'คลิปหนีบ', '<path d="' + clip + '" fill="none" stroke-width="12" stroke-linecap="round"/>', '<path d="' + clip + '" fill="none" stroke="' + STK_C.sky + '" stroke-width="6" stroke-linecap="round"/><path d="' + clip + '" fill="none" stroke="' + STK_INK + '" stroke-width="1.4" stroke-linecap="round" opacity="0.6"/>', null, 70);
+})();
+/* ----- word labels (the words teachers and students mark notes with) ----- */
+(() => {
+  const L = [['important', 'สำคัญ!', STK_C.pink], ['exam', 'ออกสอบ', STK_C.yellow], ['remember', 'จำให้ได้', STK_C.lilac], ['formula', 'สูตรเด็ด', STK_C.sky], ['careful', 'ระวัง!', STK_C.orange], ['review', 'ทบทวน', STK_C.mint], ['good', 'เก่งมาก', STK_C.peach], ['todo', 'ต้องทำ', STK_C.cream], ['done', 'เสร็จแล้ว', STK_C.green], ['note', 'โน้ต', '#FFFFFF']];
+  for (const [id, t, c] of L) {
+    const w = 40 + t.length * 13, vb = '0 0 ' + (w + 16) + ' 56', body = '<rect x="8" y="8" width="' + w + '" height="40" rx="20"/>';
+    stk('label', 'lb-' + id, t, body, '<rect x="8" y="8" width="' + w + '" height="40" rx="20" fill="' + c + '"' + stkO(2.4) + '/><text x="' + (8 + w / 2) + '" y="35" text-anchor="middle" font-size="21" font-weight="700" fill="' + STK_INK + '" font-family="Sarabun, Kanit, sans-serif">' + t + '</text>', vb, Math.round((w + 16) * 1.3));
+  }
+})();
+/* ----- washi tape: see-through paper strips with torn ends ----- */
+(() => {
+  const torn = (x0, x1, y0, y1) => { let d = 'M' + x0 + ' ' + y0; for (let x = x0 + 6; x <= x1; x += 6) d += ' L' + x + ' ' + (y0 + ((x / 6) % 2 ? 2.2 : 0)); d += ' L' + x1 + ' ' + y1; for (let x = x1 - 6; x >= x0; x -= 6) d += ' L' + x + ' ' + (y1 - ((x / 6) % 2 ? 2.2 : 0)); return d + 'Z'; };
+  const strip = torn(4, 236, 6, 46);
+  const T = [
+    ['dots', 'ลายจุด', STK_C.pink, (() => { let s = ''; for (let x = 16; x < 236; x += 18) for (const y of [16, 36]) s += '<circle cx="' + (x + (y > 20 ? 9 : 0)) + '" cy="' + y + '" r="3" fill="#FFFFFF"/>'; return s; })()],
+    ['stripe', 'ลายทาง', STK_C.sky, (() => { let s = ''; for (let x = -20; x < 240; x += 16) s += '<path d="M' + x + ' 46 L' + (x + 24) + ' 6" stroke="#FFFFFF" stroke-width="5"/>'; return s; })()],
+    ['check', 'ลายตาราง', STK_C.mint, (() => { let s = ''; for (let x = 12; x < 236; x += 14) s += '<path d="M' + x + ' 6 V46" stroke="#FFFFFF" stroke-width="4" opacity="0.7"/>'; for (const y of [17, 31]) s += '<path d="M4 ' + y + ' H236" stroke="#FFFFFF" stroke-width="4" opacity="0.7"/>'; return s; })()],
+    ['heart', 'ลายหัวใจ', STK_C.peach, (() => { let s = ''; for (let x = 18; x < 236; x += 28) s += '<path transform="translate(' + x + ' 26) scale(0.32)" d="M0 26 Q-38 0 -36 -18 Q-34 -34 -16 -34 Q-4 -34 0 -22 Q4 -34 16 -34 Q34 -34 36 -18 Q38 0 0 26Z" fill="#FFFFFF"/>'; return s; })()],
+    ['star', 'ลายดาว', STK_C.lilac, (() => { let s = ''; for (let x = 18; x < 236; x += 26) s += '<path transform="translate(' + x + ' ' + (x % 52 < 26 ? 18 : 33) + ') scale(0.18)" d="M0 -40 L11 -13 L40 -11 L17 7 L25 36 L0 20 L-25 36 L-17 7 L-40 -11 L-11 -13Z" fill="#FFFFFF"/>'; return s; })()],
+    ['plain', 'สีพื้น', STK_C.yellow, '']
+  ];
+  for (const [id, name, c, pat] of T) {
+    STK.push({ cat: 'tape', id: 'tp-' + id, name: 'เทป' + name, w: 300, svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 52"><g opacity="0.82"><path d="' + strip + '" fill="' + c + '"/>' + (pat ? '<g>' + pat + '</g>' : '') + '</g><path d="' + strip + '" fill="none" stroke="#FFFFFF" stroke-width="1" opacity="0.5"/></svg>', clip: strip });
+  }
+  /* the patterns must not spill past the torn ends: cut them to the strip (no clip paths allowed in a page picture, so the
+     pattern is drawn only inside a slightly narrower band) */
+})();
+const STK_CATS = [['recent', 'ใช้ล่าสุด'], ['animal', 'สัตว์'], ['food', 'ขนมและเครื่องดื่ม'], ['sky', 'ท้องฟ้าและหัวใจ'], ['study', 'อุปกรณ์เรียน'], ['label', 'ป้ายคำ'], ['tape', 'เทปตกแต่ง']];
+const STKS = { cat: null };
+function stkRecent() { try { return JSON.parse(store_ls.get('tp-stk-recent') || '[]').filter((id) => STK.some((x) => x.id === id)); } catch (e) { return []; } }
+function stkPut(st) {
+  if (!S.page) return;
+  const vb = /viewBox="([\d.\s-]+)"/.exec(st.svg), p = vb ? vb[1].trim().split(/\s+/).map(Number) : [0, 0, 100, 100], w = st.w, h = Math.round(w * p[3] / p[2]);
+  /* in the middle of what is on screen, in a free spot if there is one close by */
+  const [vx, vy] = viewSpot(w, h), at = freeSpot(w, h, [vx, vy], false, true) || [vx, vy];
+  const it = { id: 'i' + uid(), by: DEV, type: 'svg', x: Math.round(at[0]), y: Math.round(at[1]), w, svg: st.svg, stk: st.id };
+  addItem(it); selectItem(findItem(it.id) || it);
+  const rec = [st.id].concat(stkRecent().filter((x) => x !== st.id)).slice(0, 12); store_ls.set('tp-stk-recent', JSON.stringify(rec));
+}
+function openStickers() {
+  let sh = $('#stkSheet');
+  if (!sh) {
+    sh = document.createElement('div'); sh.className = 'sheet'; sh.id = 'stkSheet'; sh.hidden = true;
+    sh.innerHTML = '<div class="panel stkpanel" role="dialog" aria-label="สติกเกอร์และเทปตกแต่ง"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><h2>สติกเกอร์และเทปตกแต่ง</h2><button class="btn" type="button" data-a="x">ปิด</button></div><div class="chips stkcats" role="tablist"></div><div class="stkgrid"></div><span class="meta">แตะเพื่อวาง แล้วลากย้าย หรือลากมุมเพื่อย่อขยาย</span></div>';
+    document.body.appendChild(sh);
+    sh.addEventListener('click', (e) => { if (e.target === sh || e.target.closest('[data-a="x"]')) sh.hidden = true; });
+  }
+  if (!STKS.cat) STKS.cat = stkRecent().length ? 'recent' : 'animal';
+  const cats = sh.querySelector('.stkcats'), grid = sh.querySelector('.stkgrid');
+  const paint = () => {
+    cats.innerHTML = '';
+    for (const [k, n] of STK_CATS) {
+      if (k === 'recent' && !stkRecent().length) continue;
+      const b = document.createElement('button'); b.type = 'button'; b.className = 'chip'; b.textContent = n; b.setAttribute('aria-pressed', STKS.cat === k ? 'true' : 'false');
+      b.onclick = () => { STKS.cat = k; paint(); }; cats.appendChild(b);
+    }
+    const list = STKS.cat === 'recent' ? stkRecent().map((id) => STK.find((x) => x.id === id)).filter(Boolean) : STK.filter((x) => x.cat === STKS.cat);
+    grid.innerHTML = ''; grid.classList.toggle('wide', STKS.cat === 'tape' || STKS.cat === 'label');
+    for (const st of list) {
+      const b = document.createElement('button'); b.type = 'button'; b.className = 'stkb'; b.title = st.name; b.setAttribute('aria-label', st.name);
+      b.innerHTML = st.svg; b.onclick = () => { sh.hidden = true; stkPut(st); };
+      grid.appendChild(b);
+    }
+  };
+  paint(); sh.hidden = false;
+}
+
 function insertSim(kind) {
   if (!S.page || !SIMS[kind]) return;
   const w = 560; const [x, y] = viewSpot(w, 520);
@@ -14626,7 +14815,7 @@ function openCalc() {
   setTimeout(fit, 0);
   runCalc();
 }
-$('#iCalc').onclick = openCalc; $('#iProof').onclick = () => { $('#insSheet').hidden = true; proofTemplate(); };
+$('#iCalc').onclick = openCalc; $('#iStk').onclick = () => { $('#insSheet').hidden = true; openStickers(); }; $('#iProof').onclick = () => { $('#insSheet').hidden = true; proofTemplate(); };
 $('#iStats').onclick = () => openStats();
 /* ---------- chapter lessons: read a summary of any chapter, drop a section or the whole chapter onto the page ---------- */
 const LESSONS = {}, LESSON_LOADING = {};
@@ -23720,7 +23909,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793770610';
+const BUILD = '1793773274';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
@@ -23998,7 +24187,7 @@ function syncToggles() {
 }
 function hideLoading() { $('#loading').hidden = true; }
 function togglePages(v) { const el = $('#pages'); el.hidden = v === undefined ? !el.hidden : !v; $('#bPages').setAttribute('aria-pressed', el.hidden ? 'false' : 'true'); setTimeout(fit, 0); }
-function closeSheets() { $('#acctSheet').hidden = true; $('#acctPop').hidden = true; $('#shareSheet').hidden = true; $('#startSheet').hidden = true; $('#deckSheet').hidden = true; $('#hwSheet').hidden = true; $('#hoSheet').hidden = true; $('#pdfSheet').hidden = true; $('#qmSheet').hidden = true; $('#liveSheet').hidden = true; $('#sqSheet').hidden = true; $('#handSheet').hidden = true; $('#examSheet').hidden = true; $('#aiSetup').hidden = true; $('#labSheet').hidden = true; $('#simSheet').hidden = true; $('#mediaSheet').hidden = true; $('#menu').hidden = true; $('#exportSheet').hidden = true; $('#insSheet').hidden = true; }
+function closeSheets() { $('#acctSheet').hidden = true; $('#acctPop').hidden = true; $('#shareSheet').hidden = true; $('#startSheet').hidden = true; $('#deckSheet').hidden = true; $('#hwSheet').hidden = true; $('#hoSheet').hidden = true; $('#pdfSheet').hidden = true; $('#qmSheet').hidden = true; $('#liveSheet').hidden = true; $('#sqSheet').hidden = true; $('#handSheet').hidden = true; $('#examSheet').hidden = true; $('#aiSetup').hidden = true; $('#labSheet').hidden = true; $('#simSheet').hidden = true; $('#mediaSheet').hidden = true; $('#menu').hidden = true; $('#exportSheet').hidden = true; $('#insSheet').hidden = true; if ($('#stkSheet')) $('#stkSheet').hidden = true; }
 
 /* ---------- wiring ---------- */
 document.querySelectorAll('.tool[data-tool]').forEach((b) => {
