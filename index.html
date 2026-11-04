@@ -192,7 +192,7 @@ body.flow:not(.flowlast) #bAddBelow { display: none; }
 .flowseg button { flex: 1 1 0; font-size: 12.5px; }
 #page { position: relative; background: #FFFFFF; box-shadow: 0 10px 34px rgba(20, 26, 34, 0.16); border-radius: 4px; }
 #page > canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
-#page > #cSharp { inset: auto; pointer-events: none; will-change: transform; }
+#page > #cSharp { inset: auto; pointer-events: none; }
 #page.exact > #cInk, #page.exact > #cLive, #page.exact > #cRemote { inset: 0 auto auto 0; width: var(--cw); height: var(--ch); }
 #page.px1 > #cInk, #page.px1 > #cRemote, #page.pxs > #cSharp { image-rendering: pixelated; }
 #page > #cSharp[hidden] { display: none; }
@@ -817,7 +817,8 @@ body.writing .pagenav, body.writing .diarybar { pointer-events: none; opacity: 0
 /* folded by default: only the page number shows, small, so a writing hand does not hit it; tap it to open the controls */
 .pagenav.mini { padding: 2px; gap: 0; opacity: 0.85; }
 .pagenav.mini > *:not(#pgNum):not(#bAnimAll):not(#bLifeCtl):not(#zNum):not(#zIn):not(#zOut):not(#bStkQuick):not(#stkSep) { display: none !important; }
-.pagenav.mini #bStkQuick:not([hidden]) { display: flex; min-width: 40px; height: 34px; color: #C2577A; }
+.pagenav.mini #bStkQuick:not([hidden]) { display: flex; min-width: 40px; height: 34px; }
+.pagenav #bStkQuick svg { width: 24px; height: 24px; }
 .pagenav.mini #stkSep:not([hidden]) { display: block; }
 .pagenav #bStkQuick[hidden], .pagenav #stkSep[hidden] { display: none !important; }
 /* the little star buttons on moving drawings can be hidden for a clean view; the drawings keep moving */
@@ -1906,7 +1907,7 @@ body.role-student .scnpill .sbtns button[data-s="back"], body.role-student .scnp
       <div class="exmini no-ink" id="exMini" role="group" aria-label="ชุดโจทย์ที่ย่อไว้" hidden><button id="emPrev" aria-label="ข้อก่อนหน้า">ก่อนหน้า</button><button id="emOpen" class="main"></button><button id="emNext" aria-label="ข้อต่อไป">ต่อไป</button><button id="emPlace">วางข้อนี้ลงหน้า</button></div>
       <div class="pagenav no-ink mini" role="group" aria-label="เปลี่ยนหน้า">
         <button id="bAnimAll" class="animall" type="button" hidden aria-pressed="true"><svg viewBox="0 0 20 20" aria-hidden="true"></svg><span></span></button><button id="bLifeCtl" class="lifectl" type="button" hidden aria-pressed="false" title="ซ่อนปุ่มดาวที่ใช้ปรับภาพเคลื่อนไหว" aria-label="ซ่อนปุ่มดาวที่ใช้ปรับภาพเคลื่อนไหว"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3l1.6 4.4L16 9l-4.4 1.6L10 15l-1.6-4.4L4 9l4.4-1.6z" fill="currentColor"/><path class="x" d="M3.5 16.5L16.5 3.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button><span class="zsep" id="animSep" hidden></span>
-        <button id="bStkQuick" type="button" hidden aria-label="สติกเกอร์และเทปตกแต่ง" title="สติกเกอร์และเทปตกแต่ง"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 3.5h8.5L16.5 7.5V16a.5.5 0 0 1-.5.5H4a.5.5 0 0 1-.5-.5V4a.5.5 0 0 1 .5-.5z M12.5 3.5V7.5H16.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><circle cx="8" cy="10.5" r=".9" fill="currentColor"/><circle cx="12" cy="10.5" r=".9" fill="currentColor"/><path d="M8 13q2 1.6 4 0" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></button><span class="zsep" id="stkSep" hidden></span>        <button id="pgPrev" aria-label="หน้าก่อน"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M12.5 4.5L7 10l5.5 5.5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        <button id="bStkQuick" type="button" hidden aria-label="สติกเกอร์และเทปตกแต่ง" title="สติกเกอร์และเทปตกแต่ง"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6.6" cy="6.8" r="3.2" fill="#E8B48C" stroke="#5B4B49" stroke-width="1.2"/><circle cx="17.4" cy="6.8" r="3.2" fill="#E8B48C" stroke="#5B4B49" stroke-width="1.2"/><circle cx="6.6" cy="6.8" r="1.4" fill="#FFB3C6"/><circle cx="17.4" cy="6.8" r="1.4" fill="#FFB3C6"/><circle cx="12" cy="13.4" r="8.2" fill="#E8B48C" stroke="#5B4B49" stroke-width="1.3"/><ellipse cx="12" cy="16" rx="3.6" ry="2.8" fill="#FFF3E2"/><circle cx="9.2" cy="12.2" r="1.05" fill="#5B4B49"/><circle cx="14.8" cy="12.2" r="1.05" fill="#5B4B49"/><ellipse cx="12" cy="15" rx="1.1" ry=".8" fill="#5B4B49"/><path d="M11 16.6q1 .8 2 0" fill="none" stroke="#5B4B49" stroke-width=".8" stroke-linecap="round"/><ellipse cx="7" cy="15" rx="1.5" ry=".9" fill="#FF9DB4" opacity=".8"/><ellipse cx="17" cy="15" rx="1.5" ry=".9" fill="#FF9DB4" opacity=".8"/></svg></button><span class="zsep" id="stkSep" hidden></span>        <button id="pgPrev" aria-label="หน้าก่อน"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M12.5 4.5L7 10l5.5 5.5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
         <button class="num" id="pgNum" aria-label="ดูทุกหน้า">1 / 1</button>
         <button id="pgNext" aria-label="หน้าถัดไป"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7.5 4.5L13 10l-5.5 5.5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
         <span class="zsep"></span><button id="zOut" aria-label="ย่อ">−</button><button class="fitb" id="zNum" aria-label="พอดีหน้า" title="พอดีหน้า"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 7V3h4 M13 3h4v4 M17 13v4h-4 M7 17H3v-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><rect x="7" y="6" width="6" height="8" rx="1" fill="none" stroke="currentColor" stroke-width="1.5"/></svg><span class="fitlbl">พอดี</span></button><button id="zIn" aria-label="ขยาย">+</button>
@@ -3783,7 +3784,12 @@ function sharpAdd(list) {
   if (!cSharp || cSharp.hidden || !X || X.pid !== S.pid || X.w !== cSharp.width || list.some((st) => st.k === 'h')) { if (cSharp && (!cSharp.hidden || S.zoom > 1.2)) sharpLater(); return; }
   try { const c = cSharp.getContext('2d'); c.setTransform(X.k, 0, 0, X.k, X.ox, X.oy); for (const st of list) drawStroke(c, st); } catch (e) { sharpLater(); }
 }
-function sharpLater() { clearTimeout(sharpT); sharpT = setTimeout(() => { wrapEl.style.willChange = 'auto'; /* standing still: the page is painted afresh at its real size (Safari keeps a moving layer at the size it had) */ drawSharp(); redrawLiveBoxes(); if (flowWanted() && !S.present && !S.show) peekSharpLater(FLOW.ver); }, 160); }
+/* the words, the notebook's replies and its waiting dots are page boxes enlarged with the page. Safari keeps such a layer at
+   the sharpness it was first painted at; when the view stands still the box layer is given a new (equal) size so Safari
+   paints it again at the zoom on screen: letters as sharp as the ink */
+let itemsRast = 0;
+function itemsRepaint() { const f = (itemsRast = 1 - itemsRast) ? 1.000001 : 1; itemsEl.style.transform = itemsBgEl.style.transform = 'scale(' + S.base * f + ')'; }
+function sharpLater() { clearTimeout(sharpT); sharpT = setTimeout(() => { wrapEl.style.willChange = 'auto'; if (S.zoom !== S.itemsZoom) { S.itemsZoom = S.zoom; itemsRepaint(); } /* standing still: the page is painted afresh at its real size (Safari keeps a moving layer at the size it had) */ drawSharp(); redrawLiveBoxes(); if (flowWanted() && !S.present && !S.show) peekSharpLater(FLOW.ver); }, 160); }
 /* the paper's lines as a vector picture behind the page: it never vanishes while scrolling fast and costs no canvas
    memory (a page-size paper canvas was one of the canvases an iPad drops when memory runs short, leaving the page blank);
    the textured papers (chalkboard, art paper) stay on the canvas */
@@ -3946,9 +3952,35 @@ function tipSample(cv, tip, color) {
   if (tip === 'ball') { drawStroke(c, s); } else drawTip(c, s);
 }
 
+/* a sticky note, a memo card or a page flag: paper drawn under the writing that follows it, moved and sized with the lasso */
+function drawNote(c, s) {
+  const p = s.p, x0 = Math.min(p[0], p[3]) / 10, y0 = Math.min(p[1], p[4]) / 10, x1 = Math.max(p[0], p[3]) / 10, y1 = Math.max(p[1], p[4]) / 10, w = x1 - x0, h = y1 - y0;
+  if (w < 4 || h < 4) return;
+  const col = okHex(s.c) ? s.c : '#FFF1A8', st = s.t || 'sq';
+  c.save();
+  const shade = (f) => shadeHex(col, f);
+  if (st === 'flag') {
+    /* a see-through page flag: a strip with a darker tip, as the plastic index tabs */
+    c.globalAlpha = 0.85; c.fillStyle = col; c.beginPath(); c.roundRect ? c.roundRect(x0, y0, w, h, Math.min(4, h / 4)) : c.rect(x0, y0, w, h); c.fill();
+    c.globalAlpha = 1; c.fillStyle = shade(-0.18); c.fillRect(x1 - Math.min(w * 0.22, h * 1.1), y0, Math.min(w * 0.22, h * 1.1), h);
+  } else {
+    c.shadowColor = 'rgba(40,30,20,0.16)'; c.shadowBlur = Math.max(4, Math.min(w, h) * 0.05); c.shadowOffsetY = Math.max(2, h * 0.02);
+    c.fillStyle = st === 'memo' ? '#FFFFFF' : col;
+    if (st === 'sq') { const lift = Math.min(w, h) * 0.06; c.beginPath(); c.moveTo(x0, y0); c.lineTo(x1, y0); c.lineTo(x1, y1 - lift); c.quadraticCurveTo(x1 - w * 0.02, y1, x1 - lift * 1.6, y1); c.lineTo(x0, y1); c.closePath(); c.fill();
+      c.shadowColor = 'transparent'; c.fillStyle = shade(-0.08); c.beginPath(); c.moveTo(x1, y1 - lift); c.quadraticCurveTo(x1 - w * 0.02, y1, x1 - lift * 1.6, y1); c.lineTo(x1 - lift * 1.2, y1 - lift * 0.9); c.closePath(); c.fill();
+      c.fillStyle = shade(-0.05); c.fillRect(x0, y0, w, Math.min(h * 0.1, 18)); }
+    else { const r = Math.min(10, w / 12); c.beginPath(); c.roundRect ? c.roundRect(x0, y0, w, h, r) : c.rect(x0, y0, w, h); c.fill(); c.shadowColor = 'transparent';
+      c.save(); c.clip(); c.fillStyle = col; c.fillRect(x0, y0, w, Math.min(h * 0.16, 34)); c.restore();
+      c.strokeStyle = shade(-0.12); c.globalAlpha = 0.55; c.lineWidth = 1.2; c.beginPath(); const top = y0 + Math.min(h * 0.16, 34) + 26; for (let y = top; y < y1 - 10; y += 30) { c.moveTo(x0 + 12, y); c.lineTo(x1 - 12, y); } c.stroke(); c.globalAlpha = 1;
+      c.strokeStyle = shade(-0.2); c.lineWidth = 1.2; c.beginPath(); c.roundRect ? c.roundRect(x0 + 0.6, y0 + 0.6, w - 1.2, h - 1.2, r) : c.rect(x0, y0, w, h); c.stroke(); }
+    if (s.tape) { c.shadowColor = 'transparent'; c.globalAlpha = 0.7; c.fillStyle = '#FFFFFF'; c.save(); c.translate(x0 + w / 2, y0 + 2); c.rotate(-0.06); c.fillRect(-w * 0.18, -10, w * 0.36, 22); c.restore(); c.globalAlpha = 1; }
+  }
+  c.restore();
+}
 function penW(s, pr) { return s.w * (0.42 + 1.15 * pr / 100); }
 function drawStroke(c, s) {
   const p = s.p; const n = Math.floor(p.length / 3); if (!n) return;
+  if (s.k === 'n') { drawNote(c, s); return; }
   if (s.t && s.t !== 'ball' && s.k !== 'h') { drawTip(c, s); return; }
   c.strokeStyle = s.c; c.fillStyle = s.c; c.lineCap = 'round'; c.lineJoin = 'round';
   if (s.k === 'h') {
@@ -4710,8 +4742,10 @@ function diaryDraw(sketch, x0, y0, dw, dh, lw, ink, fs, pid) {
   const segs = strokes.map((st) => { const P = []; for (let k = 0; k < st.p.length; k += 3) { const x = st.p[k] / 10, y = st.p[k + 1] / 10; P.push([x, y]); bx0 = Math.min(bx0, x); by0 = Math.min(by0, y); bx1 = Math.max(bx1, x); by1 = Math.max(by1, y); } const L = [0]; for (let k = 1; k < P.length; k++) L.push(L[k - 1] + Math.hypot(P[k][0] - P[k - 1][0], P[k][1] - P[k - 1][1])); return { st, P, L, len: L[L.length - 1] }; });
   const pad = 14 + lw * 3; bx0 -= pad; by0 -= pad; bx1 += pad; by1 += pad;
   const cv = document.createElement('canvas'); cv.className = 'dqdraw no-ink';
-  cv.style.cssText = 'position:absolute;left:' + bx0 + 'px;top:' + by0 + 'px;width:' + (bx1 - bx0) + 'px;height:' + (by1 - by0) + 'px;pointer-events:none';
-  const kk = Math.min(3, (window.devicePixelRatio || 1) * Math.max(1, (S.base || 1) * (S.zoom || 1)));
+  /* shown on the screen at its own size (as the zoom layer): enlarged with the page, Safari would soften the lines being drawn */
+  const zk = (S.base || 1) * (S.zoom || 1);
+  cv.style.cssText = 'position:absolute;left:' + bx0 + 'px;top:' + by0 + 'px;width:' + (bx1 - bx0) * zk + 'px;height:' + (by1 - by0) * zk + 'px;pointer-events:none;transform-origin:0 0;transform:scale(' + 1 / zk + ')';
+  const kk = Math.min(3, (window.devicePixelRatio || 1) * Math.max(1, zk));
   cv.width = Math.max(1, Math.round((bx1 - bx0) * kk)); cv.height = Math.max(1, Math.round((by1 - by0) * kk));
   const c = cv.getContext('2d'); itemsEl.appendChild(cv);
   /* part of a stroke, up to a distance along it, as a stroke of its own (the last point is placed part way) */
@@ -5206,7 +5240,9 @@ function beginTool(pt, e) {
   const [x, y] = toLogical(e.clientX, e.clientY);
   if ((S.tool === 'pen' || S.tool === 'hl') && S.sel && S.sel.box && nearHandle(S.sel.box, x, y) >= 0) { startScale(pt, nearHandle(S.sel.box, x, y)); return; }
   if (S.sel && S.sel.quiet) clearSel();
-  if ((S.tool === 'pen' || S.tool === 'hl') && S.sel && S.sel.box && inBox(S.sel.box, x, y)) {
+  /* a sticky note just placed (or picked) is for writing on: the pen writes on it instead of dragging it */
+  const noteSel = S.sel && !S.sel.items.length && S.sel.strokes.length && S.sel.strokes.every((r) => (findStroke(r) || {}).k === 'n');
+  if ((S.tool === 'pen' || S.tool === 'hl') && S.sel && S.sel.box && inBox(S.sel.box, x, y) && !noteSel) {
     /* a picture or box picked by pressing and holding: drag it with the pen too */
     pt.mode = 'move'; pt.last = [x, y]; pt.dx = 0; pt.dy = 0; return;
   }
@@ -5228,7 +5264,7 @@ function beginTool(pt, e) {
     /* press and hold on a picture, graph or text box (without moving) to pick it up;
        the notebook's own replies are written on, not picked up: they move only by their handle */
     const hit0 = itemAt(x, y), hit = hit0 && !hit0.diary && !isExItem(hit0) ? hit0 : null;
-    const shp = hit0 ? null : (() => { const r = strokeAt(x, y); return r && r.length && (findStroke(r[0]) || {}).g ? r : null; })();
+    const shp = hit0 ? null : (() => { const r = strokeAt(x, y), f = r && r.length && findStroke(r[0]); return f && f.g && f.k !== 'n' ? r : null; })();
     if (hit || shp) pt.itemT = setTimeout(() => {
       if (P.get(pt.id) !== pt || pt.mode !== 'draw' || pt.moved > 10) return;
       clearTimeout(pt.holdT); clearLive();
@@ -5467,7 +5503,7 @@ function eraseWhole(x, y, r, pt, touched) {
   const lists = [[DEV, S.mine], ...Object.entries(S.others)].filter(([lid]) => lid !== 'teacher');
   for (const [lid, arr] of lists) {
     for (let i = arr.length - 1; i >= 0; i--) {
-      const s = arr[i], rr = r + s.w / 2, b = sbox(s);
+      const s = arr[i], rr = r + s.w / 2, b = sbox(s); if (s.k === 'n') continue; /* a sticky note is not rubbed out with the writing on it: it goes with the lasso */
       if (x < b[0] - rr || x > b[2] + rr || y < b[1] - rr || y > b[3] + rr) continue;
       let near = false;
       for (let j = 0; j < s.p.length; j += 3) { const dx = s.p[j] / 10 - x, dy = s.p[j + 1] / 10 - y; if (dx * dx + dy * dy < rr * rr) { near = true; break; } }
@@ -5496,7 +5532,7 @@ function erasePart(x, y, r, pt, touched) {
   let hit = false;
   for (const [lid, arr] of [[DEV, S.mine], ...Object.entries(S.others)]) { if (lid === 'teacher') continue;
     for (let i = arr.length - 1; i >= 0; i--) {
-      const s = arr[i], rr = r + s.w / 2, b = sbox(s);
+      const s = arr[i], rr = r + s.w / 2, b = sbox(s); if (s.k === 'n') continue; /* a sticky note is not rubbed out with the writing on it: it goes with the lasso */
       if (x < b[0] - rr || x > b[2] + rr || y < b[1] - rr || y > b[3] + rr) continue;
       let near = false;
       for (let j = 0; j + 3 < s.p.length; j += 3) {
@@ -5824,7 +5860,7 @@ function tryScribble(stroke) {
   const removed = [], touched = new Set();
   for (const [lid, arr] of [[DEV, S.mine], ...Object.entries(S.others)]) { if (lid === 'teacher') continue;
     for (let i = arr.length - 1; i >= 0; i--) {
-      const s = arr[i], b = sbox(s);
+      const s = arr[i], b = sbox(s); if (s.k === 'n') continue;
       if (b[2] < x0 - R || b[0] > x1 + R || b[3] < y0 - R || b[1] > y1 + R) continue;
       let cov = 0, tot = 0;
       for (let j = 0; j < s.p.length; j += 6) { tot++; if (near(s.p[j] / 10, s.p[j + 1] / 10)) cov++; }
@@ -5997,6 +6033,7 @@ function strokeAt(x, y) {
   for (const r of allStrokes()) { if (r.layer === 'teacher') continue;
     const b = sbox(r.s), pad = tol + r.s.w;
     if (x < b[0] - pad || x > b[2] + pad || y < b[1] - pad || y > b[3] + pad) continue;
+    if (r.s.k === 'n') { if (!best || bd > 0.5) { bd = 0.5; best = r; } continue; } /* a note is picked anywhere on it; a line over it still wins */
     const p = r.s.p;
     for (let i = 3; i < p.length; i += 3) {
       const ax = p[i - 3] / 10, ay = p[i - 2] / 10, bx = p[i] / 10, by = p[i + 1] / 10, dx = bx - ax, dy = by - ay, L2 = dx * dx + dy * dy;
@@ -14456,16 +14493,65 @@ function stk(cat, id, name, body, art, vb, w) { STK.push({ cat, id, name, svg: s
   /* the patterns must not spill past the torn ends: cut them to the strip (no clip paths allowed in a page picture, so the
      pattern is drawn only inside a slightly narrower band) */
 })();
-const STK_CATS = [['recent', 'ใช้ล่าสุด'], ['animal', 'สัตว์'], ['food', 'ขนมและเครื่องดื่ม'], ['sky', 'ท้องฟ้าและหัวใจ'], ['study', 'อุปกรณ์เรียน'], ['label', 'ป้ายคำ'], ['tape', 'เทปตกแต่ง']];
+/* ----- more friends and treats ----- */
+(() => {
+  const peng = '<ellipse cx="50" cy="54" rx="30" ry="34"/>';
+  stk('animal', 'penguin', 'เพนกวิน', peng, '<ellipse cx="50" cy="54" rx="30" ry="34" fill="#5E6B86"' + stkO() + '/><ellipse cx="50" cy="60" rx="21" ry="25" fill="#FFFFFF"/><path d="M45 52 L55 52 L50 58Z" fill="' + STK_C.orange + '"' + stkO(1.4) + '/><path d="M36 86 q-6 4 -2 6 h10 z M64 86 q6 4 2 6 h-10z" fill="' + STK_C.orange + '"' + stkO(1.6) + '/>' + stkFace(50, 46, 0.85).replace(/<path d="M[^"]*q[^"]*q[^"]*" fill="none"[^>]*\/>$/, ''));
+  const ham = 'M18 60 Q16 30 50 28 Q84 30 82 60 Q82 86 50 86 Q18 86 18 60Z';
+  stk('animal', 'hamster', 'แฮมสเตอร์', '<path d="' + ham + '"/><circle cx="28" cy="30" r="9"/><circle cx="72" cy="30" r="9"/>', '<circle cx="28" cy="30" r="9" fill="' + STK_C.peach + '"' + stkO() + '/><circle cx="72" cy="30" r="9" fill="' + STK_C.peach + '"' + stkO() + '/><path d="' + ham + '" fill="' + STK_C.peach + '"' + stkO() + '/><path d="M30 60 Q50 92 70 60 Q66 84 50 84 Q34 84 30 60Z" fill="#FFFFFF"/>' + stkFace(50, 56, 1));
+  const dino = 'M20 80 Q16 54 34 44 Q36 22 56 22 Q76 22 76 42 Q76 52 66 54 L66 60 Q86 62 90 80Z';
+  stk('animal', 'dino', 'ไดโนเสาร์', '<path d="' + dino + '"/>', '<path d="' + dino + '" fill="' + STK_C.mint + '"' + stkO() + '/><path d="M40 40 l-6 -6 l8 -2 M46 30 l-2 -8 l8 2" fill="' + STK_C.yellow + '"' + stkO(1.8) + '/><path d="M28 66 q4 -4 8 0 M44 70 q4 -4 8 0" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round"/>' + stkFace(60, 38, 0.8));
+  stk('food', 'cherry', 'เชอร์รี่', '<circle cx="34" cy="70" r="17"/><circle cx="66" cy="72" r="17"/><path d="M34 54 Q46 20 70 14 L74 20 Q54 28 66 56"/>', '<path d="M34 54 Q46 20 70 14 M66 56 Q56 30 70 14" fill="none"' + stkO(3) + '/><path d="M70 14 q14 -6 18 4 q-12 6 -18 -4z" fill="' + STK_C.green + '"' + stkO(2) + '/><circle cx="34" cy="70" r="17" fill="' + STK_C.red + '"' + stkO() + '/><circle cx="66" cy="72" r="17" fill="' + STK_C.red + '"' + stkO() + '/>' + stkFace(34, 70, 0.6) + stkFace(66, 72, 0.6, { happy: true }));
+  const wm = 'M10 40 L90 40 Q90 84 50 84 Q10 84 10 40Z';
+  stk('food', 'watermelon', 'แตงโม', '<path d="' + wm + '"/>', '<path d="' + wm + '" fill="' + STK_C.green + '"' + stkO() + '/><path d="M16 40 L84 40 Q84 76 50 76 Q16 76 16 40Z" fill="' + STK_C.red + '"/><path d="M16 40 L84 40" stroke="' + STK_INK + '" stroke-width="2.6"/><g fill="' + STK_INK + '"><ellipse cx="30" cy="54" rx="1.8" ry="2.8"/><ellipse cx="70" cy="54" rx="1.8" ry="2.8"/><ellipse cx="40" cy="66" rx="1.8" ry="2.8"/><ellipse cx="60" cy="66" rx="1.8" ry="2.8"/></g>' + stkFace(50, 50, 0.75), null, 110);
+  stk('food', 'cookie', 'คุกกี้', '<circle cx="50" cy="50" r="38"/>', '<circle cx="50" cy="50" r="37" fill="' + STK_C.brown + '"' + stkO() + '/><g fill="#7A5236"><circle cx="30" cy="36" r="4"/><circle cx="70" cy="34" r="4"/><circle cx="26" cy="62" r="3.4"/><circle cx="74" cy="64" r="4"/><circle cx="50" cy="78" r="3.4"/></g>' + stkFace(50, 50, 0.9), null, 95);
+  const cac = 'M38 84 L38 30 Q38 14 50 14 Q62 14 62 30 L62 84Z';
+  stk('sky', 'cactus', 'กระบองเพชร', '<path d="' + cac + '"/><path d="M38 50 Q20 50 22 34 L30 34 Q30 42 38 42Z M62 56 Q80 56 78 40 L70 40 Q70 48 62 48Z"/><rect x="28" y="78" width="44" height="18" rx="4"/>', '<path d="M38 50 Q20 50 22 34 L30 34 Q30 42 38 42Z M62 56 Q80 56 78 40 L70 40 Q70 48 62 48Z" fill="' + STK_C.green + '"' + stkO(2.2) + '/><path d="' + cac + '" fill="' + STK_C.green + '"' + stkO() + '/><rect x="28" y="78" width="44" height="18" rx="4" fill="' + STK_C.orange + '"' + stkO() + '/>' + stkFace(50, 40, 0.8));
+  const bow = 'M50 50 Q30 26 14 32 Q8 50 14 68 Q30 74 50 50 Q70 26 86 32 Q92 50 86 68 Q70 74 50 50Z';
+  stk('sky', 'bow', 'โบว์', '<path d="' + bow + '"/><path d="M44 54 L36 88 L46 82 L50 90 L54 82 L64 88 L56 54Z"/>', '<path d="M44 54 L36 88 L46 82 L50 90 L54 82 L64 88 L56 54Z" fill="' + STK_C.pink + '"' + stkO(2.2) + '/><path d="' + bow + '" fill="' + STK_C.pink + '"' + stkO() + '/><circle cx="50" cy="50" r="8" fill="' + STK_C.red + '"' + stkO(2.2) + '/>', null, 100);
+  const crown = 'M14 76 L18 30 L36 50 L50 22 L64 50 L82 30 L86 76Z';
+  stk('sky', 'crown', 'มงกุฎ', '<path d="' + crown + '"/>', '<path d="' + crown + '" fill="' + STK_C.yellow + '"' + stkO() + '/><circle cx="50" cy="22" r="5" fill="' + STK_C.pink + '"' + stkO(1.8) + '/><circle cx="18" cy="30" r="4" fill="' + STK_C.sky + '"' + stkO(1.8) + '/><circle cx="82" cy="30" r="4" fill="' + STK_C.sky + '"' + stkO(1.8) + '/>' + stkFace(50, 58, 0.8), null, 100);
+  stk('sky', 'music', 'ตัวโน้ต', '<path d="M30 76 Q30 64 42 64 L42 22 L80 14 L80 66 Q80 78 68 78 Q56 78 56 68 Q56 58 70 58 L70 32 L52 36 L52 74 Q52 86 40 86 Q30 86 30 76Z"/>', '<path d="M30 76 Q30 64 42 64 L42 22 L80 14 L80 66 Q80 78 68 78 Q56 78 56 68 Q56 58 70 58 L70 32 L52 36 L52 74 Q52 86 40 86 Q30 86 30 76Z" fill="' + STK_C.lilac + '"' + stkO() + '/>', null, 90);
+  stk('study', 'medal', 'เหรียญรางวัล', '<path d="M34 8 L50 40 L66 8Z"/><circle cx="50" cy="62" r="28"/>', '<path d="M30 8 L44 42 L56 42 L42 8Z" fill="' + STK_C.sky + '"' + stkO(2) + '/><path d="M70 8 L56 42 L44 42 L58 8Z" fill="' + STK_C.red + '"' + stkO(2) + '/><circle cx="50" cy="62" r="27" fill="' + STK_C.yellow + '"' + stkO() + '/><path d="M50 46 L55 57 L67 58 L58 66 L61 78 L50 71 L39 78 L42 66 L33 58 L45 57Z" fill="#FFFFFF"' + stkO(1.6) + '/>', null, 95);
+  stk('study', 'aplus', 'A+', '<circle cx="50" cy="50" r="40"/>', '<circle cx="50" cy="50" r="38" fill="' + STK_C.pink + '"' + stkO() + '/><circle cx="50" cy="50" r="30" fill="none" stroke="#FFFFFF" stroke-width="2.4" stroke-dasharray="4 4"/><text x="50" y="62" text-anchor="middle" font-size="34" font-weight="800" fill="' + STK_INK + '" font-family="Kanit, Sarabun, sans-serif">A+</text>', null, 90);
+  stk('study', 'hundred', '100 คะแนน', '<rect x="8" y="22" width="84" height="56" rx="14"/>', '<rect x="8" y="22" width="84" height="56" rx="14" fill="' + STK_C.yellow + '"' + stkO() + '/><text x="50" y="62" text-anchor="middle" font-size="32" font-weight="800" fill="' + STK_C.red + '" font-family="Kanit, Sarabun, sans-serif">100</text><path d="M24 70 Q50 80 76 70" fill="none" stroke="' + STK_C.red + '" stroke-width="3" stroke-linecap="round"/>', null, 100);
+  for (const [id, t, c] of [['ask', 'ถามครู', STK_C.sky], ['unclear', 'ยังไม่เข้าใจ', STK_C.peach], ['example', 'ตัวอย่าง', STK_C.mint], ['sum', 'สรุป', STK_C.lilac]]) {
+    const w = 40 + t.length * 13, vb = '0 0 ' + (w + 16) + ' 56';
+    stk('label', 'lb-' + id, t, '<rect x="8" y="8" width="' + w + '" height="40" rx="20"/>', '<rect x="8" y="8" width="' + w + '" height="40" rx="20" fill="' + c + '"' + stkO(2.4) + '/><text x="' + (8 + w / 2) + '" y="35" text-anchor="middle" font-size="21" font-weight="700" fill="' + STK_INK + '" font-family="Sarabun, Kanit, sans-serif">' + t + '</text>', vb, Math.round((w + 16) * 1.3));
+  }
+})();
+/* ----- sticky notes, memo cards and page flags: paper to write on by hand (drawn under the writing, moved with the lasso) ----- */
+(() => {
+  const NC = [['yellow', '#FFF1A8', 'เหลือง'], ['pink', '#FFD3DE', 'ชมพู'], ['blue', '#CFE6FF', 'ฟ้า'], ['green', '#D6F2D3', 'เขียว'], ['orange', '#FFDDB8', 'ส้ม'], ['lilac', '#E7DCFF', 'ม่วง']];
+  const prev = (t, c) => t === 'flag'
+    ? '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 40"><rect x="4" y="8" width="112" height="24" rx="4" fill="' + c + '" opacity="0.85"/><rect x="92" y="8" width="24" height="24" fill="' + c + '" opacity="1" style="filter:brightness(0.85)"/></svg>'
+    : t === 'memo'
+      ? '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 100"><rect x="6" y="6" width="108" height="88" rx="8" fill="#FFFFFF" stroke="#D8D2CC" stroke-width="1.4"/><path d="M6 14 Q6 6 14 6 L106 6 Q114 6 114 14 L114 22 L6 22Z" fill="' + c + '"/><path d="M16 40 h88 M16 56 h88 M16 72 h88" stroke="#E4DED8" stroke-width="1.4"/></svg>'
+      : '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path d="M8 8 L92 8 L92 84 Q90 92 82 92 L8 92Z" fill="' + c + '"/><path d="M8 8 L92 8 L92 16 L8 16Z" fill="#000000" opacity="0.04"/><path d="M92 84 Q90 92 82 92 L84 85Z" fill="#000000" opacity="0.08"/>' + (t === 'tape' ? '<rect x="32" y="0" width="36" height="16" fill="#FFFFFF" opacity="0.75" transform="rotate(-4 50 8)"/>' : '') + '</svg>';
+  for (const [id, c, n] of NC) STK.push({ cat: 'note', id: 'nt-sq-' + id, name: 'โพสต์อิท' + n, svg: prev('sq', c), note: { t: 'sq', c, w: 220, h: 220 } });
+  for (const [id, c, n] of NC.slice(0, 3)) STK.push({ cat: 'note', id: 'nt-tp-' + id, name: 'โน้ตติดเทป' + n, svg: prev('tape', c), note: { t: 'sq', c, w: 240, h: 200, tape: 1 } });
+  for (const [id, c, n] of NC.slice(0, 4)) STK.push({ cat: 'note', id: 'nt-mm-' + id, name: 'การ์ดบันทึก' + n, svg: prev('memo', c), note: { t: 'memo', c, w: 360, h: 240 } });
+  for (const [id, c, n] of NC) STK.push({ cat: 'note', id: 'nt-fl-' + id, name: 'แถบคั่นหน้า' + n, svg: prev('flag', c), note: { t: 'flag', c, w: 170, h: 44 } });
+})();
+const STK_CATS = [['recent', 'ใช้ล่าสุด'], ['note', 'กระดาษโน้ต'], ['animal', 'สัตว์'], ['food', 'ขนมและเครื่องดื่ม'], ['sky', 'ท้องฟ้าและหัวใจ'], ['study', 'อุปกรณ์เรียน'], ['label', 'ป้ายคำ'], ['tape', 'เทปตกแต่ง']];
 const STKS = { cat: null };
 function stkRecent() { try { return JSON.parse(store_ls.get('tp-stk-recent') || '[]').filter((id) => STK.some((x) => x.id === id)); } catch (e) { return []; } }
 function stkPut(st) {
   if (!S.page) return;
+  if (st.note) {
+    /* paper for writing: part of the ink, under whatever is written after it, so the pen writes on it */
+    const N = st.note, [vx, vy] = viewSpot(N.w, N.h), at = freeSpot(N.w, N.h, [vx, vy], false, true) || [vx, vy];
+    const ns = { id: 's' + uid(), k: 'n', t: N.t, c: N.c, w: 1, p: [Math.round(at[0] * 10), Math.round(at[1] * 10), 0, Math.round((at[0] + N.w) * 10), Math.round((at[1] + N.h) * 10), 0] };
+    if (N.tape) ns.tape = 1; ns.g = 'g' + uid();
+    const before = { [DEV]: clone(S.mine) }; S.mine.push(ns); pushUndo({ t: 'layers', before, after: { [DEV]: clone(S.mine) } }); saveMine(); drawInk();
+    selectStrokes([{ layer: DEV, id: ns.id }]);
+  } else {
   const vb = /viewBox="([\d.\s-]+)"/.exec(st.svg), p = vb ? vb[1].trim().split(/\s+/).map(Number) : [0, 0, 100, 100], w = st.w, h = Math.round(w * p[3] / p[2]);
   /* in the middle of what is on screen, in a free spot if there is one close by */
   const [vx, vy] = viewSpot(w, h), at = freeSpot(w, h, [vx, vy], false, true) || [vx, vy];
   const it = { id: 'i' + uid(), by: DEV, type: 'svg', x: Math.round(at[0]), y: Math.round(at[1]), w, svg: st.svg, stk: st.id };
   addItem(it); selectItem(findItem(it.id) || it);
+  }
   const rec = [st.id].concat(stkRecent().filter((x) => x !== st.id)).slice(0, 12); store_ls.set('tp-stk-recent', JSON.stringify(rec));
 }
 function openStickers() {
@@ -23926,7 +24012,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793776391';
+const BUILD = '1793777324';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
