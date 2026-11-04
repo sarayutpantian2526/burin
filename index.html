@@ -251,6 +251,11 @@ body.showscr #livePill, body.showscr #presentExit, body.showscr .exitfull, body.
 .item .tgrab, .item .tsize { opacity: 0 !important; pointer-events: none !important; }
 body[data-tool="text"] .item .tgrab, body[data-tool="text"] .item .tsize { opacity: 0.75 !important; pointer-events: auto !important; }
 @media (hover: hover) and (pointer: fine) { .item:hover .tgrab, .item:hover .tsize { opacity: 0.75 !important; pointer-events: auto !important; } }
+/* a picked box (the blue frame) always shows its move handle, a little larger */
+#items.editable .item.picked .tgrab { display: grid; }
+#items .item.picked .tgrab { opacity: 1 !important; pointer-events: auto !important; width: calc(34px * var(--hk, 1)); height: calc(34px * var(--hk, 1)); left: calc(-18px * var(--hk, 1)); top: calc(-18px * var(--hk, 1)); background: #2F4BB8; border-color: #2F4BB8; color: #FFFFFF; box-shadow: 0 2px 6px rgba(20,26,34,0.25); }
+.edgrab { position: absolute; z-index: 3; width: 36px; height: 36px; border-radius: 999px; border: 0; background: #2F4BB8; color: #FFFFFF; display: grid; place-items: center; cursor: move; padding: 0; touch-action: none; pointer-events: auto; box-shadow: 0 2px 6px rgba(20,26,34,0.25); }
+.edgrab svg { width: 62%; height: 62%; }
 .item .x, .x.edx { position: absolute; z-index: 3; right: -14px; top: -14px; width: 36px; height: 36px; border-radius: 999px; border: 0; background: #A8261B; color: #FFFFFF; font-size: 18px; cursor: pointer; pointer-events: auto; }
 
 /* dock */
@@ -3928,7 +3933,8 @@ function ballR(s, i) { const p = s.p; return penW(s, i > 0 ? (p[(i - 1) * 3 + 2]
 function ballPiece(c, s, i0, i1, end) { ballOutline(c, ballSamples(s, i0, i1, end)); }
 function ballSamples(s, i0, i1, end) {
   const p = s.p, n = Math.floor(p.length / 3), out = [];
-  let ax = i0 > 0 ? (p[(i0 - 1) * 3] + p[i0 * 3]) / 20 : p[0] / 10, ay = i0 > 0 ? (p[(i0 - 1) * 3 + 1] + p[i0 * 3 + 1]) / 20 : p[1] / 10, ar = ballR(s, Math.max(1, i0));
+  /* the piece for point i starts where the piece for point i - 1 ended: the middle of points i - 2 and i - 1 */
+  let ax = i0 >= 2 ? (p[(i0 - 2) * 3] + p[(i0 - 1) * 3]) / 20 : p[0] / 10, ay = i0 >= 2 ? (p[(i0 - 2) * 3 + 1] + p[(i0 - 1) * 3 + 1]) / 20 : p[1] / 10, ar = ballR(s, Math.max(1, i0 - 1));
   out.push([ax, ay, ar]);
   const seg = (cx, cy, bx, by, br) => {
     const len = Math.hypot(cx - ax, cy - ay) + Math.hypot(bx - cx, by - cy), step = clamp(Math.min(ar, br) * 0.8, 0.8, 3), k = Math.max(1, Math.min(40, Math.ceil(len / step)));
@@ -4078,7 +4084,7 @@ function visibleItems() { const a = (S.page && S.page.items) || []; return S.pre
 let editing = null;
 function renderItems() {
   if (editing) return;
-  renderItems0();
+  renderItems0(); markPicked();
   edgeCheckLater();
 }
 /* a box or picture already on the page that runs past the edge of the paper (made before this check, or arriving from an
@@ -4188,6 +4194,13 @@ function startEdit(it, d) {
   /* the delete button sits beside the box, not inside it: a non-editable child blocks typing in Chrome */
   x.classList.add('edx'); x.style.left = (parseFloat(d.style.left) + d.offsetWidth - 16) + 'px'; x.style.top = (parseFloat(d.style.top) - 16) + 'px'; x.style.right = 'auto';
   itemsEl.appendChild(x);
+  /* while a box is being edited (the dashed blue frame) a move handle sits at its top left corner: drag it to move the box */
+  if (!it.lock && !(isStudentSide() && it.by === 'teacher')) {
+    const g = document.createElement('button'); g.type = 'button'; g.className = 'edx edgrab'; g.dataset.id = it.id; g.contentEditable = 'false'; g.setAttribute('aria-label', 'ลากเพื่อย้ายกล่อง'); g.title = 'ลากเพื่อย้าย';
+    g.innerHTML = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 2.5v15 M2.5 10h15 M10 2.5l-2.2 2.2 M10 2.5l2.2 2.2 M10 17.5l-2.2-2.2 M10 17.5l2.2-2.2 M2.5 10l2.2-2.2 M2.5 10l2.2 2.2 M17.5 10l-2.2-2.2 M17.5 10l-2.2 2.2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>';
+    g.style.left = (parseFloat(d.style.left) - 18) + 'px'; g.style.top = (parseFloat(d.style.top) - 18) + 'px';
+    itemsEl.appendChild(g);
+  }
   d.addEventListener('blur', commitEdit, { once: true });
   setTimeout(() => { d.focus({ preventScroll: true }); const r = document.createRange(); r.selectNodeContents(d); r.collapse(false); const s = getSelection(); s.removeAllRanges(); s.addRange(r); }, 0);
 }
@@ -5071,6 +5084,8 @@ function onDown(e) {
       startScale(pt, it.diary ? 2 : 4); P.set(e.pointerId, pt); return;
     }
   }
+  const egrab = !S.present && e.target.closest && e.target.closest('.edgrab');
+  if (egrab) { const id = egrab.dataset.id; e.preventDefault(); e.stopPropagation(); commitEdit(); const it0 = findItem(id); if (it0) { try { vp.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ } const [x, y] = toLogical(e.clientX, e.clientY); P.set(e.pointerId, { id: e.pointerId, type: e.pointerType, sx: e.clientX, sy: e.clientY, lx: e.clientX, ly: e.clientY, t0: now(), moved: 0, mode: 'move', last: [x, y], dx: 0, dy: 0 }); selectItem(it0); } return; }
   const grab = !S.present && (e.target.closest('.item .tgrab') || (e.target.closest('.item.live .vbar, .item.live .gh') && !e.target.closest('input,button,select,textarea')));
   if (grab) {
     const el = e.target.closest('.item'), it = el && findItem(el.dataset.id);
@@ -6135,7 +6150,10 @@ function moveItemEls() {
 }
 function shiftBox(b, dx, dy) { return [b[0] + dx, b[1] + dy, b[2] + dx, b[3] + dy]; }
 function inBox(b, x, y) { return b && x >= b[0] && x <= b[2] && y >= b[1] && y <= b[3]; }
+/* the boxes in the selection carry their move handle in view (see .item.picked) */
+function markPicked() { const ids = new Set((S.sel && !S.sel.quiet && S.sel.items) || []); if (!ids.size && !markPicked.any) return; markPicked.any = ids.size > 0; itemsEl.querySelectorAll('.item.picked').forEach((el) => { if (!ids.has(el.dataset.id)) el.classList.remove('picked'); }); for (const id of ids) { const el = itemsEl.querySelector('[data-id="' + id + '"]'); if (el) el.classList.add('picked'); } }
 function drawSelBox() {
+  markPicked();
   if (S.sel && !$('#selbar').hidden) requestAnimationFrame(placeSelbar);
   /* while the app or the AI works on a part of the page, nothing is drawn over it (a floating note says it is busy):
      a box round the writing while waiting does not look like a real notebook */
@@ -23689,7 +23707,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793768838';
+const BUILD = '1793769848';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
