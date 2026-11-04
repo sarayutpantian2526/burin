@@ -193,6 +193,8 @@ body.flow:not(.flowlast) #bAddBelow { display: none; }
 #page { position: relative; background: #FFFFFF; box-shadow: 0 10px 34px rgba(20, 26, 34, 0.16); border-radius: 4px; }
 #page > canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 #page > #cSharp { inset: auto; pointer-events: none; }
+#page.exact > #cInk, #page.exact > #cLive, #page.exact > #cRemote { inset: 0 auto auto 0; width: var(--cw); height: var(--ch); }
+#page.px1 > #cInk, #page.px1 > #cRemote, #page.pxs > #cSharp { image-rendering: pixelated; }
 #page > #cSharp[hidden] { display: none; }
 #items, #itemsBg { position: absolute; left: 0; top: 0; width: 1000px; height: 1414px; transform-origin: 0 0; pointer-events: none; }
 /* a page picture (an imported PDF page) lies on the paper, under the writing: ink drawn on it shows on top */
@@ -3544,7 +3546,10 @@ function nbsGo(f) {
     window.addEventListener('resize', () => nbsSync());
   }
 }
-function applyT() { if (FLOW.on) flowCheckLater(); const zn = document.getElementById('zNum'); if (zn) { const pc = Math.round(S.zoom * 100); zn.classList.toggle('off', Math.abs(pc - 100) > 1); zn.title = pc === 100 ? 'พอดีหน้า' : 'ตอนนี้ ' + pc + '% แตะเพื่อกลับมาพอดีหน้า'; zn.setAttribute('aria-label', zn.title); } { const hk = (1 / ((S.base || 1) * (S.zoom || 1))).toFixed(3); if (hk !== S.hk) { S.hk = hk; itemsEl.style.setProperty('--hk', hk); } } /* set only when the zoom changed: setting it restyled every box on the page each frame */ wrapEl.style.willChange = 'transform'; S.lastT = performance.now(); { const dpr = window.devicePixelRatio || 1, rx = Math.round(S.tx * dpr) / dpr, ry = Math.round((S.ty + rubber(S.pull || 0)) * dpr) / dpr; wrapEl.style.transform = 'translate(' + rx + 'px,' + ry + 'px) scale(' + S.zoom + ')'; } if ((S.watchers || liveDisplays()) && !S.present) emitView(); /* throttled inside, with a last update when the movement stops: the audience screen follows while the teacher is still scrolling, not only after */ sharpLater(); if (NBS.on) nbsSync(); }
+/* at rest at the page's own size, the ink canvas and the zoom canvas are shown pixel for pixel (no smoothing): a line edge
+   stays one screen pixel sharp wherever the page sits; while the zoom changes they are smoothed as usual */
+function pxSync() { try { pageEl.classList.toggle('px1', !!S.inkExact && Math.abs((S.zoom || 1) - 1) < 1e-4); pageEl.classList.toggle('pxs', !!S.sharpExact && S.sharpZoom === S.zoom); } catch (e) { /* not ready */ } }
+function applyT() { if (FLOW.on) flowCheckLater(); const zn = document.getElementById('zNum'); if (zn) { const pc = Math.round(S.zoom * 100); zn.classList.toggle('off', Math.abs(pc - 100) > 1); zn.title = pc === 100 ? 'พอดีหน้า' : 'ตอนนี้ ' + pc + '% แตะเพื่อกลับมาพอดีหน้า'; zn.setAttribute('aria-label', zn.title); } { const hk = (1 / ((S.base || 1) * (S.zoom || 1))).toFixed(3); if (hk !== S.hk) { S.hk = hk; itemsEl.style.setProperty('--hk', hk); } } /* set only when the zoom changed: setting it restyled every box on the page each frame */ wrapEl.style.willChange = 'transform'; S.lastT = performance.now(); pxSync(); { const dpr = window.devicePixelRatio || 1, rx = Math.round(S.tx * dpr) / dpr, ry = Math.round((S.ty + rubber(S.pull || 0)) * dpr) / dpr; wrapEl.style.transform = 'translate(' + rx + 'px,' + ry + 'px) scale(' + S.zoom + ')'; } if ((S.watchers || liveDisplays()) && !S.present) emitView(); /* throttled inside, with a last update when the movement stops: the audience screen follows while the teacher is still scrolling, not only after */ sharpLater(); if (NBS.on) nbsSync(); }
 function topY() { return S.tv ? 12 : 72; }
 function bounds() {
   const vw = vp.clientWidth, vh = vp.clientHeight;
@@ -3604,6 +3609,9 @@ function fit() {
   if (S.present || S.show) { presentFit(); return; }
   const vw = vp.clientWidth || 800;
   S.base = Math.max(0.25, Math.min((vw - 24) / W, S.tv ? 2.4 : 1.3));
+  /* the page is a whole number of screen pixels wide, so its ink canvas maps one to one onto the screen pixels (iPad Safari
+     does not snap layers to the pixel grid as desktop browsers do: off by a fraction, every line came out soft) */
+  { const d0 = Math.min(window.devicePixelRatio || 1, 2); S.base = Math.round(W * S.base * d0) / (W * d0); }
   pageEl.style.width = W * S.base + 'px';
   pageEl.style.height = H * S.base + 'px';
   itemsEl.style.transform = itemsBgEl.style.transform = 'scale(' + S.base + ')';
@@ -3622,6 +3630,7 @@ function resizeCanvases(force) {
   if (!force && Math.abs(res - S.res) / (S.res || 1) < 0.08) return;
   /* the paper is drawn as sharp as the ink: soft grid lines made the whole page look blurred next to apps like GoodNotes */
   S.res = res; S.bgRes = res;
+  { const pw = W * S.base * dpr; S.inkExact = (window.devicePixelRatio || 1) === dpr && pw <= 2400 + 0.01 && Math.abs(pw - Math.round(pw)) < 0.02; } if (S.inkExact) { pageEl.style.setProperty('--cw', Math.round(W * res) / dpr + 'px'); pageEl.style.setProperty('--ch', Math.round(H * res) / dpr + 'px'); } pageEl.classList.toggle('exact', !!S.inkExact); pxSync();
   /* the layer for other screens' live writing and laser takes memory only once something is drawn on it */
   for (const c of [cInk].concat(cRemote.width > 2 ? [cRemote] : [], LV.part ? [] : [cLive])) { c.width = Math.round(W * res); c.height = Math.round(H * res); }
   if (cRemote.width <= 2) { cRemote.width = 1; cRemote.height = 1; }
@@ -3685,7 +3694,7 @@ function drawSharp() {
   const need = W * S.base * S.zoom * dpr > W * (S.res || 1) * 1.15 || pdfNeed;
   if (!need || !S.page) { if (!cSharp.hidden) { cSharp.hidden = true; cSharp.width = cSharp.height = 1; } if (!penBusy()) liveFit(false); return; }
   const pr = pageEl.getBoundingClientRect(), vr = vp.getBoundingClientRect();
-  const x0 = Math.max(pr.left, vr.left), y0 = Math.max(pr.top, vr.top), x1 = Math.min(pr.right, vr.right), y1 = Math.min(pr.bottom, vr.bottom);
+  const sn = (v, f) => f(v * dpr) / dpr, x0 = sn(Math.max(pr.left, vr.left), Math.ceil), y0 = sn(Math.max(pr.top, vr.top), Math.ceil), x1 = sn(Math.min(pr.right, vr.right), Math.floor), y1 = sn(Math.min(pr.bottom, vr.bottom), Math.floor);
   if (x1 - x0 < 4 || y1 - y0 < 4) { cSharp.hidden = true; return; }
   const sc = pr.width / (pageEl.offsetWidth || 1);
   cSharp.style.left = (x0 - pr.left) / sc + 'px'; cSharp.style.top = (y0 - pr.top) / sc + 'px';
@@ -3704,7 +3713,7 @@ function drawSharp() {
   const ox = -(x0 - pr.left) * dq, oy = -(y0 - pr.top) * dq, vkey = [S.pid, bw, bh, k.toFixed(4), Math.round(ox), Math.round(oy)].join('|');
   if (vecs.length) { if (PDFV.last && PDFV.last.key === vkey) { c.save(); c.setTransform(1, 0, 0, 1, 0, 0); c.drawImage(PDFV.last.cv, 0, 0); c.restore(); } else pdfVecLater(vecs, vkey, bw, bh, k, ox, oy); }
   drawInto(c, allStrokes(), S.sel && !S.sel.quiet ? new Set(S.sel.strokes.map((r) => r.id)) : null);
-  cSharp.hidden = false;
+  cSharp.hidden = false; S.sharpZoom = S.zoom; S.sharpExact = Math.abs(dq - dpr) < 1e-6 && (window.devicePixelRatio || 1) === dpr; pxSync();
   /* the live canvas follows the same visible region (not while a pen is down: resizing would wipe the stroke) */
   if (!penBusy()) liveFit(true, (x0 - pr.left) / (pr.width / W), (y0 - pr.top) / (pr.height / H), (x1 - x0) / (pr.width / W), (y1 - y0) / (pr.height / H), k, (x0 - pr.left) / sc, (y0 - pr.top) / sc, (x1 - x0) / sc, (y1 - y0) / sc);
 }
@@ -23711,7 +23720,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793770022';
+const BUILD = '1793770610';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
