@@ -3360,14 +3360,17 @@ function flowWanted() { return S.present || S.show ? !!PV.flow : FLOW.on; }
 function flowNb() { const pages = (S.nb && S.nb.pages) || [], i = pages.indexOf(S.pid); return { prev: i > 0 ? pages[i - 1] : null, next: i >= 0 && i < pages.length - 1 ? pages[i + 1] : null }; }
 /* a neighbouring page drawn as a picture with its boxes on top; kept for reuse while unchanged, and the pages two away are
    drawn ahead while nothing else is happening, so scrolling quickly through a notebook finds them ready */
+/* how many pixels across a neighbouring page gets: while the pages move, a lighter picture (quick to draw, scrolling stays smooth);
+   once they stand still, as sharp as the page being written on (an iPad in landscape needs about 2200) */
+const PEEK_HI = 2200, PEEK_LO = 1500;
 function peekSig(pid, page, n, pw, ph) { return [pid, n, JSON.stringify((page && page.items) || []).length, (page && page.paper) || '', pw, ph, S.base.toFixed(3), clamp(S.zoom, 1, 1.6).toFixed(1), curBg()].join('|'); }
 /* the page being left is already drawn on screen: its picture for the continuous view is copied from the screen's
    canvases at once, instead of drawing every stroke of it again (the slow part of moving on, on an iPad) */
 function peekFromScreen() {
   try {
     const pid = S.pid; if (!pid || !S.page || !cInk.width) return;
-    const pw = W, ph = H, sig = peekSig(pid, S.page, allStrokes().length, pw, ph), hit = PEEKS.get(pid); if (hit && hit.sig === sig) return;
-    const dpr = Math.min(2, window.devicePixelRatio || 1), k = Math.min(pw * S.base * dpr * clamp(S.zoom, 1, 1.6), 1500) / pw;
+    const pw = W, ph = H, sig = peekSig(pid, S.page, allStrokes().length, pw, ph) + '|L', hit = PEEKS.get(pid); if (hit && hit.sig === sig) return;
+    const dpr = Math.min(2, window.devicePixelRatio || 1), k = Math.min(pw * S.base * dpr * clamp(S.zoom, 1, 1.6), PEEK_LO) / pw;
     const cv = document.createElement('canvas'); cv.width = Math.round(pw * k); cv.height = Math.round(ph * k);
     const c = cv.getContext('2d'); if (cBg.width > 1) c.drawImage(cBg, 0, 0, cv.width, cv.height); else { c.save(); c.setTransform(k, 0, 0, k, 0, 0); c.fillStyle = '#FFFFFF'; c.fillRect(0, 0, pw, ph); paper(c, (S.page && S.page.paper) || 'grid'); c.restore(); }
     /* a page picture is copied between the paper and the ink, as on the page */
@@ -3385,21 +3388,23 @@ async function drawIntoSliced(c, list) {
   let i = 0;
   while (i < order.length) { const t0 = performance.now(); while (i < order.length && performance.now() - t0 < 6) drawStroke(c, order[i++].s); if (i < order.length) await new Promise((r) => requestAnimationFrame(r)); }
 }
-async function peekBuild(pid) {
+async function peekBuild(pid, lo) {
   const { page, strokes } = await pageData(pid);
   const [pw, ph] = pageDims(page);
-  const sig = peekSig(pid, page, strokes.length, pw, ph);
-  const hit = PEEKS.get(pid); if (hit && hit.sig === sig) { PEEKS.delete(pid); PEEKS.set(pid, hit); return hit; }
+  const sig0 = peekSig(pid, page, strokes.length, pw, ph), sig = sig0 + (lo ? '|L' : '|H');
+  const hit = PEEKS.get(pid); if (hit && (hit.sig === sig || (lo && hit.sig === sig0 + '|H'))) { PEEKS.delete(pid); PEEKS.set(pid, hit); return hit; }
   /* a picture as sharp as the screen needs, but no more: these are kept in memory (iPad) */
-  const cv = document.createElement('canvas'), dpr = Math.min(2, window.devicePixelRatio || 1), k = Math.min(pw * S.base * dpr * clamp(S.zoom, 1, 1.6), 1500) / pw;
-  cv.width = Math.round(pw * k); cv.height = Math.round(ph * k);
-  const c = cv.getContext('2d'); c.setTransform(k, 0, 0, k, 0, 0); const keep = [W, H]; W = pw; H = ph; c.fillStyle = '#FFFFFF'; c.fillRect(0, 0, W, H); try { paper(c, (page && page.paper) || 'grid'); } catch (e) { /* plain */ } [W, H] = keep;
+  const bgs0 = ((page && page.items) || []).some(isBgItem), dpr = Math.min(2, window.devicePixelRatio || 1), want = pw * S.base * dpr * clamp(S.zoom, 1, 1.6);
+  const k = Math.min(want, lo ? PEEK_LO : PEEK_HI) / pw, kp = bgs0 ? Math.min(want, PEEK_LO) / pw : k; /* under a page picture the paper hardly shows: it needs no full sharpness */
+  const cv = document.createElement('canvas');
+  cv.width = Math.round(pw * kp); cv.height = Math.round(ph * kp);
+  const c = cv.getContext('2d'); c.setTransform(kp, 0, 0, kp, 0, 0); const keep = [W, H]; W = pw; H = ph; c.fillStyle = '#FFFFFF'; c.fillRect(0, 0, W, H); try { paper(c, (page && page.paper) || 'grid'); } catch (e) { /* plain */ } [W, H] = keep;
   /* the neighbouring page's lines are drawn a few at a time, so scrolling on never stutters while it is made */
   const bgs = ((page && page.items) || []).filter(isBgItem);
   /* a page with a page picture (an imported PDF): paper, then the picture, then the ink on a see-through canvas */
   let ink = null, bgLay = null;
   if (bgs.length) {
-    ink = document.createElement('canvas'); ink.width = cv.width; ink.height = cv.height; const ci = ink.getContext('2d'); ci.setTransform(k, 0, 0, k, 0, 0); await drawIntoSliced(ci, strokes);
+    ink = document.createElement('canvas'); ink.width = Math.round(pw * k); ink.height = Math.round(ph * k); const ci = ink.getContext('2d'); ci.setTransform(k, 0, 0, k, 0, 0); await drawIntoSliced(ci, strokes);
     bgLay = document.createElement('div'); bgLay.className = 'fitems'; bgLay.style.width = pw + 'px'; bgLay.style.height = ph + 'px'; bgLay.style.transform = 'scale(' + S.base + ')';
     for (const it of bgs) { try { bgLay.appendChild(buildItemEl(it, true)); } catch (e) { /* skip */ } }
   } else await drawIntoSliced(c, strokes);
@@ -3422,7 +3427,9 @@ async function renderPeeks() {
        scrolling quickly never shows a blank sheet */
     el.style.backgroundImage = $('#page').style.backgroundImage; el.style.backgroundSize = '100% 100%';
     if (!PEEKS.has(pid) && el.dataset.pid !== pid) { const d = FLOW.dims[which] || [W, H]; el.innerHTML = ''; el.dataset.pid = pid; el.style.width = d[0] * S.base + 'px'; el.style.height = d[1] * S.base + 'px'; el.style.top = (which === 'prev' ? -(d[1] * S.base + FLOW.gap) : H * S.base + FLOW.gap) + 'px'; el.hidden = false; }
-    const pk = await peekBuild(pid); if (v !== FLOW.ver) return;
+    { const hit = PEEKS.get(pid); if (hit && hit.dims && hit.nodes && el.firstChild !== hit.nodes[0]) { /* the copy already made (perhaps the half-sharp one drawn ahead) shows at once, the sharp one replaces it */
+      el.dataset.pid = pid; el.style.width = hit.dims[0] * S.base + 'px'; el.style.height = hit.dims[1] * S.base + 'px'; el.style.top = (which === 'prev' ? -(hit.dims[1] * S.base + FLOW.gap) : H * S.base + FLOW.gap) + 'px'; el.innerHTML = ''; el.append(...hit.nodes); el.hidden = false; } }
+    const pk = await peekBuild(pid, true); if (v !== FLOW.ver) return;
     const [pw, ph] = pk.dims; FLOW.dims[which] = [pw, ph];
     el.dataset.pid = pid; el.style.width = pw * S.base + 'px'; el.style.height = ph * S.base + 'px';
     el.style.top = (which === 'prev' ? -(ph * S.base + FLOW.gap) : H * S.base + FLOW.gap) + 'px';
@@ -3431,12 +3438,29 @@ async function renderPeeks() {
     el.hidden = false;
   }
   if (!S.present && !S.show) clampT(); applyT(); /* the audience screen is placed by the teacher's view, not held inside the pages */
+  peekSharpLater(v);
   /* draw ahead the pages two away, one at a time, while the pen and fingers are off the glass */
   clearTimeout(FLOW.ahead);
   const pages = S.nb.pages || [], i = pages.indexOf(S.pid), ahead = [pages[i + 2], pages[i - 2]].filter(Boolean);
   if (S.present) return; /* the audience screen keeps only the pages next to it (less memory on a TV or iPad) */
-  const step = () => { if (v !== FLOW.ver || !ahead.length) return; if (P.size) { FLOW.ahead = setTimeout(step, 300); return; } peekBuild(ahead.shift()).catch(() => {}).finally(() => { FLOW.ahead = setTimeout(step, 250); }); };
+  const step = () => { if (v !== FLOW.ver || !ahead.length) return; if (P.size) { FLOW.ahead = setTimeout(step, 300); return; } peekBuild(ahead.shift(), true).catch(() => {}).finally(() => { FLOW.ahead = setTimeout(step, 250); }); };
   FLOW.ahead = setTimeout(step, 400);
+}
+/* the neighbouring page on screen made fully sharp once nothing moves: the pen is up and the view has stood still a moment */
+function peekSharpLater(v) {
+  clearTimeout(FLOW.sharpT);
+  FLOW.sharpT = setTimeout(async () => {
+    if (v !== FLOW.ver) return;
+    if (P.size || performance.now() - (S.lastT || 0) < 300) { peekSharpLater(v); return; }
+    for (const el of [$('#peekPrev'), $('#peekNext')]) {
+      const pid = el && !el.hidden && el.dataset.pid; if (!pid) continue;
+      /* only a neighbouring page that is actually on screen: one far off the glass is made sharp when it comes into view */
+      { const r = el.getBoundingClientRect(), vr = vp.getBoundingClientRect(); if (r.bottom < vr.top + 4 || r.top > vr.bottom - 4) continue; }
+      const pk = await peekBuild(pid, false).catch(() => null); if (!pk || v !== FLOW.ver || el.dataset.pid !== pid) return;
+      if (el.firstChild !== pk.nodes[0]) { el.innerHTML = ''; el.append(...pk.nodes); if (!pk.typeset) { pk.typeset = true; pk.lay.querySelectorAll('.item').forEach((x) => { try { typeset(x); } catch (e) { /* plain */ } }); } }
+      if (P.size) { peekSharpLater(v); return; }
+    }
+  }, 320);
 }
 const renderPeeksLater = debounce(() => { renderPeeks().catch(() => {}); }, 120);
 /* move onto the neighbouring page without the view jumping: its position on screen stays where it was */
@@ -3505,7 +3529,7 @@ function nbsGo(f) {
     window.addEventListener('resize', () => nbsSync());
   }
 }
-function applyT() { if (FLOW.on) flowCheckLater(); const zn = document.getElementById('zNum'); if (zn) { const pc = Math.round(S.zoom * 100); zn.classList.toggle('off', Math.abs(pc - 100) > 1); zn.title = pc === 100 ? 'พอดีหน้า' : 'ตอนนี้ ' + pc + '% แตะเพื่อกลับมาพอดีหน้า'; zn.setAttribute('aria-label', zn.title); } { const hk = (1 / ((S.base || 1) * (S.zoom || 1))).toFixed(3); if (hk !== S.hk) { S.hk = hk; itemsEl.style.setProperty('--hk', hk); } } /* set only when the zoom changed: setting it restyled every box on the page each frame */ wrapEl.style.willChange = 'transform'; { const dpr = window.devicePixelRatio || 1, rx = Math.round(S.tx * dpr) / dpr, ry = Math.round((S.ty + rubber(S.pull || 0)) * dpr) / dpr; wrapEl.style.transform = 'translate(' + rx + 'px,' + ry + 'px) scale(' + S.zoom + ')'; } if ((S.watchers || liveDisplays()) && !S.present) emitView(); /* throttled inside, with a last update when the movement stops: the audience screen follows while the teacher is still scrolling, not only after */ sharpLater(); if (NBS.on) nbsSync(); }
+function applyT() { if (FLOW.on) flowCheckLater(); const zn = document.getElementById('zNum'); if (zn) { const pc = Math.round(S.zoom * 100); zn.classList.toggle('off', Math.abs(pc - 100) > 1); zn.title = pc === 100 ? 'พอดีหน้า' : 'ตอนนี้ ' + pc + '% แตะเพื่อกลับมาพอดีหน้า'; zn.setAttribute('aria-label', zn.title); } { const hk = (1 / ((S.base || 1) * (S.zoom || 1))).toFixed(3); if (hk !== S.hk) { S.hk = hk; itemsEl.style.setProperty('--hk', hk); } } /* set only when the zoom changed: setting it restyled every box on the page each frame */ wrapEl.style.willChange = 'transform'; S.lastT = performance.now(); { const dpr = window.devicePixelRatio || 1, rx = Math.round(S.tx * dpr) / dpr, ry = Math.round((S.ty + rubber(S.pull || 0)) * dpr) / dpr; wrapEl.style.transform = 'translate(' + rx + 'px,' + ry + 'px) scale(' + S.zoom + ')'; } if ((S.watchers || liveDisplays()) && !S.present) emitView(); /* throttled inside, with a last update when the movement stops: the audience screen follows while the teacher is still scrolling, not only after */ sharpLater(); if (NBS.on) nbsSync(); }
 function topY() { return S.tv ? 12 : 72; }
 function bounds() {
   const vw = vp.clientWidth, vh = vp.clientHeight;
@@ -3663,7 +3687,7 @@ function drawSharp() {
   if (!penBusy()) liveFit(true, (x0 - pr.left) / (pr.width / W), (y0 - pr.top) / (pr.height / H), (x1 - x0) / (pr.width / W), (y1 - y0) / (pr.height / H), k, (x0 - pr.left) / sc, (y0 - pr.top) / sc, (x1 - x0) / sc, (y1 - y0) / sc);
 }
 function redrawLiveBoxes() { try { if (typeof SCN !== 'undefined') for (const [id, r] of SCN) { const it = findItem(id); if (it && r.cv && r.cv.isConnected) scRender(it, r); } for (const el of itemsEl.querySelectorAll('.item.sim')) { const it = findItem(el.dataset.id), cv = el.querySelector('canvas.simcv:not(.scncv)'); if (it && it.type === 'sim' && cv) simRender(it, cv, el.querySelector('.sro')); } } catch (e) { /* not ready yet */ } }
-function sharpLater() { clearTimeout(sharpT); sharpT = setTimeout(() => { if (!P.size) wrapEl.style.willChange = 'auto'; drawSharp(); redrawLiveBoxes(); }, 160); }
+function sharpLater() { clearTimeout(sharpT); sharpT = setTimeout(() => { if (!P.size) wrapEl.style.willChange = 'auto'; drawSharp(); redrawLiveBoxes(); if (flowWanted() && !S.present && !S.show) peekSharpLater(FLOW.ver); }, 160); }
 /* the paper's lines as a vector picture behind the page: it never vanishes while scrolling fast and costs no canvas
    memory (a page-size paper canvas was one of the canvases an iPad drops when memory runs short, leaving the page blank);
    the textured papers (chalkboard, art paper) stay on the canvas */
@@ -5080,6 +5104,9 @@ function beginTool(pt, e) {
 function addPoint(pt, x, y, p) {
   const a = pt.stroke.p, n = a.length;
   if (n >= 3) { const dx = x - a[n - 3] / 10, dy = y - a[n - 2] / 10; if (dx * dx + dy * dy < 0.6) return; }
+  /* the pencil's pressure jitters from one reading to the next (240 a second): followed raw, the line's edge wobbles in tiny
+     steps; eased a little it swells and thins smoothly, as ink from a real nib does. Finger and mouse (no pressure) are unchanged */
+  if (p !== 50 || pt.ps != null) { pt.ps = pt.ps == null ? p : pt.ps + (p - pt.ps) * 0.35; p = Math.round(pt.ps); }
   a.push(Math.round(x * 10), Math.round(y * 10), p);
   drawLiveSegment(pt);
   if (S.watchers || S.peersAny || (LIVE.role === 'teacher' && LIVE.ready)) emitInkDelta(pt);
@@ -6176,6 +6203,10 @@ function openNotebook(nid, pidWanted) {
   if (S.nid === nid) return;
   S.nid = nid; store_ls.set('tp-last-nb', nid);
   addTab(nid);
+  if (LIVE.role === 'teacher' && LIVE.ready && LIVE.nbId) {
+    if (nid !== LIVE.nbId) { const nb = nbOf(LIVE.nbId); toast('ผู้เรียนยังเห็นสมุด ' + ((nb && nb.title) || 'ที่เปิดห้องไว้') + ' เล่มนี้ไม่ถูกส่งไปห้องเรียน', 3200); }
+    else { LIVE.forceFull = true; setTimeout(() => { if (S.nid === LIVE.nbId) liveSendPage(); }, 900); }
+  }
   if (S.unsub.nb) S.unsub.nb();
   S.pid = null;
   S.unsub.nb = S.store.watchDoc('notebooks/' + nid, (doc) => {
@@ -19979,8 +20010,13 @@ function liveSendDiff(tpid, add, del) {
   flush();
   const m = V2.sent.get(tpid) || new Map(); for (const s of add) m.set(s.id, stKey(s)); for (const id of del) m.delete(id); V2.sent.set(tpid, m);
 }
+/* the live room belongs to one notebook: while the teacher has another notebook open, nothing of it goes to the learners
+   (its pages, writing, laser or view); they keep the shared notebook, and get it again the moment the teacher returns to it */
+const LIVE_CONTENT = new Set(['page', 'strokes', 'ink', 'laser', 'sadd', 'sdel', 'dig', 'view']);
+const liveOffNb = () => LIVE.role === 'teacher' && !!LIVE.nbId && S.nid !== LIVE.nbId;
 function liveSend(ev, data) {
   if (!LIVE.ch || !LIVE.ready) return;
+  if (LIVE_CONTENT.has(ev) && liveOffNb()) return;
   const ch = LIVE.ch, teacher = LIVE.role === 'teacher';
   const mine = !teacher && (ev === 'ans' || ev === 'join') ? RK.mine : null, key = teacher ? (RK.code === LIVE.code ? RK.priv : null) : mine && mine.priv;
   if (!key) { RK.q = RK.q.then(() => { ch.send({ type: 'broadcast', event: ev, payload: data }); }).catch(() => {}); return; } /* same queue, so messages keep their order */
@@ -23556,7 +23592,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793758659';
+const BUILD = '1793761137';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
