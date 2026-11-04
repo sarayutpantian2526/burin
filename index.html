@@ -4385,6 +4385,9 @@ async function diaryAsk() {
   const keepDots = () => { if (spec.cancelled || DIARY.spec !== spec) return; if (!dots.isConnected) itemsEl.appendChild(dots); setTimeout(keepDots, 300); }; setTimeout(keepDots, 250);
   try {
     const log = DIARY.log[pid] || (DIARY.log[pid] = (S.page && S.page.diaryLog) || []);
+    /* the talk carries on across pages: a page with only a few lines yet also sees how the talk went on the page before */
+    let prevLog = [];
+    if (log.length < 6) { try { const pages = (S.nb && S.nb.pages) || [], pp = pages[pages.indexOf(pid) - 1]; if (pp) prevLog = DIARY.log[pp] || ((await S.store.get('pages/' + pp).catch(() => null)) || {}).diaryLog || []; } catch (e) { prevLog = []; } }
     const subj = subjName(curSubj()[0], S.nb) || 'ทั่วไป';
     const V = diaryVoice(), VP = DIARY_VOICES.find((x) => x[0] === V.p) || DIARY_VOICES[0];
     const prompt = 'You are the notebook in Burin, a Thai teaching notebook that writes back by hand, a little like the diary in the Harry Potter story but kind, wise and safe. The person writes or draws to you by hand; the image shows what they just put on the page: words, a formula, a drawing, a diagram, a doodle, or a mix.\n'
@@ -4395,8 +4398,9 @@ async function diaryAsk() {
       + 'Reply in exactly this format:\n@@READ\n(what they wrote; for a drawing, a short description in brackets such as [รูปแมวนั่ง])\n@@REPLY\n(your handwritten answer)\n@@DRAW\n(drawing commands, or leave this section out)' + DIARY_CALM
 
       /* everything above stays the same from one reply to the next, so the AI service can reuse it and answer sooner; what changes comes last */
-      + '\nThe notebook subject is ' + subj + '.\n'
+      + '\nThe notebook is labelled ' + subj + ', but that is only a hint: follow what the conversation itself is about. When the writer chats about something else (their day, a game, a feeling, another subject), talk about that with them and do not steer back to ' + subj + ' or to a lesson unless they do. The conversation below matters more than the label.\n'
       + 'How to reply (chosen by the writer): ' + VP[3] + (V.c ? ' The writer also asked: "' + V.c.slice(0, 300) + '". Follow that above everything else, as long as it is safe and kind.' : '') + '\n'
+      + (prevLog.length ? 'Earlier, on the page before (oldest first):\n' + prevLog.slice(-Math.max(0, 8 - log.length)).map((m) => (m[0] === 'u' ? 'Writer: ' : 'Notebook: ') + m[1]).join('\n') + '\n' : '')
       + (log.length ? 'Conversation so far on this page (oldest first):\n' + log.slice(-10).map((m) => (m[0] === 'u' ? 'Writer: ' : 'Notebook: ') + m[1]).join('\n') + '\n' : '');
     /* the answer is read as it arrives: once the words are complete (the drawing section has begun) the notebook starts
        writing them, while the drawing commands are still coming; the drawing follows when they are all in */
@@ -23922,7 +23926,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793776273';
+const BUILD = '1793776391';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
