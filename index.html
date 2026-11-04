@@ -3793,7 +3793,15 @@ let itemsRast = 0;
    letters are painted with K times more pixels; the boxes stay exactly where they are. Other browsers paint text sharp anyway */
 const ITEMS_HIDPI = /iPad|iPhone|Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1;
 function itemsXf() { const K = S.itemsK || 1; for (const el of [itemsEl, itemsBgEl]) { el.style.zoom = K === 1 ? '' : String(K); el.style.transform = 'scale(' + S.base / K + ')'; } }
-function itemsRepaint() { if (!(ITEMS_HIDPI || window.__hidpiTest) || editing) return; const K = S.zoom > 1.15 ? Math.min(4, Math.round(S.zoom * 2) / 2) : 1; if (K === (S.itemsK || 1)) return; S.itemsK = K; itemsXf(); }
+/* the larger layout is checked on the spot: a test box and a test letter must keep their size on screen; if this browser
+   handles it differently (a letter came out smaller on one iPad), the old way is used from then on */
+function itemsProbe() { const d = document.createElement('div'); d.style.cssText = 'position:absolute;left:0;top:0;width:100px;font-size:100px;line-height:1;visibility:hidden;pointer-events:none;white-space:nowrap'; const sp = document.createElement('span'); sp.textContent = 'HH'; d.appendChild(sp); itemsEl.appendChild(d); const a = d.getBoundingClientRect(), b = sp.getBoundingClientRect(); d.remove(); return [a.width, b.width, b.height]; }
+function itemsRepaint() {
+  if (!(ITEMS_HIDPI || window.__hidpiTest) || editing || store_ls.get('tp-hidpi-bad') === '1') return;
+  const K = S.zoom > 1.15 ? Math.min(4, Math.round(S.zoom * 2) / 2) : 1; if (K === (S.itemsK || 1)) return;
+  const before = itemsProbe(); S.itemsK = K; itemsXf(); const after = itemsProbe();
+  if (before.some((v, i) => !(v > 0) || Math.abs(after[i] / v - 1) > 0.03)) { S.itemsK = 1; itemsXf(); store_ls.set('tp-hidpi-bad', '1'); }
+}
 function sharpLater() { clearTimeout(sharpT); sharpT = setTimeout(() => { wrapEl.style.willChange = 'auto'; itemsRepaint(); /* standing still: the page is painted afresh at its real size (Safari keeps a moving layer at the size it had) */ drawSharp(); redrawLiveBoxes(); if (flowWanted() && !S.present && !S.show) peekSharpLater(FLOW.ver); }, 160); }
 /* the paper's lines as a vector picture behind the page: it never vanishes while scrolling fast and costs no canvas
    memory (a page-size paper canvas was one of the canvases an iPad drops when memory runs short, leaving the page blank);
@@ -24017,7 +24025,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793778230';
+const BUILD = '1793779133';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
