@@ -8082,6 +8082,8 @@ async function drawThumb(pid, cv) {
   if (TH.key.get(cv) === key && pid !== S.pid) return;
   TH.key.set(cv, key);
   const [pw, ph] = pageDims(page), keep = [W, H];
+  /* a landscape page gets a landscape thumbnail (the frame was always the shape of a tall page) */
+  { const fr = cv.parentNode; if (fr && fr.classList && fr.classList.contains('pc')) { const ar = pw + ' / ' + ph; if (fr.style.aspectRatio !== ar) fr.style.aspectRatio = ar; } }
   const dpr = Math.min(2, window.devicePixelRatio || 1), w = Math.round(cv.clientWidth * dpr) || 200, h = Math.round(w * ph / pw);
   cv.width = w; cv.height = h;
   const c = cv.getContext('2d'), k = w / pw;
@@ -23633,7 +23635,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793766367';
+const BUILD = '1793768138';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
