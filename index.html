@@ -3355,6 +3355,13 @@ const widthsLater = debounce(() => { if (typeof renderWidths === 'function') ren
    simply carries on into the next one, and that page becomes the one you write on ----- */
 const FLOW = { gap: 28, on: store_ls.get('tp-flow2') !== '0' /* continuous scrolling is the default (a choice made with the switch is kept) */, ver: 0, dims: { prev: null, next: null }, busy: false };
 const PEEKS = new Map();
+/* a page picture dropped from the cache gives its memory back at once (an iPad has a fixed budget for all canvases together;
+   when it runs out, new canvases stay empty and zooming in is no longer sharp) */
+const PEEK_FREE = [];
+function peekFree(pk) { if (!pk || !pk.nodes) return; for (const n of pk.nodes) if (n && n.tagName === 'CANVAS') PEEK_FREE.push(n); peekFreeLater(); }
+/* given back while nothing moves, one at a time: releasing a big canvas in the middle of a scroll costs a frame */
+function peekFreeLater() { clearTimeout(PEEK_FREE.t); PEEK_FREE.t = setTimeout(() => { if (P.size || performance.now() - (S.lastT || 0) < 400) { peekFreeLater(); return; } const n = PEEK_FREE.shift(); if (n && !n.isConnected && ![...PEEKS.values()].some((pk) => pk.nodes && pk.nodes.includes(n))) { n.width = 0; n.height = 0; } if (PEEK_FREE.length) peekFreeLater(); }, 500); }
+function peekPut(pid, out) { const old = PEEKS.get(pid); PEEKS.delete(pid); PEEKS.set(pid, out); if (old && old !== out) peekFree(old); while (PEEKS.size > 4) { const k = PEEKS.keys().next().value; const o = PEEKS.get(k); PEEKS.delete(k); peekFree(o); } }
 /* the continuous view: the audience screen follows what the teacher's screen uses, not its own setting */
 function flowWanted() { return S.present || S.show ? !!PV.flow : FLOW.on; }
 function flowNb() { const pages = (S.nb && S.nb.pages) || [], i = pages.indexOf(S.pid); return { prev: i > 0 ? pages[i - 1] : null, next: i >= 0 && i < pages.length - 1 ? pages[i + 1] : null }; }
@@ -3379,8 +3386,7 @@ function peekFromScreen() {
     const lay = itemsEl.cloneNode(true); lay.removeAttribute('id'); lay.className = 'fitems'; lay.style.cssText = ''; lay.style.width = pw + 'px'; lay.style.height = ph + 'px'; lay.style.transform = 'scale(' + S.base + ')';
     lay.querySelectorAll('[id]').forEach((n) => n.removeAttribute('id')); lay.querySelectorAll('.dsvg, .diarydots').forEach((n) => n.remove());
     const lb = document.createElement('div'); lb.className = 'plabel'; lb.textContent = 'หน้า ' + ((S.nb.pages || []).indexOf(pid) + 1);
-    PEEKS.delete(pid); PEEKS.set(pid, { sig, dims: [pw, ph], nodes: [cv, lay, lb], lay, typeset: true });
-    while (PEEKS.size > 4) PEEKS.delete(PEEKS.keys().next().value);
+    peekPut(pid, { sig, dims: [pw, ph], nodes: [cv, lay, lb], lay, typeset: true });
   } catch (e) { /* drawn the usual way */ }
 }
 async function drawIntoSliced(c, list) {
@@ -3412,7 +3418,7 @@ async function peekBuild(pid, lo) {
   for (const it of (page && page.items) || []) { if ((it.teacher && isStudentSide()) || isBgItem(it)) continue; try { lay.appendChild(buildItemEl(it, true)); } catch (e) { /* skip */ } }
   const lb = document.createElement('div'); lb.className = 'plabel'; lb.textContent = 'หน้า ' + ((S.nb.pages || []).indexOf(pid) + 1);
   const out = { sig, dims: [pw, ph], nodes: bgs.length ? [cv, bgLay, ink, lay, lb] : [cv, lay, lb], lay, typeset: false, split: !!bgs.length };
-  PEEKS.set(pid, out); while (PEEKS.size > 4) PEEKS.delete(PEEKS.keys().next().value);
+  peekPut(pid, out);
   return out;
 }
 async function renderPeeks() {
@@ -3672,10 +3678,11 @@ function drawSharp() {
   cSharp.style.left = (x0 - pr.left) / sc + 'px'; cSharp.style.top = (y0 - pr.top) / sc + 'px';
   cSharp.style.width = (x1 - x0) / sc + 'px'; cSharp.style.height = (y1 - y0) / sc + 'px';
   /* within the canvas memory an iPad allows */
-  const dq = Math.min(dpr, Math.sqrt(7e6 / Math.max(1, (x1 - x0) * (y1 - y0))));
+  let dq = Math.min(dpr, Math.sqrt(7e6 / Math.max(1, (x1 - x0) * (y1 - y0))) * (S.sharpCut || 1));
   const bw = Math.round((x1 - x0) * dq), bh = Math.round((y1 - y0) * dq);
   if (cSharp.width !== bw || cSharp.height !== bh) { cSharp.width = bw; cSharp.height = bh; }
-  const c = cSharp.getContext('2d'), k = pr.width / W * dq; if (!c) { cSharp.hidden = true; return; }
+  /* out of canvas memory: try again a little less sharp rather than not sharp at all */
+  const c = cSharp.getContext('2d'), k = pr.width / W * dq; if (!c || cSharp.width !== bw) { cSharp.hidden = true; if ((S.sharpCut || 1) > 0.5) { S.sharpCut = (S.sharpCut || 1) * 0.75; sharpLater(); } return; }
   c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, bw, bh);
   c.setTransform(k, 0, 0, k, -(x0 - pr.left) * dq, -(y0 - pr.top) * dq);
   c.fillStyle = '#FFFFFF'; c.fillRect(0, 0, W, H); paper(c, (S.page && S.page.paper) || 'grid');
@@ -3687,7 +3694,7 @@ function drawSharp() {
   if (!penBusy()) liveFit(true, (x0 - pr.left) / (pr.width / W), (y0 - pr.top) / (pr.height / H), (x1 - x0) / (pr.width / W), (y1 - y0) / (pr.height / H), k, (x0 - pr.left) / sc, (y0 - pr.top) / sc, (x1 - x0) / sc, (y1 - y0) / sc);
 }
 function redrawLiveBoxes() { try { if (typeof SCN !== 'undefined') for (const [id, r] of SCN) { const it = findItem(id); if (it && r.cv && r.cv.isConnected) scRender(it, r); } for (const el of itemsEl.querySelectorAll('.item.sim')) { const it = findItem(el.dataset.id), cv = el.querySelector('canvas.simcv:not(.scncv)'); if (it && it.type === 'sim' && cv) simRender(it, cv, el.querySelector('.sro')); } } catch (e) { /* not ready yet */ } }
-function sharpLater() { clearTimeout(sharpT); sharpT = setTimeout(() => { if (!P.size) wrapEl.style.willChange = 'auto'; drawSharp(); redrawLiveBoxes(); if (flowWanted() && !S.present && !S.show) peekSharpLater(FLOW.ver); }, 160); }
+function sharpLater() { clearTimeout(sharpT); sharpT = setTimeout(() => { wrapEl.style.willChange = 'auto'; /* standing still: the page is painted afresh at its real size (Safari keeps a moving layer at the size it had) */ drawSharp(); redrawLiveBoxes(); if (flowWanted() && !S.present && !S.show) peekSharpLater(FLOW.ver); }, 160); }
 /* the paper's lines as a vector picture behind the page: it never vanishes while scrolling fast and costs no canvas
    memory (a page-size paper canvas was one of the canvases an iPad drops when memory runs short, leaving the page blank);
    the textured papers (chalkboard, art paper) stay on the canvas */
@@ -3863,21 +3870,55 @@ function drawStroke(c, s) {
     c.stroke(); c.restore(); return;
   }
   if (n === 1) { c.beginPath(); c.arc(p[0] / 10, p[1] / 10, penW(s, p[2]) / 2, 0, 6.2832); c.fill(); return; }
-  /* runs of segments of the same width are drawn as one path (one stroke call instead of one per segment: a page of
-     handwriting draws many times faster); a path with round joins covers exactly what the separate round-capped
-     segments covered, so the ink looks the same. Widths are taken to 1/32 of a pixel to form the runs. */
-  let x0 = p[0] / 10, y0 = p[1] / 10, mx0 = x0, my0 = y0, cw = -1;
-  for (let i = 1; i < n; i++) {
-    const x1 = p[i * 3] / 10, y1 = p[i * 3 + 1] / 10;
-    const mx1 = (x0 + x1) / 2, my1 = (y0 + y1) / 2;
-    const w = Math.round(penW(s, (p[(i - 1) * 3 + 2] + p[i * 3 + 2]) / 2) * 32) / 32;
-    if (w !== cw) { if (cw >= 0) c.stroke(); c.lineWidth = w; cw = w; c.beginPath(); c.moveTo(mx0, my0); }
-    c.quadraticCurveTo(x0, y0, mx1, my1);
-    mx0 = mx1; my0 = my1; x0 = x1; y0 = y1;
+  /* the line is filled as one smooth shape, the way GoodNotes draws ink: a round nib swept along the smoothed path, its
+     size easing with the pressure. Drawn as a stroke with steps of width, the edge showed small bumps where the width
+     changed, most visibly on thick lines. Same path, same thickness as before, one fill per line */
+  c.beginPath(); ballPiece(c, s, 0, n, true); c.fill();
+}
+/* the radius of the nib after point i (the width between point i-1 and point i, as the line has always been drawn) */
+function ballR(s, i) { const p = s.p; return penW(s, i > 0 ? (p[(i - 1) * 3 + 2] + p[i * 3 + 2]) / 2 : p[2]) / 2; }
+/* add to the current path the line from point i0 to point i1 (exclusive): the curve through the midpoints of the points,
+   each point its control, sampled finely; with end = true the line runs on to the last point itself */
+function ballPiece(c, s, i0, i1, end) { ballOutline(c, ballSamples(s, i0, i1, end)); }
+function ballSamples(s, i0, i1, end) {
+  const p = s.p, n = Math.floor(p.length / 3), out = [];
+  let ax = i0 > 0 ? (p[(i0 - 1) * 3] + p[i0 * 3]) / 20 : p[0] / 10, ay = i0 > 0 ? (p[(i0 - 1) * 3 + 1] + p[i0 * 3 + 1]) / 20 : p[1] / 10, ar = ballR(s, Math.max(1, i0));
+  out.push([ax, ay, ar]);
+  const seg = (cx, cy, bx, by, br) => {
+    const len = Math.hypot(cx - ax, cy - ay) + Math.hypot(bx - cx, by - cy), step = clamp(Math.min(ar, br) * 0.8, 0.8, 3), k = Math.max(1, Math.min(40, Math.ceil(len / step)));
+    for (let j = 1; j <= k; j++) { const t = j / k, u = 1 - t; out.push([u * u * ax + 2 * t * u * cx + t * t * bx, u * u * ay + 2 * t * u * cy + t * t * by, ar + (br - ar) * t]); }
+    ax = bx; ay = by; ar = br;
+  };
+  for (let i = Math.max(1, i0); i < Math.min(i1, n); i++) {
+    const cx = p[(i - 1) * 3] / 10, cy = p[(i - 1) * 3 + 1] / 10;
+    seg(cx, cy, (cx + p[i * 3] / 10) / 2, (cy + p[i * 3 + 1] / 10) / 2, ballR(s, i));
   }
-  const wl = Math.round(penW(s, p[(n - 1) * 3 + 2]) * 32) / 32;
-  if (wl !== cw) { if (cw >= 0) c.stroke(); c.lineWidth = wl; c.beginPath(); c.moveTo(mx0, my0); }
-  c.lineTo(x0, y0); c.stroke();
+  if (end && n > 1) { const lx = p[(n - 1) * 3] / 10, ly = p[(n - 1) * 3 + 1] / 10; seg((ax + lx) / 2, (ay + ly) / 2, lx, ly, ballR(s, n - 1)); }
+  return out;
+}
+/* one outline around the samples: one side forward, a round end, the other side back, a round start, all wound the same
+   way as a full circle; where the line turns tighter than its own width (or doubles back) a round nib fills the corner */
+function ballOutline(c, q) {
+  /* points closer than a fraction of a pixel add nothing but corners */
+  const v = [q[0]]; for (let i = 1; i < q.length; i++) { const l = v[v.length - 1]; if (Math.hypot(q[i][0] - l[0], q[i][1] - l[1]) > 0.25 || i === q.length - 1) v.push(q[i]); }
+  const m = v.length;
+  if (m < 2 || (m === 2 && Math.hypot(v[1][0] - v[0][0], v[1][1] - v[0][1]) < 0.25)) { const r = Math.max(v[0][2], v[m - 1][2]); c.moveTo(v[0][0] + r, v[0][1]); c.arc(v[0][0], v[0][1], r, 0, 6.2832); return; }
+  const d = []; for (let i = 0; i < m - 1; i++) { const dx = v[i + 1][0] - v[i][0], dy = v[i + 1][1] - v[i][1], L = Math.hypot(dx, dy) || 1; d.push([dx / L, dy / L, L]); }
+  const nx = [], ny = [], nibs = [];
+  for (let i = 0; i < m; i++) {
+    const a = d[Math.max(0, i - 1)], b = d[Math.min(m - 2, i)];
+    let ux = a[0] + b[0], uy = a[1] + b[1]; const l = Math.hypot(ux, uy);
+    if (l < 1e-6) { ux = b[0]; uy = b[1]; } else { ux /= l; uy /= l; }
+    nx.push(uy); ny.push(-ux);
+    if (i > 0 && i < m - 1) { const dot = a[0] * b[0] + a[1] * b[1], turn = Math.acos(clamp(dot, -1, 1)); if (dot < 0.2 || turn * v[i][2] > Math.min(a[2], b[2]) * 0.9) nibs.push(i); }
+  }
+  c.moveTo(v[0][0] + nx[0] * v[0][2], v[0][1] + ny[0] * v[0][2]);
+  for (let i = 1; i < m; i++) c.lineTo(v[i][0] + nx[i] * v[i][2], v[i][1] + ny[i] * v[i][2]);
+  const e = m - 1, ae = Math.atan2(ny[e], nx[e]); c.arc(v[e][0], v[e][1], v[e][2], ae, ae + Math.PI);
+  for (let i = m - 1; i >= 0; i--) c.lineTo(v[i][0] - nx[i] * v[i][2], v[i][1] - ny[i] * v[i][2]);
+  const a0 = Math.atan2(-ny[0], -nx[0]); c.arc(v[0][0], v[0][1], v[0][2], a0, a0 + Math.PI);
+  c.closePath();
+  for (const i of nibs) { c.moveTo(v[i][0] + v[i][2], v[i][1]); c.arc(v[i][0], v[i][1], v[i][2], 0, 6.2832); }
 }
 /* lines only appended to the other layers (none changed, removed or a highlighter, which sits under the ink): the new ones */
 function linesAdded(before, after) {
@@ -5107,6 +5148,9 @@ function addPoint(pt, x, y, p) {
   /* the pencil's pressure jitters from one reading to the next (240 a second): followed raw, the line's edge wobbles in tiny
      steps; eased a little it swells and thins smoothly, as ink from a real nib does. Finger and mouse (no pressure) are unchanged */
   if (p !== 50 || pt.ps != null) { pt.ps = pt.ps == null ? p : pt.ps + (p - pt.ps) * 0.35; p = Math.round(pt.ps); }
+  /* the touch-down reading is not a real pressure on every iPad (often a fixed middle value): the line starts with the first
+     real reading instead, so it never begins with a blob */
+  if (n === 3 && pt.stroke.k !== 'h') { a[2] = p; pt.ps = p; }
   a.push(Math.round(x * 10), Math.round(y * 10), p);
   drawLiveSegment(pt);
   if (S.watchers || S.peersAny || (LIVE.role === 'teacher' && LIVE.ready)) emitInkDelta(pt);
@@ -5118,11 +5162,8 @@ function drawLiveSegment(pt) {
   const p = s.p, n = p.length / 3;
   c.strokeStyle = s.c; c.fillStyle = s.c; c.lineCap = 'round'; c.lineJoin = 'round';
   if (n === 1) { pt.live = { x0: p[0] / 10, y0: p[1] / 10, mx0: p[0] / 10, my0: p[1] / 10 }; c.beginPath(); c.arc(pt.live.x0, pt.live.y0, penW(s, p[2]) / 2, 0, 6.2832); c.fill(); return; }
-  const L = pt.live, x1 = p[(n - 1) * 3] / 10, y1 = p[(n - 1) * 3 + 1] / 10;
-  const mx1 = (L.x0 + x1) / 2, my1 = (L.y0 + y1) / 2;
-  c.lineWidth = penW(s, (p[(n - 2) * 3 + 2] + p[(n - 1) * 3 + 2]) / 2);
-  c.beginPath(); c.moveTo(L.mx0, L.my0); c.quadraticCurveTo(L.x0, L.y0, mx1, my1); c.stroke();
-  L.mx0 = mx1; L.my0 = my1; L.x0 = x1; L.y0 = y1;
+  /* the newest piece of the line, drawn exactly as the finished line will be (no change of look when the pen lifts) */
+  c.beginPath(); ballPiece(c, s, n - 1, n, false); c.fill();
 }
 function onMove(e) {
   const pt = P.get(e.pointerId);
@@ -23592,7 +23633,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793761137';
+const BUILD = '1793766367';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
