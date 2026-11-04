@@ -3669,7 +3669,11 @@ var cSharp = document.getElementById('cSharp'), sharpT = 0;
 function drawSharp() {
   if (!cSharp) return;
   const dpr = Math.min(window.devicePixelRatio || 1, 3);
-  const need = W * S.base * S.zoom * dpr > W * (S.res || 1) * 1.15;
+  const vecs = ((S.page && S.page.items) || []).filter((it) => isBgItem(it) && it.pdf && it.pdf.a);
+  /* a page from a PDF is drawn from the PDF itself whenever its stored picture is coarser than the screen (zoomed in, or a wide
+     slide on an iPad in landscape), as sharp as text and lines in GoodNotes */
+  const pdfNeed = vecs.some((it) => { const im = itemsBgEl.querySelector('[data-id="' + it.id + '"] img'); return im && im.naturalWidth && (it.w || 1000) * S.base * S.zoom * dpr > im.naturalWidth * 1.1; });
+  const need = W * S.base * S.zoom * dpr > W * (S.res || 1) * 1.15 || pdfNeed;
   if (!need || !S.page) { if (!cSharp.hidden) { cSharp.hidden = true; cSharp.width = cSharp.height = 1; } if (!penBusy()) liveFit(false); return; }
   const pr = pageEl.getBoundingClientRect(), vr = vp.getBoundingClientRect();
   const x0 = Math.max(pr.left, vr.left), y0 = Math.max(pr.top, vr.top), x1 = Math.min(pr.right, vr.right), y1 = Math.min(pr.bottom, vr.bottom);
@@ -3684,16 +3688,58 @@ function drawSharp() {
   /* out of canvas memory: try again a little less sharp rather than not sharp at all */
   const c = cSharp.getContext('2d'), k = pr.width / W * dq; if (!c || cSharp.width !== bw) { cSharp.hidden = true; if ((S.sharpCut || 1) > 0.5) { S.sharpCut = (S.sharpCut || 1) * 0.75; sharpLater(); } return; }
   c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, bw, bh);
-  c.setTransform(k, 0, 0, k, -(x0 - pr.left) * dq, -(y0 - pr.top) * dq);
+  c.setTransform(k, 0, 0, k, -(x0 - pr.left) * dq, -(y0 - pr.top) * dq); S.sharpXf = { k, ox: -(x0 - pr.left) * dq, oy: -(y0 - pr.top) * dq, pid: S.pid, w: bw };
   c.fillStyle = '#FFFFFF'; c.fillRect(0, 0, W, H); paper(c, (S.page && S.page.paper) || 'grid');
   /* the page picture (imported PDF) between the paper and the ink here too, or zooming in would hide it */
   for (const it of ((S.page && S.page.items) || []).filter(isBgItem)) { const im = itemsBgEl.querySelector('[data-id="' + it.id + '"] img'); if (im && im.complete && im.naturalWidth) { try { c.drawImage(im, it.x, it.y, it.w || 600, (it.w || 600) * (it.ar || 1.414)); } catch (e) { /* skip */ } } }
+  const ox = -(x0 - pr.left) * dq, oy = -(y0 - pr.top) * dq, vkey = [S.pid, bw, bh, k.toFixed(4), Math.round(ox), Math.round(oy)].join('|');
+  if (vecs.length) { if (PDFV.last && PDFV.last.key === vkey) { c.save(); c.setTransform(1, 0, 0, 1, 0, 0); c.drawImage(PDFV.last.cv, 0, 0); c.restore(); } else pdfVecLater(vecs, vkey, bw, bh, k, ox, oy); }
   drawInto(c, allStrokes(), S.sel && !S.sel.quiet ? new Set(S.sel.strokes.map((r) => r.id)) : null);
   cSharp.hidden = false;
   /* the live canvas follows the same visible region (not while a pen is down: resizing would wipe the stroke) */
   if (!penBusy()) liveFit(true, (x0 - pr.left) / (pr.width / W), (y0 - pr.top) / (pr.height / H), (x1 - x0) / (pr.width / W), (y1 - y0) / (pr.height / H), k, (x0 - pr.left) / sc, (y0 - pr.top) / sc, (x1 - x0) / sc, (y1 - y0) / sc);
 }
+/* ---------- PDF pages drawn from the PDF itself (the stored picture is only for overviews and slow moments) ---------- */
+const PDFV = { docs: new Map(), last: null, task: null, tok: 0 };
+async function pdfVecDoc(asset) {
+  if (PDFV.docs.has(asset)) { const d = PDFV.docs.get(asset); PDFV.docs.delete(asset); PDFV.docs.set(asset, d); return d; }
+  const pr = (async () => {
+    await loadLib('pdfjs'); window.pdfjsLib.GlobalWorkerOptions.workerSrc = LIBS.pdfw;
+    const b = await getAssetBlob(asset); if (!b) return null;
+    return window.pdfjsLib.getDocument({ data: await b.arrayBuffer() }).promise;
+  })().catch(() => null);
+  PDFV.docs.set(asset, pr);
+  while (PDFV.docs.size > 2) { const k0 = PDFV.docs.keys().next().value, old = PDFV.docs.get(k0); PDFV.docs.delete(k0); Promise.resolve(old).then((d) => { try { if (d) d.destroy(); } catch (e) { /* gone */ } }); }
+  const d = await pr; if (!d) PDFV.docs.delete(asset); return d;
+}
+function pdfVecLater(vecs, vkey, bw, bh, k, ox, oy) {
+  const tok = ++PDFV.tok; if (PDFV.task) { try { PDFV.task.cancel(); } catch (e) { /* done */ } PDFV.task = null; }
+  setTimeout(async () => {
+    if (tok !== PDFV.tok || P.size) return;
+    try {
+      const cv = document.createElement('canvas'); cv.width = bw; cv.height = bh; const c = cv.getContext('2d'); if (!c) return;
+      for (const it of vecs) {
+        const doc = await pdfVecDoc(it.pdf.a); if (!doc || tok !== PDFV.tok) return;
+        const pg = await doc.getPage(it.pdf.p), v1 = pg.getViewport({ scale: 1 }), iw = it.w || 1000, ih = iw * (it.ar || v1.height / v1.width), sc = iw / v1.width * k;
+        const px = it.x * k + ox, py = it.y * k + oy;
+        if (px > bw || py > bh || px + iw * k < 0 || py + ih * k < 0) continue;
+        c.fillStyle = '#FFFFFF'; c.fillRect(px, py, iw * k, ih * k);
+        PDFV.task = pg.render({ canvasContext: c, viewport: pg.getViewport({ scale: sc, offsetX: px, offsetY: py }), background: 'rgba(0,0,0,0)' });
+        await PDFV.task.promise; PDFV.task = null; if (tok !== PDFV.tok) return;
+      }
+      if (PDFV.last && PDFV.last.cv !== cv) { PDFV.last.cv.width = PDFV.last.cv.height = 0; }
+      PDFV.last = { key: vkey, cv };
+      if (!cSharp.hidden) drawSharp();
+    } catch (e) { PDFV.task = null; /* the stored picture stays */ }
+  }, 60);
+}
 function redrawLiveBoxes() { try { if (typeof SCN !== 'undefined') for (const [id, r] of SCN) { const it = findItem(id); if (it && r.cv && r.cv.isConnected) scRender(it, r); } for (const el of itemsEl.querySelectorAll('.item.sim')) { const it = findItem(el.dataset.id), cv = el.querySelector('canvas.simcv:not(.scncv)'); if (it && it.type === 'sim' && cv) simRender(it, cv, el.querySelector('.sro')); } } catch (e) { /* not ready yet */ } }
+/* new lines on top of the sharp layer straight away, without painting the whole visible page again */
+function sharpAdd(list) {
+  const X = S.sharpXf;
+  if (!cSharp || cSharp.hidden || !X || X.pid !== S.pid || X.w !== cSharp.width || list.some((st) => st.k === 'h')) { if (cSharp && (!cSharp.hidden || S.zoom > 1.2)) sharpLater(); return; }
+  try { const c = cSharp.getContext('2d'); c.setTransform(X.k, 0, 0, X.k, X.ox, X.oy); for (const st of list) drawStroke(c, st); } catch (e) { sharpLater(); }
+}
 function sharpLater() { clearTimeout(sharpT); sharpT = setTimeout(() => { wrapEl.style.willChange = 'auto'; /* standing still: the page is painted afresh at its real size (Safari keeps a moving layer at the size it had) */ drawSharp(); redrawLiveBoxes(); if (flowWanted() && !S.present && !S.show) peekSharpLater(FLOW.ver); }, 160); }
 /* the paper's lines as a vector picture behind the page: it never vanishes while scrolling fast and costs no canvas
    memory (a page-size paper canvas was one of the canvases an iPad drops when memory runs short, leaving the page blank);
@@ -5242,7 +5288,7 @@ function onUp(e) {
     /* a snapped shape keeps all its points: thinned to its corners, the smooth pen would round them off */
     if (!pt.snapped) inkSimplify(pt.stroke); S.mine.push(pt.stroke); clearLive();
     /* only the finished line is added to the page picture: redrawing the whole page after every stroke was the main delay */
-    if (pt.stroke.k === 'h' || S.sel) drawInk(); else { const c = cInk.getContext('2d'); c.setTransform(S.res, 0, 0, S.res, 0, 0); drawStroke(c, pt.stroke); S.inkSigDrawn = inkSig(); if (typeof refreshCurThumb === 'function') refreshCurThumb(); if (cSharp && (!cSharp.hidden || S.zoom > 1.2)) drawSharp(); }
+    if (pt.stroke.k === 'h' || S.sel) drawInk(); else { const c = cInk.getContext('2d'); c.setTransform(S.res, 0, 0, S.res, 0, 0); drawStroke(c, pt.stroke); S.inkSigDrawn = inkSig(); if (typeof refreshCurThumb === 'function') refreshCurThumb(); sharpAdd([pt.stroke]); }
     pushUndo({ t: 'add', stroke: pt.stroke }); saveMine(); diaryStroke(pt.stroke);
     if (S.convMode && S.autoConv && pt.stroke.k !== 'h') { S.autoQueue.add(pt.stroke.id); autoConvert(); }
   } else if (pt.mode === 'erase' && pt.snap && Object.keys(pt.snap).length) {
@@ -6347,7 +6393,7 @@ function openPage(pid) {
     /* another screen of this account (or the teacher) added lines: only those are painted, not the whole page again
        (a full repaint of a page of handwriting after every line made the audience screen freeze) */
     const added = upToDate && S.mine === mine0 && !S.sel ? linesAdded(others0, S.others) : null;
-    if (added) { const c = cInk.getContext('2d'); c.setTransform(S.res, 0, 0, S.res, 0, 0); for (const st of added) drawStroke(c, st); S.inkSigDrawn = isig; if (typeof refreshCurThumb === 'function') refreshCurThumb(); if (cSharp && (!cSharp.hidden || S.zoom > 1.2)) sharpLater(); return; }
+    if (added) { const c = cInk.getContext('2d'); c.setTransform(S.res, 0, 0, S.res, 0, 0); for (const st of added) drawStroke(c, st); S.inkSigDrawn = isig; if (typeof refreshCurThumb === 'function') refreshCurThumb(); sharpAdd(added); return; }
     if (!S.inkRaf) S.inkRaf = requestAnimationFrame(() => { S.inkRaf = 0; drawInkSoon(); });
   });
   hideLoading();
@@ -20508,7 +20554,7 @@ async function stuSetTeacherLines(lpid, arr, added) {
     S.others.teacher = arr;
     /* lines only added: just those are painted; anything replaced or rubbed out redraws the page once */
     if (added && !added.length && !S.inkRaf) S.inkSigDrawn = inkSig(); /* only thinned copies of lines already on the page */
-    else if (added && added.length && !S.inkRaf) { const c = cInk.getContext('2d'); c.setTransform(S.res, 0, 0, S.res, 0, 0); for (const st of added) if (st.k !== 'h') drawStroke(c, st); if (added.some((st) => st.k === 'h')) drawInk(); else { S.inkSigDrawn = inkSig(); if (cSharp && (!cSharp.hidden || S.zoom > 1.2)) sharpLater(); } }
+    else if (added && added.length && !S.inkRaf) { const c = cInk.getContext('2d'); c.setTransform(S.res, 0, 0, S.res, 0, 0); for (const st of added) if (st.k !== 'h') drawStroke(c, st); if (added.some((st) => st.k === 'h')) drawInk(); else { S.inkSigDrawn = inkSig(); sharpAdd(added); } }
     else if (!S.inkRaf) S.inkRaf = requestAnimationFrame(() => { S.inkRaf = 0; drawInk(); });
     studentSaveInk(); return;
   }
@@ -20674,7 +20720,7 @@ function studentInk(d) {
     if (s.gap) { LIVE.gapAsk = LIVE.gapAsk || setTimeout(async () => { LIVE.gapAsk = 0; const cur = layerArr('teacher'); liveSend('need', { sid: LIVE.sid, tpid: String(d.pid), have: cur.map(stKey) }); }, 300); }
     (LIVE.inkAt || (LIVE.inkAt = {}))[id] = now();
     if (!arr.some((x) => x.id === id)) { const st = { id, k: s.k, c: s.c, w: s.w, p: s.p.slice() }; if (s.t) st.t = s.t; if (s.o) st.o = s.o; arr.push(st);
-      try { const c = cInk.getContext('2d'); c.setTransform(S.res, 0, 0, S.res, 0, 0); drawStroke(c, st); S.inkSigDrawn = inkSig(); if (cSharp && (!cSharp.hidden || S.zoom > 1.2)) sharpLater(); } catch (e) { drawInk(); }
+      try { const c = cInk.getContext('2d'); c.setTransform(S.res, 0, 0, S.res, 0, 0); drawStroke(c, st); S.inkSigDrawn = inkSig(); sharpAdd([st]); } catch (e) { drawInk(); }
       studentSaveInk(); } /* the finished line is added to the picture; no full redraw follows */
   });
 }
@@ -20988,7 +21034,7 @@ async function openPdfFile(file) {
   try {
   try {
     await loadLib('pdfjs'); window.pdfjsLib.GlobalWorkerOptions.workerSrc = LIBS.pdfw;
-    PDFI.doc = await window.pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise; PDFI.name = String(file.name || 'เอกสาร').replace(/\.pdf$/i, '');
+    PDFI.doc = await window.pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise; PDFI.file = file; PDFI.name = String(file.name || 'เอกสาร').replace(/\.pdf$/i, '');
   } catch (e) { toast(/password/i.test(String(e && e.name)) ? 'PDF นี้มีรหัสผ่าน ปลดรหัสก่อนแล้วนำเข้าใหม่' : 'เปิด PDF ไม่ได้ ไฟล์อาจเสียหาย', 4000); return; }
   const n = PDFI.doc.numPages;
   $('#pdfInfo').textContent = PDFI.name + ' มี ' + n + ' หน้า';
@@ -21079,6 +21125,8 @@ async function pdfImport(newNb) {
   const msg = (t) => { $('#pdfMsg').innerHTML = '<div class="note">' + esc(t) + ' <button class="btn sm" type="button" id="pdfStop">หยุด</button></div>'; const st = $('#pdfStop'); if (st) st.onclick = () => { PDFI.stop = true; st.disabled = true; st.textContent = 'กำลังหยุด'; }; };
   try {
     let nid = S.nid, pages, at, firstSpare = null;
+    /* the PDF itself is kept with the notebook (once, for all its pages), so its pages can be drawn sharp at any zoom */
+    let vec = null; if (PDFI.file && PDFI.file.size <= 80e6) { try { msg('กำลังเก็บต้นฉบับ PDF ไว้ให้คมชัดเมื่อซูม'); const u = await A.upload(PDFI.file, { type: 'application/pdf' }); vec = u && u.id; } catch (e) { vec = null; } }
     if (newNb) { nid = await createNotebook(PDFI.name, (S.nb && S.nb.level) || 'mp'); const nb = await S.store.get('notebooks/' + nid); pages = []; firstSpare = (nb.pages || [])[0]; at = -1; }
     else { pages = ((S.nb && S.nb.pages) || []).slice(); at = pages.indexOf(S.pid); }
     let firstPid = null;
@@ -21103,7 +21151,7 @@ async function pdfImport(newNb) {
         tb = rows.slice(0, 400).map((r) => r.map((v) => Math.round(clamp(v, 0, 2000)))); } catch (e) { tb = []; }
       tb = tb.concat(gb).slice(0, 700); /* pictures, frames and scanned writing count as taken too, not only the text */
       const pid = (i === a && firstSpare) ? firstSpare : 'p' + uid(); firstPid = firstPid || pid;
-      await S.store.set('pages/' + pid, Object.assign({ nb: nid, paper: 'blank', items: [Object.assign({ id: 'i' + uid(), by: DEV, type: 'img', asset: up.id, x: Math.round((PW - w) / 2), y, w, ar: Math.round(ar * 1000) / 1000, lock: true, gbv: 1 }, tb.length ? { tb } : {})], rev: now() }, land ? { orient: 'land' } : {}));
+      await S.store.set('pages/' + pid, Object.assign({ nb: nid, paper: 'blank', items: [Object.assign({ id: 'i' + uid(), by: DEV, type: 'img', asset: up.id, x: Math.round((PW - w) / 2), y, w, ar: Math.round(ar * 1000) / 1000, lock: true, gbv: 1 }, tb.length ? { tb } : {}, vec ? { pdf: { a: vec, p: i } } : {})], rev: now() }, land ? { orient: 'land' } : {}));
       pages.splice(++at, 0, pid);
       if (newNb || i === b || (i - a) % 5 === 4) await S.store.update('notebooks/' + nid, { pages: pages.slice(), updatedAt: now() });
       if (i % 10 === 0) await new Promise((r) => setTimeout(r, 0)); /* the screen stays responsive through a long book */
@@ -23635,7 +23683,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793768138';
+const BUILD = '1793768560';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
