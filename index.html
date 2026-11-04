@@ -4372,7 +4372,7 @@ async function diaryAsk() {
       }
       const go = async () => {
         /* the page was left in the meantime: the drawing is still made, and appears when that page is opened again */
-        if (S.pid !== apid) { const dw0 = Math.round(clamp(fs * 16, 320, Math.min(640, W - 80))); diaryDraw(sketch, Math.round((W - dw0) / 2), clamp(near[1], 20, H - 20 - sketchSize(sketch, fs, dw0)[1]), dw0, Math.round(dw0 * 0.6), lw, ink, fs, apid); return; }
+        if (S.pid !== apid) { (DIARY.later[apid] = DIARY.later[apid] || []).push({ strokes: [], labels: [], run: go }); return; } /* placed when that page is open again, where its things really are */
         /* under the words, at the same left edge (or under the writing when there are no words) */
         /* under the words as they were really written (their box on the page), not an estimate of their height */
         const ti = text ? findItem(id) : null, src = ti ? tightItemBox(ti) : text ? [at[0], at[1], at[0] + w, at[1] + estTextH(text, w, fs)] : box;
@@ -4382,6 +4382,7 @@ async function diaryAsk() {
         { const dw0 = dw, dh0 = sketchSize(sketch, fs, dw0)[1], nq = exBelow(src); let best = null, late = null;
           for (let ww = dw0; ww >= 240; ww = Math.round(ww * 0.85)) {
             const [rw, hh] = sketchSize(sketch, fs, ww);
+            if (ww < dw0 && Math.max(rw, hh) < Math.max(120, fs * 4)) break; /* a drawing too small to read is not worth the saved room */
             for (const o of [{ fs, noSnap: true }, { fs, side: true, sideAny: true, noSnap: true }]) {
               const sp = placeNear(src, rw, hh, o); if (!sp) continue;
               if (nq != null && sp[1] + hh > nq - 8) { if (!late || sp[1] < late.sp[1]) late = { sp, ww }; continue; } /* would run into the next question */
@@ -4391,7 +4392,9 @@ async function diaryAsk() {
           }
           if (best) { spot = best.sp; dw = best.ww; } else if (late) { spot = late.sp; dw = late.ww; } }
         let pg = apid;
-        if (!spot && onPdfPage()) { for (let ww = Math.min(dw, 420); ww >= 200 && !spot; ww = Math.round(ww * 0.85)) { const [rw, hh] = sketchSize(sketch, fs, ww), sp = placeNear(src, rw, hh, { fs, noSnap: true, skip: (b) => b.pdf }) || placeNear(src, rw, hh, { fs, side: true, sideAny: true, noSnap: true, skip: (b) => b.pdf }); if (sp) { spot = sp; dw = ww; } } if (!spot) { dw = 260; spot = [clamp(src[0], PAGE_M, W - dw - PAGE_M), clamp(src[3] + 8, PAGE_M, H - PAGE_M - sketchSize(sketch, fs, dw)[1])]; } }
+        /* no room next to the words: a smaller drawing, then any free place lower on this page; never over printed or written things */
+        if (!spot) for (let ww = Math.min(dw, 240); ww >= 160 && !spot; ww = Math.round(ww * 0.85)) { const [rw, hh] = sketchSize(sketch, fs, ww), sp = placeNear(src, rw, hh, { fs, noSnap: true }) || placeNear(src, rw, hh, { fs, side: true, sideAny: true, noSnap: true }); if (sp) { spot = sp; dw = ww; } }
+        if (!spot) for (let ww = Math.min(dw, 420); ww >= 160 && !spot; ww = Math.round(ww * 0.85)) { const [rw, hh] = sketchSize(sketch, fs, ww), sp = freeSpot(rw, hh, [src[0], src[3] + 8], true); if (sp) { spot = sp; dw = ww; } }
         if (!spot) { dw = Math.round(clamp(fs * 16, 320, Math.min(640, W - 2 * PAGE_M))); const np = await addPage(); if (!np) return; pg = np; spot = [clamp(src[0], PAGE_M, W - dw - PAGE_M), PAGE_M + 16]; toast('หน้าเต็มแล้ว สมุดวาดต่อในหน้าถัดไป', 2400); }
         diaryDraw(sketch, spot[0], spot[1], dw, Math.round(dw * 0.6), lw, ink, fs, pg);
       };
@@ -4465,6 +4468,7 @@ function diaryFlushLater() {
   const list = DIARY.later[S.pid]; if (!list || !list.length || !S.ownLoaded) return;
   delete DIARY.later[S.pid];
   for (const d of list) {
+    if (d.run) { setTimeout(d.run, 400); continue; }
     if (d.strokes.length) { const before = { [DEV]: clone(S.mine) }; const have = new Set(S.mine.map((x) => x.id)); for (const st of d.strokes) if (!have.has(st.id)) S.mine.push(st); pushUndo({ t: 'layers', before, after: { [DEV]: clone(S.mine) } }); saveMine(); drawInk(); }
     for (const it of d.items || []) addItem(it);
     for (const lb of d.labels) addItem({ type: 'text', x: Math.round(lb.x), y: Math.round(lb.y), w: Math.round(lb.w), md: lb.md, fs: lb.fs, hand: DIARY_HAND(), ink: lb.ink, diary: true, dv: 2 });
@@ -6259,6 +6263,7 @@ function openPage(pid) {
     S.ownLoaded = true;
     S.others = others;
     if (DIARY.later[S.pid]) setTimeout(diaryFlushLater, 500);
+    if ((S.page.items || []).some((it) => isBgItem(it) && !it.gbv)) setTimeout(pdfEnsureBoxes, 700);
     if (S.sel) {
       S.sel.strokes = S.sel.strokes.filter((r) => findStroke(r));
       if (!S.sel.strokes.length && !S.sel.items.length) clearSel();
@@ -6930,8 +6935,8 @@ async function tidySelection() {
     };
     B.d.querySelector('[data-a="beside"]').onclick = () => {
       const hh = svgH(svg, w, 0.75);
-      const at = placeNear(box, w, hh, { side: true, noSnap: true }) || [clamp(box[0], PAGE_M, W - w - PAGE_M), clamp(box[3] + 10, PAGE_M, H - PAGE_M - hh)];
-      addItem({ type: 'svg', x: Math.round(at[0]), y: Math.round(at[1]), w, svg });
+      const ps = picSpot(box, w, hh); if (!ps) { toast('หน้านี้ไม่มีที่ว่าง เพิ่มหน้าหรือแทนที่ภาพร่างแทน', 2600); return; }
+      addItem({ type: 'svg', x: Math.round(ps.at[0]), y: Math.round(ps.at[1]), w: ps.w, svg });
       toast('วางภาพที่วาดใหม่แล้ว');
     };
   } catch (e) { B.d.innerHTML = '<span class="k">วาดใหม่ตามหลักฟิสิกส์</span><div class="note err">' + esc(aiErr(e)) + '</div>'; }
@@ -7685,8 +7690,9 @@ async function moleculeSvg(mols) {
 /* the height a picture really takes at this width, from its own proportions */
 function svgH(svg, w, def) { const vb = /viewBox\s*=\s*["']\s*[-\d.]+[\s,]+[-\d.]+[\s,]+([\d.]+)[\s,]+([\d.]+)/i.exec(svg || ''); return Math.round(w * (vb && +vb[1] > 0 ? clamp(+vb[2] / +vb[1], 0.15, 2.5) : def)); }
 function figPlace(svg, box, w, note, extra) {
-  const h = svgH(svg, w, 0.82), at = placeNear(box, w, h, { side: true, noSnap: true }) || [clamp(box[0], PAGE_M, W - w - PAGE_M), clamp(box[3] + 10, PAGE_M, H - PAGE_M - h)];
-  addItem(Object.assign({ type: 'svg', x: Math.round(at[0]), y: Math.round(at[1]), w: Math.round(w), svg }, extra || {}));
+  const h = svgH(svg, w, 0.82), ps = picSpot(box, w, h), at = ps ? ps.at : [clamp(box[0], PAGE_M, W - w - PAGE_M), clamp(box[3] + 10, PAGE_M, H - PAGE_M - h)];
+  if (!ps) { toast('หน้านี้ไม่มีที่ว่าง ภาพจึงวางทับ ย้ายไปหน้าอื่นได้', 2600); }
+  addItem(Object.assign({ type: 'svg', x: Math.round(at[0]), y: Math.round(at[1]), w: Math.round(ps ? ps.w : w), svg }, extra || {}));
   toast(note || 'สร้างรูปแล้ว ย่อขยายหรือย้ายได้', 2600);
 }
 function placeVecFig(vecs, box, note) {
@@ -7704,7 +7710,7 @@ function placeGraph(g, box) {
     for (const e of g.exprs) { const code = compileExpr(e).code; for (let i = 0; i <= 20; i++) { scope[g.xvar] = g.x0 + (g.x1 - g.x0) * i / 20; if (isFinite(evalAt(code, scope))) ok++; } }
   } catch (e) { ok = 0; }
   const w = 560;
-  const at = placeNear(box, w, 300, { side: true }) || [clamp(box[0], PAGE_M, W - w - PAGE_M), Math.min(box[3] + 16, H - 300)], x = at[0], y = at[1];
+  const at = placeNear(box, w, 300, { side: true }) || placeNear(box, w, 300, {}) || freeSpot(w, 300, [box[0], box[3] + 8], true) || freeSpot(w, 300, null, false) || [clamp(box[0], PAGE_M, W - w - PAGE_M), Math.min(box[3] + 16, H - 300)], x = at[0], y = at[1];
   if (!ok) {
     openGraphSheet(null);
     $('#gExpr').value = g.exprs.map((e) => 'y = ' + e).join('\n'); $('#gX').value = g.xvar; $('#gX0').value = g.x0; $('#gX1').value = g.x1;
@@ -12656,7 +12662,7 @@ function solvePut(r) {
   const src = b[3] ? b : [b[0], b[1], b[0] + w, b[1]];
   const at = placeNear(src, w, h) || [clamp(src[0], PAGE_M, W - w - PAGE_M), Math.min(src[3] + 16, H - h - PAGE_M)];
   addItem({ type: 'text', x: Math.round(at[0]), y: Math.round(at[1]), w, fs, md: lines.join('\n\n') });
-  if (r.svg) { const gw = 520, gh = Math.round(gw * 340 / 560), tb = [at[0], at[1], at[0] + w, at[1] + h]; const g = placeNear(tb, gw, gh, { side: true, fs: 22 }) || [at[0], Math.min(tb[3] + 16, H - gh - PAGE_M)]; addItem({ type: 'svg', x: Math.round(g[0]), y: Math.round(g[1]), w: gw, svg: r.svg }); }
+  if (r.svg) { const gw = 520, gh = Math.round(gw * 340 / 560), tb = [at[0], at[1], at[0] + w, at[1] + h]; const ps = picSpot(tb, gw, gh, { fs: 22 }), g = ps ? ps.at : [at[0], Math.min(tb[3] + 16, H - gh - PAGE_M)]; addItem({ type: 'svg', x: Math.round(g[0]), y: Math.round(g[1]), w: ps ? ps.w : gw, svg: r.svg }); }
   toast('วางคำตอบลงหน้าแล้ว', 1500);
 }
 /* a graph straight from the expression: y = f(x), or the expression itself, with any other letters as sliders */
@@ -20660,7 +20666,7 @@ function occupiedBoxes() {
   for (const b of (typeof DIARY !== 'undefined' && DIARY.hold[S.pid]) || []) out.push(b);
   for (const it of (S.page && S.page.items) || []) {
     if (isBgItem(it) && Array.isArray(it.tb)) { const k = (it.w || 1000) / 1000; for (const b of it.tb) { const r = [it.x + b[0] * k, it.y + b[1] * k, it.x + b[2] * k, it.y + b[3] * k]; r.pdf = true; out.push(r); } continue; } /* printed lines of an imported PDF page */
-    if (!it.lock && !(it.spec && it.spec.bare)) out.push(it.type === 'life' && it.B ? it.B : tightItemBox(it));
+    if (!(it.spec && it.spec.bare)) out.push(it.type === 'life' && it.B ? it.B : tightItemBox(it)); /* a locked box is still something on the paper */
   }
   for (const r of allStrokes()) { const b = sbox(r.s); out.push([b[0], b[1], b[2], b[3]]); }
   return out;
@@ -20715,6 +20721,14 @@ function placeNear(src, w, h, opt) {
   return null;
 }
 function onPdfPage() { return !!(S.page && (S.page.items || []).some(isBgItem)); }
+/* a picture made by the AI: next to its source, or smaller, or anywhere free on this page, never over anything; null when the page is full */
+function picSpot(box, w, h, opt) {
+  /* close to the source first, even a little smaller; a free place further away only when nothing close is free */
+  const o = Object.assign({ noSnap: true }, opt || {}), ks = [1, 0.85, 0.7, 0.55, 0.4];
+  for (const k of ks) { const ww = Math.round(w * k), hh = Math.round(h * k); const at = placeNear(box, ww, hh, Object.assign({ side: true }, o)) || placeNear(box, ww, hh, o) || placeNear(box, ww, hh, Object.assign({ side: true, sideAny: true }, o)); if (at) return { at, w: ww, h: hh }; }
+  for (const k of ks) { const ww = Math.round(w * k), hh = Math.round(h * k); const at = freeSpot(ww, hh, [box[0], box[3] + 8], true) || freeSpot(ww, hh, null, false); if (at) return { at, w: ww, h: hh }; }
+  return null;
+}
 function freeSpot(w, h, near, below, loose) {
   const occ = occupiedBoxes().filter((b) => !(loose && b.pdf)), m = loose ? 4 : 14;
   const fits = (x, y) => x >= 6 && y >= 6 && x + w <= W - 6 && y + h <= H - 6 && !occ.some((b) => x < b[2] + m && x + w > b[0] - m && y < b[3] + m && y + h > b[1] - m);
@@ -20961,6 +20975,23 @@ function pdfInkBoxes(cv) {
   }
   return out.map((o) => [o.x0 * C * u, o.y0 * C * u, (o.x1 + 1) * C * u, (o.y1 + 1) * C * u].map(Math.round)).slice(0, 300);
 }
+/* pages brought in before pictures were measured: measure them once when the page is opened, so nothing is put over their pictures */
+async function pdfEnsureBoxes() {
+  const pid = S.pid, its = ((S.page && S.page.items) || []).filter((it) => isBgItem(it) && !it.gbv); if (!its.length || pdfEnsureBoxes.busy) return;
+  pdfEnsureBoxes.busy = true;
+  try {
+    for (const it of its) {
+      let b = null; try { b = await getAssetBlob(it.asset); } catch (e) { b = null; } if (!b) continue;
+      const bm = await createImageBitmap(b), cv = document.createElement('canvas'), k = Math.min(1, 1000 / bm.width); cv.width = Math.round(bm.width * k); cv.height = Math.round(bm.height * k);
+      cv.getContext('2d').drawImage(bm, 0, 0, cv.width, cv.height); if (bm.close) bm.close();
+      const gb = pdfInkBoxes(cv); cv.width = cv.height = 1;
+      if (S.pid !== pid) return;
+      const cur = (S.page.items || []).find((x) => x.id === it.id); if (!cur) continue;
+      cur.tb = (Array.isArray(cur.tb) ? cur.tb : []).concat(gb).slice(0, 700); cur.gbv = 1;
+    }
+    if (S.pid === pid) savePage();
+  } catch (e) { /* measured next time */ } finally { pdfEnsureBoxes.busy = false; }
+}
 async function pdfImport(newNb) {
   const doc = PDFI.doc; if (!doc) return;
   const a = clamp(parseInt($('#pdfFrom').value, 10) || 1, 1, doc.numPages), b = clamp(parseInt($('#pdfTo').value, 10) || a, a, Math.min(doc.numPages, a + PDF_MAX - 1));
@@ -20993,7 +21024,7 @@ async function pdfImport(newNb) {
         tb = rows.slice(0, 400).map((r) => r.map((v) => Math.round(clamp(v, 0, 2000)))); } catch (e) { tb = []; }
       tb = tb.concat(gb).slice(0, 700); /* pictures, frames and scanned writing count as taken too, not only the text */
       const pid = (i === a && firstSpare) ? firstSpare : 'p' + uid(); firstPid = firstPid || pid;
-      await S.store.set('pages/' + pid, Object.assign({ nb: nid, paper: 'blank', items: [Object.assign({ id: 'i' + uid(), by: DEV, type: 'img', asset: up.id, x: Math.round((PW - w) / 2), y, w, ar: Math.round(ar * 1000) / 1000, lock: true }, tb.length ? { tb } : {})], rev: now() }, land ? { orient: 'land' } : {}));
+      await S.store.set('pages/' + pid, Object.assign({ nb: nid, paper: 'blank', items: [Object.assign({ id: 'i' + uid(), by: DEV, type: 'img', asset: up.id, x: Math.round((PW - w) / 2), y, w, ar: Math.round(ar * 1000) / 1000, lock: true, gbv: 1 }, tb.length ? { tb } : {})], rev: now() }, land ? { orient: 'land' } : {}));
       pages.splice(++at, 0, pid);
       if (newNb || i === b || (i - a) % 5 === 4) await S.store.update('notebooks/' + nid, { pages: pages.slice(), updatedAt: now() });
       if (i % 10 === 0) await new Promise((r) => setTimeout(r, 0)); /* the screen stays responsive through a long book */
@@ -23525,7 +23556,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793756311';
+const BUILD = '1793758659';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
