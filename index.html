@@ -3637,7 +3637,7 @@ function fit() {
   { const d0 = Math.min(window.devicePixelRatio || 1, 2); S.base = Math.round(W * S.base * d0) / (W * d0); }
   pageEl.style.width = W * S.base + 'px';
   pageEl.style.height = H * S.base + 'px';
-  itemsEl.style.transform = itemsBgEl.style.transform = 'scale(' + S.base + ')';
+  itemsXf();
   S.zoom = 1;
   S.tx = (vw - W * S.base) / 2;
   S.ty = topY(); S.pull = 0;
@@ -3788,8 +3788,13 @@ function sharpAdd(list) {
    the sharpness it was first painted at; when the view stands still the box layer is given a new (equal) size so Safari
    paints it again at the zoom on screen: letters as sharp as the ink */
 let itemsRast = 0;
-function itemsRepaint() { const f = (itemsRast = 1 - itemsRast) ? 1.000001 : 1; itemsEl.style.transform = itemsBgEl.style.transform = 'scale(' + S.base * f + ')'; }
-function sharpLater() { clearTimeout(sharpT); sharpT = setTimeout(() => { wrapEl.style.willChange = 'auto'; if (S.zoom !== S.itemsZoom) { S.itemsZoom = S.zoom; itemsRepaint(); } /* standing still: the page is painted afresh at its real size (Safari keeps a moving layer at the size it had) */ drawSharp(); redrawLiveBoxes(); if (flowWanted() && !S.present && !S.show) peekSharpLater(FLOW.ver); }, 160); }
+/* Safari (iPad) paints the page's boxes at their own size and then enlarges the picture with the zoom: soft letters. When the
+   view stands still zoomed in, the boxes are laid out K times larger (CSS zoom) and shrunk back by the same factor, so the
+   letters are painted with K times more pixels; the boxes stay exactly where they are. Other browsers paint text sharp anyway */
+const ITEMS_HIDPI = /iPad|iPhone|Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1;
+function itemsXf() { const K = S.itemsK || 1; for (const el of [itemsEl, itemsBgEl]) { el.style.zoom = K === 1 ? '' : String(K); el.style.transform = 'scale(' + S.base / K + ')'; } }
+function itemsRepaint() { if (!(ITEMS_HIDPI || window.__hidpiTest) || editing) return; const K = S.zoom > 1.15 ? Math.min(4, Math.round(S.zoom * 2) / 2) : 1; if (K === (S.itemsK || 1)) return; S.itemsK = K; itemsXf(); }
+function sharpLater() { clearTimeout(sharpT); sharpT = setTimeout(() => { wrapEl.style.willChange = 'auto'; itemsRepaint(); /* standing still: the page is painted afresh at its real size (Safari keeps a moving layer at the size it had) */ drawSharp(); redrawLiveBoxes(); if (flowWanted() && !S.present && !S.show) peekSharpLater(FLOW.ver); }, 160); }
 /* the paper's lines as a vector picture behind the page: it never vanishes while scrolling fast and costs no canvas
    memory (a page-size paper canvas was one of the canvases an iPad drops when memory runs short, leaving the page blank);
    the textured papers (chalkboard, art paper) stay on the canvas */
@@ -24012,7 +24017,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793777324';
+const BUILD = '1793778230';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
@@ -24642,7 +24647,7 @@ function presentFit() {
   const vw = vp.clientWidth || 800;
   S.base = Math.max(0.25, vw / W);
   pageEl.style.width = W * S.base + 'px'; pageEl.style.height = H * S.base + 'px';
-  itemsEl.style.transform = itemsBgEl.style.transform = 'scale(' + S.base + ')';
+  itemsXf();
   S.zoom = 1; S.tx = (vw - W * S.base) / 2; S.ty = 0; S.pull = 0; applyT(); resizeCanvases(true);
   followView();
 }
