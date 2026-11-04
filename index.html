@@ -256,6 +256,7 @@ body[data-tool="text"] .item .tgrab, body[data-tool="text"] .item .tsize { opaci
 /* dock */
 .shp { width: 64px; height: 56px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-size: 11px; color: var(--fg); padding: 0; }
 .shp svg { width: 26px; height: 22px; }
+.shpsec { grid-column: 1 / -1; margin-top: 4px; }
 .shp[aria-pressed="true"] { border: 2px solid var(--accent); background: var(--accent-soft); }
 .dock { position: absolute; left: 12px; top: 12px; z-index: 7; display: flex; flex-wrap: nowrap; max-width: calc(100% - 24px); align-items: center; gap: 2px; padding: 4px; border-radius: 18px; background: var(--surface); box-shadow: var(--shadow); }
 .curc { width: 46px; height: 46px; border-radius: 13px; border: 0; background: transparent; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; }
@@ -1891,7 +1892,7 @@ body.role-student .scnpill .sbtns button[data-s="back"], body.role-student .scnp
 
       <div class="selbar no-ink" id="selbar" role="toolbar" aria-label="ส่วนที่เลือก" hidden>
         <span class="count" id="selCount"></span>
-        <span class="sg" id="sgInk"><button id="sJoin"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M3 6h16 M3 11h10 M3 16h7 M14 13.5l3 2.5-3 2.5 M10 16h7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span>ต่อบรรทัด</span></button><button id="sQuiz" class="main"><svg viewBox="0 0 22 22" aria-hidden="true"><rect x="3.5" y="3" width="15" height="16" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M7 8h8 M7 11.5h8 M7 15h5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span>สร้างโจทย์</span></button><button id="sRead" class="main"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M3 15c2-3 3-7 4.5-7s.5 5 2 5 2-6 3.5-6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M13 4.5h6 M16 4.5v8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span>เป็นตัวพิมพ์</span></button><button id="sHand" class="main"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M3 16c2.5-1 3.5-9 6-9 1.6 0 .4 6 2.4 6 1.8 0 2.4-4 4.1-4 1.2 0 1 3 2.5 3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M3 19h16" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg><span>ลายมือสวย</span></button><button id="sEq"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M3.5 8h6 M3.5 12.5h6 M13 6.5l5 7 M18 6.5l-5 7" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg><span>เป็นสมการ</span></button><button id="sGraph" title="สร้างรูปจากสมการ: เวกเตอร์ 2 และ 3 มิติ กราฟ เส้นโค้งพาราเมตริกและเชิงขั้ว โครงสร้างโมเลกุล หรือแผนภาพ"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M4 3.5v14h14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M5.5 14c3-1 4-8 7-8s3 4 5 4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span>สร้างรูป</span></button><button id="sAns" class="main" hidden title="ผลการคำนวณ แตะเพื่อเขียนต่อท้าย"><span id="sAnsT"></span></button><button id="sOrig" hidden title="เปลี่ยนกลับเป็นลายมือเดิม"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M4 15c2-4 4-7 6-7s1 6 3 6 3-4 5-6 M6 6L3.5 8.5 6 11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span>ลายมือเดิม</span></button><button id="sTrace" title="ให้สมุดวาดตามรูปนี้ทีละเส้น"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M4 17c3-1 4-6 7-7s4 3 7 1 M15 4l3 3-8 8-4 1 1-4z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span>วาดตาม</span></button><button id="sCut" title="ตัดพื้นหลังของรูป"><svg viewBox="0 0 22 22" aria-hidden="true"><circle cx="6" cy="6" r="2.6" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="6" cy="16" r="2.6" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M8.2 7.4L18 15 M8.2 14.6L18 7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span>ตัดพื้นหลัง</span></button><button id="sSolve" title="แก้สมการ ระบบสมการ อนุพันธ์ อินทิเกรต ลิมิต แยกตัวประกอบ"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M4 8h6 M4 12h6 M13 6l5 6 M18 6l-5 6 M13 16h5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span>แก้สมการ</span></button><button id="sAnim"><svg viewBox="0 0 22 22" aria-hidden="true"><circle cx="7" cy="14" r="3.2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M11 14h7 M15.5 11.5L18 14l-2.5 2.5 M7 10.5V4 M4.5 6.5L7 4l2.5 2.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span>ขยับได้</span></button><button id="sTidy"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M4 17l4-1 9-9-3-3-9 9z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M15.5 13.5l1 2 2 1-2 1-1 2-1-2-2-1 2-1z" fill="currentColor"/></svg><span>วาดใหม่</span></button><button id="sGen"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M11 3l1.8 4.6 4.7 1.9-4.7 1.9L11 16l-1.8-4.6L4.5 9.5l4.7-1.9z" fill="currentColor"/></svg><span>สร้างโจทย์</span></button><button id="sMedia"><svg viewBox="0 0 22 22" aria-hidden="true"><rect x="3" y="4.5" width="16" height="13" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M3.5 15l4.5-4.5 3.5 3.5 2-2 5 4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg><span>หาสื่อ</span></button></span>
+        <span class="sg" id="sgInk"><button id="sJoin"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M3 6h16 M3 11h10 M3 16h7 M14 13.5l3 2.5-3 2.5 M10 16h7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span>ต่อบรรทัด</span></button><button id="sQuiz" class="main"><svg viewBox="0 0 22 22" aria-hidden="true"><rect x="3.5" y="3" width="15" height="16" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M7 8h8 M7 11.5h8 M7 15h5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span>สร้างโจทย์</span></button><button id="sRead" class="main"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M3 15c2-3 3-7 4.5-7s.5 5 2 5 2-6 3.5-6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M13 4.5h6 M16 4.5v8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span>เป็นตัวพิมพ์</span></button><button id="sHand" class="main"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M3 16c2.5-1 3.5-9 6-9 1.6 0 .4 6 2.4 6 1.8 0 2.4-4 4.1-4 1.2 0 1 3 2.5 3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M3 19h16" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg><span>ลายมือสวย</span></button><button id="sEq"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M3.5 8h6 M3.5 12.5h6 M13 6.5l5 7 M18 6.5l-5 7" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg><span>เป็นสมการ</span></button><button id="sGraph" title="สร้างรูปจากสมการ: เวกเตอร์ 2 และ 3 มิติ กราฟ เส้นโค้งพาราเมตริกและเชิงขั้ว โครงสร้างโมเลกุล หรือแผนภาพ"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M4 3.5v14h14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M5.5 14c3-1 4-8 7-8s3 4 5 4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span>สร้างรูป</span></button><button id="sAns" class="main" hidden title="ผลการคำนวณ แตะเพื่อเขียนต่อท้าย"><span id="sAnsT"></span></button><button id="sOrig" hidden title="เปลี่ยนกลับเป็นลายมือเดิม"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M4 15c2-4 4-7 6-7s1 6 3 6 3-4 5-6 M6 6L3.5 8.5 6 11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span>ลายมือเดิม</span></button><button id="sTrace" title="ให้สมุดวาดตามรูปนี้ทีละเส้น"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M4 17c3-1 4-6 7-7s4 3 7 1 M15 4l3 3-8 8-4 1 1-4z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span>วาดตาม</span></button><button id="sCut" title="ตัดพื้นหลังของรูป"><svg viewBox="0 0 22 22" aria-hidden="true"><circle cx="6" cy="6" r="2.6" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="6" cy="16" r="2.6" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M8.2 7.4L18 15 M8.2 14.6L18 7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span>ตัดพื้นหลัง</span></button><button id="sSolve" title="แก้สมการ ระบบสมการ อนุพันธ์ อินทิเกรต ลิมิต แยกตัวประกอบ"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M4 8h6 M4 12h6 M13 6l5 6 M18 6l-5 6 M13 16h5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span>แก้สมการ</span></button><button id="sAnim"><svg viewBox="0 0 22 22" aria-hidden="true"><circle cx="7" cy="14" r="3.2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M11 14h7 M15.5 11.5L18 14l-2.5 2.5 M7 10.5V4 M4.5 6.5L7 4l2.5 2.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span>ขยับได้</span></button><button id="sTidy"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M4 17l4-1 9-9-3-3-9 9z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M15.5 13.5l1 2 2 1-2 1-1 2-1-2-2-1 2-1z" fill="currentColor"/></svg><span>วาดใหม่</span></button><button id="sProof" hidden><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M3 18h16 M3 18L15 5 M8 18a5 5 0 0 0-1.4-3.5 M10 4.5h8 M14 8.5h4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span>พิสูจน์</span></button><button id="sGen"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M11 3l1.8 4.6 4.7 1.9-4.7 1.9L11 16l-1.8-4.6L4.5 9.5l4.7-1.9z" fill="currentColor"/></svg><span>สร้างโจทย์</span></button><button id="sMedia"><svg viewBox="0 0 22 22" aria-hidden="true"><rect x="3" y="4.5" width="16" height="13" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M3.5 15l4.5-4.5 3.5 3.5 2-2 5 4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg><span>หาสื่อ</span></button></span>
         <span class="sg" id="sgOrder"><button id="sFront"><svg viewBox="0 0 22 22" aria-hidden="true"><rect x="7" y="7" width="11" height="11" rx="2" fill="currentColor"/><rect x="3.5" y="3.5" width="11" height="11" rx="2" fill="none" stroke="currentColor" stroke-width="1.5" stroke-dasharray="2.5 2"/></svg><span>ขึ้นหน้าสุด</span></button><button id="sBack"><svg viewBox="0 0 22 22" aria-hidden="true"><rect x="3.5" y="3.5" width="11" height="11" rx="2" fill="currentColor"/><rect x="7" y="7" width="11" height="11" rx="2" fill="var(--chrome)" stroke="currentColor" stroke-width="1.5"/></svg><span>ไปหลังสุด</span></button></span>
         <span class="sg"><button id="sKey"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M2.5 11s3-6 8.5-6 8.5 6 8.5 6-3 6-8.5 6-8.5-6-8.5-6z" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="11" cy="11" r="2.6" fill="currentColor"/></svg><span>เฉลย</span></button><button id="sDup"><svg viewBox="0 0 22 22" aria-hidden="true"><rect x="7" y="7" width="11" height="11" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M4 14V5a1 1 0 0 1 1-1h9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span>ทำสำเนา</span></button><button id="sDel" class="danger"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M5 6.5h12 M9 6.5V4.5h4v2 M6.5 6.5l.8 11h7.4l.8-11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span>ลบ</span></button><button id="sClose"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M5 11.5l4 4 8-9" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg><span>เสร็จ</span></button></span>
         <button id="sBig" hidden>ขยาย</button><button id="sSmall" hidden>ย่อ</button>
@@ -2112,6 +2113,7 @@ body.role-student .scnpill .sbtns button[data-s="back"], body.role-student .scnp
       <button class="insb" id="iGraph"><b>กราฟจากสมการ</b><span>พิมพ์สมการ แล้วปรับค่าตัวแปรด้วยแถบเลื่อน</span></button>
       <button class="insb" id="iSim"><b>แบบจำลองการทดลอง</b><span>ทุกวิชา ฟิสิกส์ โลกและอวกาศ เคมี ชีวะ สุขภาพ คณิต สถิติ ปรับค่าแล้วกดเล่น หรือให้ AI สร้าง</span></button>
       <button class="insb" id="iLab"><b>การทดลองและตารางผล</b><span>วางแผนตัวแปร บันทึกผล พล็อตกราฟ หาความชันและค่าที่ต้องการพร้อมความไม่แน่นอน</span></button>
+      <button class="insb" id="iProof"><b>ตารางพิสูจน์เรขาคณิต</b><span>กำหนดให้ ต้องการพิสูจน์ ข้อความกับเหตุผลทีละขั้น พร้อมเหตุผลที่ใช้บ่อย</span></button>
       <button class="insb" id="iCalc"><b>เครื่องคิดเลขและแก้สมการ</b><span>คิดพร้อมหน่วย แก้สมการ อนุพันธ์ อินทิเกรต เมทริกซ์ สมการเชิงอนุพันธ์</span></button>
       <button class="insb" id="iLesson"><b>บทเรียนสรุป</b><span>สรุปเนื้อหาทุกบท นิยาม สูตร ตัวอย่างพร้อมวิธีทำ วางลงหน้าเพื่อใช้สอนได้</span></button>
       <button class="insb" id="iStats"><b>สถิติ</b><span>สถิติเชิงพรรณนา ทดสอบสมมติฐาน ถดถอย การแจกแจงความน่าจะเป็น พร้อมแผนภาพ</span></button>
@@ -5656,7 +5658,80 @@ function tryScribble(stroke) {
 }
 
 /* geometry shapes: drag to size */
+/* the straight pieces of the ink near a point: lines, sides of polygons and of hand-drawn figures */
+let geoSegCache = null;
+function geoSegs(a) {
+  if (geoSegCache && geoSegCache.a === a) return geoSegCache.segs;
+  const R = 140, segs = [];
+  for (const r of allStrokes()) {
+    const st = r.s; if (!st || !st.p || st.p.length < 6 || st.k === 'h' || st.k === 'e' || st.gm) continue;
+    const bb = sbox(st); if (a[0] < bb[0] - R || a[0] > bb[2] + R || a[1] < bb[1] - R || a[1] > bb[3] + R) continue;
+    const pts = []; for (let i = 0; i < st.p.length; i += 3) pts.push([st.p[i] / 10, st.p[i + 1] / 10]);
+    const v = rdp(pts, 3);
+    for (let i = 0; i < v.length - 1; i++) if (Math.hypot(v[i + 1][0] - v[i][0], v[i + 1][1] - v[i][1]) > 12) segs.push([v[i], v[i + 1]]);
+  }
+  geoSegCache = { a, segs }; return segs;
+}
+const geoProj = (p, s) => { const dx = s[1][0] - s[0][0], dy = s[1][1] - s[0][1], L2 = dx * dx + dy * dy || 1, t = clamp(((p[0] - s[0][0]) * dx + (p[1] - s[0][1]) * dy) / L2, 0, 1); return { t, q: [s[0][0] + dx * t, s[0][1] + dy * t] }; };
+function geoMarkLists(kind, a, b) {
+  const out = [], st = (sh) => out.push(shapePts(sh, 55)), segs = geoSegs(a), drag = Math.hypot(b[0] - a[0], b[1] - a[1]);
+  const sz = clamp(curW() * 3 + 8, 12, 22);
+  if (/^(tick|par)/.test(kind)) {
+    /* the side under the finger, or the side the drag runs along */
+    const m = drag < 8 ? a : [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+    let best = null, bd = drag < 8 ? 18 : Math.max(18, drag * 0.25);
+    for (const sg of segs) { const { q } = geoProj(m, sg), d = Math.hypot(q[0] - m[0], q[1] - m[1]); if (d < bd) { bd = d; best = sg; } }
+    let c, u;
+    if (best) {
+      const dx = best[1][0] - best[0][0], dy = best[1][1] - best[0][1], L = Math.hypot(dx, dy); u = [dx / L, dy / L];
+      /* a tap marks the middle of the side; a drag marks where it was made */
+      c = drag < 8 ? [(best[0][0] + best[1][0]) / 2, (best[0][1] + best[1][1]) / 2] : geoProj(m, best).q;
+      if (drag >= 8 && (b[0] - a[0]) * u[0] + (b[1] - a[1]) * u[1] < 0) u = [-u[0], -u[1]];
+    } else { if (drag < 8) return []; c = m; u = [(b[0] - a[0]) / drag, (b[1] - a[1]) / drag]; }
+    const nv = [-u[1], u[0]], n = +kind.slice(-1) || 1, gap = sz * 0.42;
+    for (let i = 0; i < n; i++) {
+      const o = (i - (n - 1) / 2) * gap, p = [c[0] + u[0] * o, c[1] + u[1] * o];
+      if (kind.startsWith('tick')) st({ type: 'line', a: [p[0] - nv[0] * sz / 2, p[1] - nv[1] * sz / 2], b: [p[0] + nv[0] * sz / 2, p[1] + nv[1] * sz / 2] });
+      else { const h = sz * 0.45; st({ type: 'poly', pts: [[p[0] - u[0] * h + nv[0] * h, p[1] - u[1] * h + nv[1] * h], p, [p[0] - u[0] * h - nv[0] * h, p[1] - u[1] * h - nv[1] * h]], closed: false }); }
+    }
+  } else {
+    /* the corner: the nearest end or bend of the lines, then every line leaving it */
+    let v = null, bd = 22;
+    for (const sg of segs) for (const e of sg) { const d = Math.hypot(e[0] - a[0], e[1] - a[1]); if (d < bd) { bd = d; v = e; } }
+    if (!v) { /* two lines crossing */
+      for (let i = 0; i < segs.length && !v; i++) for (let j = i + 1; j < segs.length; j++) {
+        const [p, p2] = segs[i], [q, q2] = segs[j], r = [p2[0] - p[0], p2[1] - p[1]], s2 = [q2[0] - q[0], q2[1] - q[1]], den = r[0] * s2[1] - r[1] * s2[0];
+        if (Math.abs(den) < 1e-6) continue; const t = ((q[0] - p[0]) * s2[1] - (q[1] - p[1]) * s2[0]) / den, w = ((q[0] - p[0]) * r[1] - (q[1] - p[1]) * r[0]) / den;
+        if (t < -0.02 || t > 1.02 || w < -0.02 || w > 1.02) continue; const x = [p[0] + r[0] * t, p[1] + r[1] * t]; if (Math.hypot(x[0] - a[0], x[1] - a[1]) < 22) { v = x; break; }
+      }
+    }
+    const rays = [];
+    if (v) for (const sg of segs) {
+      const { q } = geoProj(v, sg); if (Math.hypot(q[0] - v[0], q[1] - v[1]) > 6) continue;
+      for (const e of sg) { const d = Math.hypot(e[0] - v[0], e[1] - v[1]); if (d > 10) { const ang = Math.atan2(e[1] - v[1], e[0] - v[0]); if (!rays.some((r) => Math.abs(Math.atan2(Math.sin(r - ang), Math.cos(r - ang))) < 0.12)) rays.push(ang); } }
+    }
+    const c = v || a, dir = drag >= 8 ? Math.atan2(b[1] - c[1], b[0] - c[0]) : null;
+    let r1, r2;
+    if (rays.length >= 2) {
+      rays.sort((x, y) => x - y);
+      /* the two lines on either side of the drag; a tap takes the smallest opening at that corner */
+      let pick = null;
+      for (let i = 0; i < rays.length; i++) { const s0 = rays[i], s1 = rays[(i + 1) % rays.length]; let span = s1 - s0; if (span <= 0) span += Math.PI * 2; if (span >= Math.PI * 1.98) continue;
+        let inside = false; if (dir != null) { let d = dir - s0; while (d < 0) d += Math.PI * 2; while (d >= Math.PI * 2) d -= Math.PI * 2; inside = d < span; }
+        const score = dir != null ? (inside ? span : 99 + span) : span; if (!pick || score < pick.score) pick = { s0, span, score }; }
+      if (pick) { r1 = pick.s0; r2 = pick.s0 + pick.span; }
+    }
+    if (r1 == null) { if (dir == null) return []; r1 = dir - 0.6; r2 = dir + 0.6; }
+    const rad = clamp(drag >= 8 ? drag : sz * 1.6, sz, 90);
+    if (kind === 'rang') {
+      const s = clamp(rad * 0.6, sz * 0.8, 40), u1 = [Math.cos(r1), Math.sin(r1)], u2 = [Math.cos(r2), Math.sin(r2)];
+      st({ type: 'poly', pts: [[c[0] + u1[0] * s, c[1] + u1[1] * s], [c[0] + (u1[0] + u2[0]) * s, c[1] + (u1[1] + u2[1]) * s], [c[0] + u2[0] * s, c[1] + u2[1] * s]], closed: false });
+    } else { const n = +kind.slice(-1) || 1; for (let i = 0; i < n; i++) st({ type: 'arc', cx: c[0], cy: c[1], r: rad + i * sz * 0.4, a0: r1, a1: r2 }); }
+  }
+  return out.map((p) => ({ id: 's' + uid(), k: 'p', c: S.color, w: Math.max(1.5, curW() * 0.8), p, gm: 1 }));
+}
 function shapeStrokeLists(kind, a, b) {
+  if (isGeoMark(kind)) return geoMarkLists(kind, a, b);
   let x0 = a[0], y0 = a[1], x1 = b[0], y1 = b[1];
   if (Math.hypot(x1 - x0, y1 - y0) < 8) {
     if (kind === 'line' || kind === 'arrow' || kind === 'dashed') { x1 = x0 + 140; y1 = y0; }
@@ -5717,8 +5792,9 @@ function commitShape(pt) {
   for (const s of list) { s.g = g; S.mine.push(s); }
   pushUndo({ t: 'layers', before, after: { [DEV]: clone(S.mine) } });
   saveMine(); emitInk(null);
-  /* a new shape stays selected, so it can be moved, resized or deleted straight away */
-  selectStrokes(list.map((st) => ({ layer: DEV, id: st.id })));
+  geoSegCache = null;
+  /* a new shape stays selected, so it can be moved, resized or deleted straight away; a geometry mark does not, so the next one can follow at once */
+  if (!isGeoMark(S.shapeKind)) selectStrokes(list.map((st) => ({ layer: DEV, id: st.id })));
 }
 /* the ink stroke under a point (pen lines count when the point is on the line), with its whole shape group */
 function strokeAt(x, y) {
@@ -5971,6 +6047,10 @@ function showSelbar() {
   $('#sHand').hidden = !(n || textSel);
   $('#sGraph').hidden = !(n || textSel);
   $('#sSolve').hidden = !(n || textSel);
+  { /* geometry proofs: always in a mathematics notebook; elsewhere when the selection carries geometry marks or proof words */
+    const subj = (S.nb && S.nb.subject) || 'phys', marks = S.sel.strokes.some((r) => { const st = findStroke(r); return st && st.gm; });
+    const words = S.sel.items.some((id) => { const it = findItem(id); return it && /พิสูจน์|กำหนดให้|\\triangle|\\cong/.test(it.md || ''); });
+    $('#sProof').hidden = !((n || textSel) && (subj === 'math' || marks || words)); }
   { const one = m === 1 && !n ? findItem(S.sel.items[0]) : null; $('#sOrig').hidden = !(one && Array.isArray(one.orig) && one.orig.length); }
   selCalc();
   { const one = m === 1 && !n ? findItem(S.sel.items[0]) : null; $('#sCut').hidden = !(one && one.type === 'img' && !isStudentSide()); $('#sTrace').hidden = $('#sCut').hidden; }
@@ -6156,6 +6236,8 @@ function openPage(pid) {
   S.unsub.page = S.store.watchDoc('pages/' + pid, (doc, meta) => {
     if (pid !== S.pid || !doc) return;
     if (savePage.pending() || (meta && meta.hasPendingWrites)) return;
+    /* a wide PDF page brought in by an older version onto a tall page sticks out past the right edge: such a page is a landscape page */
+    if (doc && doc.orient !== 'land' && (doc.items || []).some((it) => isBgItem(it) && it.ar && it.ar < 0.95 && it.x + it.w > 1004)) { doc = Object.assign({}, doc, { orient: 'land' }); setTimeout(() => { if (S.page && S.page.orient === 'land') savePage(); }, 0); }
     const paperChanged = !S.page || doc.paper !== S.page.paper || (doc.orient || '') !== (S.page.orient || '');
     S.page = { nb: doc.nb, paper: doc.paper || 'grid', orient: doc.orient, items: clone(doc.items || []) };
     applyOrient(S.page);
@@ -6853,6 +6935,101 @@ async function tidySelection() {
       toast('วางภาพที่วาดใหม่แล้ว');
     };
   } catch (e) { B.d.innerHTML = '<span class="k">วาดใหม่ตามหลักฟิสิกส์</span><div class="note err">' + esc(aiErr(e)) + '</div>'; }
+}
+
+/* ---------- geometry proofs in the Thai school form: กำหนดให้, ต้องการพิสูจน์, then statement and reason row by row ---------- */
+const PROOF_REASONS = ['กำหนดให้', 'สมบัติสะท้อน', 'สมบัติสมมาตร', 'สมบัติถ่ายทอด', 'ด.ม.ด.', 'ม.ด.ม.', 'ด.ด.ด.', 'ม.ม.ด.', 'ฉ.ด.ด.', 'มุมตรงข้ามเท่ากัน', 'มุมแย้งเท่ากัน', 'มุมภายในบนข้างเดียวกันของเส้นตัดรวมกัน 180 องศา', 'มุมภายนอกเท่ากับมุมภายในที่อยู่ตรงข้ามบนข้างเดียวกันของเส้นตัด', 'ผลบวกมุมภายในรูปสามเหลี่ยมเท่ากับ 180 องศา', 'มุมที่ฐานของรูปสามเหลี่ยมหน้าจั่วเท่ากัน', 'ส่วนที่สมนัยกันของรูปสามเหลี่ยมที่เท่ากันทุกประการย่อมเท่ากัน', 'นำสิ่งที่เท่ากันบวกกัน ผลบวกเท่ากัน', 'นำสิ่งที่เท่ากันลบกัน ผลลบเท่ากัน', 'มุมตรงมีขนาด 180 องศา', 'ทฤษฎีบทพีทาโกรัส'];
+function proofMd(p, blank) {
+  const rows = (p.steps || []).map((r, i) => '| ' + (i + 1) + ' | ' + (r.s || '').replace(/\|/g, '/') + ' | ' + (blank ? ' ' : (r.r || '').replace(/\|/g, '/')) + ' |');
+  return (p.given ? '**กำหนดให้** ' + p.given + '\n' : '') + (p.prove ? '**ต้องการพิสูจน์** ' + p.prove + '\n' : '') + '**พิสูจน์**\n| ขั้น | ข้อความ | เหตุผล |\n|---|---|---|\n' + rows.join('\n') + (p.end ? '\n' + p.end : '');
+}
+function proofPut(md, box, rows) {
+  /* the table is laid out first, then measured, then put in the free space next to the work at its real height */
+  const fs = 22, w0 = Math.round(Math.min(W - 2 * PAGE_M, 640)), h0 = Math.round(fs * 1.7 * (rows + 3) + 40), id = 'i' + uid();
+  const b = box || (() => { const v = viewSpot(w0, h0); return [v[0], v[1], v[0] + w0, v[1]]; })();
+  const spot = (w, h) => {
+    const right = W - PAGE_M - b[2] - 16, ws = Math.round(clamp(right, 0, w));
+    return (ws >= 420 && placeNear(b, ws, h, { side: true, fs })) ? [placeNear(b, ws, h, { side: true, fs }), ws] : [placeNear(b, w, h, { fs }) || placeNear(b, w, h, { side: true, sideAny: true, fs }), w];
+  };
+  let [at, w] = spot(w0, h0); if (!at) at = [clamp(b[0], PAGE_M, W - w - PAGE_M), clamp(b[3] + 10, PAGE_M, H - PAGE_M - h0)];
+  addItem({ id, type: 'text', x: Math.round(at[0]), y: Math.round(at[1]), w, fs, md });
+  const pid = S.pid;
+  setTimeout(async () => {
+    if (S.pid !== pid) return;
+    const el = itemElOf(id); if (!el) return;
+    try { await typeset(el); } catch (e) { /* plain text */ }
+    const h = el.offsetHeight; if (!h) return;
+    const all = S.page.items, it = all.find((x) => x.id === id); if (!it) return;
+    S.page.items = all.filter((x) => x.id !== id);
+    let [p2, w2] = spot(w, h);
+    if (w2 !== w) { S.page.items = all; return; }
+    S.page.items = all;
+    if (!p2 && h < H - 2 * PAGE_M - 40) {
+      /* no free room left on this page at its real height: it goes to a new page right after, never over other work */
+      S.page.items = all.filter((x) => x.id !== id); renderItems(); savePage(); savePage.flush && savePage.flush();
+      const np = 'p' + uid(), pages = (S.nb.pages || []).slice(), i = pages.indexOf(pid);
+      try {
+        await S.store.set('pages/' + np, Object.assign({ nb: S.nid, paper: (S.page && S.page.paper) || 'grid', items: [Object.assign({}, it, { x: Math.round(clamp(b[0], PAGE_M, W - PAGE_M - it.w)), y: PAGE_M + 16 })], rev: now() }, S.page && S.page.orient === 'land' ? { orient: 'land' } : {}));
+        pages.splice(i >= 0 ? i + 1 : pages.length, 0, np); await S.store.update('notebooks/' + S.nid, { pages, updatedAt: now() }); S.nb = Object.assign({}, S.nb, { pages });
+        openPage(np); renderPageList(); renderTitle(); toast('หน้านี้ไม่มีที่ว่างพอ วางไว้หน้าถัดไป ' + (pages.indexOf(np) + 1), 2600);
+      } catch (e) { onStoreError(e); }
+      return;
+    }
+    if (!p2) p2 = [it.x, clamp(it.y, PAGE_M, Math.max(PAGE_M, H - PAGE_M - h))];
+    if (Math.round(p2[0]) !== it.x || Math.round(p2[1]) !== it.y) { it.x = Math.round(p2[0]); it.y = Math.round(p2[1]); renderItems(); savePage(); }
+  }, 250);
+}
+function proofTemplate() {
+  const p = { given: '$\\triangle ABC$ และ $\\triangle DEF$ มี $\\overline{AB} = \\overline{DE}$ ...', prove: '$\\triangle ABC \\cong \\triangle DEF$', steps: [{ s: '$\\overline{AB} = \\overline{DE}$', r: 'กำหนดให้' }, { s: ' ', r: ' ' }, { s: ' ', r: ' ' }, { s: '$\\triangle ABC \\cong \\triangle DEF$', r: ' ' }] };
+  proofPut(proofMd(p) + '\n\nเหตุผลที่ใช้บ่อย: ' + PROOF_REASONS.slice(1, 15).join(', '), null, 8);
+  toast('วางตารางพิสูจน์แล้ว แตะสองครั้งเพื่อแก้ข้อความ', 2600);
+}
+async function proofSelection() {
+  if (!S.sel) return;
+  if (!needAI('gen')) return;
+  const refs = S.sel.strokes.slice(), box = S.sel.box.slice();
+  const texts = S.sel.items.map(findItem).filter((it) => it && (!it.type || it.type === 'text') && it.md).map((it) => it.md).join('\n').slice(0, 3000);
+  const useImg = !AI.limits('gen') || !!AI.limits('gen').images, images = [];
+  if (useImg && refs.length) { const img = await inkBlob(refs); if (img) images.push(img.blob); }
+  if (useImg && (S.page.items || []).some(isBgItem)) { const sh = await pageShot(S.pid, refs.map(findStroke).filter(Boolean)); if (sh) images.push(sh.blob); }
+  if (!images.length && !texts) { toast('วงรูปหรือโจทย์ที่จะพิสูจน์ก่อน', 2200); return; }
+  openAI();
+  const B = busyCard('อ่านรูปและพิสูจน์');
+  const prompt = 'You help a Thai mathematics teacher with geometry proofs (Thai school curriculum, ม.1 to ม.6).'
+    + (images.length ? ' The image' + (images.length > 1 ? 's show' : ' shows') + ' the part of the notebook page the teacher selected' + (images.length > 1 ? ' (the second image is the whole page for context)' : '') + ': a figure with points, given facts, marks (ticks for equal sides, arcs for equal angles, a small square for a right angle, arrowheads for parallel lines) and possibly a proof written by a student.' : '')
+    + (texts ? '\nTyped text in the selection:\n' + texts + '\n' : '\n')
+    + 'Decide: if the selection contains a proof attempt (statements and reasons written by someone), CHECK it; otherwise WRITE a complete, rigorous proof.\n'
+    + 'Rules: deductive reasoning only, each statement follows from the given facts, definitions, axioms or theorems already proved; never assume what is to be proved; no measuring from the figure. Use the Thai two-column form. Notation in LaTeX between $...$: segment $\\overline{AB}$, its length $AB$, angle $A\\hat{B}C$ (or $\\hat{B}$ when it is clear), triangle $\\triangle ABC$, congruent $\\cong$, similar $\\sim$, parallel $\\parallel$, perpendicular $\\perp$, degrees $^\\circ$. Reasons in short standard Thai, for example: ' + PROOF_REASONS.join(', ') + ', or "จากข้อ 2 และ 3".\n'
+    + 'Reply in exactly this format and nothing else:\n'
+    + '@@MODE\nprove or check\n'
+    + '@@GIVEN\n(กำหนดให้ in one line)\n@@PROVE\n(ต้องการพิสูจน์ in one line)\n'
+    + '@@STEPS\n(one line per step: statement || reason; for CHECK write the corrected full proof here)\n'
+    + '@@END\n(closing line in Thai, for example ดังนั้น $\\triangle ABC \\cong \\triangle DEF$ ซึ่งเป็นสิ่งที่ต้องการพิสูจน์)\n'
+    + '@@CHECK\n(only for CHECK: one line per step of the student\'s proof: step number || ถูก or ผิด or ขาดเหตุผล || a short Thai comment that names the exact problem and how to fix it)\n'
+    + '@@IDEA\n(one or two short Thai sentences: the key idea of the proof, as a hint a teacher can give before showing it)';
+  try {
+    const res = await AI.run('gen', prompt, { images, maxTokens: 3000, signal: B.ctl.signal, lang: 'th' });
+    const ps = sections(String(res.text || '')), g = (k) => sec(ps, k).trim();
+    const split = (t) => t.split('\n').map((l) => l.replace(/^\s*\d+[.)]\s*/, '').trim()).filter(Boolean);
+    const p = { given: g('GIVEN'), prove: g('PROVE'), end: g('END'), steps: split(g('STEPS')).map((l) => { const [a, b] = l.split('||'); return { s: (a || '').trim(), r: (b || '').trim() }; }).filter((r) => r.s).slice(0, 30) };
+    if (!p.steps.length) throw { code: 'empty_completion' };
+    const check = /check/i.test(g('MODE')) ? split(g('CHECK')).map((l) => l.split('||').map((x) => x.trim())).filter((x) => x[0]) : [];
+    const idea = g('IDEA');
+    const ckMd = check.length ? '**ผลตรวจการพิสูจน์**\n\n| ขั้น | ผล | ข้อเสนอแนะ |\n|---|---|---|\n' + check.map((c) => '| ' + c.map((x) => x.replace(/\|/g, '/')).slice(0, 3).concat(['', '']).slice(0, 3).join(' | ') + ' |').join('\n') : '';
+    const full = proofMd(p);
+    B.d.innerHTML = '<span class="k">' + (check.length ? 'ตรวจการพิสูจน์' : 'การพิสูจน์') + '</span>'
+      + (idea ? '<div class="note"><b>แนวคิด</b> ' + mdToHtml(idea) + '</div>' : '')
+      + (ckMd ? '<div class="prf">' + mdToHtml(ckMd) + '</div><span class="meta">การพิสูจน์ที่ถูกต้อง</span>' : '')
+      + '<div class="prf">' + mdToHtml(full) + '</div>'
+      + '<span class="meta">ตรวจเหตุผลทุกขั้นก่อนใช้สอน</span>'
+      + '<div class="row">' + (ckMd ? '<button class="btn solid" data-a="ck">วางผลตรวจ</button>' : '') + '<button class="btn' + (ckMd ? '' : ' solid') + '" data-a="put">วางการพิสูจน์</button><button class="btn" data-a="blank">วางเป็นใบงาน เว้นช่องเหตุผล</button>' + (idea ? '<button class="btn" data-a="idea">วางแนวคิด</button>' : '') + '</div>';
+    typeset(B.d);
+    const on = (k, f) => { const b = B.d.querySelector('[data-a="' + k + '"]'); if (b) b.onclick = f; };
+    on('put', () => { proofPut(full, box, p.steps.length); toast('วางการพิสูจน์แล้ว', 1500); });
+    on('blank', () => { proofPut(proofMd(p, true), box, p.steps.length); toast('วางใบงานแล้ว นักเรียนเขียนเหตุผลในช่องว่าง', 2200); });
+    on('ck', () => { proofPut(ckMd, box, check.length); toast('วางผลตรวจแล้ว', 1500); });
+    on('idea', () => { proofPut('**แนวคิด** ' + idea, box, 2); });
+  } catch (e) { B.d.innerHTML = '<span class="k">พิสูจน์</span><div class="note err">' + esc(aiErr(e)) + '</div>'; }
 }
 
 /* classroom assistant: questions from the pages the teacher picks. Answers stay hidden until the teacher asks (the screen may be on the projector);
@@ -8570,14 +8747,27 @@ const SHAPES = [
   ['poly', 'หกเหลี่ยม', '<path d="M8 3h10l5 8-5 8H8l-5-8z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>'],
   ['dashed', 'เส้นประ', '<path d="M3 19L23 3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-dasharray="3 4"/>']
 ];
+/* marks for geometry proofs: put on lines already drawn (tap or drag along a side, or from a corner into the angle) */
+const GEO_MARKS = [
+  ['tick1', 'ด้านเท่า 1', '<path d="M3 15h20 M13 10v10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>'],
+  ['tick2', 'ด้านเท่า 2', '<path d="M3 15h20 M11 10v10 M15 10v10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>'],
+  ['tick3', 'ด้านเท่า 3', '<path d="M3 15h20 M9 10v10 M13 10v10 M17 10v10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>'],
+  ['ang1', 'มุมเท่า 1', '<path d="M3 19h20 M3 19L19 4 M12 19a9 9 0 0 0-2.4-6.2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>'],
+  ['ang2', 'มุมเท่า 2', '<path d="M3 19h20 M3 19L19 4 M10 19a7 7 0 0 0-1.9-4.8 M14 19a11 11 0 0 0-3-7.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>'],
+  ['rang', 'บอกมุมฉาก', '<path d="M4 3v16h19 M4 13h6v6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>'],
+  ['par1', 'ขนาน 1', '<path d="M3 8h20 M3 17h20 M11 5l3 3-3 3 M11 14l3 3-3 3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>'],
+  ['par2', 'ขนาน 2', '<path d="M3 8h20 M3 17h20 M9 5l3 3-3 3 M13 5l3 3-3 3 M9 14l3 3-3 3 M13 14l3 3-3 3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>']
+];
+const isGeoMark = (k) => GEO_MARKS.some((m) => m[0] === k);
 function renderShapes() {
   const g = $('#shapeGrid'); g.innerHTML = '';
-  for (const [k, n, svg] of SHAPES) {
+  for (const [k, n, svg] of SHAPES.concat([['-', 'เครื่องหมายเรขาคณิต แตะที่ด้านหรือที่มุม']], GEO_MARKS)) {
+    if (k === '-') { const h = document.createElement('span'); h.className = 'label shpsec'; h.textContent = n; g.appendChild(h); continue; }
     const b = document.createElement('button'); b.className = 'shp'; b.type = 'button';
     b.setAttribute('aria-pressed', k === S.shapeKind ? 'true' : 'false');
     b.innerHTML = '<svg viewBox="0 0 26 22" aria-hidden="true">' + svg + '</svg><span></span>';
     b.querySelector('span').textContent = n;
-    b.onclick = () => { S.shapeKind = k; store_ls.set('tp-shapekind', k); renderShapes(); closePops(); toast('ลากบนหน้าเพื่อวาด' + n, 1500); };
+    b.onclick = () => { S.shapeKind = k; store_ls.set('tp-shapekind', k); renderShapes(); closePops(); toast(isGeoMark(k) ? (/^(ang|rang)/.test(k) ? 'แตะที่มุม หรือลากจากจุดยอดเข้าไปในมุม' : 'แตะที่ด้าน หรือลากไปตามด้าน') : 'ลากบนหน้าเพื่อวาด' + n, 1800); };
     g.appendChild(b);
   }
 }
@@ -14273,7 +14463,7 @@ function openCalc() {
   setTimeout(fit, 0);
   runCalc();
 }
-$('#iCalc').onclick = openCalc;
+$('#iCalc').onclick = openCalc; $('#iProof').onclick = () => { $('#insSheet').hidden = true; proofTemplate(); };
 $('#iStats').onclick = () => openStats();
 /* ---------- chapter lessons: read a summary of any chapter, drop a section or the whole chapter onto the page ---------- */
 const LESSONS = {}, LESSON_LOADING = {};
@@ -20751,6 +20941,26 @@ function pdfRangeUI() {
   paint();
 }
 const PDF_MAX = 600; /* pages brought in at one time; a long book comes in page by page, with a way to stop */
+/* where a rendered page has something printed on it (pictures, frames, tables, scanned writing), as boxes 0..1000 across the page; the page's own background colour counts as empty */
+function pdfInkBoxes(cv) {
+  const sw = 200, sh = Math.max(1, Math.round(cv.height * sw / cv.width)), t = document.createElement('canvas'); t.width = sw; t.height = sh;
+  const c = t.getContext('2d', { willReadFrequently: true }); c.drawImage(cv, 0, 0, sw, sh); const d = c.getImageData(0, 0, sw, sh).data; t.width = t.height = 1;
+  const hist = new Map(); for (let i = 0; i < d.length; i += 16) { const k = (d[i] >> 4) << 8 | (d[i + 1] >> 4) << 4 | (d[i + 2] >> 4); hist.set(k, (hist.get(k) || 0) + 1); }
+  let bk = 0xFFF, bn = -1; for (const [k, n] of hist) if (n > bn) { bn = n; bk = k; }
+  const br = ((bk >> 8) & 15) * 16 + 8, bgc = ((bk >> 4) & 15) * 16 + 8, bb = (bk & 15) * 16 + 8;
+  const C = 5, cols = Math.ceil(sw / C), rowsN = Math.ceil(sh / C), on = new Uint8Array(cols * rowsN);
+  for (let y = 0; y < sh; y++) for (let x = 0; x < sw; x++) { const i = (y * sw + x) * 4; if (Math.abs(d[i] - br) + Math.abs(d[i + 1] - bgc) + Math.abs(d[i + 2] - bb) > 90) on[((y / C) | 0) * cols + ((x / C) | 0)]++; }
+  const u = 1000 / sw, out = []; let open = [];
+  for (let r = 0; r <= rowsN; r++) {
+    const spans = [];
+    if (r < rowsN) for (let x = 0; x < cols; x++) if (on[r * cols + x] >= 2) { let e = x; while (e + 1 < cols && (on[r * cols + e + 1] >= 2 || (e + 2 < cols && on[r * cols + e + 2] >= 2))) e++; spans.push([x, e]); x = e; }
+    const next = [];
+    for (const sp of spans) { const o = open.find((b) => b.x0 <= sp[1] + 1 && b.x1 >= sp[0] - 1 && !b.used); if (o) { o.used = true; o.x0 = Math.min(o.x0, sp[0]); o.x1 = Math.max(o.x1, sp[1]); o.y1 = r; next.push(o); } else next.push({ x0: sp[0], x1: sp[1], y0: r, y1: r }); }
+    for (const o of open) if (!o.used) out.push(o);
+    open = next.map((o) => Object.assign(o, { used: false }));
+  }
+  return out.map((o) => [o.x0 * C * u, o.y0 * C * u, (o.x1 + 1) * C * u, (o.y1 + 1) * C * u].map(Math.round)).slice(0, 300);
+}
 async function pdfImport(newNb) {
   const doc = PDFI.doc; if (!doc) return;
   const a = clamp(parseInt($('#pdfFrom').value, 10) || 1, 1, doc.numPages), b = clamp(parseInt($('#pdfTo').value, 10) || a, a, Math.min(doc.numPages, a + PDF_MAX - 1));
@@ -20770,17 +20980,20 @@ async function pdfImport(newNb) {
       const cv = document.createElement('canvas'); cv.width = Math.round(vw.width); cv.height = Math.round(vw.height);
       const c = cv.getContext('2d'); c.fillStyle = '#FFFFFF'; c.fillRect(0, 0, cv.width, cv.height);
       await pg.render({ canvasContext: c, viewport: vw }).promise;
-      const blob = await new Promise((r) => cv.toBlob(r, 'image/jpeg', 0.86)); cv.width = cv.height = 1;
+      const blob = await new Promise((r) => cv.toBlob(r, 'image/jpeg', 0.86)); let gb = []; try { gb = pdfInkBoxes(cv); } catch (e) { gb = []; } cv.width = cv.height = 1;
       const up = await A.upload(blob, { type: 'image/jpeg' });
-      const ar = vw.height / vw.width; let w = 1000; if (ar * w > H) w = Math.floor(H / ar);
+      /* a wide page (slides 16:9 or 4:3, a landscape sheet) gets a landscape notebook page of its own, a tall one a portrait page, whatever page is open now */
+      const ar = vw.height / vw.width, land = ar < 0.95, [PW, PH] = pageDims(land ? { orient: 'land' } : null); let w = PW; if (ar * w > PH) w = Math.floor(PH / ar);
+      const y = 0; /* the picture sits at the top, the room left under it is for notes */
       /* the printed lines of the page (0..1000 across the picture), so the notebook's replies and pictures go into the free space */
       let tb = [];
       try { const tc = await pg.getTextContent(), rows = [];
         for (const t of tc.items) { if (!String(t.str || '').trim()) continue; const m = t.transform, fh = Math.hypot(m[2], m[3]) || 10, x0 = m[4] / v1.width * 1000, x1 = (m[4] + (t.width || 10)) / v1.width * 1000, yb = (v1.height - m[5]) / v1.width * 1000, yt = yb - fh / v1.width * 1000 * 1.1;
           const r0 = rows.find((r) => Math.abs(r[3] - yb) < 6 && x0 < r[2] + 30 && x1 > r[0] - 30); if (r0) { r0[0] = Math.min(r0[0], x0); r0[2] = Math.max(r0[2], x1); r0[1] = Math.min(r0[1], yt); } else rows.push([x0, yt, x1, yb]); }
         tb = rows.slice(0, 400).map((r) => r.map((v) => Math.round(clamp(v, 0, 2000)))); } catch (e) { tb = []; }
+      tb = tb.concat(gb).slice(0, 700); /* pictures, frames and scanned writing count as taken too, not only the text */
       const pid = (i === a && firstSpare) ? firstSpare : 'p' + uid(); firstPid = firstPid || pid;
-      await S.store.set('pages/' + pid, { nb: nid, paper: 'blank', items: [Object.assign({ id: 'i' + uid(), by: DEV, type: 'img', asset: up.id, x: Math.round((W - w) / 2), y: 0, w, ar: Math.round(ar * 1000) / 1000, lock: true }, tb.length ? { tb } : {})], rev: now() });
+      await S.store.set('pages/' + pid, Object.assign({ nb: nid, paper: 'blank', items: [Object.assign({ id: 'i' + uid(), by: DEV, type: 'img', asset: up.id, x: Math.round((PW - w) / 2), y, w, ar: Math.round(ar * 1000) / 1000, lock: true }, tb.length ? { tb } : {})], rev: now() }, land ? { orient: 'land' } : {}));
       pages.splice(++at, 0, pid);
       if (newNb || i === b || (i - a) % 5 === 4) await S.store.update('notebooks/' + nid, { pages: pages.slice(), updatedAt: now() });
       if (i % 10 === 0) await new Promise((r) => setTimeout(r, 0)); /* the screen stays responsive through a long book */
@@ -23312,7 +23525,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793692720';
+const BUILD = '1793756311';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
@@ -24318,7 +24531,7 @@ function quietRun(fn) {
     return p;
   };
 }
-$('#sAnim').onclick = openMotionPick; $('#sQuiz').onclick = openQuizMaker; $('#sEq').onclick = quietRun(eqSelection); $('#sRead').onclick = quietRun(readSelection); $('#sHand').onclick = openHand; $('#sTidy').onclick = quietRun(tidySelection); $('#sGen').onclick = quietRun(() => generate(true));
+$('#sAnim').onclick = openMotionPick; $('#sQuiz').onclick = openQuizMaker; $('#sEq').onclick = quietRun(eqSelection); $('#sRead').onclick = quietRun(readSelection); $('#sHand').onclick = openHand; $('#sTidy').onclick = quietRun(tidySelection); $('#sProof').onclick = quietRun(proofSelection); $('#sGen').onclick = quietRun(() => generate(true));
 $('#sFront').onclick = () => restackSel(true); $('#sBack').onclick = () => restackSel(false);
 $('#sDup').onclick = dupSel;
 $('#sKey').onclick = () => showPeek();
