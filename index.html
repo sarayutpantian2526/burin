@@ -1759,6 +1759,7 @@ body.role-student .scnpill .sbtns button[data-s="back"], body.role-student .scnp
     <span class="tsep" aria-hidden="true"></span>
     <button class="btn icon" id="bUndo" aria-label="ย้อนกลับ"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7.5 4.5L3.5 8.5l4 4 M3.5 8.5h8.5a4.5 4.5 0 0 1 0 9H10" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
     <button class="btn icon" id="bRedo" aria-label="ทำซ้ำ"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M12.5 4.5l4 4-4 4 M16.5 8.5H8a4.5 4.5 0 0 0 0 9h2" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+    <button class="btn icon" id="bNewPage" aria-label="เพิ่มหน้าต่อจากหน้านี้" title="เพิ่มหน้าต่อจากหน้านี้"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M11.5 2.5H5.5a1.5 1.5 0 0 0-1.5 1.5v12a1.5 1.5 0 0 0 1.5 1.5h9a1.5 1.5 0 0 0 1.5-1.5V7z M11.5 2.5V7H16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M10 9.5v5 M7.5 12h5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></button>
     <span class="tsep" aria-hidden="true"></span>
     <button class="btn" id="bDiary" aria-pressed="false" aria-label="สมุดตอบได้" title="สมุดตอบได้ เขียนแล้วสมุดเขียนตอบ"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M15.5 2.8c-4.6.6-8.3 4.6-9.6 10.4l-.9 3.9 M15.5 2.8c.4 3.8-2.4 7.6-7.3 8.6 M5.3 13.6c1.8.2 3.4-.4 4.6-1.6 M3.5 17.2h7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="lbl">สมุดตอบได้</span></button>
     <button class="btn" id="bConvert" aria-label="แปลงเป็นตัวพิมพ์" title="แปลงเป็นตัวพิมพ์"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 15.5c2-3 3-7 4.5-7s.5 5 2 5 2-6 3.5-6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M12 4h6 M15 4v7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span class="lbl">แปลงเป็นตัวพิมพ์</span></button>
@@ -3653,7 +3654,7 @@ function releasePull() {
 const wheelRelease = debounce(releasePull, 220);
 /* the top bar stays on one line: when it runs out of room, buttons show icons only */
 /* the main bar never runs off the screen: first labels go, then the least used buttons move into a "more" menu */
-const TOP_OVERFLOW = ['bViewer', 'bExport', 'bExam', 'bLive', 'bTray', 'bScan', 'bJoin', 'bConvert', 'bInsert', 'bAI', 'bPages', 'bFull', 'bRedo'];
+const TOP_OVERFLOW = ['bViewer', 'bExport', 'bExam', 'bLive', 'bTray', 'bScan', 'bJoin', 'bConvert', 'bInsert', 'bAI', 'bPages', 'bFull', 'bNewPage', 'bRedo'];
 function fitTop() {
   const t = document.querySelector('.top'); if (!t) return;
   t.classList.remove('compact'); t.querySelectorAll('.ovf').forEach((x) => x.classList.remove('ovf'));
@@ -24125,7 +24126,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793858866';
+const BUILD = '1793859573';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
@@ -24438,6 +24439,7 @@ navSide(NAV.side);
 document.querySelector('.pagenav').addEventListener('click', (e) => { if (!document.querySelector('.pagenav').classList.contains('mini') && e.target.closest('button')) navFold(false); });
 $('#pgNum').onclick = (e) => { const n = document.querySelector('.pagenav'); if (n.classList.contains('mini')) { e.stopPropagation(); navFold(false); return; } togglePages(); };
 $('#bAddBelow').onclick = () => addPage();
+$('#bNewPage').onclick = () => { const t = Date.now(); if (t - (addPage.at || 0) < 700) return; addPage.at = t; addPage(); }; /* a quick second tap does not add a second empty page */
 $('#bConvert').onclick = () => { if (!S.convMode && !needAI('read')) return; setConvMode(!S.convMode); };
 $('#cEq').onclick = () => { S.convEq = !S.convEq; $('#cEq').setAttribute('aria-pressed', S.convEq ? 'true' : 'false'); $('#convHint').textContent = S.convEq ? 'แตะที่สมการที่เขียนเพื่อแปลงเป็นสมการตัวพิมพ์' : 'แตะที่ลายมือเพื่อแปลงเป็นตัวพิมพ์'; };
 $('#cAll').onclick = () => { const gs = inkGroups(); if (!gs.length) { toast('หน้านี้ยังไม่มีลายมือ'); return; } convertGroups(gs); };
