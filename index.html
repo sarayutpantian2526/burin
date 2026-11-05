@@ -620,6 +620,13 @@ body.tv .grip { height: 68px; width: 32px; }
 .tabchip span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 @media (max-width: 900px) { .tabchip span { display: none; } .tabchip { padding: 0 9px; } }
 #tabMenu { position: fixed; z-index: 30; max-height: calc(100vh - 16px); overflow-y: auto; background: var(--surface); border-radius: 14px; box-shadow: var(--shadow); padding: 6px; display: flex; flex-direction: column; gap: 2px; min-width: 210px; border: 1px solid var(--line); }
+.npmenu { position: fixed; z-index: 30; width: 300px; max-width: calc(100vw - 16px); max-height: calc(100vh - 16px); overflow-y: auto; background: var(--surface); border-radius: 14px; box-shadow: var(--shadow); border: 1px solid var(--line); padding: 10px; display: flex; flex-direction: column; gap: 8px; }
+.npmenu .nph { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; padding: 0 2px; }
+.npmenu .nph b { font-size: 14px; }
+.npmenu .npl { font-size: 12px; color: var(--muted); margin: 2px 2px -4px; }
+.npmenu .chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.npmenu .pap canvas { width: 40px; height: 52px; }
+.npmenu .npf { display: flex; justify-content: flex-end; border-top: 1px solid var(--line); padding-top: 8px; }
 #tabMenu b { font-size: 13px; padding: 6px 12px 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 260px; }
 #tabMenu button { min-height: 44px; text-align: left; padding: 0 12px; border: 0; border-radius: 10px; background: transparent; cursor: pointer; font-size: 14px; }
 #tabMenu button:hover { background: var(--surface-2); }
@@ -6627,14 +6634,15 @@ function openPage(pid) {
   });
   hideLoading();
 }
-async function addPage() {
+async function addPage(opt) {
   if (!S.nb) return;
-  const pid = 'p' + uid();
+  opt = opt && typeof opt === 'object' && !opt.type ? opt : {}; /* called straight from a click, the event is not a choice */
+  const pid = 'p' + uid(), paperK = opt.paper || (S.page && S.page.paper) || 'grid', land = opt.orient ? opt.orient === 'land' : !!(S.page && S.page.orient === 'land');
   try {
-    await S.store.set('pages/' + pid, Object.assign({ nb: S.nid, paper: (S.page && S.page.paper) || 'grid', items: [], rev: now() }, S.page && S.page.orient === 'land' ? { orient: 'land' } : {}));
+    await S.store.set('pages/' + pid, Object.assign({ nb: S.nid, paper: paperK, items: [], rev: now() }, land ? { orient: 'land' } : {}));
     const pages = (S.nb.pages || []).slice();
     const i = pages.indexOf(S.pid);
-    pages.splice(i >= 0 ? i + 1 : pages.length, 0, pid);
+    pages.splice(opt.at === 'end' || i < 0 ? pages.length : i + 1, 0, pid);
     await S.store.update('notebooks/' + S.nid, { pages, updatedAt: now() });
     S.nb = Object.assign({}, S.nb, { pages });
     openPage(pid); renderPageList(); renderTitle();
@@ -8485,8 +8493,13 @@ function pselSync() {
 }
 async function pselDup() {
   const pick = pselList(); if (!pick.length || !S.nb) return;
+  const made = await dupPages(pick); if (made == null) return;
+  toast('ทำสำเนา ' + made + ' หน้าแล้ว ต่อท้ายหน้าต้นฉบับ', 2200); pselEnd(); renderTitle();
+}
+/* copies of pages (paper, boxes and every layer of writing), each put right after its original; gives the new page ids */
+async function dupPages(pick) {
   saveMine.flush(); savePage.flush();
-  const pages = (S.nb.pages || []).slice(); let made = 0;
+  const pages = (S.nb.pages || []).slice(); let made = 0; dupPages.made = [];
   try {
     for (const pid of pick) {
       const src = pid === S.pid ? Object.assign({}, S.page, { nb: S.nid }) : await S.store.get('pages/' + pid); if (!src) continue;
@@ -8494,11 +8507,11 @@ async function pselDup() {
       await S.store.set('pages/' + np, body);
       const ls = pid === S.pid ? allStrokes().reduce((m, r) => { (m[r.layer] = m[r.layer] || []).push(r.s); return m; }, {}) : (await S.store.list('pages/' + pid + '/layers')).reduce((m, l) => { m[l.id] = l.strokes || []; return m; }, {});
       for (const [lid, arr] of Object.entries(ls)) { if (!arr.length) continue; const parts = pid === S.pid ? chunkDocs(lid, clone(arr)) : { [lid]: clone(arr) }; for (const [id, part] of Object.entries(parts)) await S.store.set('pages/' + np + '/layers/' + id, { strokes: part, rev: now(), dev: lid.split('~')[0] }); }
-      pages.splice(pages.indexOf(pid) + 1, 0, np); made++;
+      pages.splice(pages.indexOf(pid) + 1, 0, np); made++; dupPages.made.push(np);
     }
     await S.store.update('notebooks/' + S.nid, { pages, updatedAt: now() }); S.nb = Object.assign({}, S.nb, { pages });
-    toast('ทำสำเนา ' + made + ' หน้าแล้ว ต่อท้ายหน้าต้นฉบับ', 2200); pselEnd(); renderTitle();
-  } catch (e) { onStoreError(e); }
+    return made;
+  } catch (e) { onStoreError(e); return null; }
 }
 async function pselDel() {
   const pick = pselList(); if (!pick.length || !S.nb) return;
@@ -8669,7 +8682,7 @@ window.addEventListener('resize', debounce(() => {
   fitTop();
   /* panels the user dragged somewhere come back inside when the screen turns or shrinks */
   document.querySelectorAll('.peek, .peekcard').forEach((el) => { if (!el.style.left || el.hidden) return; const host = el.offsetParent; if (!host) return; const hw = host.clientWidth, hh = host.clientHeight; el.style.left = clamp(parseFloat(el.style.left) || 0, 4, Math.max(4, hw - el.offsetWidth - 4)) + 'px'; el.style.top = clamp(parseFloat(el.style.top) || 0, 4, Math.max(4, hh - 60)) + 'px'; });
-  ['#tabMenu', '#nbPicker'].forEach((q) => { const m = $(q); if (m) m.hidden = true; });
+  ['#tabMenu', '#nbPicker', '#npMenu'].forEach((q) => { const m = $(q); if (m) m.hidden = true; });
 }, 120));
 
 const PK = { nid: null, pid: null, pages: [], title: '', unsub: [] };
@@ -24126,7 +24139,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793859573';
+const BUILD = '1793860144';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
@@ -24439,7 +24452,38 @@ navSide(NAV.side);
 document.querySelector('.pagenav').addEventListener('click', (e) => { if (!document.querySelector('.pagenav').classList.contains('mini') && e.target.closest('button')) navFold(false); });
 $('#pgNum').onclick = (e) => { const n = document.querySelector('.pagenav'); if (n.classList.contains('mini')) { e.stopPropagation(); navFold(false); return; } togglePages(); };
 $('#bAddBelow').onclick = () => addPage();
-$('#bNewPage').onclick = () => { const t = Date.now(); if (t - (addPage.at || 0) < 700) return; addPage.at = t; addPage(); }; /* a quick second tap does not add a second empty page */
+/* the add-page button asks what kind of page: the paper, which way round, and where it goes (or a copy of this page).
+   The last choice is kept, so the usual page is one more tap */
+function newPageMenu() {
+  let m = $('#npMenu');
+  if (!m) { m = document.createElement('div'); m.id = 'npMenu'; m.className = 'npmenu'; m.hidden = true; m.setAttribute('role', 'dialog'); m.setAttribute('aria-label', 'เพิ่มหน้าใหม่'); document.body.appendChild(m);
+    document.addEventListener('pointerdown', (e) => { if (!m.hidden && !e.target.closest('#npMenu') && !e.target.closest('#bNewPage')) m.hidden = true; }, true); }
+  if (!m.hidden) { m.hidden = true; return; }
+  let st = {}; try { st = JSON.parse(store_ls.get('tp-newpage') || '{}') || {}; } catch (e) { st = {}; }
+  const cur = { paper: (S.page && S.page.paper) || 'grid', orient: S.page && S.page.orient === 'land' ? 'land' : 'port' };
+  const ch = { paper: st.same === false && st.paper ? st.paper : cur.paper, orient: st.same === false && st.orient ? st.orient : cur.orient, at: st.at === 'end' ? 'end' : 'next' };
+  m.innerHTML = '<div class="nph"><b>เพิ่มหน้าใหม่</b><span class="meta">แตะกระดาษเพื่อเพิ่ม</span></div><span class="npl">แนวกระดาษ</span><div class="chips npor"></div><span class="npl">ชนิดกระดาษ</span><div class="papers npp"></div><span class="npl">วางหน้าใหม่ไว้</span><div class="chips npat"></div><div class="npf"><button class="btn" type="button" data-a="dup">ทำสำเนาหน้านี้</button></div>';
+  const chip = (box, k, n, on, fn) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'chip'; b.textContent = n; b.dataset.k = k; b.setAttribute('aria-pressed', on ? 'true' : 'false'); b.onclick = () => { box.querySelectorAll('.chip').forEach((x) => x.setAttribute('aria-pressed', x === b ? 'true' : 'false')); fn(k); }; box.appendChild(b); };
+  const or = m.querySelector('.npor'), at = m.querySelector('.npat'), pp = m.querySelector('.npp');
+  for (const [k, n] of [['port', 'แนวตั้ง'], ['land', 'แนวนอน']]) chip(or, k, n, ch.orient === k, (v) => { ch.orient = v; });
+  for (const [k, n] of [['next', 'ต่อจากหน้านี้'], ['end', 'ท้ายสมุด']]) chip(at, k, n, ch.at === k, (v) => { ch.at = v; });
+  const rank = ['grid', 'lined', 'blank', 'dot', 'mm', 'cornell', 'art', 'board'];
+  for (const [k, n] of PAPERS.slice().sort((a, b) => rank.indexOf(a[0]) - rank.indexOf(b[0]))) {
+    const b = document.createElement('button'); b.className = 'pap'; b.type = 'button'; b.dataset.k = k; b.setAttribute('aria-pressed', k === ch.paper ? 'true' : 'false'); b.setAttribute('aria-label', 'เพิ่มหน้ากระดาษ' + n);
+    b.innerHTML = '<canvas width="80" height="104"></canvas><span></span>'; b.querySelector('span').textContent = n;
+    try { const c = b.querySelector('canvas').getContext('2d'); c.setTransform(0.4, 0, 0, 0.4, 0, 0); c.fillStyle = '#FFFFFF'; c.fillRect(0, 0, 200, 260); if (k === 'cornell') c.setTransform(0.08, 0, 0, 0.074, 0, 0); paper(c, k); } catch (e) { /* the name is enough */ }
+    b.onclick = () => { const t = Date.now(); if (t - (addPage.at || 0) < 700) return; addPage.at = t; m.hidden = true;
+      try { store_ls.set('tp-newpage', JSON.stringify({ paper: k, orient: ch.orient, at: ch.at, same: k === cur.paper && ch.orient === cur.orient ? undefined : false })); } catch (e) { /* not kept */ }
+      addPage({ paper: k, orient: ch.orient, at: ch.at }); };
+    pp.appendChild(b);
+  }
+  m.querySelector('[data-a="dup"]').onclick = async () => { const t = Date.now(); if (t - (addPage.at || 0) < 700) return; addPage.at = t; m.hidden = true; if (!S.nb || !S.pid) return;
+    const made = await dupPages([S.pid]); if (made && dupPages.made[0]) { openPage(dupPages.made[0]); renderPageList(); renderTitle(); S.ty = topY(); S.pull = 0; applyT(); toast('ทำสำเนาหน้านี้แล้ว อยู่ต่อจากหน้าเดิม', 1800); } };
+  m.hidden = false;
+  const r = $('#bNewPage').getBoundingClientRect(), w = m.offsetWidth;
+  m.style.left = Math.round(clamp(r.left, 8, window.innerWidth - w - 8)) + 'px'; m.style.top = Math.round(r.bottom + 6) + 'px';
+}
+$('#bNewPage').onclick = newPageMenu;
 $('#bConvert').onclick = () => { if (!S.convMode && !needAI('read')) return; setConvMode(!S.convMode); };
 $('#cEq').onclick = () => { S.convEq = !S.convEq; $('#cEq').setAttribute('aria-pressed', S.convEq ? 'true' : 'false'); $('#convHint').textContent = S.convEq ? 'แตะที่สมการที่เขียนเพื่อแปลงเป็นสมการตัวพิมพ์' : 'แตะที่ลายมือเพื่อแปลงเป็นตัวพิมพ์'; };
 $('#cAll').onclick = () => { const gs = inkGroups(); if (!gs.length) { toast('หน้านี้ยังไม่มีลายมือ'); return; } convertGroups(gs); };
