@@ -193,6 +193,8 @@ body.flow:not(.flowlast) #bAddBelow { display: none; }
 #page { position: relative; background: #FFFFFF; box-shadow: 0 10px 34px rgba(20, 26, 34, 0.16); border-radius: 4px; }
 #page > canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 #page > #cSharp { inset: auto; pointer-events: none; }
+#items .item.cvt { color: transparent !important; -webkit-text-fill-color: transparent; text-shadow: none !important; }
+#items .item.cvt .dink { color: transparent !important; }
 #page.exact > #cInk, #page.exact > #cLive, #page.exact > #cRemote { inset: 0 auto auto 0; width: var(--cw); height: var(--ch); }
 #page.px1 > #cInk, #page.px1 > #cRemote, #page.pxs > #cSharp { image-rendering: pixelated; }
 #page > #cSharp[hidden] { display: none; }
@@ -3739,6 +3741,7 @@ function drawSharp() {
   const ox = -(x0 - pr.left) * dq, oy = -(y0 - pr.top) * dq, vkey = [S.pid, bw, bh, k.toFixed(4), Math.round(ox), Math.round(oy)].join('|');
   if (vecs.length) { if (PDFV.last && PDFV.last.key === vkey) { c.save(); c.setTransform(1, 0, 0, 1, 0, 0); c.drawImage(PDFV.last.cv, 0, 0); c.restore(); } else pdfVecLater(vecs, vkey, bw, bh, k, ox, oy); }
   drawInto(c, allStrokes(), S.sel && !S.sel.quiet ? new Set(S.sel.strokes.map((r) => r.id)) : null);
+  sharpText(c, x0, y0, x1, y1, dq, pr);
   cSharp.hidden = false; S.sharpZoom = S.zoom; S.sharpExact = Math.abs(dq - dpr) < 1e-6 && (window.devicePixelRatio || 1) === dpr; pxSync();
   /* the live canvas follows the same visible region (not while a pen is down: resizing would wipe the stroke) */
   if (!penBusy()) liveFit(true, (x0 - pr.left) / (pr.width / W), (y0 - pr.top) / (pr.height / H), (x1 - x0) / (pr.width / W), (y1 - y0) / (pr.height / H), k, (x0 - pr.left) / sc, (y0 - pr.top) / sc, (x1 - x0) / sc, (y1 - y0) / sc);
@@ -3779,6 +3782,50 @@ function pdfVecLater(vecs, vkey, bw, bh, k, ox, oy) {
 }
 function redrawLiveBoxes() { try { if (typeof SCN !== 'undefined') for (const [id, r] of SCN) { const it = findItem(id); if (it && r.cv && r.cv.isConnected) scRender(it, r); } for (const el of itemsEl.querySelectorAll('.item.sim')) { const it = findItem(el.dataset.id), cv = el.querySelector('canvas.simcv:not(.scncv)'); if (it && it.type === 'sim' && cv) simRender(it, cv, el.querySelector('.sro')); } } catch (e) { /* not ready yet */ } }
 /* new lines on top of the sharp layer straight away, without painting the whole visible page again */
+/* zoomed in on an iPad, the words of the notebook's replies (and plain typed notes) are painted into the sharp layer from
+   their exact place on the page, and the same words in the box itself are made see-through: Safari enlarges box text as a
+   picture (soft letters) while this layer is pixel for pixel. Anything that moves or changes a box shows its own words again */
+const TXTCV = { on: false };
+function sharpTextOff() { if (!TXTCV.on) return; TXTCV.on = false; itemsEl.querySelectorAll('.item.cvt').forEach((el) => el.classList.remove('cvt')); }
+function sharpText(c, x0, y0, x1, y1, dq, pr) {
+  sharpTextOff();
+  if (!(ITEMS_HIDPI || window.__hidpiTest) || S.zoom < 1.15 || editing || S.present || S.show) return;
+  const segW = (typeof Intl !== 'undefined' && Intl.Segmenter) ? new Intl.Segmenter('th', { granularity: 'word' }) : null;
+  const cand = (it) => it && (!it.type || it.type === 'text') && !it.teacher && !isExItem(it);
+  const done = [];
+  try {
+    c.save(); c.setTransform(1, 0, 0, 1, 0, 0); c.textBaseline = 'alphabetic';
+    for (const el of itemsEl.querySelectorAll('.item')) {
+      const it = findItem(el.dataset.id); if (!cand(it) || el.classList.contains('writing') || el.classList.contains('editing')) continue;
+      const er = el.getBoundingClientRect(); if (er.right < x0 || er.left > x1 || er.bottom < y0 || er.top > y1) continue;
+      if ([...el.querySelectorAll('mjx-container, svg, table, ul, ol, img, canvas, video, input')].some((n) => !n.closest('button') && !n.classList.contains('dsvg'))) continue; /* formulas, tables and pictures stay as they are */
+      const cs = getComputedStyle(el), nodes = [], tw = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, { acceptNode: (n) => (n.parentElement.closest('button') ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT) });
+      while (tw.nextNode()) if (tw.currentNode.textContent.trim()) nodes.push(tw.currentNode);
+      if (!nodes.length) continue;
+      for (const n of nodes) {
+        const ps = getComputedStyle(n.parentElement), fsz = parseFloat(ps.fontSize) * (pr.width / W) * dq;
+        c.font = ps.fontStyle + ' ' + ps.fontWeight + ' ' + fsz.toFixed(2) + 'px ' + ps.fontFamily; c.fillStyle = ps.color;
+        const fm = c.measureText('กHg'), asc = fm.fontBoundingBoxAscent || fsz * 0.8, desc = fm.fontBoundingBoxDescent || fsz * 0.2;
+        const t = n.textContent, parts = segW ? [...segW.segment(t)].map((x) => [x.index, x.segment]) : [[0, t]];
+        const r = document.createRange();
+        /* words that sit on the same line are drawn together from where the first of them starts */
+        let run = '', rx = 0, rtop = null, rh = 0;
+        const flush = () => { if (run && rtop != null) { const by = (rtop - y0) * dq + ((rh * dq) - (asc + desc)) / 2 + asc; c.fillText(run, (rx - x0) * dq, by); } run = ''; rtop = null; };
+        for (const [i, w] of parts) {
+          r.setStart(n, i); r.setEnd(n, i + w.length); const rects = r.getClientRects(); if (!rects.length) continue;
+          const q = rects[0];
+          if (rects.length > 1 || rtop == null || Math.abs(q.top - rtop) > q.height * 0.4) { flush(); if (!w.trim()) continue; run = w; rx = q.left; rtop = q.top; rh = q.height; }
+          else run += w;
+        }
+        flush();
+      }
+      done.push(el);
+    }
+    c.restore();
+  } catch (e) { try { c.restore(); } catch (er) { /* fine */ } return; }
+  for (const el of done) el.classList.add('cvt');
+  TXTCV.on = done.length > 0;
+}
 function sharpAdd(list) {
   const X = S.sharpXf;
   if (!cSharp || cSharp.hidden || !X || X.pid !== S.pid || X.w !== cSharp.width || list.some((st) => st.k === 'h')) { if (cSharp && (!cSharp.hidden || S.zoom > 1.2)) sharpLater(); return; }
@@ -3797,6 +3844,7 @@ function itemsXf() { const K = S.itemsK || 1; for (const el of [itemsEl, itemsBg
    handles it differently (a letter came out smaller on one iPad), the old way is used from then on */
 function itemsProbe() { const d = document.createElement('div'); d.style.cssText = 'position:absolute;left:0;top:0;width:100px;font-size:100px;line-height:1;visibility:hidden;pointer-events:none;white-space:nowrap'; const sp = document.createElement('span'); sp.textContent = 'HH'; d.appendChild(sp); itemsEl.appendChild(d); const a = d.getBoundingClientRect(), b = sp.getBoundingClientRect(); d.remove(); return [a.width, b.width, b.height]; }
 function itemsRepaint() {
+  return; /* replaced by the words painted into the sharp layer (sharpText): kept for reference */
   if (!(ITEMS_HIDPI || window.__hidpiTest) || editing || store_ls.get('tp-hidpi-bad') === '1') return;
   const K = S.zoom > 1.15 ? Math.min(4, Math.round(S.zoom * 2) / 2) : 1; if (K === (S.itemsK || 1)) return;
   const before = itemsProbe(); S.itemsK = K; itemsXf(); const after = itemsProbe();
@@ -4167,7 +4215,7 @@ function visibleItems() { const a = (S.page && S.page.items) || []; return S.pre
 let editing = null;
 function renderItems() {
   if (editing) return;
-  renderItems0(); markPicked();
+  sharpTextOff(); renderItems0(); markPicked(); if (typeof cSharp !== 'undefined' && cSharp && !cSharp.hidden) sharpLater();
   edgeCheckLater();
 }
 /* a box or picture already on the page that runs past the edge of the paper (made before this check, or arriving from an
@@ -4267,6 +4315,7 @@ itemsEl.addEventListener('pointerdown', (e) => {
   if (it && it.type !== 'svg') startEdit(it, d);
 });
 function startEdit(it, d) {
+  sharpTextOff();
   if (editing) commitEdit();
   editing = { id: it.id, before: clone(S.page.items || []) };
   d.classList.add('editing');
@@ -4907,7 +4956,7 @@ function diaryWriteIn(id, from) {
   let i = from; for (let k = 0; k < from && k < marks.length; k++) marks[k].classList.add('on');
   const step = () => {
     if (!el.isConnected) return;
-    if (i >= marks.length) { delete DIARY.anim[id]; nib.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 400, fill: 'forwards' }); setTimeout(() => { svg.remove(); el.classList.remove('writing'); }, 900); return; }
+    if (i >= marks.length) { delete DIARY.anim[id]; nib.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 400, fill: 'forwards' }); setTimeout(() => { svg.remove(); el.classList.remove('writing'); if (typeof cSharp !== 'undefined' && cSharp && !cSharp.hidden) sharpLater(); }, 900); return; }
     DIARY.anim[id] = i;
     const g = marks[i++], c = g.textContent, r = place(g);
     let dur = 0;
@@ -6246,6 +6295,7 @@ function selBox(sel) {
   return [x0 - 8, y0 - 8, x1 + 8, y1 + 8];
 }
 function moveItemEls() {
+  sharpTextOff();
   if (!S.sel || !S.page) return;
   for (const id of S.sel.items) {
     const it = (S.page.items || []).find((t) => t.id === id);
@@ -24025,7 +24075,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793779133';
+const BUILD = '1793840399';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
