@@ -3022,7 +3022,7 @@ const AI = {
   srcName(s) { return s === 'claude' ? 'Claude ในบัญชีของคุณ' : s === 'local' ? 'AI ในเครื่อง' : s === 'key' ? (KEY_VENDORS[this.cfg.key.vendor] || KEY_VENDORS.other).name : 'ปิดอยู่'; },
   async run(task, prompt, o) {
     o = o || {};
-    prompt = subjectize(String(prompt)); if (/LaTeX|\$\.\.\.\$|\$ signs|math/i.test(prompt) && !o.noNotation) prompt += MATH_NOTATION; prompt += langDirective(prompt, o);
+    prompt = subjectize(String(prompt), o); if (/LaTeX|\$\.\.\.\$|\$ signs|math/i.test(prompt) && !o.noNotation) prompt += MATH_NOTATION; prompt += langDirective(prompt, o);
     const s = this.src(task);
     if (s === 'claude') { if (!this.claude) throw { code: 'not_granted' }; return this.claude(prompt, o); }
     if (s === 'local') { const L = this.cfg.local; return runOpenAI(L.url, '', L.model, prompt, L.vision ? o : Object.assign({}, o, { images: null }), L.tools); }
@@ -3275,7 +3275,7 @@ async function uiTranslate(l, more) {
       const part = keys.slice(i, i + size), src = {}; part.forEach((k, j) => { src[j] = en[k]; });
       const prompt = 'Translate the user-interface strings of a teaching notebook app from English into ' + name + '. Keep them short like buttons and menu labels, natural for teachers and students in that language. Keep numbers, symbols, letters A B C D, brand names (Burin, Google, OpenRouter, Gemini, Claude, ChatGPT, Supabase, PDF, QR, AI) and placeholders unchanged. Keep leading and trailing spaces exactly. Reply with JSON only: an object with the same keys and the translated strings.\n' + JSON.stringify(src);
       try {
-        const r = await AI.run('gen', prompt, { maxTokens: 12000, cache: false, lang: 'th', noNotation: true });
+        const r = await AI.run('gen', prompt, { maxTokens: 12000, cache: false, lang: 'th', noNotation: true, subj: true, noCtx: true });
         const m = String(r.text || '').match(/\{[\s\S]*\}/); const out = m ? JSON.parse(m[0]) : {};
         part.forEach((k, j) => { const v = out[j]; if (typeof v === 'string' && v.trim()) have[k] = v; });
       } catch (e) { failed++; if (failed > 2) throw e; }
@@ -3323,14 +3323,49 @@ const L10 = (t) => (UI_LANG !== 'th' && I18N.dict && I18N.dict[t]) || t;
 const subjName = (k, nb) => (k === 'other' ? subjOf(nb)[1] : L10((SUBJECTS.find((x) => x[0] === k) || SUBJECTS[0])[1]));
 /* the notation teachers write by hand and students see in Thai textbooks: arrow over a vector, upright units, real minus and times signs */
 const MATH_NOTATION = '\n\nNOTATION (follow exactly in every formula): a vector is a letter with a half arrow (harpoon) over it as written by hand, always typed as \\vec{}, $\\vec{F}$, $\\vec{v}$, $\\vec{a}$, never bold; a vector from point A to point B is $\\vec{AB}$; unit vectors $\\hat{i}, \\hat{j}, \\hat{k}$ (or $\\hat{x}$, $\\hat{n}$); the size of a vector is $|\\vec{F}|$ or plain italic $F$; net force $\\sum \\vec{F}$ or $\\vec{F}_{\\text{net}}$; change $\\Delta v$; dot product $\\vec{A}\\cdot\\vec{B}$, cross product $\\vec{A}\\times\\vec{B}$; multiplication of numbers $\\times$ (scientific notation $3.0\\times10^{8}$), never * or x; units upright after a thin space, $20\\,\\mathrm{m/s}$, $9.8\\,\\mathrm{m/s^2}$, $5\\,\\mathrm{N}$, $2\\,\\mathrm{k\\Omega}$; angles $30^\\circ$; descriptive subscripts upright, $v_{\\text{max}}$, $E_{\\text{k}}$, numeric or single-letter subscripts plain, $v_0$, $F_x$; fractions with \\frac; no Unicode math characters (√ × → ² ° ±) outside or inside $...$, use the LaTeX commands.';
-/* every request works from what is actually on the page: the notebook's subject is only a hint, never a reason to turn
-   other content into physics (a lesson on AI stays about AI, a poem stays a poem) */
-function subjectize(prompt) {
-  const sj = curSubj();
+/* what the person has been doing just before: the talk with the notebook, what they wrote that was turned into type, and
+   what they typed as a request. Every request to the AI follows this first; the notebook's subject is only a weak hint */
+const CONV = { list: [] };
+function convNote(kind, t) { t = String(t || '').replace(/\s+/g, ' ').trim(); if (!t || !S.pid) return; const last = CONV.list[CONV.list.length - 1]; if (last && last[3] === t) return; CONV.list.push([Date.now(), S.pid, kind, t.slice(0, 280)]); if (CONV.list.length > 14) CONV.list.shift(); }
+function convContext() {
+  const out = [], pid = S.pid; if (!pid) return '';
+  try {
+    const log = (DIARY.log[pid] || (S.page && S.page.diaryLog) || []).slice(-8);
+    for (const m of log) out.push((m[0] === 'u' ? 'User wrote to the notebook: ' : 'Notebook replied: ') + String(m[1] || '').replace(/\s+/g, ' ').slice(0, 240));
+  } catch (e) { /* no talk yet */ }
+  const asks = CONV.list.filter((x) => Date.now() - x[0] < 4 * 3600e3 && (x[1] === pid || x === CONV.list[CONV.list.length - 1] || Date.now() - x[0] < 30 * 60e3)).slice(-6);
+  for (const x of asks) out.push((x[2] === 'wrote' ? 'User wrote by hand: ' : 'User asked: ') + x[3]);
+  if (out.length < 2) { /* nothing said yet: the words on the page are what it is about */
+    try {
+      const its = visibleItems().filter((it) => (!it.type || it.type === 'text') && it.text).slice().sort((a, b) => a.y - b.y).slice(-4);
+      for (const it of its) { const d = document.createElement('div'); d.innerHTML = String(it.text); const t = (d.textContent || '').replace(/\s+/g, ' ').trim(); if (t) out.push('On the page: ' + t.slice(0, 200)); }
+    } catch (e) { /* nothing on the page */ }
+  }
+  return out.join('\n').slice(-2200);
+}
+/* every request works from what the person has been talking about and asking for, and from what is actually on the page:
+   the notebook's subject is only a weak hint, never a reason to turn other content into physics or into the notebook's subject
+   (a lesson on AI stays about AI, a poem stays a poem). Tasks where the person chose a subject themselves (an exam bank,
+   a course outline) pass o.subj and keep it. */
+function subjNeutral(prompt) {
+  return String(prompt)
+    .replace(/\bin a physics context\b/g, 'in the context of what the user is working on')
+    .replace(/\bThai physics teacher\b/g, 'Thai teacher').replace(/\ba physics teacher\b/g, 'a teacher').replace(/\bphysics teacher\b/g, 'teacher')
+    .replace(/\bthe physics concept\b/g, 'the concept').replace(/\bphysics assignment\b/g, 'assignment').replace(/\bpractising physics\b/g, 'practising')
+    .replace(/\(topic: physics\)/g, '(topic: from the content)'); /* only the words that cast the person or the page as physics; motion "physics" in the moving-drawing prompts is about how things move and stays */
+}
+function subjectize(prompt, o) {
+  o = o || {}; const sj = curSubj();
   const wrapRule = '\n\nLINES: never put a line break inside a sentence or a word to make lines short; the page wraps the text itself by the rules of each language (Thai breaks only between words). Use a line break only between paragraphs, list items, steps or formulas.';
-  const follow = wrapRule + '\n\nCONTENT FIRST: the notebook is labelled ' + (sj[2] || 'general studies') + ', but always work from what the text and images actually show. If they are about another subject or topic (for example artificial intelligence, mathematics, biology, chemistry, language, social studies), reply, explain, draw, check and write questions in that subject with its own terms and standards; never recast it as physics, and never add physics that is not there. Any instruction above that names physics applies to the subject the content actually shows.';
-  if (sj[0] === 'phys') return prompt + follow;
-  return prompt.replace(/\bphysics\b/g, sj[2]).replace(/\bPhysics\b/g, sj[2][0].toUpperCase() + sj[2].slice(1)) + '\n\nSUBJECT: this notebook is about ' + sj[2] + '; adapt every instruction above to ' + sj[2] + '. ' + sj[3] + follow;
+  if (o.subj) {
+    const follow = wrapRule + '\n\nCONTENT FIRST: always work from what the text and images actually show, with the terms and standards of their own subject.';
+    if (sj[0] === 'phys') return prompt + follow;
+    return prompt.replace(/(^|[^"\w-])physics(?=[^"\w-]|$)/g, '$1' + sj[2]).replace(/\bPhysics\b/g, sj[2][0].toUpperCase() + sj[2].slice(1)) + '\n\nSUBJECT: ' + sj[2] + '. ' + sj[3] + follow;
+  }
+  const ctx = o.noCtx ? '' : convContext();
+  return subjNeutral(prompt) + wrapRule
+    + '\n\nFOLLOW THE USER: the subject and meaning come from what the user has been talking about and what they asked for' + (ctx ? ' (below)' : '') + ', and from what the text and images actually show. Work in that subject with its own terms and standards (it may be anything: artificial intelligence, mathematics, biology, chemistry, physics, language, art, social studies, everyday life). Do not steer it to a school subject that is not there and do not add content the user did not ask for. The notebook is labelled ' + (sj[2] || 'general studies') + '; use that label only when nothing else tells what it is about.'
+    + (ctx ? '\nWhat the user has been doing just before (oldest first, the latest matters most):\n' + ctx : '');
 }
 /* a subject select plus a name box that shows only for "other" */
 function subjPicker(val, name) {
@@ -3534,7 +3569,9 @@ function flowCheck() {
   if (nb.prev && FLOW.dims.prev && cy < -FLOW.gap / 2) flowGo(-1);
   else if (nb.next && FLOW.dims.next && cy > H * S.base + FLOW.gap / 2) flowGo(1);
 }
-const flowCheckLater = debounce(flowCheck, 60);
+/* checked once a frame while the view moves: waiting for the scroll to pause (as before) let a long flick run into the end of
+   the next page and stop there for a moment before carrying on, which felt like a stutter between pages */
+const flowCheckLater = (() => { let r = 0; return () => { if (r) return; r = requestAnimationFrame(() => { r = 0; flowCheck(); }); }; })();
 function flowSet(on) {
   FLOW.on = !!on; store_ls.set('tp-flow2', on ? '1' : '0');
   const t = $('#tgFlow'); if (t) t.setAttribute('aria-checked', on ? 'true' : 'false');
@@ -4139,20 +4176,27 @@ function inkSig() { let a = 0, b = 0, n = 0; for (const r of allStrokes()) { con
    scrolling never freeze while the lines are painted; the picture is exactly what drawInk makes */
 function drawInkSoon() {
   const list = allStrokes();
-  if (list.length < 120 || S.sel) { drawInk(); return; }
-  const gen = ++S.inkGen, c = cInk.getContext('2d'), sig = inkSig();
-  c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, cInk.width, cInk.height);
-  /* a picture of this page drawn earlier (the continuous view keeps one) shows at once while the lines are painted */
-  const pk = PEEKS.get(S.pid); if (pk && !pk.split && pk.nodes && pk.nodes[0] && pk.dims && pk.dims[0] === W && pk.dims[1] === H) { try { c.drawImage(pk.nodes[0], 0, 0, cInk.width, cInk.height); } catch (e) { /* lines come anyway */ } }
+  if (list.length < 40 || S.sel) { drawInk(); return; }
+  const gen = ++S.inkGen, c0 = cInk.getContext('2d'), sig = inkSig();
+  c0.setTransform(1, 0, 0, 1, 0, 0); c0.clearRect(0, 0, cInk.width, cInk.height);
+  /* a picture of this page drawn earlier (the continuous view keeps one) shows at once while the lines are painted out of
+     sight, then the finished page replaces it in one step: clearing it first made the page blink empty and fill in line by line */
+  const pk = PEEKS.get(S.pid); let held = false;
+  if (pk && !pk.split && pk.nodes && pk.nodes[0] && pk.dims && pk.dims[0] === W && pk.dims[1] === H) { try { c0.drawImage(pk.nodes[0], 0, 0, cInk.width, cInk.height); held = true; } catch (e) { /* lines come anyway */ } }
+  let buf = null;
+  if (held) { try { buf = drawInkSoon.buf || (drawInkSoon.buf = document.createElement('canvas')); if (buf.width !== cInk.width || buf.height !== cInk.height) { buf.width = cInk.width; buf.height = cInk.height; } else buf.getContext('2d').clearRect(0, 0, buf.width, buf.height); } catch (e) { buf = null; } }
+  const c = buf ? buf.getContext('2d') : c0;
   const order = list.filter((r) => r.s.k === 'h').concat(list.filter((r) => r.s.k !== 'h'));
   let i = 0, first = true;
   const step = () => {
-    if (gen !== S.inkGen) return;
-    if (first) { first = false; c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, cInk.width, cInk.height); }
+    if (gen !== S.inkGen || (buf && (buf.width !== cInk.width || buf.height !== cInk.height))) { if (buf) { buf.width = buf.height = 1; } return; }
+    if (first) { first = false; if (!buf) { c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, cInk.width, cInk.height); } }
     c.setTransform(S.res, 0, 0, S.res, 0, 0);
     const t0 = performance.now();
     while (i < order.length && performance.now() - t0 < 8) drawStroke(c, order[i++].s);
     if (i < order.length) { requestAnimationFrame(step); return; }
+    if (buf && inkSig() !== sig) { buf.width = buf.height = 1; drawInk(); return; } /* a line written or rubbed out meanwhile: the page is drawn whole as it is now */
+    if (buf) { c0.setTransform(1, 0, 0, 1, 0, 0); c0.clearRect(0, 0, cInk.width, cInk.height); c0.drawImage(buf, 0, 0); buf.width = buf.height = 1; } /* the spare canvas gives its memory back at once (iPad) */
     S.inkSigDrawn = sig; if (typeof refreshCurThumb === 'function') refreshCurThumb();
     if (cSharp && (!cSharp.hidden || S.zoom > 1.2)) drawSharp();
   };
@@ -4504,7 +4548,7 @@ async function diaryAsk() {
     /* the answer is read as it arrives: once the words are complete (the drawing section has begun) the notebook starts
        writing them, while the drawing commands are still coming; the drawing follows when they are all in */
     let early = null; const earlyP = new Promise((res) => { early = res; });
-    const full = AI.run('read', prompt, { images: [img.blob], maxTokens: 3500, cache: false, signal: ctl.signal,
+    const full = AI.run('read', prompt, { images: [img.blob], maxTokens: 3500, cache: false, noCtx: true, signal: ctl.signal,
       onPartial: (t) => { const a = t.indexOf('@@REPLY'), b = a >= 0 ? t.indexOf('@@DRAW', a) : -1; if (b > a + 8) early({ text: t.slice(0, b), done: false }); } });
     full.catch(() => {});
     const first = await Promise.race([earlyP, full.then((r) => ({ text: r.text, done: true }))]);
@@ -4523,7 +4567,7 @@ async function diaryAsk() {
       if (!sk.length && /วาด|แผนผัง|แผนภาพ|ภาพ|รูป|กราฟ|แผนที่|ไดอะแกรม|draw|diagram|sketch|graph|picture/i.test(said)) {
         try {
           const r2 = await AI.run('gen', 'You are the notebook in Burin and you are about to sketch by hand for this exchange.\nThe writer wrote: "' + ((read && read.text) || '').slice(0, 300) + '"\nYou replied: "' + ((rep && rep.text) || '').slice(0, 400) + '"\n'
-            + 'Now give ONLY the drawing as pen commands, one per line, in a box 100 wide and 60 high, x to the right and y downwards: "line x1 y1 x2 y2", "arrow x1 y1 x2 y2", "poly x y x y ...", "shape x y x y ..." (closed), "curve x y x y ...", "circle cx cy r", "ellipse cx cy rx ry", "arc cx cy r fromDeg toDeg", "dash x1 y1 x2 y2", "dot x y", "text x y label" (short label in the writer\'s language). Optional colour word at the end: red, blue, green, orange. A clear, simple hand sketch, at most 40 lines. No other words.', { maxTokens: 2500, cache: false, signal: ctl.signal });
+            + 'Now give ONLY the drawing as pen commands, one per line, in a box 100 wide and 60 high, x to the right and y downwards: "line x1 y1 x2 y2", "arrow x1 y1 x2 y2", "poly x y x y ...", "shape x y x y ..." (closed), "curve x y x y ...", "circle cx cy r", "ellipse cx cy rx ry", "arc cx cy r fromDeg toDeg", "dash x1 y1 x2 y2", "dot x y", "text x y label" (short label in the writer\'s language). Optional colour word at the end: red, blue, green, orange. A clear, simple hand sketch, at most 40 lines. No other words.', { maxTokens: 2500, cache: false, noCtx: true, signal: ctl.signal });
           sk = diaryParseDraw(String(r2.text || '').split('\n').filter((l) => DQ_LINE.test(l)).join('\n'));
         } catch (e) { /* the words alone still go on the page */ }
       }
@@ -7053,6 +7097,7 @@ async function convertBatch(gs, eq) {
       const raw = p ? p.text : (N === 1 && !parts.length ? String(res.text || '').replace(/^\s*```\w*\s*$/gm, '').trim() : '');
       if (!p && !raw) { skipped++; return; }
       if ((p && /skip/i.test(p.arg)) || !raw) { skipped++; return; }
+      convNote('wrote', raw);
       const out = eq ? raw.split('\n').map((l) => l.trim().replace(/^\$+|\$+$/g, '').replace(/^\\\[|\\\]$/g, '').trim()).filter(Boolean).map((l) => '$$' + l + '$$').join('\n') : raw;
       replaceGroup(x.g, out, eq); done++;
     });
@@ -7175,7 +7220,7 @@ async function readSelectionPanel() {
     const parts = sections(res.text);
     const r = { text: sec(parts, 'TEXT') || (parts.length ? '' : String(res.text || '')), latex: sec(parts, 'LATEX'), confidence: (sec(parts, 'CONFIDENCE') || '').toLowerCase().split(/\s/)[0], note: sec(parts, 'NOTE') };
     const text = r.text.trim();
-    if (!text) throw { code: 'empty_completion' };
+    if (!text) throw { code: 'empty_completion' }; convNote('wrote', text);
     const conf = { high: 'อ่านได้ชัด', medium: 'อ่านได้ค่อนข้างชัด ตรวจอีกครั้ง', low: 'ไม่แน่ใจ ตรวจก่อนใช้' }[r.confidence] || '';
     B.d.innerHTML = '<span class="k">แปลงเป็นตัวพิมพ์</span><div class="q">' + mdToHtml(text) + '</div>'
       + '<span class="meta">' + esc(conf) + (r.note ? ' : ' + esc(r.note) : '') + '</span>'
@@ -11641,7 +11686,7 @@ function renderScenePicker(box, dom, q) {
   const ai = document.createElement('div'); ai.className = 'scnai';
   ai.innerHTML = '<label class="field"><span>ไม่มีแบบที่ต้องการ อธิบายสิ่งที่อยากให้ขยับ แล้วให้ AI สร้าง</span><textarea rows="2" placeholder="เช่น กล่อง 2 kg ถูกดึงด้วยแรง 10 N ทำมุม 30 องศา บนพื้นที่มีแรงเสียดทาน 0.2"></textarea></label><button class="btn solid" type="button">สร้างแบบจำลอง</button><div class="note small">หรือวาดภาพบนหน้า วงรอบด้วยบ่วงเลือก แล้วกด "ขยับได้"</div>';
   ai.querySelector('button').onclick = async () => {
-    const t = ai.querySelector('textarea').value.trim(); if (!t) return; if (!needAI('gen')) return;
+    const t = ai.querySelector('textarea').value.trim(); if (!t) return; if (!needAI('gen')) return; if (typeof convNote === 'function') convNote('asked', t);
     const bt = ai.querySelector('button'); bt.disabled = true;
     const wt = document.createElement('div'); bt.after(wt); waitCard(wt, 'AI กำลังสร้างแบบจำลอง', ['อ่านคำอธิบาย', 'สร้างตามหลักวิชา'], { cancel: false });
     try { const spec = await sceneFromAI(t, null); $('#simSheet').hidden = true; insertScene(spec); } catch (e) { toast('สร้างไม่สำเร็จ ลองอธิบายให้ชัดขึ้น', 3000); }
@@ -14392,7 +14437,7 @@ function openSketch(fromItem) {
     const search = async () => {
       const t = q('q').value.trim(); if (!t) return; const box = sh.querySelector('.skres'); waitLine(box, 'กำลังค้นใน Wikimedia Commons');
       let res = []; try { res = await commonsSearch(t, 'bitmap', 12); } catch (e) { res = []; }
-      if (!res.length && /[฀-๿]/.test(t) && AI.anyReady()) { try { const r = await AI.run('gen', 'Translate this picture search to short English keywords only: ' + t, { maxTokens: 60 }); const en = String(r.text || '').trim().split('\n')[0].slice(0, 60); if (en) res = await commonsSearch(en, 'bitmap', 12); } catch (e) { /* keep empty */ } }
+      if (!res.length && /[฀-๿]/.test(t) && AI.anyReady()) { try { const r = await AI.run('gen', 'Translate this picture search to short English keywords only: ' + t, { noCtx: true, subj: true, maxTokens: 60 }); const en = String(r.text || '').trim().split('\n')[0].slice(0, 60); if (en) res = await commonsSearch(en, 'bitmap', 12); } catch (e) { /* keep empty */ } }
       box.innerHTML = res.length ? '' : '<div class="note small">ไม่พบภาพ ลองคำค้นภาษาอังกฤษ หรือเลือกรูปจากเครื่อง</div>';
       const grid = document.createElement('div'); grid.className = 'skgrid'; box.appendChild(grid);
       for (const m of res) { const b = document.createElement('button'); b.type = 'button'; b.className = 'skpick'; b.innerHTML = '<img alt="" loading="lazy">'; b.querySelector('img').src = m.thumb; b.title = m.name;
@@ -19671,7 +19716,7 @@ function exRenderGrowth(body, R) {
       const wrong = R.items.filter((x) => x.pick !== x.key).slice(0, 8);
       const W8 = waitCard(box, 'AI กำลังอ่านข้อที่ผิดและเขียนคำแนะนำ', ['ส่งข้อที่ผิด', 'วิเคราะห์ความเข้าใจคลาดเคลื่อน']); setTimeout(() => W8.step(1), 700);
       const prompt = 'A Thai student practising physics got these questions wrong. For each: question, the student\'s choice, the correct answer.\n' + wrong.map((x, i) => (i + 1) + ') ' + x.q.q + '\n   student: ' + (x.pick < 0 ? '(no answer)' : x.q.c[x.order[x.pick]]) + '\n   correct: ' + x.q.c[x.q.a]).join('\n') + '\nIn Thai, in at most 120 words: name the likely misconceptions (not just "careless"), and give 3 concrete next steps to improve. Plain text, short sentences, no headings, use $...$ for math.';
-      try { const r = await AI.run('gen', prompt, {}); W8.stop(); box.innerHTML = '<div class="note advice">' + mdToHtml(r.text) + '</div>'; typeset(box); }
+      try { const r = await AI.run('gen', prompt, { subj: true }); W8.stop(); box.innerHTML = '<div class="note advice">' + mdToHtml(r.text) + '</div>'; typeset(box); }
       catch (e) { W8.stop(); box.innerHTML = '<div class="note err">' + esc(aiErr(e)) + '</div>'; }
     };
     body.appendChild(b); body.appendChild(box);
@@ -19827,7 +19872,7 @@ async function aiBankChapter(t, ch, n, d, sj) {
   const prompt = 'Write ' + n + ' original multiple-choice questions in Thai for ' + (sj[2] || sj[1]) + ' learners at the level of "' + exTrackName(t) + '", chapter "' + exChName(t, ch) + '" (subtopics: ' + subs + '). Difficulty: ' + level + '. ' + (sj[3] || '') + '\n'
     + 'Mix thinking levels: remember, understand, apply and analyse; prefer real situations. Each question has exactly 4 choices and one correct answer. Work out the correct answer carefully first. Each wrong choice must come from a real, common misconception or mistake, and you state that misconception. Use $...$ for maths.\n'
     + 'Reply in exactly this format and nothing else, repeated ' + n + ' times:\n@@Q\n(question)\n@@RIGHT\n(correct choice)\n@@WRONG\n(wrong choice 1)\n(wrong choice 2)\n(wrong choice 3)\n@@MIS\n(the misconception behind wrong choice 1)\n(behind wrong choice 2)\n(behind wrong choice 3)\n@@WHY\n(short explanation in Thai)\n@@LEVEL R|U|A|N  1|2|3';
-  const res = await AI.run('gen', prompt, { cache: false, maxTokens: 9000 });
+  const res = await AI.run('gen', prompt, { cache: false, maxTokens: 9000, subj: true, noCtx: true });
   const out = []; let cur = null;
   for (const p of sections(res.text)) {
     const tx = (p.text || p.arg || '').trim(), lines = tx.split('\n').map((x) => x.replace(/^[-*\d.)\s]+(?=\S)/, '').trim()).filter(Boolean);
@@ -19845,7 +19890,7 @@ async function aiBankChapter(t, ch, n, d, sj) {
   const chk = 'Answer each multiple-choice question. Think carefully, then reply with one line per question in the form "number: letter" and nothing else.\n' + good.map((q, i) => (i + 1) + ') ' + q.q + '\n' + orders[i].map((o, j) => L[j] + ') ' + q.c[o]).join('\n')).join('\n\n');
   let keep = good;
   try {
-    const r2 = await AI.run('gen', chk, { cache: false, maxTokens: 4000, lang: 'th' }); const ans = {};
+    const r2 = await AI.run('gen', chk, { cache: false, maxTokens: 4000, subj: true, noCtx: true, lang: 'th' }); const ans = {};
     for (const m of String(r2.text || '').matchAll(/(\d+)\s*[:.)]\s*([ABCD])/g)) ans[+m[1]] = L.indexOf(m[2]);
     if (Object.keys(ans).length >= good.length / 2) keep = good.filter((q, i) => ans[i + 1] == null || orders[i][ans[i + 1]] === 0);
   } catch (e) { /* no check this time: keep, the teacher can still review */ }
@@ -19866,7 +19911,7 @@ function aiCurricPanel(body) {
     const B = waitCard(msg, 'AI กำลังจัดบทเรียน', ['รายชื่อบท', 'หัวข้อย่อย']);
     try {
       const lv = levelName((S.nb && S.nb.level) || 'u') || '';
-      const r = await AI.run('gen', 'List the chapters for teaching "' + name + '" at the level ' + lv + ' in a Thai school or university, in a sensible teaching order: 8 to 12 chapters, each with 3 to 5 subtopics. Thai names (with common English terms in brackets where usual). Reply in exactly this format, repeated for each chapter:\n@@CH\n(chapter name)\n(subtopic 1)\n(subtopic 2)\n(subtopic 3)', { cache: false, maxTokens: 4000 });
+      const r = await AI.run('gen', 'List the chapters for teaching "' + name + '" at the level ' + lv + ' in a Thai school or university, in a sensible teaching order: 8 to 12 chapters, each with 3 to 5 subtopics. Thai names (with common English terms in brackets where usual). Reply in exactly this format, repeated for each chapter:\n@@CH\n(chapter name)\n(subtopic 1)\n(subtopic 2)\n(subtopic 3)', { cache: false, maxTokens: 4000, subj: true, noCtx: true });
       const chs = sections(r.text).filter((p) => p.key === 'CH').map((p) => { const ls = (p.arg + '\n' + p.text).split('\n').map((x) => x.replace(/^[-*\d.)\s]+(?=\S)/, '').trim()).filter(Boolean); return [ls[0], ls.slice(1, 6).map((x) => [x, x])]; }).filter((c) => c[0]);
       if (chs.length < 3) throw { code: 'empty_completion' };
       const key = 'x_' + uid().slice(0, 8); CURRIC[key] = [name + (lv ? ' ' + lv : ''), chs]; TRACK_SUBJ[key] = 'other:' + name;
@@ -19919,7 +19964,7 @@ async function exAIDraft(t, ch, d) {
     + 'Each question has exactly 4 choices, one correct. Use $...$ for math and SI units. Check every number carefully: compute the correct answer step by step before writing it, and make the wrong choices come from common mistakes.\n'
     + 'Reply in exactly this format and nothing else, repeated 5 times:\n@@Q\n(question)\n@@RIGHT\n(correct choice)\n@@WRONG\n(wrong choice 1)\n(wrong choice 2)\n(wrong choice 3)\n@@WHY\n(short explanation in Thai with the key equation)';
   try {
-    const res = await AI.run('gen', prompt, { cache: false });
+    const res = await AI.run('gen', prompt, { cache: false, subj: true, noCtx: true });
     B.stop(); if (B.cancelled) return;
     const parts = sections(res.text), out = []; let cur = null;
     for (const p of parts) {
@@ -24080,7 +24125,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793857565';
+const BUILD = '1793858866';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
