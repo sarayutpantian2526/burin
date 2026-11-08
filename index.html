@@ -266,6 +266,8 @@ body[data-tool="text"] .item .tgrab, body[data-tool="text"] .item .tsize { opaci
 .shp { width: 64px; height: 56px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-size: 11px; color: var(--fg); padding: 0; }
 .shp svg { width: 26px; height: 22px; }
 .shpsec { grid-column: 1 / -1; margin-top: 4px; }
+.shptabs { display: flex; gap: 6px; }
+.shptabs .chip { flex: 1; justify-content: center; }
 .shp[aria-pressed="true"] { border: 2px solid var(--accent); background: var(--accent-soft); }
 .dock { position: absolute; left: 12px; top: 12px; z-index: 7; display: flex; flex-wrap: nowrap; max-width: calc(100% - 24px); align-items: center; gap: 2px; padding: 4px; border-radius: 18px; background: var(--surface); box-shadow: var(--shadow); }
 .curc { width: 46px; height: 46px; border-radius: 13px; border: 0; background: transparent; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; }
@@ -326,6 +328,7 @@ body.tv .toast { bottom: 112px; }
 .selbar.floating { transform: none; bottom: auto; }
 .selbar .sg { display: flex; gap: 2px; padding: 0 4px; }
 .selbar .sg:not(.none) ~ .sg:not(.none) { border-left: 1px solid rgba(127, 127, 127, 0.35); }
+.selbar .sg.rowstart { border-left-color: transparent !important; }
 .selbar .sg:empty, .selbar .sg.none { display: none; }
 .selbar button { min-width: 58px; min-height: 52px; padding: 5px 6px 4px; border-radius: 12px; border: 0; cursor: pointer; background: transparent; color: inherit; font-size: 11.5px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; line-height: 1.1; }
 .selbar button svg { width: 22px; height: 22px; }
@@ -1930,9 +1933,7 @@ body.role-student .scnpill .sbtns button[data-s="back"], body.role-student .scnp
 
       <div class="selbar no-ink" id="selbar" role="toolbar" aria-label="ส่วนที่เลือก" hidden>
         <span class="count" id="selCount"></span>
-        <span class="sg" id="sgInk"><button id="sJoin"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M3 6h16 M3 11h10 M3 16h7 M14 13.5l3 2.5-3 2.5 M10 16h7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span>ต่อบรรทัด</span></button><button id="sQuiz" class="main"><svg viewBox="0 0 22 22" aria-hidden="true"><rect x="3.5" y="3" width="15" height="16" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M7 8h8 M7 11.5h8 M7 15h5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span>สร้างโจทย์</span></button><button id="sRead" class="main"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M3 15c2-3 3-7 4.5-7s.5 5 2 5 2-6 3.5-6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M13 4.5h6 M16 4.5v8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span>เป็นตัวพิมพ์</span></button><button id="sHand" class="main"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M3 16c2.5-1 3.5-9 6-9 1.6 0 .4 6 2.4 6 1.8 0 2.4-4 4.1-4 1.2 0 1 3 2.5 3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M3 19h16" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg><span>ลายมือสวย</span></button><button id="sEq"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M3.5 8h6 M3.5 12.5h6 M13 6.5l5 7 M18 6.5l-5 7" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg><span>เป็นสมการ</span></button><button id="sGraph" title="สร้างรูปจากสมการ: เวกเตอร์ 2 และ 3 มิติ กราฟ เส้นโค้งพาราเมตริกและเชิงขั้ว โครงสร้างโมเลกุล หรือแผนภาพ"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M4 3.5v14h14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M5.5 14c3-1 4-8 7-8s3 4 5 4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span>สร้างรูป</span></button><button id="sAns" class="main" hidden title="ผลการคำนวณ แตะเพื่อเขียนต่อท้าย"><span id="sAnsT"></span></button><button id="sOrig" hidden title="เปลี่ยนกลับเป็นลายมือเดิม"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M4 15c2-4 4-7 6-7s1 6 3 6 3-4 5-6 M6 6L3.5 8.5 6 11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span>ลายมือเดิม</span></button><button id="sTrace" title="ให้สมุดวาดตามรูปนี้ทีละเส้น"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M4 17c3-1 4-6 7-7s4 3 7 1 M15 4l3 3-8 8-4 1 1-4z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span>วาดตาม</span></button><button id="sCut" title="ตัดพื้นหลังของรูป"><svg viewBox="0 0 22 22" aria-hidden="true"><circle cx="6" cy="6" r="2.6" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="6" cy="16" r="2.6" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M8.2 7.4L18 15 M8.2 14.6L18 7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span>ตัดพื้นหลัง</span></button><button id="sSolve" title="แก้สมการ ระบบสมการ อนุพันธ์ อินทิเกรต ลิมิต แยกตัวประกอบ"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M4 8h6 M4 12h6 M13 6l5 6 M18 6l-5 6 M13 16h5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span>แก้สมการ</span></button><button id="sAnim"><svg viewBox="0 0 22 22" aria-hidden="true"><circle cx="7" cy="14" r="3.2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M11 14h7 M15.5 11.5L18 14l-2.5 2.5 M7 10.5V4 M4.5 6.5L7 4l2.5 2.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span>ขยับได้</span></button><button id="sTidy"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M4 17l4-1 9-9-3-3-9 9z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M15.5 13.5l1 2 2 1-2 1-1 2-1-2-2-1 2-1z" fill="currentColor"/></svg><span>วาดใหม่</span></button><button id="sProof" hidden><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M3 18h16 M3 18L15 5 M8 18a5 5 0 0 0-1.4-3.5 M10 4.5h8 M14 8.5h4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span>พิสูจน์</span></button><button id="sGen"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M11 3l1.8 4.6 4.7 1.9-4.7 1.9L11 16l-1.8-4.6L4.5 9.5l4.7-1.9z" fill="currentColor"/></svg><span>สร้างโจทย์</span></button><button id="sMedia"><svg viewBox="0 0 22 22" aria-hidden="true"><rect x="3" y="4.5" width="16" height="13" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M3.5 15l4.5-4.5 3.5 3.5 2-2 5 4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg><span>หาสื่อ</span></button></span>
-        <span class="sg" id="sgOrder"><button id="sFront"><svg viewBox="0 0 22 22" aria-hidden="true"><rect x="7" y="7" width="11" height="11" rx="2" fill="currentColor"/><rect x="3.5" y="3.5" width="11" height="11" rx="2" fill="none" stroke="currentColor" stroke-width="1.5" stroke-dasharray="2.5 2"/></svg><span>ขึ้นหน้าสุด</span></button><button id="sBack"><svg viewBox="0 0 22 22" aria-hidden="true"><rect x="3.5" y="3.5" width="11" height="11" rx="2" fill="currentColor"/><rect x="7" y="7" width="11" height="11" rx="2" fill="var(--chrome)" stroke="currentColor" stroke-width="1.5"/></svg><span>ไปหลังสุด</span></button></span>
-        <span class="sg"><button id="sKey"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M2.5 11s3-6 8.5-6 8.5 6 8.5 6-3 6-8.5 6-8.5-6-8.5-6z" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="11" cy="11" r="2.6" fill="currentColor"/></svg><span>เฉลย</span></button><button id="sDup"><svg viewBox="0 0 22 22" aria-hidden="true"><rect x="7" y="7" width="11" height="11" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M4 14V5a1 1 0 0 1 1-1h9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span>ทำสำเนา</span></button><button id="sDel" class="danger"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M5 6.5h12 M9 6.5V4.5h4v2 M6.5 6.5l.8 11h7.4l.8-11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span>ลบ</span></button><button id="sClose"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M5 11.5l4 4 8-9" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg><span>เสร็จ</span></button></span>
+        <span class="sg" id="sgInk"><button class="main" id="sRead"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M3 15c2-3 3-7 4.5-7s.5 5 2 5 2-6 3.5-6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M13 4.5h6 M16 4.5v8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span>เป็นตัวพิมพ์</span></button><button id="sEq"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M3.5 8h6 M3.5 12.5h6 M13 6.5l5 7 M18 6.5l-5 7" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg><span>เป็นสมการ</span></button><button id="sHand"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M3 16c2.5-1 3.5-9 6-9 1.6 0 .4 6 2.4 6 1.8 0 2.4-4 4.1-4 1.2 0 1 3 2.5 3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M3 19h16" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg><span>ลายมือสวย</span></button><button id="sTidy"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M4 17l4-1 9-9-3-3-9 9z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M15.5 13.5l1 2 2 1-2 1-1 2-1-2-2-1 2-1z" fill="currentColor"/></svg><span>วาดใหม่</span></button><button id="sJoin"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M3 6h16 M3 11h10 M3 16h7 M14 13.5l3 2.5-3 2.5 M10 16h7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span>ต่อบรรทัด</span></button><button id="sOrig" hidden title="เปลี่ยนกลับเป็นลายมือเดิม"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M4 15c2-4 4-7 6-7s1 6 3 6 3-4 5-6 M6 6L3.5 8.5 6 11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span>ลายมือเดิม</span></button></span><span class="sg" id="sgCalc"><button class="main" id="sAns" hidden title="ผลการคำนวณ แตะเพื่อเขียนต่อท้าย"><span id="sAnsT"></span></button><button id="sSolve" title="แก้สมการ ระบบสมการ อนุพันธ์ อินทิเกรต ลิมิต แยกตัวประกอบ"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M4 8h6 M4 12h6 M13 6l5 6 M18 6l-5 6 M13 16h5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span>แก้สมการ</span></button><button id="sBal" hidden title="ดุลสมการเคมี นับอะตอมและประจุสองข้าง"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M11 3v15 M6 18h10 M3.5 7h15 M11 4.5L11 4.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M3.5 7L1.5 12h4z M18.5 7l-2 5h4z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg><span>ดุลสมการ</span></button><button id="sProof" hidden><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M3 18h16 M3 18L15 5 M8 18a5 5 0 0 0-1.4-3.5 M10 4.5h8 M14 8.5h4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span>พิสูจน์</span></button></span><span class="sg" id="sgMake"><button class="main" id="sQuiz"><svg viewBox="0 0 22 22" aria-hidden="true"><rect x="3.5" y="3" width="15" height="16" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M7 8h8 M7 11.5h8 M7 15h5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span>สร้างโจทย์</span></button><button id="sGraph" title="สร้างรูปจากสมการ: เวกเตอร์ 2 และ 3 มิติ กราฟ เส้นโค้งพาราเมตริกและเชิงขั้ว โครงสร้างโมเลกุล หรือแผนภาพ"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M4 3.5v14h14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M5.5 14c3-1 4-8 7-8s3 4 5 4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span>สร้างรูป</span></button><button id="sAnim"><svg viewBox="0 0 22 22" aria-hidden="true"><circle cx="7" cy="14" r="3.2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M11 14h7 M15.5 11.5L18 14l-2.5 2.5 M7 10.5V4 M4.5 6.5L7 4l2.5 2.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span>ขยับได้</span></button><button id="sTrace" title="ให้สมุดวาดตามรูปนี้ทีละเส้น"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M4 17c3-1 4-6 7-7s4 3 7 1 M15 4l3 3-8 8-4 1 1-4z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span>วาดตาม</span></button><button id="sCut" title="ตัดพื้นหลังของรูป"><svg viewBox="0 0 22 22" aria-hidden="true"><circle cx="6" cy="6" r="2.6" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="6" cy="16" r="2.6" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M8.2 7.4L18 15 M8.2 14.6L18 7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span>ตัดพื้นหลัง</span></button><button id="sMedia"><svg viewBox="0 0 22 22" aria-hidden="true"><rect x="3" y="4.5" width="16" height="13" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M3.5 15l4.5-4.5 3.5 3.5 2-2 5 4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg><span>หาสื่อ</span></button><button id="sGen"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M11 3l1.8 4.6 4.7 1.9-4.7 1.9L11 16l-1.8-4.6L4.5 9.5l4.7-1.9z" fill="currentColor"/></svg><span>สร้างโจทย์</span></button></span><span class="sg" id="sgOrder"><button id="sFront"><svg viewBox="0 0 22 22" aria-hidden="true"><rect x="7" y="7" width="11" height="11" rx="2" fill="currentColor"/><rect x="3.5" y="3.5" width="11" height="11" rx="2" fill="none" stroke="currentColor" stroke-width="1.5" stroke-dasharray="2.5 2"/></svg><span>ขึ้นหน้าสุด</span></button><button id="sBack"><svg viewBox="0 0 22 22" aria-hidden="true"><rect x="3.5" y="3.5" width="11" height="11" rx="2" fill="currentColor"/><rect x="7" y="7" width="11" height="11" rx="2" fill="var(--chrome)" stroke="currentColor" stroke-width="1.5"/></svg><span>ไปหลังสุด</span></button></span><span class="sg" id="sgEnd"><button id="sKey"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M2.5 11s3-6 8.5-6 8.5 6 8.5 6-3 6-8.5 6-8.5-6-8.5-6z" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="11" cy="11" r="2.6" fill="currentColor"/></svg><span>เฉลย</span></button><button id="sDup"><svg viewBox="0 0 22 22" aria-hidden="true"><rect x="7" y="7" width="11" height="11" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M4 14V5a1 1 0 0 1 1-1h9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span>ทำสำเนา</span></button><button id="sDel" class="danger"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M5 6.5h12 M9 6.5V4.5h4v2 M6.5 6.5l.8 11h7.4l.8-11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span>ลบ</span></button><button id="sClose"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M5 11.5l4 4 8-9" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg><span>เสร็จ</span></button></span>
         <button id="sBig" hidden>ขยาย</button><button id="sSmall" hidden>ย่อ</button>
       </div>
       <div class="convbar no-ink" id="convbar" hidden>
@@ -6081,6 +6082,7 @@ function geoMarkLists(kind, a, b) {
 }
 function shapeStrokeLists(kind, a, b) {
   if (isGeoMark(kind)) return geoMarkLists(kind, a, b);
+  if (isChemMark(kind)) return chemMarkLists(kind, a, b);
   let x0 = a[0], y0 = a[1], x1 = b[0], y1 = b[1];
   if (Math.hypot(x1 - x0, y1 - y0) < 8) {
     if (kind === 'line' || kind === 'arrow' || kind === 'dashed') { x1 = x0 + 140; y1 = y0; }
@@ -6143,7 +6145,7 @@ function commitShape(pt) {
   saveMine(); emitInk(null);
   geoSegCache = null;
   /* a new shape stays selected, so it can be moved, resized or deleted straight away; a geometry mark does not, so the next one can follow at once */
-  if (!isGeoMark(S.shapeKind)) selectStrokes(list.map((st) => ({ layer: DEV, id: st.id })));
+  if (!isGeoMark(S.shapeKind) && !isChemMark(S.shapeKind)) selectStrokes(list.map((st) => ({ layer: DEV, id: st.id })));
 }
 /* the ink stroke under a point (pen lines count when the point is on the line), with its whole shape group */
 function strokeAt(x, y) {
@@ -6405,6 +6407,10 @@ function showSelbar() {
     const subj = (S.nb && S.nb.subject) || 'phys', marks = S.sel.strokes.some((r) => { const st = findStroke(r); return st && st.gm; });
     const words = S.sel.items.some((id) => { const it = findItem(id); return it && /พิสูจน์|กำหนดให้|\\triangle|\\cong/.test(it.md || ''); });
     $('#sProof').hidden = !((n || textSel) && (subj === 'math' || marks || words)); }
+  { /* balancing: always in a chemistry or science notebook; elsewhere when the selection has structure marks or typed chemistry */
+    const subj = (S.nb && S.nb.subject) || 'phys', marks = S.sel.strokes.some((r) => { const st = findStroke(r); return st && st.cm; });
+    const ce = S.sel.items.some((id) => { const it = findItem(id); return it && /\\ce\{|ดุลสมการ/.test(it.md || ''); });
+    $('#sBal').hidden = !((n || textSel) && (subj === 'chem' || subj === 'sci' || marks || ce)); }
   { const one = m === 1 && !n ? findItem(S.sel.items[0]) : null; $('#sOrig').hidden = !(one && Array.isArray(one.orig) && one.orig.length); }
   selCalc();
   { const one = m === 1 && !n ? findItem(S.sel.items[0]) : null; $('#sCut').hidden = !(one && one.type === 'img' && !isStudentSide()); $('#sTrace').hidden = $('#sCut').hidden; }
@@ -6415,7 +6421,7 @@ function showSelbar() {
   $('#sFront').hidden = $('#sBack').hidden = !(m && (S.page.items || []).length > 1);
   $('#sBig').hidden = $('#sSmall').hidden = true;
   $('#sGen').hidden = !n;
-  for (const g of ['#sgInk', '#sgOrder']) $(g).classList.toggle('none', ![...$(g).children].some((b) => !b.hidden));
+  for (const g of ['#sgInk', '#sgCalc', '#sgMake', '#sgOrder']) $(g).classList.toggle('none', ![...$(g).children].some((b) => !b.hidden));
   placeSelbar();
 }
 /* the menu floats just above the selection (or below it when there is no room) */
@@ -6425,6 +6431,7 @@ function placeSelbar() {
   const k = pr.width / W, b = S.sel.box;
   const L = pr.left + b[0] * k - hr.left, R = pr.left + b[2] * k - hr.left, T = pr.top + b[1] * k - hr.top, B = pr.top + b[3] * k - hr.top;
   bar.classList.add('floating');
+  { /* a group that starts a new row has no divider line on its left */ let top = null; for (const g of bar.querySelectorAll('.sg')) { if (g.classList.contains('none')) continue; g.classList.remove('rowstart'); const t = g.offsetTop; g.classList.toggle('rowstart', top != null && t > top + 4); top = t; } }
   const bw = bar.offsetWidth, bh = bar.offsetHeight, pad = 10;
   let x = clamp((L + R) / 2 - bw / 2, 8, Math.max(8, hr.width - bw - 8));
   const dr = $('#dock').getBoundingClientRect(), dock = [dr.left - hr.left, dr.top - hr.top, dr.right - hr.left, dr.bottom - hr.top];
@@ -9130,13 +9137,24 @@ const GEO_MARKS = [
 const isGeoMark = (k) => GEO_MARKS.some((m) => m[0] === k);
 function renderShapes() {
   const g = $('#shapeGrid'); g.innerHTML = '';
-  for (const [k, n, svg] of SHAPES.concat([['-', 'เครื่องหมายเรขาคณิต แตะที่ด้านหรือที่มุม']], GEO_MARKS)) {
-    if (k === '-') { const h = document.createElement('span'); h.className = 'label shpsec'; h.textContent = n; g.appendChild(h); continue; }
+  /* three sets, one shown at a time so the panel stays short: shapes, geometry marks, chemistry structures.
+     It opens on the set of the shape in use; the set for this notebook's subject comes first in the row */
+  const subj = (S.nb && S.nb.subject) || 'phys';
+  const sets = { shp: ['รูปทรง', SHAPES, 'ลากบนหน้าเพื่อวาดและกำหนดขนาด'], geo: ['เรขาคณิต', GEO_MARKS, 'แตะที่ด้านหรือที่มุมของรูป'], chem: ['เคมี', CHEM_MARKS, 'พันธะต่อกันเป็นมุม 120 องศาเอง แตะปลายพันธะเพื่อต่อ'] };
+  const order = subj === 'chem' ? ['chem', 'shp', 'geo'] : subj === 'math' ? ['geo', 'shp', 'chem'] : ['shp', 'geo', 'chem'];
+  const kindSet = isChemMark(S.shapeKind) ? 'chem' : isGeoMark(S.shapeKind) ? 'geo' : 'shp';
+  const tab = sets[renderShapes.tab] ? renderShapes.tab : kindSet;
+  let tb = $('#shapeTabs');
+  if (!tb) { tb = document.createElement('div'); tb.id = 'shapeTabs'; tb.className = 'chips shptabs'; tb.setAttribute('role', 'tablist'); const lb0 = g.parentNode.querySelector('.label'); g.parentNode.insertBefore(tb, lb0 || g); }
+  tb.innerHTML = '';
+  for (const k of order) { const b = document.createElement('button'); b.type = 'button'; b.className = 'chip'; b.setAttribute('role', 'tab'); b.textContent = sets[k][0]; b.setAttribute('aria-pressed', k === tab ? 'true' : 'false'); b.setAttribute('aria-selected', k === tab ? 'true' : 'false'); b.onclick = () => { renderShapes.tab = k; renderShapes(); }; tb.appendChild(b); }
+  const lab = g.parentNode.querySelector('.label'); if (lab) lab.textContent = sets[tab][2];
+  for (const [k, n, svg] of sets[tab][1]) {
     const b = document.createElement('button'); b.className = 'shp'; b.type = 'button';
     b.setAttribute('aria-pressed', k === S.shapeKind ? 'true' : 'false');
     b.innerHTML = '<svg viewBox="0 0 26 22" aria-hidden="true">' + svg + '</svg><span></span>';
     b.querySelector('span').textContent = n;
-    b.onclick = () => { S.shapeKind = k; store_ls.set('tp-shapekind', k); renderShapes(); closePops(); toast(isGeoMark(k) ? (/^(ang|rang)/.test(k) ? 'แตะที่มุม หรือลากจากจุดยอดเข้าไปในมุม' : 'แตะที่ด้าน หรือลากไปตามด้าน') : 'ลากบนหน้าเพื่อวาด' + n, 1800); };
+    b.onclick = () => { S.shapeKind = k; store_ls.set('tp-shapekind', k); renderShapes.tab = null; renderShapes(); closePops(); toast(isChemMark(k) ? CHEM_HINT[k] : isGeoMark(k) ? (/^(ang|rang)/.test(k) ? 'แตะที่มุม หรือลากจากจุดยอดเข้าไปในมุม' : 'แตะที่ด้าน หรือลากไปตามด้าน') : 'ลากบนหน้าเพื่อวาด' + n, 1800); };
     g.appendChild(b);
   }
 }
@@ -14709,6 +14727,249 @@ function openStickers() {
   };
   sh.querySelector('[data-a="q"]').setAttribute('aria-checked', store_ls.get('tp-stk-quick') === '1' ? 'true' : 'false');
   paint(); sh.hidden = false;
+}
+
+/* chemistry helpers: marks for drawing structures (bonds that join at 120 degrees, rings, lone pairs, curly arrows)
+   and balancing an equation the user wrote. The balancing is worked out here exactly (atoms and charge), never guessed */
+const CHEM_BOND = 50; /* one bond on the page, the same for every bond so a structure looks even */
+const CHEM_MARKS = [
+  ['bond1', 'พันธะเดี่ยว', '<path d="M3 17L13 6L23 17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>'],
+  ['bond2', 'พันธะคู่', '<path d="M3 17L23 5 M5 21L23 10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>'],
+  ['bond3', 'พันธะสาม', '<path d="M3 11h20 M5 6h16 M5 16h16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>'],
+  ['wedge', 'ลิ่มทึบ', '<path d="M3 17L23 7L22 3Z" fill="currentColor" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/>'],
+  ['hash', 'ลิ่มเส้นประ', '<path d="M5 15.5l0.6 -1 M9 14.5l1.4 -2.6 M13 13.5l2.2 -4.2 M17 12.5l3 -5.8 M21 11.5l3.6 -7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>'],
+  ['benz', 'วงเบนซีน', '<path d="M13 2l8.5 4.9v9.8L13 21.6l-8.5-4.9V6.9z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><circle cx="13" cy="11.8" r="4.6" fill="none" stroke="currentColor" stroke-width="1.6"/>'],
+  ['lp', 'อิเล็กตรอนคู่', '<text x="13" y="16" text-anchor="middle" font-size="13" font-weight="700" fill="currentColor">O</text><circle cx="9" cy="3.5" r="1.7" fill="currentColor"/><circle cx="17" cy="3.5" r="1.7" fill="currentColor"/>'],
+  ['curly', 'ลูกศรโค้ง', '<path d="M4 18C4 6 19 3 21 13 M17.5 10.5l3.5 3 2-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>'],
+  ['hook', 'ลูกศรหัวเดียว', '<path d="M4 18C4 6 19 3 21 13 M17 11.5l4 1.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>']
+];
+const isChemMark = (k) => CHEM_MARKS.some((m) => m[0] === k);
+const CHEM_HINT = { bond1: 'ลากเพื่อวาดพันธะ แตะปลายพันธะเดิมเพื่อต่อเป็นโซ่', bond2: 'ลากเพื่อวาดพันธะคู่ แตะปลายพันธะเดิมเพื่อต่อ', bond3: 'ลากเพื่อวาดพันธะสาม แตะปลายพันธะเดิมเพื่อต่อ', wedge: 'ลากจากอะตอมที่อยู่หน้า', hash: 'ลากจากอะตอมที่อยู่หน้า', benz: 'แตะเพื่อวางวง แตะที่ปลายพันธะเพื่อต่อวง ลากเพื่อหมุนหรือย่อขยาย', lp: 'แตะข้างอะตอม ลากเพื่อหันทิศ', curly: 'ลากจากคู่อิเล็กตรอนไปยังที่ที่มันไป', hook: 'ลากจากอิเล็กตรอนเดี่ยวไปยังที่ที่มันไป' };
+
+/* the ends of bonds already on the page (only the line along each bond, kept as cm 'b'), with the way each bond points */
+function chemEnds() {
+  const out = [];
+  for (const r of allStrokes()) {
+    const st = r.s; if (!st || st.cm !== 'b' || !st.p || st.p.length < 6) continue;
+    const n = st.p.length, a = [st.p[0] / 10, st.p[1] / 10], b = [st.p[n - 3] / 10, st.p[n - 2] / 10];
+    out.push({ p: a, from: b }, { p: b, from: a });
+  }
+  return out;
+}
+function chemNearEnd(pt, R) {
+  let best = null, bd = R;
+  for (const e of chemEnds()) { const d = Math.hypot(e.p[0] - pt[0], e.p[1] - pt[1]); if (d < bd) { bd = d; best = e; } }
+  if (!best) return null;
+  /* every bond already meeting at that point, so a new one goes into the free side */
+  const dirs = chemEnds().filter((e) => Math.hypot(e.p[0] - best.p[0], e.p[1] - best.p[1]) < 1.5).map((e) => Math.atan2(e.from[1] - e.p[1], e.from[0] - e.p[0]));
+  return { p: best.p.slice(), from: best.from, dirs };
+}
+const chemSnapAng = (t) => Math.round(t / (Math.PI / 6)) * (Math.PI / 6);
+/* where a bond starting at an atom goes when the user only taps: the zigzag of a carbon chain (120 degrees), or the
+   free side when more bonds already meet there */
+function chemAutoDir(end) {
+  if (!end || !end.dirs.length) return -Math.PI / 6;
+  if (end.dirs.length === 1) {
+    const back = end.dirs[0], up = back + Math.PI * 2 / 3, dn = back - Math.PI * 2 / 3;
+    /* keep zigzagging: the new bond leans the other way up or down from the one it continues */
+    const prevUp = Math.sin(back + Math.PI) < 0;
+    const cand = [up, dn].map((t) => Math.atan2(Math.sin(t), Math.cos(t)));
+    return Math.sin(cand[0]) < 0 === prevUp ? cand[1] : cand[0];
+  }
+  const ds = end.dirs.slice().sort((x, y) => x - y); let best = 0, gap = -1;
+  for (let i = 0; i < ds.length; i++) { const a = ds[i], b = i + 1 < ds.length ? ds[i + 1] : ds[0] + Math.PI * 2; if (b - a > gap) { gap = b - a; best = a + (b - a) / 2; } }
+  return best;
+}
+function chemMarkLists(kind, a, b) {
+  const out = [], line = (p, q, extra) => out.push(Object.assign({ pts: shapePts({ type: 'line', a: p, b: q }, 55) }, extra || {}));
+  const drag = Math.hypot(b[0] - a[0], b[1] - a[1]), w = curW();
+  const mk = () => out.map((o) => Object.assign({ id: 's' + uid(), k: 'p', c: S.color, w: o.w || w, p: o.pts, cm: o.cm || 1 }));
+  if (/^(bond|wedge|hash)/.test(kind)) {
+    const st = chemNearEnd(a, 14), p0 = st ? st.p : a.slice();
+    let p1;
+    const endSnap = drag >= 8 ? chemNearEnd(b, 14) : null;
+    if (endSnap && Math.hypot(endSnap.p[0] - p0[0], endSnap.p[1] - p0[1]) > 10) p1 = endSnap.p; /* closing a ring onto an atom already there */
+    else {
+      const t = drag >= 8 ? chemSnapAng(Math.atan2(b[1] - p0[1], b[0] - p0[0])) : chemAutoDir(st);
+      let L = drag >= 8 ? Math.hypot(b[0] - p0[0], b[1] - p0[1]) : CHEM_BOND; if (Math.abs(L - CHEM_BOND) < CHEM_BOND * 0.35) L = CHEM_BOND;
+      p1 = [p0[0] + L * Math.cos(t), p0[1] + L * Math.sin(t)];
+    }
+    const dx = p1[0] - p0[0], dy = p1[1] - p0[1], L = Math.hypot(dx, dy) || 1, u = [dx / L, dy / L], nv = [-u[1], u[0]];
+    if (kind === 'wedge') {
+      /* a filled wedge: one line sweeping across the triangle, thin at the front atom and wide at the back */
+      const hw = clamp(L * 0.11, 3.5, 8), pts = [];
+      for (let i = 0; i <= 14; i++) { const s = (i / 14) * 2 - 1, q = [p1[0] + nv[0] * hw * s, p1[1] + nv[1] * hw * s]; pts.push(...(i % 2 ? [p0, q] : [q, p0])); }
+      const flat = []; for (const q of pts) flat.push(Math.round(q[0] * 10), Math.round(q[1] * 10), 50);
+      out.push({ pts: flat, w: Math.max(1, w * 0.8) });
+      line(p0, p1, { cm: 'b', w: 0.6 }); /* the bond line itself stays thin inside the wedge, so other bonds can join its ends */
+    } else if (kind === 'hash') {
+      const hw = clamp(L * 0.11, 3.5, 8), n = 6;
+      for (let i = 1; i <= n; i++) { const t = i / (n + 0.3), c = [p0[0] + dx * t, p0[1] + dy * t], h = hw * t; line([c[0] - nv[0] * h, c[1] - nv[1] * h], [c[0] + nv[0] * h, c[1] + nv[1] * h], { w: Math.max(1, w * 0.8) }); }
+      line(p0, p1, { cm: 'b', w: 0.01 }); /* an unseen line along the bond, only so the next bond can join at its ends */
+    } else {
+      line(p0, p1, { cm: 'b' });
+      const n = +kind.slice(-1) || 1, off = clamp(L * 0.12, 4.5, 7), cut = L * 0.14;
+      const side = (s) => { const q0 = [p0[0] + u[0] * cut + nv[0] * off * s, p0[1] + u[1] * cut + nv[1] * off * s], q1 = [p1[0] - u[0] * cut + nv[0] * off * s, p1[1] - u[1] * cut + nv[1] * off * s]; line(q0, q1); };
+      if (n === 2) side(1); if (n === 3) { side(1); side(-1); }
+    }
+    return mk();
+  }
+  if (kind === 'benz') {
+    const st = chemNearEnd(a, 14); let c, rot, R = CHEM_BOND;
+    if (st && drag < 8) { /* the ring grows out of the atom at the end of a bond, along that bond */
+      const t = Math.atan2(st.p[1] - st.from[1], st.p[0] - st.from[0]); c = [st.p[0] + R * Math.cos(t), st.p[1] + R * Math.sin(t)]; rot = t + Math.PI;
+    } else { c = a.slice(); rot = drag >= 8 ? chemSnapAng(Math.atan2(b[1] - a[1], b[0] - a[0])) : -Math.PI / 2; if (drag >= 8) R = clamp(drag, 20, 160); if (Math.abs(R - CHEM_BOND) < CHEM_BOND * 0.35) R = CHEM_BOND; }
+    const v = []; for (let i = 0; i < 6; i++) { const t = rot + i * Math.PI / 3; v.push([c[0] + R * Math.cos(t), c[1] + R * Math.sin(t)]); }
+    for (let i = 0; i < 6; i++) line(v[i], v[(i + 1) % 6], { cm: 'b' }); /* each side is a bond, so chains can grow from any corner */
+    out.push({ pts: shapePts({ type: 'ellipse', cx: c[0], cy: c[1], rx: R * 0.58, ry: R * 0.58 }, 55) });
+    return mk();
+  }
+  if (kind === 'lp') {
+    const t = drag >= 8 ? Math.atan2(b[1] - a[1], b[0] - a[0]) : 0, nv = [-Math.sin(t), Math.cos(t)], g = clamp(w * 1.4 + 2.5, 3.5, 6);
+    for (const s of [-1, 1]) { const q = [a[0] + nv[0] * g * s, a[1] + nv[1] * g * s]; out.push({ pts: shapePts({ type: 'ellipse', cx: q[0], cy: q[1], rx: 0.6, ry: 0.6 }, 55), w: clamp(w * 1.6, 3, 6) }); }
+    return mk();
+  }
+  if (kind === 'curly' || kind === 'hook') {
+    if (drag < 12) return [];
+    /* a smooth arc that bows to the left of the drag, with its head along the arc at the end */
+    const m = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2], nv = [-(b[1] - a[1]) / drag, (b[0] - a[0]) / drag], bow = drag * 0.38;
+    const c = [m[0] + nv[0] * bow, m[1] + nv[1] * bow], pts = [];
+    for (let i = 0; i <= 24; i++) { const t = i / 24, q = [(1 - t) * (1 - t) * a[0] + 2 * (1 - t) * t * c[0] + t * t * b[0], (1 - t) * (1 - t) * a[1] + 2 * (1 - t) * t * c[1] + t * t * b[1]]; pts.push(Math.round(q[0] * 10), Math.round(q[1] * 10), 50); }
+    out.push({ pts });
+    const ang = Math.atan2(b[1] - c[1], b[0] - c[0]), hl = clamp(drag * 0.16, 9, 18);
+    const h1 = [b[0] - hl * Math.cos(ang - 0.45), b[1] - hl * Math.sin(ang - 0.45)], h2 = [b[0] - hl * Math.cos(ang + 0.45), b[1] - hl * Math.sin(ang + 0.45)];
+    if (kind === 'curly') { const flat = []; for (const q of [h1, b, h2]) flat.push(Math.round(q[0] * 10), Math.round(q[1] * 10), 50); out.push({ pts: flat }); }
+    else { /* one electron: half a head, on the outer side of the bow */ const h = Math.sin(ang - 0.45) * nv[1] + Math.cos(ang - 0.45) * nv[0] < 0 ? h1 : h2; line(h, b); }
+    return mk();
+  }
+  return [];
+}
+
+/* ---------- balancing an equation ---------- */
+const CHEM_EL = new Set('H He Li Be B C N O F Ne Na Mg Al Si P S Cl Ar K Ca Sc Ti V Cr Mn Fe Co Ni Cu Zn Ga Ge As Se Br Kr Rb Sr Y Zr Nb Mo Tc Ru Rh Pd Ag Cd In Sn Sb Te I Xe Cs Ba La Ce Pr Nd Pm Sm Eu Gd Tb Dy Ho Er Tm Yb Lu Hf Ta W Re Os Ir Pt Au Hg Tl Pb Bi Po At Rn Fr Ra Ac Th Pa U Np Pu Am Cm Bk Cf Es Fm Md No Lr D T'.split(' '));
+/* one species, for example Fe2(SO4)3, CuSO4.5H2O, SO4^2-, Fe^{3+}, e^- ; gives the count of each element and its charge */
+function chemSpecies(txt) {
+  let s = String(txt).replace(/\$|\\ce\{|\}$/g, '').replace(/\((s|l|g|aq)\)\s*$/i, '').trim();
+  let charge = 0;
+  const cm = s.match(/\^\{?\s*(\d*)\s*([+-])\s*\}?$/) || s.match(/\^\{?\s*([+-])\s*(\d*)\s*\}?$/);
+  if (cm) { const num = cm[1] && /\d/.test(cm[1]) ? +cm[1] : (cm[2] && /\d/.test(cm[2]) ? +cm[2] : 1), sign = /-/.test(cm[0]) ? -1 : 1; charge = sign * num; s = s.slice(0, cm.index); }
+  else { const tm = s.match(/([+-])$/); if (tm && s.length > 1) { charge = tm[1] === '-' ? -1 : 1; s = s.slice(0, -1); } }
+  if (/^e$/i.test(s)) return { el: {}, charge: charge || -1, e: true };
+  const parts = s.split(/[.·•*]/), total = {};
+  for (let part of parts) {
+    part = part.trim(); if (!part) continue;
+    let mult = 1; const lead = part.match(/^(\d+)/); if (lead) { mult = +lead[1]; part = part.slice(lead[1].length); }
+    const stack = [{}]; let i = 0;
+    while (i < part.length) {
+      const ch = part[i];
+      if (ch === '(' || ch === '[') { stack.push({}); i++; continue; }
+      if (ch === ')' || ch === ']') { i++; let n = ''; while (/\d/.test(part[i] || '')) n += part[i++]; const top = stack.pop(); if (!stack.length) return null; const k = n ? +n : 1; for (const [e, c] of Object.entries(top)) stack[stack.length - 1][e] = (stack[stack.length - 1][e] || 0) + c * k; continue; }
+      const m = part.slice(i).match(/^([A-Z][a-z]?)(\d*)/); if (!m || !CHEM_EL.has(m[1])) return null;
+      const top = stack[stack.length - 1]; top[m[1]] = (top[m[1]] || 0) + (m[2] ? +m[2] : 1); i += m[0].length;
+    }
+    if (stack.length !== 1) return null;
+    for (const [e, c] of Object.entries(stack[0])) total[e] = (total[e] || 0) + c * mult;
+  }
+  return Object.keys(total).length ? { el: total, charge } : null;
+}
+/* an equation such as "2 H2 + O2 -> 2 H2O" into its two sides; each term keeps the coefficient written, its formula and its state */
+function chemEquation(txt) {
+  const t = String(txt).replace(/\$/g, '').replace(/\\ce\{([\s\S]*)\}/, '$1').replace(/\\rightarrow|→|⟶|=>|=/g, '->').replace(/<-+>|<=+>|⇌|\\rightleftharpoons/g, '->').trim();
+  const sides = t.split(/\s*-+>\s*/); if (sides.length !== 2) return null;
+  const side = (s) => s.split(/\s+\+\s+/).map((x) => x.trim()).filter(Boolean).map((x) => {
+    const m = x.match(/^(\d+(?:\/\d+)?)?\s*(.+?)\s*(\((?:s|l|g|aq)\))?$/i); if (!m) return null;
+    const sp = chemSpecies(m[2]); if (!sp) return null;
+    const co = m[1] ? (m[1].includes('/') ? m[1].split('/').reduce((p, q) => +p / +q) : +m[1]) : null;
+    return { f: m[2].trim(), state: m[3] || '', co, sp };
+  });
+  const L = side(sides[0]), R = side(sides[1]);
+  if (!L.length || !R.length || L.concat(R).some((x) => !x)) return null;
+  return { L, R };
+}
+/* the smallest whole numbers that make every element and the charge equal on both sides (exact fractions, not rounding) */
+function chemBalance(eq) {
+  const terms = eq.L.concat(eq.R), n = terms.length, els = [...new Set(terms.flatMap((x) => Object.keys(x.sp.el)))];
+  const rows = els.map((e) => terms.map((x, j) => (x.sp.el[e] || 0) * (j < eq.L.length ? 1 : -1)));
+  if (terms.some((x) => x.sp.charge)) rows.push(terms.map((x, j) => x.sp.charge * (j < eq.L.length ? 1 : -1)));
+  const gcd = (a, b) => { a = Math.abs(a); b = Math.abs(b); while (b) [a, b] = [b, a % b]; return a || 1; };
+  const fr = (p, q) => { if (q < 0) { p = -p; q = -q; } const g = gcd(p, q); return [p / g, q / g]; };
+  const M = rows.map((r) => r.map((v) => [v, 1]));
+  const sub = (a, b) => fr(a[0] * b[1] - b[0] * a[1], a[1] * b[1]), mul = (a, b) => fr(a[0] * b[0], a[1] * b[1]), div = (a, b) => fr(a[0] * b[1], a[1] * b[0]);
+  const piv = []; let r = 0;
+  for (let c = 0; c < n && r < M.length; c++) {
+    let k = r; while (k < M.length && M[k][c][0] === 0) k++; if (k === M.length) continue;
+    [M[r], M[k]] = [M[k], M[r]]; const pv = M[r][c]; M[r] = M[r].map((v) => div(v, pv));
+    for (let i = 0; i < M.length; i++) if (i !== r && M[i][c][0] !== 0) { const f = M[i][c]; M[i] = M[i].map((v, j) => sub(v, mul(f, M[r][j]))); }
+    piv.push(c); r++;
+  }
+  const free = [...Array(n).keys()].filter((c) => !piv.includes(c));
+  if (free.length !== 1) return { ok: false, why: free.length ? 'many' : 'none' };
+  const fc = free[0], x = Array(n).fill([0, 1]); x[fc] = [1, 1];
+  piv.forEach((c, i) => { x[c] = fr(-M[i][fc][0], M[i][fc][1]); });
+  const lcm = x.reduce((m, v) => m * v[1] / gcd(m, v[1]), 1); let ints = x.map((v) => v[0] * (lcm / v[1]));
+  if (ints.every((v) => v <= 0)) ints = ints.map((v) => -v);
+  if (ints.some((v) => v <= 0)) return { ok: false, why: 'sign' };
+  const g = ints.reduce((a, b) => gcd(a, b)); ints = ints.map((v) => v / g);
+  return { ok: true, co: ints };
+}
+function chemCounts(eq, co) {
+  const terms = eq.L.concat(eq.R), els = [...new Set(terms.flatMap((x) => Object.keys(x.sp.el)))];
+  const sum = (list, off) => { const o = {}; list.forEach((x, i) => { const k = co[off + i]; for (const e of els) o[e] = (o[e] || 0) + (x.sp.el[e] || 0) * k; o._q = (o._q || 0) + x.sp.charge * k; }); return o; };
+  return { els, L: sum(eq.L, 0), R: sum(eq.R, eq.L.length), ion: terms.some((x) => x.sp.charge) };
+}
+const chemFmt = (x, k) => (k === 1 ? '' : k) + x.f + (x.state || '');
+const chemCe = (eq, co) => '$\\ce{' + eq.L.map((x, i) => chemFmt(x, co[i])).join(' + ') + ' -> ' + eq.R.map((x, i) => chemFmt(x, co[eq.L.length + i])).join(' + ') + '}$';
+function chemTable(eq, co) {
+  const c = chemCounts(eq, co), qs = (q) => (q > 0 ? '+' : q < 0 ? '−' : '') + (Math.abs(q) || '0');
+  const rows = c.els.map((e) => '| ' + e + ' | ' + c.L[e] + ' | ' + c.R[e] + ' | ' + (c.L[e] === c.R[e] ? 'เท่ากัน' : '**ไม่เท่ากัน**') + ' |');
+  if (c.ion) rows.push('| ประจุรวม | ' + qs(c.L._q) + ' | ' + qs(c.R._q) + ' | ' + (c.L._q === c.R._q ? 'เท่ากัน' : '**ไม่เท่ากัน**') + ' |');
+  return '| ธาตุ | ซ้าย | ขวา | ผล |\n|---|---|---|---|\n' + rows.join('\n');
+}
+async function balanceSelection() {
+  if (!S.sel) return;
+  const refs = S.sel.strokes.slice(), box = S.sel.box.slice();
+  const texts = S.sel.items.map(findItem).filter((it) => it && (!it.type || it.type === 'text') && it.md).map((it) => it.md).join('\n').slice(0, 1500);
+  /* typed text that already reads as an equation needs no reading; handwriting is read first (formulas only, nothing changed) */
+  let lines = refs.length ? [] : texts.split('\n').map((l) => l.trim()).filter((l) => /->|→|=|\\rightarrow|⇌/.test(l) && chemEquation(l));
+  if (!lines.length && !needAI('read')) return;
+  openAI();
+  const B = busyCard('อ่านและดุลสมการ');
+  try {
+    if (!lines.length) {
+      const img = refs.length ? await inkBlob(refs) : null;
+      if (!img && !texts) throw { code: 'empty_completion' };
+      const res = await AI.run('read', 'Read the chemical equation(s) written here exactly as written, without correcting or balancing anything (keep any coefficient the writer put, keep it missing if none). '
+        + 'Write each equation on its own line in plain mhchem text, no $ and no \\ce: species joined by " + " (a space on each side), the arrow as " -> ", a coefficient as a number before the formula, charges with ^ (Fe^3+, SO4^2-, e^-), a hydrate with a dot (CuSO4.5H2O), states in brackets right after the formula ((s), (l), (g), (aq)). '
+        + 'If a formula is unclear, choose the real compound that fits best. No other words.' + (texts ? '\nTyped text in the selection:\n' + texts : ''),
+        { images: img ? [img.blob] : [], maxTokens: 600, cache: false, signal: B.ctl.signal, noCtx: true });
+      lines = String(res.text || '').split('\n').map((l) => l.replace(/^\s*(?:[-*•]\s+|\d+[.)]\s+)/, '').replace(/^\$+|\$+$/g, '').trim()).filter((l) => chemEquation(l));
+      if (!lines.length) { const raw = String(res.text || '').split('\n')[0] || ''; throw { msg: 'อ่านเป็นสมการเคมีไม่ได้' + (raw ? ' (อ่านได้ว่า ' + raw.slice(0, 80) + ')' : '') + ' ลองเขียนลูกศรให้ชัด และวงเฉพาะสมการ' }; }
+    }
+    const out = [];
+    for (const l of lines.slice(0, 4)) {
+      const eq = chemEquation(l), bal = chemBalance(eq), n = eq.L.length + eq.R.length;
+      const wrote = eq.L.concat(eq.R).map((x) => x.co), hasCo = wrote.some((v) => v != null), mine = wrote.map((v) => (v == null ? 1 : v));
+      const c0 = chemCounts(eq, mine), ok0 = c0.els.every((e) => Math.abs(c0.L[e] - c0.R[e]) < 1e-9) && Math.abs(c0.L._q - c0.R._q) < 1e-9;
+      if (!bal.ok) { out.push({ eq, mine, ok0, msg: bal.why === 'many' ? 'สมการนี้ดุลได้หลายแบบ ต้องใช้ข้อมูลเพิ่ม เช่น ครึ่งปฏิกิริยารีดอกซ์' : 'ดุลไม่ได้ ธาตุสองข้างไม่ตรงกัน ตรวจสูตรสารอีกครั้ง' }); continue; }
+      out.push({ eq, co: bal.co, mine, hasCo, ok0, same: ok0 && hasCo && mine.every((v, i) => Math.abs(v / bal.co[i] - mine[0] / bal.co[0]) < 1e-9), n });
+    }
+    const md = out.map((o) => {
+      if (!o.co) return '**สมการ** ' + chemCe(o.eq, o.mine) + '\n\n' + o.msg;
+      const head = o.same ? '**ดุลถูกต้องแล้ว** ' + chemCe(o.eq, o.mine) : (o.hasCo ? '**สมการที่เขียน** ' + chemCe(o.eq, o.mine) + ' ยังไม่ดุล\n\n' : '') + (o.same ? '' : '**สมการที่ดุลแล้ว** ' + chemCe(o.eq, o.co));
+      return head + '\n\n' + chemTable(o.eq, o.co);
+    }).join('\n\n');
+    const chk = out.filter((o) => o.co && o.hasCo && !o.same).map((o) => '**ตรวจสมการ** ' + chemCe(o.eq, o.mine) + '\n\n' + chemTable(o.eq, o.mine)).join('\n\n');
+    B.d.innerHTML = '<span class="k">ดุลสมการ</span><div class="prf">' + mdToHtml(md) + '</div>'
+      + (chk ? '<span class="meta">นับอะตอมตามที่เขียนมา</span><div class="prf">' + mdToHtml(chk) + '</div>' : '')
+      + '<span class="meta">นับอะตอมและประจุจริงทั้งสองข้าง ไม่ได้เดา</span>'
+      + '<div class="row"><button class="btn solid" data-a="put">วางบนหน้า</button>' + (chk ? '<button class="btn" data-a="ck">วางผลตรวจ</button>' : '') + '<button class="btn" data-a="eq">วางเฉพาะสมการ</button></div>';
+    typeset(B.d);
+    const on = (k, f) => { const b = B.d.querySelector('[data-a="' + k + '"]'); if (b) b.onclick = f; };
+    const rowsOf = (t) => (t.match(/\n/g) || []).length + 2;
+    on('put', () => { proofPut(md, box, rowsOf(md)); toast('วางแล้ว', 1400); });
+    on('ck', () => { proofPut(chk, box, rowsOf(chk)); toast('วางผลตรวจแล้ว', 1400); });
+    on('eq', () => { const e = out.map((o) => chemCe(o.eq, o.co || o.mine)).join('\n\n'); proofPut(e, box, out.length + 1); toast('วางสมการแล้ว', 1400); });
+  } catch (e) { B.d.innerHTML = '<span class="k">ดุลสมการ</span><div class="note err">' + esc(e && e.msg ? e.msg : aiErr(e)) + '</div>'; }
 }
 
 function insertSim(kind) {
@@ -24139,7 +24400,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1793860144';
+const BUILD = '1794127215';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
@@ -25182,7 +25443,7 @@ function quietRun(fn) {
     return p;
   };
 }
-$('#sAnim').onclick = openMotionPick; $('#sQuiz').onclick = openQuizMaker; $('#sEq').onclick = quietRun(eqSelection); $('#sRead').onclick = quietRun(readSelection); $('#sHand').onclick = openHand; $('#sTidy').onclick = quietRun(tidySelection); $('#sProof').onclick = quietRun(proofSelection); $('#sGen').onclick = quietRun(() => generate(true));
+$('#sAnim').onclick = openMotionPick; $('#sQuiz').onclick = openQuizMaker; $('#sEq').onclick = quietRun(eqSelection); $('#sRead').onclick = quietRun(readSelection); $('#sHand').onclick = openHand; $('#sTidy').onclick = quietRun(tidySelection); $('#sProof').onclick = quietRun(proofSelection); $('#sBal').onclick = quietRun(balanceSelection); $('#sGen').onclick = quietRun(() => generate(true));
 $('#sFront').onclick = () => restackSel(true); $('#sBack').onclick = () => restackSel(false);
 $('#sDup').onclick = dupSel;
 $('#sKey').onclick = () => showPeek();
