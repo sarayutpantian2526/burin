@@ -227,6 +227,10 @@ body.flow:not(.flowlast) #bAddBelow { display: none; }
 .mztabs { margin-bottom: 8px; }
 .mzout { margin-top: 10px; }
 .mzsel { min-width: 200px; }
+.lockban { position: absolute; right: 10px; top: 8px; max-width: 70%; z-index: 6; font-size: 12px; line-height: 1.5; background: rgba(255,248,235,0.95); color: #6B4E16; border: 1px solid #E6CF9E; border-radius: 8px; padding: 4px 8px; }
+.lockban .lkh { font-family: ui-monospace, monospace; color: #8A6A2A; }
+.lockban .lkb { margin-left: 6px; border: 1px solid #E6CF9E; background: #fff; border-radius: 6px; padding: 1px 8px; font: inherit; color: inherit; cursor: pointer; }
+body.present .lockban { display: none; }
 .item.modwait { background: repeating-linear-gradient(135deg, rgba(127,127,127,0.06) 0 12px, transparent 12px 24px); border-radius: 8px; }
 #page.exact > #cInk, #page.exact > #cLive, #page.exact > #cRemote { inset: 0 auto auto 0; width: var(--cw); height: var(--ch); }
 #page.px1 > #cInk, #page.px1 > #cRemote, #page.pxs > #cSharp { image-rendering: pixelated; }
@@ -2189,6 +2193,8 @@ body.role-student .scnpill .sbtns button[data-s="back"], body.role-student .scnp
       <button class="insb" id="iImg"><b>รูปภาพ</b><span>จากคลังภาพ กล้อง หรือไฟล์ วางจากคลิปบอร์ดหรือลากมาวางก็ได้</span></button>
       <button class="insb" id="iVid"><b>วิดีโอ</b><span>ไฟล์ MP4 ขนาดไม่เกิน 20 MB</span></button>
       <button class="insb" id="iMeas"><b>เครื่องมือวัด</b><span>จับเวลาหลายรอบ ความถี่และความดังเสียงจากไมโครโฟน ความเร่งจากเซนเซอร์ในเครื่อง</span></button>
+      <button class="insb" id="iRec"><b>บันทึกการทดลอง</b><span>หน้าลงวันที่พร้อมหัวข้อ วัตถุประสงค์ สมมติฐาน วิธีทำ ข้อมูลดิบ สิ่งที่สังเกต และข้อสรุป</span></button>
+      <button class="insb" id="iLock"><b>ล็อกเป็นบันทึกถาวร</b><span>ของเดิมในหน้าแก้ ลบ หรือย้ายไม่ได้ เขียนเพิ่มได้ มีรหัสตรวจสอบและที่ลงชื่อรับรอง</span></button>
       <h3 class="insh">เขียน จด และตกแต่ง</h3>
       <button class="insb" id="iText"><b>กล่องข้อความ</b><span>แตะบนหน้าแล้วพิมพ์ เขียนสมการใน $...$ ได้</span></button>
       <button class="insb" id="iLesson"><b>บทเรียนสรุป</b><span>สรุปเนื้อหาทุกบท นิยาม สูตร ตัวอย่างพร้อมวิธีทำ วางลงหน้าเพื่อใช้สอนได้</span></button>
@@ -4337,7 +4343,7 @@ function visibleItems() { const a = (S.page && S.page.items) || []; return S.pre
 let editing = null;
 function renderItems() {
   if (editing) return;
-  sharpTextOff(); renderItems0(); markPicked(); imgUnderSync(); if (typeof cSharp !== 'undefined' && cSharp && !cSharp.hidden) sharpLater();
+  sharpTextOff(); renderItems0(); markPicked(); imgUnderSync(); lockBanSync(); if (typeof cSharp !== 'undefined' && cSharp && !cSharp.hidden) sharpLater();
   edgeCheckLater();
 }
 /* a box or picture already on the page that runs past the edge of the paper (made before this check, or arriving from an
@@ -4436,6 +4442,7 @@ itemsEl.addEventListener('pointerdown', (e) => {
   if (it && it.type !== 'svg') startEdit(it, d);
 });
 function startEdit(it, d) {
+  if (it && isLockedRef(it.id)) { toast('หน้านี้ล็อกเป็นบันทึกถาวรแล้ว แก้ข้อความเดิมไม่ได้ เพิ่มหมายเหตุใหม่ได้', 2600); return; }
   sharpTextOff();
   if (editing) commitEdit();
   editing = { id: it.id, before: clone(S.page.items || []) };
@@ -4477,6 +4484,7 @@ function removeItem(id) {
 }
 function setItems(items, before) {
   if (!S.page) return;
+  if (pageLock()) { const L = pageLock(), now0 = new Map(items.map((x) => [x.id, x])), was = new Map(((S.page && S.page.items) || []).map((x) => [x.id, x])); if ((L.items || []).some((id) => was.has(id) && (!now0.has(id) || lockItemKey(now0.get(id)) !== lockItemKey(was.get(id))))) { toast('หน้านี้ล็อกเป็นบันทึกถาวรแล้ว ของเดิมเปลี่ยนไม่ได้', 2400); return; } }
   const had = new Set((before || []).map((x) => x.id)), fresh = items.filter((x) => x && !had.has(x.id) && x.type !== 'life');
   for (const it of fresh) fitInPage(it, false);
   S.page = Object.assign({}, S.page, { items });
@@ -4507,7 +4515,7 @@ function fitInPage(it, measured) {
 }
 const savePage = debounce(() => {
   if (!S.page || !S.pid) return;
-  const body = { nb: S.page.nb || S.nid, paper: S.page.paper || 'grid', items: S.page.items || [], rev: now() }; if (S.page.orient === 'land') body.orient = 'land';
+  const body = { nb: S.page.nb || S.nid, paper: S.page.paper || 'grid', items: S.page.items || [], rev: now() }; if (S.page.orient === 'land') body.orient = 'land'; if (S.page.lock) body.lock = S.page.lock; /* a record page stays locked */
   setSync(S.store.kind === 'local' ? 'local' : 'saving');
   Promise.resolve(S.store.set('pages/' + S.pid, body)).then(() => setSync(S.store.kind === 'local' ? 'local' : 'saved')).catch(onStoreError);
   if (LIVE.role === 'teacher') liveSendPage();
@@ -5686,7 +5694,7 @@ function eraseWhole(x, y, r, pt, touched) {
   const lists = [[DEV, S.mine], ...Object.entries(S.others)].filter(([lid]) => lid !== 'teacher');
   for (const [lid, arr] of lists) {
     for (let i = arr.length - 1; i >= 0; i--) {
-      const s = arr[i], rr = r + s.w / 2, b = sbox(s); if (s.k === 'n') continue; /* a sticky note is not rubbed out with the writing on it: it goes with the lasso */
+      const s = arr[i], rr = r + s.w / 2, b = sbox(s); if (s.k === 'n' || isLockedRef(s.id)) continue; /* a sticky note is not rubbed out with the writing on it: it goes with the lasso */
       if (x < b[0] - rr || x > b[2] + rr || y < b[1] - rr || y > b[3] + rr) continue;
       let near = false;
       for (let j = 0; j < s.p.length; j += 3) { const dx = s.p[j] / 10 - x, dy = s.p[j + 1] / 10 - y; if (dx * dx + dy * dy < rr * rr) { near = true; break; } }
@@ -5715,7 +5723,7 @@ function erasePart(x, y, r, pt, touched) {
   let hit = false;
   for (const [lid, arr] of [[DEV, S.mine], ...Object.entries(S.others)]) { if (lid === 'teacher') continue;
     for (let i = arr.length - 1; i >= 0; i--) {
-      const s = arr[i], rr = r + s.w / 2, b = sbox(s); if (s.k === 'n') continue; /* a sticky note is not rubbed out with the writing on it: it goes with the lasso */
+      const s = arr[i], rr = r + s.w / 2, b = sbox(s); if (s.k === 'n' || isLockedRef(s.id)) continue; /* a sticky note is not rubbed out with the writing on it: it goes with the lasso */
       if (x < b[0] - rr || x > b[2] + rr || y < b[1] - rr || y > b[3] + rr) continue;
       let near = false;
       for (let j = 0; j + 3 < s.p.length; j += 3) {
@@ -6043,7 +6051,7 @@ function tryScribble(stroke) {
   const removed = [], touched = new Set();
   for (const [lid, arr] of [[DEV, S.mine], ...Object.entries(S.others)]) { if (lid === 'teacher') continue;
     for (let i = arr.length - 1; i >= 0; i--) {
-      const s = arr[i], b = sbox(s); if (s.k === 'n') continue;
+      const s = arr[i], b = sbox(s); if (s.k === 'n' || isLockedRef(s.id)) continue;
       if (b[2] < x0 - R || b[0] > x1 + R || b[3] < y0 - R || b[1] > y1 + R) continue;
       let cov = 0, tot = 0;
       for (let j = 0; j < s.p.length; j += 6) { tot++; if (near(s.p[j] / 10, s.p[j + 1] / 10)) cov++; }
@@ -6053,6 +6061,7 @@ function tryScribble(stroke) {
   const before = clone((S.page && S.page.items) || []);
   const gone = [];
   for (const it of visibleItems()) {
+    if (isLockedRef(it.id)) continue;
     const b = itemBox(it), iw = b[2] - b[0], ih = b[3] - b[1];
     const ox = Math.max(0, Math.min(b[2], x1) - Math.max(b[0], x0)), oy = Math.max(0, Math.min(b[3], y1) - Math.max(b[1], y0));
     if (iw > 0 && ih > 0 && ox * oy >= 0.5 * iw * ih) gone.push(it.id);
@@ -6460,6 +6469,7 @@ function moveRefs(refs, dx, dy, touched) {
 }
 function showSelbar() {
   if (S.sel && S.sel.quiet) { $('#selbar').hidden = true; return; }
+  if (S.sel && pageLock()) { /* on a locked record page what was there at locking stays as it is */ const a = S.sel.strokes.length + S.sel.items.length; S.sel.strokes = S.sel.strokes.filter((r) => !isLockedRef(r.id)); S.sel.items = S.sel.items.filter((id) => !isLockedRef(id)); if (S.sel.strokes.length + S.sel.items.length < a) toast('หน้านี้ล็อกเป็นบันทึกถาวรแล้ว แก้หรือย้ายของเดิมไม่ได้ เขียนเพิ่มได้', 2600); if (!S.sel.strokes.length && !S.sel.items.length) { clearSel(); return; } S.sel.box = selBox(S.sel); drawSelBox(); }
   const n = S.sel.strokes.length, m = S.sel.items.length;
   $('#selCount').textContent = 'เลือก ' + (n ? n + ' เส้น' : '') + (n && m ? ' ' : '') + (m ? m + ' กล่อง' : '');
   $('#selbar').hidden = false;
@@ -6673,7 +6683,7 @@ function openPage(pid) {
     /* a wide PDF page brought in by an older version onto a tall page sticks out past the right edge: such a page is a landscape page */
     if (doc && doc.orient !== 'land' && (doc.items || []).some((it) => isBgItem(it) && it.ar && it.ar < 0.95 && it.x + it.w > 1004)) { doc = Object.assign({}, doc, { orient: 'land' }); setTimeout(() => { if (S.page && S.page.orient === 'land') savePage(); }, 0); }
     const paperChanged = !S.page || doc.paper !== S.page.paper || (doc.orient || '') !== (S.page.orient || '');
-    S.page = { nb: doc.nb, paper: doc.paper || 'grid', orient: doc.orient, items: clone(doc.items || []) };
+    S.page = { nb: doc.nb, paper: doc.paper || 'grid', orient: doc.orient, items: clone(doc.items || []) }; if (doc.lock) S.page.lock = doc.lock;
     applyOrient(S.page);
     if (paperChanged) drawBg();
     renderItems(); renderPaperChips();
@@ -6728,6 +6738,7 @@ async function addPage(opt) {
   } catch (e) { onStoreError(e); return null; }
 }
 async function deletePage() {
+  if (pageLock()) { toast('หน้านี้เป็นบันทึกถาวรที่ล็อกแล้ว ลบไม่ได้', 2600); return; }
   if (!S.nb || (S.nb.pages || []).length < 2) { toast('สมุดต้องมีอย่างน้อยหนึ่งหน้า'); return; }
   const pid = S.pid;
   const pages = S.nb.pages.filter((p) => p !== pid);
@@ -10357,6 +10368,58 @@ function buildSim(d, it, forExport) {
     };
     rb.onclick = () => { const live = findItem(it.id) || it, R = simRuntime(live), cam = R.st.cam; R.st = S0.init(simParams(live)); if (cam) R.st.cam = cam; R.playing = false; R.ended = false; pb.textContent = 'เล่น'; simRender(live, cv, ro); };
   }
+}
+
+/* ---------- research record pages: a page can be locked as a permanent record. What was on it at that moment (writing
+   and boxes) can no longer be rubbed out, moved, changed or deleted; new writing can still be added as later notes. A
+   fingerprint of the locked content shows later that nothing was changed, and a witness can sign ---------- */
+const LOCKC = new WeakMap();
+function pageLock() { return (S.page && S.page.lock) || null; }
+function isLockedRef(id) { const L = pageLock(); if (!L) return false; let c = LOCKC.get(L); if (!c) { c = new Set([].concat(L.ids || [], L.items || [])); LOCKC.set(L, c); } return c.has(id); }
+const lockItemKey = (it) => JSON.stringify([it.type || 'text', it.md || '', it.asset || '', it.svg ? String(it.svg).length : 0, it.rows || null, it.title || '']);
+async function lockHash(L) {
+  const ids = new Set(L.ids || []), iids = new Set(L.items || []);
+  const st = allStrokes().map((r) => r.s).filter((x) => x && ids.has(x.id)).sort((a, b) => (a.id < b.id ? -1 : 1)).map((x) => [x.id, x.c, x.w, x.p]);
+  const its = ((S.page && S.page.items) || []).filter((x) => iids.has(x.id)).sort((a, b) => (a.id < b.id ? -1 : 1)).map((x) => [x.id, lockItemKey(x)]);
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify([st, its, L.at])));
+  return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+const fmtWhen = (t) => { try { return new Date(t).toLocaleString('th-TH', { dateStyle: 'medium', timeStyle: 'short' }); } catch (e) { return new Date(t).toISOString(); } };
+async function lockPage(byName) {
+  if (!S.page || pageLock()) return;
+  const by = (byName || prompt('ชื่อผู้บันทึก (จะแสดงบนหน้า)', store_ls.get('tp-labname') || '') || '').trim().slice(0, 60); if (!by) return;
+  store_ls.set('tp-labname', by);
+  const L = { at: Date.now(), by, ids: allStrokes().map((r) => r.s && r.s.id).filter(Boolean), items: ((S.page.items) || []).map((x) => x.id) };
+  try { L.hash = await lockHash(L); } catch (e) { L.hash = ''; }
+  S.page = Object.assign({}, S.page, { lock: L }); savePage(); S.undo = []; S.redo = []; updUndo(); clearSel(); lockBanSync();
+  toast('ล็อกหน้านี้เป็นบันทึกถาวรแล้ว เขียนเพิ่มได้ แต่ของเดิมแก้ไม่ได้', 3000);
+}
+function lockWitness(nm) {
+  const L = pageLock(); if (!L) return;
+  const name = (nm || prompt('ชื่อผู้รับรอง (เช่น อาจารย์ที่ปรึกษา หรือผู้ร่วมงาน)', '') || '').trim().slice(0, 60); if (!name) return;
+  const w = (L.wit || []).concat([{ name, at: Date.now() }]).slice(-6);
+  S.page = Object.assign({}, S.page, { lock: Object.assign({}, L, { wit: w }) }); savePage(); lockBanSync(); toast('บันทึกผู้รับรองแล้ว ลงลายมือชื่อใต้แถบได้', 2400);
+}
+async function lockVerify() { const L = pageLock(); if (!L) return; let h = ''; try { h = await lockHash(L); } catch (e) { /* no crypto */ } const ok = !!L.hash && h === L.hash; toast(!L.hash ? 'หน้านี้ไม่มีรหัสตรวจสอบ' : ok ? 'ตรวจแล้ว เนื้อหาเดิมไม่ถูกแก้ไขตั้งแต่ล็อก (รหัส ' + L.hash.slice(0, 12) + ')' : 'พบความต่างจากตอนล็อก เนื้อหาเดิมอาจถูกแก้ไขจากที่อื่น', 4200); return ok; }
+function lockBanSync() {
+  let b = document.getElementById('lockBan'); const L = pageLock();
+  if (!L) { if (b) b.remove(); return; }
+  if (!b) { b = document.createElement('div'); b.id = 'lockBan'; b.className = 'lockban no-ink'; pageEl.appendChild(b); }
+  b.innerHTML = '<b>บันทึกถาวร</b> ล็อกเมื่อ ' + esc(fmtWhen(L.at)) + ' โดย ' + esc(L.by || '') + (L.hash ? ' <span class="lkh">รหัส ' + esc(L.hash.slice(0, 12)) + '</span>' : '')
+    + ((L.wit || []).length ? '<br>รับรองโดย ' + esc(L.wit.map((w) => w.name + ' ' + fmtWhen(w.at)).join(', ')) : '')
+    + ' <button type="button" class="lkb" data-a="v">ตรวจสอบ</button><button type="button" class="lkb" data-a="w">ลงชื่อรับรอง</button>';
+  b.onpointerdown = (e) => e.stopPropagation();
+  b.querySelector('[data-a="v"]').onclick = (e) => { e.stopPropagation(); lockVerify(); };
+  b.querySelector('[data-a="w"]').onclick = (e) => { e.stopPropagation(); lockWitness(); };
+}
+/* a dated page for a day in the lab: the headings a research record needs, with room to write under each */
+function researchTemplate() {
+  if (!S.page) return; const d = fmtWhen(Date.now());
+  const heads = ['วัตถุประสงค์', 'สมมติฐาน', 'วัสดุ อุปกรณ์ และวิธีทำ', 'ข้อมูลดิบและการวัด', 'สิ่งที่สังเกต', 'สรุปและสิ่งที่จะทำต่อ'];
+  const before = clone(S.page.items || []), x = 40, w = Math.min(W - 80, 920), gap = Math.floor((H - 200) / heads.length);
+  const add = [{ id: 'i' + uid(), by: DEV, type: 'text', x, y: 30, w, md: '**บันทึกการทดลอง** วันที่ ' + d + '\n\nชื่อการทดลอง ............................................................' }];
+  heads.forEach((h, i) => add.push({ id: 'i' + uid(), by: DEV, type: 'text', x, y: 175 + i * gap, w: 460, md: '**' + (i + 1) + '. ' + h + '**' }));
+  setItems(before.concat(add), before); renderItems(); toast('วางแม่แบบบันทึกการทดลองแล้ว เขียนใต้แต่ละหัวข้อ เมื่อเสร็จวันให้ล็อกหน้า', 3200);
 }
 /* parts that are not needed to open a notebook and write are loaded the first time they are used (moving models,
    the equation solver, drawing from a reference, statistics), so the app opens fast and stays fast however much is added.
@@ -20582,7 +20645,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1794205661';
+const BUILD = '1794205916';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
@@ -21011,6 +21074,8 @@ $('#qsMore').onclick = () => { $('#aiSetup').hidden = true; menuTab('acc'); $('#
 $('#iLab').onclick = () => { closeSheets(); renderLabPicker(); $('#labSheet').hidden = false; };
 $('#iVid').onclick = withMod('video', () => { $('#insSheet').hidden = true; openVideoLab(); });
 $('#iMeas').onclick = withMod('measure', () => { $('#insSheet').hidden = true; openMeasure(); });
+$('#iRec').onclick = () => { $('#insSheet').hidden = true; researchTemplate(); };
+$('#iLock').onclick = () => { $('#insSheet').hidden = true; if (pageLock()) { toast('หน้านี้ล็อกแล้ว', 1600); return; } lockPage(); };
 $('#bLabClose').onclick = () => { $('#labSheet').hidden = true; };
 $('#iSim').onclick = withMod('scene', () => { closeSheets(); renderScenePicker($('#scnPick'), sceneDomainFor()); $('#simSheet').hidden = false; });
 $('#bSimClose').onclick = () => { $('#simSheet').hidden = true; };
