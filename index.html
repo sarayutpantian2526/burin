@@ -220,6 +220,13 @@ body.flow:not(.flowlast) #bAddBelow { display: none; }
 .dssvg { width: 100%; max-width: 420px; color: var(--muted); }
 .poolcard { position: fixed; right: 16px; bottom: 16px; z-index: 40; width: min(320px, calc(100vw - 32px)); background: var(--surface); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow); padding: 12px; display: flex; flex-direction: column; gap: 8px; }
 .poolask { display: grid; grid-template-columns: 2fr 1fr; gap: 8px; }
+.mzbig { font-size: 40px; font-weight: 600; font-variant-numeric: tabular-nums; margin: 8px 0; }
+.mzbig small { font-size: 18px; color: var(--muted); font-weight: 400; }
+.mzdb { font-size: 18px; color: var(--muted); margin-left: 12px; }
+.mzcv { width: 100%; max-width: 640px; height: auto; border: 1px solid var(--line); border-radius: 8px; display: block; }
+.mztabs { margin-bottom: 8px; }
+.mzout { margin-top: 10px; }
+.mzsel { min-width: 200px; }
 .item.modwait { background: repeating-linear-gradient(135deg, rgba(127,127,127,0.06) 0 12px, transparent 12px 24px); border-radius: 8px; }
 #page.exact > #cInk, #page.exact > #cLive, #page.exact > #cRemote { inset: 0 auto auto 0; width: var(--cw); height: var(--ch); }
 #page.px1 > #cInk, #page.px1 > #cRemote, #page.pxs > #cSharp { image-rendering: pixelated; }
@@ -2181,6 +2188,7 @@ body.role-student .scnpill .sbtns button[data-s="back"], body.role-student .scnp
       <button class="insb wide" id="iMedia"><b>สื่อประกอบ รูป GIF และวิดีโอ</b><span>จัดชุดให้อัตโนมัติจากสิ่งที่เขียน ค้นจากเว็บ หรือเลือกจากเครื่องนี้</span></button>
       <button class="insb" id="iImg"><b>รูปภาพ</b><span>จากคลังภาพ กล้อง หรือไฟล์ วางจากคลิปบอร์ดหรือลากมาวางก็ได้</span></button>
       <button class="insb" id="iVid"><b>วิดีโอ</b><span>ไฟล์ MP4 ขนาดไม่เกิน 20 MB</span></button>
+      <button class="insb" id="iMeas"><b>เครื่องมือวัด</b><span>จับเวลาหลายรอบ ความถี่และความดังเสียงจากไมโครโฟน ความเร่งจากเซนเซอร์ในเครื่อง</span></button>
       <h3 class="insh">เขียน จด และตกแต่ง</h3>
       <button class="insb" id="iText"><b>กล่องข้อความ</b><span>แตะบนหน้าแล้วพิมพ์ เขียนสมการใน $...$ ได้</span></button>
       <button class="insb" id="iLesson"><b>บทเรียนสรุป</b><span>สรุปเนื้อหาทุกบท นิยาม สูตร ตัวอย่างพร้อมวิธีทำ วางลงหน้าเพื่อใช้สอนได้</span></button>
@@ -10351,7 +10359,7 @@ function buildSim(d, it, forExport) {
 /* parts that are not needed to open a notebook and write are loaded the first time they are used (moving models,
    the equation solver, drawing from a reference, statistics), so the app opens fast and stays fast however much is added.
    Each part is kept for offline use by the service worker */
-const MODS = { scene: 'm/scene.js', cas: 'm/cas.js', sketch: 'm/sketch.js', stats: 'm/stats.js', video: 'm/video.js', data: 'm/data.js' }, MODP = {}, MODOK = {}, MODEV = {};
+const MODS = { scene: 'm/scene.js', cas: 'm/cas.js', sketch: 'm/sketch.js', stats: 'm/stats.js', video: 'm/video.js', data: 'm/data.js', measure: 'm/measure.js' }, MODP = {}, MODOK = {}, MODEV = {};
 function need(name) {
   if (MODP[name]) return MODP[name];
   if (!MODS[name] || MODS[name] === 'inline') { MODOK[name] = true; return (MODP[name] = Promise.resolve()); }
@@ -10363,11 +10371,11 @@ function need(name) {
   }).catch((e) => { delete MODP[name]; throw e; }));
 }
 let SCENE_TPL, SCN, LIFE, renderScenePicker, scClean, scRender, restoreInk, openMotionPick, insertScene, buildScene, buildLife, sceneDomainFor, lifeBox, animKick, scReset;
-let texToCas, casVars, casWithUnits, casRun, casRowTex, casReady, solveSelection, openBgCut, openSketch, ST, openStats, openVideoLab, dataSelection, poolSection, poolShow, poolGot, poolEnd;
+let texToCas, casVars, casWithUnits, casRun, casRowTex, casReady, solveSelection, openBgCut, openSketch, ST, openStats, openVideoLab, dataSelection, poolSection, poolShow, poolGot, poolEnd, openMeasure;
 const MOD_EXPORTS = {
   scene: ['SCENE_TPL', 'SCN', 'LIFE', 'renderScenePicker', 'scClean', 'scRender', 'restoreInk', 'openMotionPick', 'insertScene', 'buildScene', 'buildLife', 'sceneDomainFor', 'lifeBox', 'animKick', 'scReset'],
   cas: ['texToCas', 'casVars', 'casWithUnits', 'casRun', 'casRowTex', 'casReady', 'solveSelection'],
-  sketch: ['openBgCut', 'openSketch'], stats: ['ST', 'openStats'], video: ['openVideoLab'], data: ['dataSelection', 'poolSection', 'poolShow', 'poolGot', 'poolEnd']
+  sketch: ['openBgCut', 'openSketch'], stats: ['ST', 'openStats'], video: ['openVideoLab'], data: ['dataSelection', 'poolSection', 'poolShow', 'poolGot', 'poolEnd'], measure: ['openMeasure']
 };
 function modSet(name, x) {
   if (name === 'scene') { SCENE_TPL = x.SCENE_TPL; SCN = x.SCN; LIFE = x.LIFE; renderScenePicker = x.renderScenePicker; scClean = x.scClean; scRender = x.scRender; restoreInk = x.restoreInk; openMotionPick = x.openMotionPick; insertScene = x.insertScene; buildScene = x.buildScene; buildLife = x.buildLife; sceneDomainFor = x.sceneDomainFor; lifeBox = x.lifeBox; animKick = x.animKick; scReset = x.scReset; }
@@ -10376,6 +10384,7 @@ function modSet(name, x) {
   else if (name === 'stats') { ST = x.ST; openStats = x.openStats; }
   else if (name === 'video') { openVideoLab = x.openVideoLab; }
   else if (name === 'data') { dataSelection = x.dataSelection; poolSection = x.poolSection; poolShow = x.poolShow; poolGot = x.poolGot; poolEnd = x.poolEnd; }
+  else if (name === 'measure') { openMeasure = x.openMeasure; }
 }
 /* a moving model or moving drawing on a page while its part is still loading: a quiet box of the same size, then the real one */
 function modHold(d, it, forExport) {
@@ -20570,7 +20579,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1794192348';
+const BUILD = '1794204869';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
@@ -20998,6 +21007,7 @@ $('#qsKey').addEventListener('input', () => { const g = detectVendor($('#qsKey')
 $('#qsMore').onclick = () => { $('#aiSetup').hidden = true; menuTab('acc'); $('#menu').hidden = false; const c = $('#cfgKey'); if (c) { c.open = true; setTimeout(() => c.scrollIntoView({ block: 'center' }), 50); } };
 $('#iLab').onclick = () => { closeSheets(); renderLabPicker(); $('#labSheet').hidden = false; };
 $('#iVid').onclick = withMod('video', () => { $('#insSheet').hidden = true; openVideoLab(); });
+$('#iMeas').onclick = withMod('measure', () => { $('#insSheet').hidden = true; openMeasure(); });
 $('#bLabClose').onclick = () => { $('#labSheet').hidden = true; };
 $('#iSim').onclick = withMod('scene', () => { closeSheets(); renderScenePicker($('#scnPick'), sceneDomainFor()); $('#simSheet').hidden = false; });
 $('#bSimClose').onclick = () => { $('#simSheet').hidden = true; };
