@@ -267,6 +267,7 @@ body[data-tool="text"] .item .tgrab, body[data-tool="text"] .item .tsize { opaci
 .shp svg { width: 26px; height: 22px; }
 .shpsec { grid-column: 1 / -1; margin-top: 4px; }
 .shptabs { display: flex; gap: 6px; }
+.shp3d { grid-column: 1 / -1; margin-top: 4px; }
 .shptabs .chip { flex: 1; justify-content: center; }
 .shp[aria-pressed="true"] { border: 2px solid var(--accent); background: var(--accent-soft); }
 .dock { position: absolute; left: 12px; top: 12px; z-index: 7; display: flex; flex-wrap: nowrap; max-width: calc(100% - 24px); align-items: center; gap: 2px; padding: 4px; border-radius: 18px; background: var(--surface); box-shadow: var(--shadow); }
@@ -9150,11 +9151,18 @@ function renderShapes() {
   for (const k of order) { const b = document.createElement('button'); b.type = 'button'; b.className = 'chip'; b.setAttribute('role', 'tab'); b.textContent = sets[k][0]; b.setAttribute('aria-pressed', k === tab ? 'true' : 'false'); b.setAttribute('aria-selected', k === tab ? 'true' : 'false'); b.onclick = () => { renderShapes.tab = k; renderShapes(); }; tb.appendChild(b); }
   const lab = g.parentNode.querySelector('.label'); if (lab) lab.textContent = sets[tab][2];
   for (const [k, n, svg] of sets[tab][1]) {
+    if (k === '-') { const h = document.createElement('span'); h.className = 'label shpsec'; h.textContent = n; g.appendChild(h); continue; }
     const b = document.createElement('button'); b.className = 'shp'; b.type = 'button';
     b.setAttribute('aria-pressed', k === S.shapeKind ? 'true' : 'false');
     b.innerHTML = '<svg viewBox="0 0 26 22" aria-hidden="true">' + svg + '</svg><span></span>';
     b.querySelector('span').textContent = n;
     b.onclick = () => { S.shapeKind = k; store_ls.set('tp-shapekind', k); renderShapes.tab = null; renderShapes(); closePops(); toast(isChemMark(k) ? CHEM_HINT[k] : isGeoMark(k) ? (/^(ang|rang)/.test(k) ? 'แตะที่มุม หรือลากจากจุดยอดเข้าไปในมุม' : 'แตะที่ด้าน หรือลากไปตามด้าน') : 'ลากบนหน้าเพื่อวาด' + n, 1800); };
+    g.appendChild(b);
+  }
+  if (tab === 'chem') { /* the same orbitals as solid shapes that turn under a finger */
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'btn shp3d'; b.textContent = 'ออร์บิทัลสามมิติ หมุนดูได้';
+    b.onclick = () => { const list = (SCENE_TPL['3d'] || []).filter((x) => x[2] && x[2].items && x[2].items.some((i) => i.type === 'orbital')); closePops();
+      popMenu(document.querySelector('[data-tool="shape"]') || b, 'ออร์บิทัลสามมิติ', list.map(([name, hint, spec]) => [name, () => insertScene(JSON.parse(JSON.stringify(spec))), hint])); };
     g.appendChild(b);
   }
 }
@@ -11783,7 +11791,7 @@ function sc3Clean(sp, o) {
     const t = sp.t || {}; o.t = { min: scNum(t.min, 0, -1e6, 1e6), max: scNum(t.max, 6.2832, -1e6, 1e6), speed: scNum(t.speed, 1, 0, 1e4), loop: t.loop !== false };
     o.vars = {}; for (const [k, v] of Object.entries(sp.vars || {}).slice(0, 8)) if (/^[a-zA-Z]\w{0,9}$/.test(k) && !/^(t|x|y|z|e|pi)$/.test(k)) o.vars[k] = scNum(v, 1, -1e9, 1e9);
     const ex = (s) => scTxt(s, 140).replace(/[^0-9A-Za-z_+\-*/^().,\s<>=!]/g, '');
-    o.items = (Array.isArray(sp.items) ? sp.items : []).slice(0, 8).map((it, i) => ({ type: ['surface', 'curve', 'point', 'vector', 'tangent'].includes(it.type) ? it.type : 'surface', color: scCol(it.color, SC_PAL[i % SC_PAL.length]), label: scTxt(it.label, 24), expr: ex(it.expr), x: ex(it.x), y: ex(it.y), z: ex(it.z), s0: ex(it.s0), s1: ex(it.s1), n: Math.round(scNum(it.n, 26, 6, 48)), range: Array.isArray(it.range) ? it.range.slice(0, 4).map((v) => scNum(v, 0, -1e6, 1e6)) : null, trace: !!it.trace }));
+    o.items = (Array.isArray(sp.items) ? sp.items : []).slice(0, 8).map((it, i) => ({ type: ['surface', 'curve', 'point', 'vector', 'tangent', 'orbital'].includes(it.type) ? it.type : 'surface', o: scTxt(it.o, 60).replace(/[^a-z0-9,]/g, ''), dir: it.dir ? v3(it.dir) : null, pick: /^[a-zA-Z]\w{0,9}$/.test(it.pick || '') ? it.pick : '', col2: scCol(it.col2, '#E39B2D'), color: scCol(it.color, SC_PAL[i % SC_PAL.length]), label: scTxt(it.label, 24), expr: ex(it.expr), x: ex(it.x), y: ex(it.y), z: ex(it.z), s0: ex(it.s0), s1: ex(it.s1), n: Math.round(scNum(it.n, 26, 6, 48)), range: Array.isArray(it.range) ? it.range.slice(0, 4).map((v) => scNum(v, 0, -1e6, 1e6)) : null, trace: !!it.trace }));
   }
   return o;
 }
@@ -11960,11 +11968,47 @@ function m3Draw(c, w, h, sp, st, rt) {
       g.ball(p, L * 0.035, it.color); if (it.label) g.text(vAdd(p, [0, 0, L * 0.08]), it.label, it.color, 13);
       if (it.type === 'tangent') { const hh = 1e-3, sc2 = m3Scope(sp, t, { s: t + hh }), q = [mtEval(it.x, sc2, rt), mtEval(it.y, sc2, rt), mtEval(it.z, sc2, rt)], d = vUnit(vSub(q, p)); g.arrow(p, vAdd(p, vMul(d, L * 0.45)), '#C2571A', 2.4); }
       if (it.trace) { const tr = rt.traces[it.label || 'p'] || (rt.traces[it.label || 'p'] = []); tr.push(p); if (tr.length > 600) tr.shift(); g.line(tr, it.color, 1.6, { alpha: 0.55 }); }
+    } else if (it.type === 'orbital') { orb3Draw(g, it, sp, L, rt); continue;
     } else if (it.type === 'vector') {
       const sc = m3Scope(sp, t), p = [mtEval(it.x, sc, rt), mtEval(it.y, sc, rt), mtEval(it.z, sc, rt)]; if (p.every(isFinite)) { g.arrow([0, 0, 0], p, it.color, 2.4); if (it.label) g.text(p, it.label, it.color, 13); }
     }
   }
   g.draw(c); return true;
+}
+/* ----- atomic orbitals as solid shapes: the surface is r = |psi(direction)|^2 (the angular part), coloured by the sign
+   of psi, so the two phases show; hybrids mix s and p along a direction. Shaded towards the viewer as it turns ----- */
+const ORB_NAMES = { s: 's', px: 'p_x', py: 'p_y', pz: 'p_z', dxy: 'd_xy', dxz: 'd_xz', dyz: 'd_yz', dx2y2: 'd_x²−y²', dz2: 'd_z²', sp: 'sp', sp2: 'sp²', sp3: 'sp³' };
+function orbPsi(o, u, dir) {
+  const [x, y, z] = u, Ys = 0.2821, Yp = 0.4886, Yd = 1.0925;
+  switch (o) {
+    case 's': return Ys; case 'px': return Yp * x; case 'py': return Yp * y; case 'pz': return Yp * z;
+    case 'dxy': return Yd * x * y; case 'dxz': return Yd * x * z; case 'dyz': return Yd * y * z; case 'dx2y2': return Yd / 2 * (x * x - y * y); case 'dz2': return 0.3154 * (3 * z * z - 1);
+    default: { const d = vUnit(dir || [0, 0, 1]), p = Yp * vDot(u, d); if (o === 'sp') return (Ys + p) / Math.SQRT2; if (o === 'sp2') return (Ys + Math.SQRT2 * p) / Math.sqrt(3); if (o === 'sp3') return (Ys + Math.sqrt(3) * p) / 2; return Ys; }
+  }
+}
+function orb3Draw(g, it, sp, L, rt) {
+  const list = (it.o || 'pz').split(',').filter((k) => ORB_NAMES[k] || /^sp[23]?$/.test(k));
+  let o = list[0] || 'pz';
+  if (it.pick && sp.vars && list.length > 1) o = list[clamp(Math.round(sp.vars[it.pick]) - 1, 0, list.length - 1)];
+  const many = sp.items.filter((x) => x.type === 'orbital').length, n1 = many > 2 ? 20 : 26, n2 = many > 2 ? 30 : 40, R = L * 0.85, dir = it.dir; /* fewer faces when several orbitals turn together (iPad) */
+  /* the biggest value over all directions sets the size, so every orbital fills the same space */
+  let mx = 0; const U = [];
+  for (let i = 0; i <= n1; i++) { U.push([]); const th = Math.PI * i / n1; for (let j = 0; j <= n2; j++) { const ph = 2 * Math.PI * j / n2, u = [Math.sin(th) * Math.cos(ph), Math.sin(th) * Math.sin(ph), Math.cos(th)], v = orbPsi(o, u, dir); U[i].push([u, v]); mx = Math.max(mx, v * v); } }
+  const k = R / (mx || 1), cm = rt.cam || CAM0, V = [Math.sin(cm.yaw) * Math.cos(cm.pitch), -Math.cos(cm.yaw) * Math.cos(cm.pitch), Math.sin(cm.pitch)];
+  const Lt = vUnit(vAdd(V, [0.25, -0.15, 0.45])), P = (e) => vMul(e[0], e[1] * e[1] * k);
+  const hex = (c) => (/^#[0-9a-f]{6}$/i.test(c) ? c : '#2F4BB8'), c1 = hex(it.color), c2 = hex(it.col2);
+  const mixc = (c, f) => { const n = parseInt(c.slice(1), 16), r = n >> 16, gg = (n >> 8) & 255, b = n & 255, m = (v) => Math.round(f < 1 ? v * f : v + (255 - v) * (f - 1)); return 'rgb(' + m(r) + ',' + m(gg) + ',' + m(b) + ')'; };
+  for (let i = 0; i < n1; i++) for (let j = 0; j < n2; j++) {
+    const a = U[i][j], b = U[i + 1][j], c = U[i + 1][j + 1], d = U[i][j + 1], vm = (a[1] + b[1] + c[1] + d[1]) / 4;
+    const pa = P(a), pb = P(b), pc = P(c), pd = P(d), cen = vMul(vAdd(vAdd(pa, pb), vAdd(pc, pd)), 0.25);
+    if (vLen(cen) < R * 0.012) continue; /* the pinched middle where the lobes meet */
+    let nv = vCross(vSub(pc, pa), vSub(pd, pb)); if (vLen(nv) < 1e-12) continue; nv = vUnit(nv); if (vDot(nv, cen) < 0) nv = vMul(nv, -1);
+    const lit = 0.55 + 0.6 * Math.max(0, vDot(nv, Lt)) + 0.12 * Math.max(0, vDot(nv, V));
+    g.poly([pa, pb, pc, pd], mixc(vm >= 0 ? c1 : c2, clamp(lit, 0.45, 1.35)), null);
+  }
+  g.ball([0, 0, 0], L * 0.025, '#333333');
+  const nm = list.length > 1 && !it.pick ? list.map((x) => ORB_NAMES[x] || x).join(', ') : (ORB_NAMES[o] || o);
+  rt.read = [['ออร์บิทัล', nm], ['สี', 'น้ำเงิน เฟสบวก, ส้ม เฟสลบ']];
 }
 /* ----- one entry for the runtime ----- */
 function sc3Reset(sp, r) {
@@ -12016,6 +12060,16 @@ const SCENE_TPL3 = [
   ['เกลียวกับเวกเตอร์สัมผัส', 'จุดเดินบนเกลียว ลูกศรคือทิศของความเร็ว', { domain: 'math', dim: 3, title: 'เกลียว r(s) = (cos s, sin s, s/4)', view: { L: 2.5 }, t: { min: 0, max: 18.85, speed: 1.2 }, items: [{ type: 'curve', x: 'cos(s)', y: 'sin(s)', z: 's/4-2.3', s0: '0', s1: '6*pi', color: '#2F4BB8' }, { type: 'tangent', x: 'cos(s)', y: 'sin(s)', z: 's/4-2.3', label: 'P', color: '#C2571A' }] }],
   ['พื้นผิวอานม้า', 'z = (x² − y²)/4 จุดอานม้าเป็นได้ทั้งต่ำสุดและสูงสุดตามแนวที่มอง', { domain: 'math', dim: 3, title: 'z = (x² − y²)/4', view: { L: 3 }, t: { min: 0, max: 6.2832, speed: 1 }, vars: { k: 4 }, items: [{ type: 'surface', expr: '(x^2-y^2)/k', n: 26 }, { type: 'point', x: '2.2*cos(t)', y: '2.2*sin(t)', z: '(4.84*cos(t)^2-4.84*sin(t)^2)/k', label: 'P', trace: true, color: '#C2571A' }], params: [{ key: 'k', label: 'k', min: 1, max: 10, step: 0.5 }] }]
 ];
+const SP3 = [[1, 1, 1], [1, -1, -1], [-1, 1, -1], [-1, -1, 1]], SP2 = [[1, 0, 0], [-0.5, 0.866, 0], [-0.5, -0.866, 0]];
+SCENE_TPL3.push(
+  ['ออร์บิทัล s', 'ทรงกลม ความน่าจะพบอิเล็กตรอนเท่ากันทุกทิศ', { domain: 'math', dim: 3, title: 'ออร์บิทัล s', view: { L: 1.6 }, t: { min: 0, max: 1, speed: 0 }, items: [{ type: 'orbital', o: 's', color: '#2F4BB8' }] }],
+  ['ออร์บิทัล p', 'สองพูตามแกน เฟสตรงข้ามกัน เลือก px py pz ได้', { domain: 'math', dim: 3, title: 'ออร์บิทัล p', view: { L: 1.6 }, t: { min: 0, max: 1, speed: 0 }, vars: { k: 3 }, items: [{ type: 'orbital', o: 'px,py,pz', pick: 'k', color: '#2F4BB8' }], params: [{ key: 'k', label: '1 px, 2 py, 3 pz', min: 1, max: 3, step: 1 }] }],
+  ['ออร์บิทัล d', 'สี่พูหรือสองพูมีวงแหวน เลือกได้ทั้งห้าแบบ', { domain: 'math', dim: 3, title: 'ออร์บิทัล d', view: { L: 1.6 }, t: { min: 0, max: 1, speed: 0 }, vars: { k: 1 }, items: [{ type: 'orbital', o: 'dxy,dxz,dyz,dx2y2,dz2', pick: 'k', color: '#2F4BB8' }], params: [{ key: 'k', label: '1 dxy, 2 dxz, 3 dyz, 4 dx²−y², 5 dz²', min: 1, max: 5, step: 1 }] }],
+  ['ออร์บิทัล p ทั้งสามแกน', 'px py pz ตั้งฉากกันตามแกน x y z', { domain: 'math', dim: 3, title: 'ออร์บิทัล px py pz', view: { L: 1.6 }, t: { min: 0, max: 1, speed: 0 }, items: [{ type: 'orbital', o: 'px', color: '#B23A3A', col2: '#F2B8B8' }, { type: 'orbital', o: 'py', color: '#2E7D4F', col2: '#B5DEC4' }, { type: 'orbital', o: 'pz', color: '#2F4BB8', col2: '#BAC6F0' }] }],
+  ['ไฮบริด sp', 'สองออร์บิทัลชี้ตรงข้าม มุม 180 องศา เช่น BeCl2 C2H2', { domain: 'math', dim: 3, title: 'ไฮบริด sp', view: { L: 1.6 }, t: { min: 0, max: 1, speed: 0 }, items: [{ type: 'orbital', o: 'sp', dir: [1, 0, 0], color: '#2F4BB8' }, { type: 'orbital', o: 'sp', dir: [-1, 0, 0], color: '#2E8B57' }] }],
+  ['ไฮบริด sp²', 'สามออร์บิทัลในระนาบ มุม 120 องศา เช่น BF3 C2H4', { domain: 'math', dim: 3, title: 'ไฮบริด sp²', view: { L: 1.6 }, t: { min: 0, max: 1, speed: 0 }, items: SP2.map((d, i) => ({ type: 'orbital', o: 'sp2', dir: d, color: ['#2F4BB8', '#2E8B57', '#8E44AD'][i] })) }],
+  ['ไฮบริด sp³', 'สี่ออร์บิทัลชี้ไปมุมทรงสี่หน้า มุม 109.5 องศา เช่น CH4', { domain: 'math', dim: 3, title: 'ไฮบริด sp³', view: { L: 1.6 }, t: { min: 0, max: 1, speed: 0 }, items: SP3.map((d, i) => ({ type: 'orbital', o: 'sp3', dir: d, color: ['#2F4BB8', '#2E8B57', '#8E44AD', '#B23A3A'][i] })) }]
+);
 SCENE_TPL['3d'] = SCENE_TPL3;
 
 
@@ -14733,18 +14787,39 @@ function openStickers() {
    and balancing an equation the user wrote. The balancing is worked out here exactly (atoms and charge), never guessed */
 const CHEM_BOND = 50; /* one bond on the page, the same for every bond so a structure looks even */
 const CHEM_MARKS = [
+  ['-', 'โครงสร้าง'],
   ['bond1', 'พันธะเดี่ยว', '<path d="M3 17L13 6L23 17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>'],
   ['bond2', 'พันธะคู่', '<path d="M3 17L23 5 M5 21L23 10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>'],
   ['bond3', 'พันธะสาม', '<path d="M3 11h20 M5 6h16 M5 16h16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>'],
   ['wedge', 'ลิ่มทึบ', '<path d="M3 17L23 7L22 3Z" fill="currentColor" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/>'],
   ['hash', 'ลิ่มเส้นประ', '<path d="M5 15.5l0.6 -1 M9 14.5l1.4 -2.6 M13 13.5l2.2 -4.2 M17 12.5l3 -5.8 M21 11.5l3.6 -7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>'],
   ['benz', 'วงเบนซีน', '<path d="M13 2l8.5 4.9v9.8L13 21.6l-8.5-4.9V6.9z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><circle cx="13" cy="11.8" r="4.6" fill="none" stroke="currentColor" stroke-width="1.6"/>'],
-  ['lp', 'อิเล็กตรอนคู่', '<text x="13" y="16" text-anchor="middle" font-size="13" font-weight="700" fill="currentColor">O</text><circle cx="9" cy="3.5" r="1.7" fill="currentColor"/><circle cx="17" cy="3.5" r="1.7" fill="currentColor"/>'],
+  ['lp', 'คู่โดดเดี่ยว', '<text x="13" y="16" text-anchor="middle" font-size="13" font-weight="700" fill="currentColor">O</text><circle cx="9" cy="3.5" r="1.7" fill="currentColor"/><circle cx="17" cy="3.5" r="1.7" fill="currentColor"/>'],
   ['curly', 'ลูกศรโค้ง', '<path d="M4 18C4 6 19 3 21 13 M17.5 10.5l3.5 3 2-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>'],
-  ['hook', 'ลูกศรหัวเดียว', '<path d="M4 18C4 6 19 3 21 13 M17 11.5l4 1.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>']
+  ['hook', 'หัวเดียว', '<path d="M4 18C4 6 19 3 21 13 M17 11.5l4 1.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>']
 ];
-const isChemMark = (k) => CHEM_MARKS.some((m) => m[0] === k);
-const CHEM_HINT = { bond1: 'ลากเพื่อวาดพันธะ แตะปลายพันธะเดิมเพื่อต่อเป็นโซ่', bond2: 'ลากเพื่อวาดพันธะคู่ แตะปลายพันธะเดิมเพื่อต่อ', bond3: 'ลากเพื่อวาดพันธะสาม แตะปลายพันธะเดิมเพื่อต่อ', wedge: 'ลากจากอะตอมที่อยู่หน้า', hash: 'ลากจากอะตอมที่อยู่หน้า', benz: 'แตะเพื่อวางวง แตะที่ปลายพันธะเพื่อต่อวง ลากเพื่อหมุนหรือย่อขยาย', lp: 'แตะข้างอะตอม ลากเพื่อหันทิศ', curly: 'ลากจากคู่อิเล็กตรอนไปยังที่ที่มันไป', hook: 'ลากจากอิเล็กตรอนเดี่ยวไปยังที่ที่มันไป' };
+CHEM_MARKS.push(
+  ['-', 'ออร์บิทัล'],
+  ['os', 'ออร์บิทัล s', '<circle cx="13" cy="11" r="8" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="13" cy="11" r="1.3" fill="currentColor"/>'],
+  ['op', 'ออร์บิทัล p', '<path d="M13 11C9 8 3 8 2.5 11S9 14 13 11C17 8 23 8 23.5 11S17 14 13 11Z" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M16 9.6v2.8 M18.5 9.2v3.6 M21 9.6v2.8" stroke="currentColor" stroke-width="1.1"/>'],
+  ['od', 'ออร์บิทัล d', '<path d="M13 11C11 6 7 2 5 4S8 9 13 11C15 6 19 2 21 4S18 9 13 11C11 16 7 20 5 18S8 13 13 11C15 16 19 20 21 18S18 13 13 11Z" fill="none" stroke="currentColor" stroke-width="1.6"/>'],
+  ['odz', 'ออร์บิทัล dz²', '<path d="M13 11C10 7 10 1 13 1S16 7 13 11C10 15 10 21 13 21S16 15 13 11Z" fill="none" stroke="currentColor" stroke-width="1.6"/><ellipse cx="13" cy="11" rx="8" ry="2.4" fill="none" stroke="currentColor" stroke-width="1.6"/>'],
+  ['osp3', 'ไฮบริด sp³', '<path d="M8 11C14 4 24 6 24 11S14 18 8 11C6 9 3 9.5 3 11S6 13 8 11Z" fill="none" stroke="currentColor" stroke-width="1.7"/>'],
+  ['obox', 'กล่อง', '<rect x="2" y="6" width="7" height="10" fill="none" stroke="currentColor" stroke-width="1.6"/><rect x="9.5" y="6" width="7" height="10" fill="none" stroke="currentColor" stroke-width="1.6"/><rect x="17" y="6" width="7" height="10" fill="none" stroke="currentColor" stroke-width="1.6"/>'],
+  ['oup', 'สปินขึ้น', '<rect x="6" y="3" width="14" height="16" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M11 16V6l3 3.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>'],
+  ['odn', 'สปินลง', '<rect x="6" y="3" width="14" height="16" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M15 6v10l-3-3.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>'],
+  ['-', 'ปฏิกิริยา'],
+  ['rfwd', 'ไปข้างหน้า', '<path d="M2 11h21 M18 7l5 4-5 4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>'],
+  ['req', 'สมดุล', '<path d="M2 8.5h21l-5-4 M24 13.5H3l5 4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>'],
+  ['rres', 'เรโซแนนซ์', '<path d="M3 11h20 M7 7l-4 4 4 4 M19 7l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>'],
+  ['rheat', 'ให้ความร้อน', '<path d="M2 15h21 M18 11l5 4-5 4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><path d="M12.5 3.5l3.5 6h-7z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>'],
+  ['rretro', 'ย้อนสังเคราะห์', '<path d="M2 8.5h17 M2 13.5h17 M16 4.5l7 6.5-7 6.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>'],
+  ['eexo', 'คายพลังงาน', '<path d="M3 2v18h21" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M4 9h3c3 0 3-6 6-6s3 11 6 11h4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>'],
+  ['eendo', 'ดูดพลังงาน', '<path d="M3 2v18h21" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M4 15h3c3 0 3-12 6-12s3 6 6 6h4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>'],
+  ['e2step', 'สองขั้น', '<path d="M3 2v18h21" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M4 12h2c2 0 2-8 4.5-8S12 10 14 10s2-4 4-4 2 9 4 9h2" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>']
+);
+const isChemMark = (k) => k !== '-' && CHEM_MARKS.some((m) => m[0] === k);
+const CHEM_HINT = { os: 'แตะที่นิวเคลียส ลากเพื่อกำหนดขนาด', op: 'ลากจากนิวเคลียสไปตามแกนของออร์บิทัล', od: 'ลากจากนิวเคลียสไปตามแนวกลีบหนึ่ง', odz: 'ลากจากนิวเคลียสไปตามแกน z', osp3: 'ลากจากนิวเคลียสไปทางกลีบใหญ่', obox: 'ลากไปทางขวาเพื่อกำหนดจำนวนกล่อง', oup: 'แตะในกล่อง ลูกศรจะไปอยู่ครึ่งซ้าย', odn: 'แตะในกล่อง ลูกศรจะไปอยู่ครึ่งขวา', rfwd: 'ลากจากสารตั้งต้นไปผลิตภัณฑ์', req: 'ลากจากซ้ายไปขวา', rres: 'ลากระหว่างโครงสร้างสองแบบ', rheat: 'ลากจากสารตั้งต้นไปผลิตภัณฑ์', rretro: 'ลากจากเป้าหมายไปสารตั้งต้น', eexo: 'ลากเป็นกรอบเพื่อวางกราฟ', eendo: 'ลากเป็นกรอบเพื่อวางกราฟ', e2step: 'ลากเป็นกรอบเพื่อวางกราฟ', bond1: 'ลากเพื่อวาดพันธะ แตะปลายพันธะเดิมเพื่อต่อเป็นโซ่', bond2: 'ลากเพื่อวาดพันธะคู่ แตะปลายพันธะเดิมเพื่อต่อ', bond3: 'ลากเพื่อวาดพันธะสาม แตะปลายพันธะเดิมเพื่อต่อ', wedge: 'ลากจากอะตอมที่อยู่หน้า', hash: 'ลากจากอะตอมที่อยู่หน้า', benz: 'แตะเพื่อวางวง แตะที่ปลายพันธะเพื่อต่อวง ลากเพื่อหมุนหรือย่อขยาย', lp: 'แตะข้างอะตอม ลากเพื่อหันทิศ', curly: 'ลากจากคู่อิเล็กตรอนไปยังที่ที่มันไป', hook: 'ลากจากอิเล็กตรอนเดี่ยวไปยังที่ที่มันไป' };
 
 /* the ends of bonds already on the page (only the line along each bond, kept as cm 'b'), with the way each bond points */
 function chemEnds() {
@@ -14842,6 +14917,64 @@ function chemMarkLists(kind, a, b) {
     else { /* one electron: half a head, on the outer side of the bow */ const h = Math.sin(ang - 0.45) * nv[1] + Math.cos(ang - 0.45) * nv[0] < 0 ? h1 : h2; line(h, b); }
     return mk();
   }
+  const P = (pts, extra) => { if (pts.length > 1) out.push(Object.assign({ pts: shapePts({ type: 'poly', pts }, 55) }, extra || {})); };
+  const head = (at, ang, hl, half) => (half ? [at, [at[0] - hl * Math.cos(ang - 0.45 * half), at[1] - hl * Math.sin(ang - 0.45 * half)]] : [[at[0] - hl * Math.cos(ang - 0.45), at[1] - hl * Math.sin(ang - 0.45)], at, [at[0] - hl * Math.cos(ang + 0.45), at[1] - hl * Math.sin(ang + 0.45)]]);
+  const rot = (o, t, x, y) => [o[0] + x * Math.cos(t) - y * Math.sin(t), o[1] + x * Math.sin(t) + y * Math.cos(t)];
+  /* a lobe of an orbital in polar form r = L cos^2(k theta): k 1 for p, 2 for the narrower d lobes */
+  const lobe = (o, t, L, k) => { const lim = Math.PI / (2 * k), pts = []; for (let i = 0; i <= 40; i++) { const th = -lim + (2 * lim * i) / 40, r = L * Math.pow(Math.cos(k * th), 2); pts.push(rot(o, t, r * Math.cos(th), r * Math.sin(th))); } return pts; };
+  /* the other phase is shaded with a few lines across the lobe, as in textbooks */
+  const hatch = (o, t, L, k) => { const poly = lobe(o, t, L, k).map((q) => { const x = q[0] - o[0], y = q[1] - o[1]; return [x * Math.cos(t) + y * Math.sin(t), -x * Math.sin(t) + y * Math.cos(t)]; });
+    for (let d = L * 0.3; d < L * 0.92; d += L * 0.13) { let lo = 1e9, hi = -1e9; for (let i = 0; i < poly.length - 1; i++) { const a0 = poly[i], a1 = poly[i + 1]; if ((a0[0] - d) * (a1[0] - d) <= 0 && a0[0] !== a1[0]) { const y = a0[1] + (a1[1] - a0[1]) * (d - a0[0]) / (a1[0] - a0[0]); lo = Math.min(lo, y); hi = Math.max(hi, y); } }
+      if (hi - lo > 2) line(rot(o, t, d, lo + 1.2), rot(o, t, d, hi - 1.2), { w: Math.max(1, w * 0.6) }); } };
+  const snapT = (t) => { const s = Math.round(t / (Math.PI / 12)) * (Math.PI / 12); return Math.abs(s - t) < 0.09 ? s : t; };
+  const dot = (q) => out.push({ pts: shapePts({ type: 'ellipse', cx: q[0], cy: q[1], rx: 0.6, ry: 0.6 }, 55), w: clamp(w * 1.5, 2.5, 5) });
+  if (/^o(s|p|d|dz|sp3)$/.test(kind)) {
+    const t = drag >= 8 ? snapT(Math.atan2(b[1] - a[1], b[0] - a[0])) : (kind === 'odz' ? -Math.PI / 2 : 0);
+    const L = drag >= 8 ? clamp(drag, 15, 260) : 45;
+    if (kind === 'os') { out.push({ pts: shapePts({ type: 'ellipse', cx: a[0], cy: a[1], rx: L * 0.75, ry: L * 0.75 }, 55) }); dot(a); return mk(); }
+    if (kind === 'op') { P(lobe(a, t, L, 1)); P(lobe(a, t + Math.PI, L, 1)); hatch(a, t, L, 1); dot(a); return mk(); }
+    if (kind === 'od') { for (let i = 0; i < 4; i++) { P(lobe(a, t + i * Math.PI / 2, L, 2)); if (i % 2 === 0) hatch(a, t + i * Math.PI / 2, L, 2); } dot(a); return mk(); }
+    if (kind === 'odz') { P(lobe(a, t, L, 1)); P(lobe(a, t + Math.PI, L, 1)); const ring = []; for (let i = 0; i <= 48; i++) { const u = (i / 48) * Math.PI * 2; ring.push(rot(a, t, L * 0.13 * Math.sin(u), L * 0.46 * Math.cos(u))); } P(ring); dot(a); return mk(); }
+    if (kind === 'osp3') { P(lobe(a, t, L, 1)); P(lobe(a, t + Math.PI, L * 0.32, 1)); hatch(a, t + Math.PI, L * 0.32, 1); dot(a); return mk(); }
+  }
+  if (kind === 'obox') {
+    const hgt = 30, bw = 26, n = drag >= 8 ? clamp(Math.round(Math.abs(b[0] - a[0]) / bw), 1, 7) : 1, x0 = a[0], y0 = a[1] - hgt / 2;
+    for (let i = 0; i < n; i++) { const x = x0 + i * bw; P([[x, y0], [x + bw, y0], [x + bw, y0 + hgt], [x, y0 + hgt], [x, y0]], { cm: 'ob' }); }
+    return mk();
+  }
+  if (kind === 'oup' || kind === 'odn') {
+    /* inside an orbital box the arrow takes its half of the box; elsewhere it stands where tapped */
+    let x = a[0], yc = a[1], hgt = 30;
+    for (const r of allStrokes()) { const st = r.s; if (!st || st.cm !== 'ob') continue; let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9; for (let i = 0; i < st.p.length; i += 3) { x0 = Math.min(x0, st.p[i] / 10); x1 = Math.max(x1, st.p[i] / 10); y0 = Math.min(y0, st.p[i + 1] / 10); y1 = Math.max(y1, st.p[i + 1] / 10); }
+      if (a[0] >= x0 - 2 && a[0] <= x1 + 2 && a[1] >= y0 - 2 && a[1] <= y1 + 2) { x = x0 + (x1 - x0) * (kind === 'oup' ? 0.35 : 0.65); yc = (y0 + y1) / 2; hgt = y1 - y0; break; } }
+    const h = hgt * 0.36, up = kind === 'oup', tip = [x, up ? yc - h : yc + h], tail = [x, up ? yc + h : yc - h], ang = up ? -Math.PI / 2 : Math.PI / 2;
+    line(tail, tip); P(head(tip, ang, h * 0.6, -1)); /* up with its barb to the left, down with its barb to the right */ return mk();
+  }
+  if (/^r(fwd|eq|res|heat|retro)$/.test(kind)) {
+    const t = drag >= 8 ? snapT(Math.atan2(b[1] - a[1], b[0] - a[0])) : 0, L = drag >= 8 ? Math.max(30, drag) : 90, e = rot(a, t, L, 0), hl = clamp(L * 0.14, 8, 15);
+    if (kind === 'rfwd' || kind === 'rheat') { line(a, e); P(head(e, t, hl)); if (kind === 'rheat') { const m = rot(a, t, L / 2, -12), s2 = 6; P([rot(m, t, -s2, 3), rot(m, t, 0, -8), rot(m, t, s2, 3), rot(m, t, -s2, 3)]); } }
+    else if (kind === 'req') { const g = 5.5, a1 = rot(a, t, 0, -g), e1 = rot(a, t, L, -g), a2 = rot(a, t, 0, g), e2 = rot(a, t, L, g); line(a1, e1); P(head(e1, t, hl, -1)); line(e2, a2); P(head(a2, t + Math.PI, hl, -1)); /* each half head on the outer side */ }
+    else if (kind === 'rres') { line(a, e); P(head(e, t, hl)); P(head(a, t + Math.PI, hl)); }
+    else { const g = 4.5, tip = rot(a, t, L + 3, 0); line(rot(a, t, 0, -g), rot(a, t, L - g * 1.2, -g)); line(rot(a, t, 0, g), rot(a, t, L - g * 1.2, g)); P([rot(a, t, L - hl * 1.1, -hl * 0.9), tip, rot(a, t, L - hl * 1.1, hl * 0.9)]); }
+    return mk();
+  }
+  if (/^e(exo|endo|2step)$/.test(kind)) {
+    /* an energy profile in the box dragged: the axes, a smooth path over the hump(s), and the activation energy marked */
+    let x0 = Math.min(a[0], b[0]), y0 = Math.min(a[1], b[1]), x1 = Math.max(a[0], b[0]), y1 = Math.max(a[1], b[1]);
+    if (x1 - x0 < 60 || y1 - y0 < 40) { x0 = a[0]; y0 = a[1]; x1 = x0 + 260; y1 = y0 + 180; }
+    const W2 = x1 - x0, H2 = y1 - y0, X = (f) => x0 + W2 * f, Y = (f) => y1 - H2 * f;
+    line([x0, y1], [x0, y0]); P(head([x0, y0], -Math.PI / 2, 9)); line([x0, y1], [x1, y1]); P(head([x1, y1], 0, 9));
+    const r0 = kind === 'eendo' ? 0.3 : 0.55, r1 = kind === 'eexo' ? 0.22 : kind === 'eendo' ? 0.6 : 0.3, pk = 0.88;
+    const ease = (u) => u * u * (3 - 2 * u), pts = [], seg = (fa, fb, ya, yb) => { for (let i = 0; i <= 18; i++) { const u = i / 18; pts.push([X(fa + (fb - fa) * u), Y(ya + (yb - ya) * ease(u))]); } };
+    let peakX;
+    if (kind === 'e2step') { const mid = 0.5, pk2 = 0.74; pts.push([X(0.06), Y(r0)]); seg(0.14, 0.3, r0, pk); seg(0.3, 0.45, pk, mid); seg(0.55, 0.7, mid, pk2); seg(0.7, 0.86, pk2, r1); pts.push([X(0.96), Y(r1)]); peakX = 0.3; }
+    else { pts.push([X(0.06), Y(r0)]); seg(0.18, 0.48, r0, pk); seg(0.48, 0.8, pk, r1); pts.push([X(0.96), Y(r1)]); peakX = 0.48; }
+    P(pts, { w: w * 1.1 });
+    /* dashed line from the reactants' level and a double arrow up to the top of the barrier (Ea) */
+    for (let f = 0.2; f < peakX + 0.02; f += 0.05) line([X(f), Y(r0)], [X(Math.min(f + 0.028, peakX + 0.02)), Y(r0)], { w: Math.max(1, w * 0.6) });
+    const ax = X(peakX + 0.02), ya = Y(r0) - 2, yb = Y(pk) + 3; if (ya - yb > 16) { line([ax, ya], [ax, yb], { w: Math.max(1, w * 0.7) }); P(head([ax, yb], -Math.PI / 2, 6), { w: Math.max(1, w * 0.7) }); P(head([ax, ya], Math.PI / 2, 6), { w: Math.max(1, w * 0.7) }); }
+    return mk();
+  }
   return [];
 }
 
@@ -14925,6 +15058,27 @@ function chemTable(eq, co) {
   if (c.ion) rows.push('| ประจุรวม | ' + qs(c.L._q) + ' | ' + qs(c.R._q) + ' | ' + (c.L._q === c.R._q ? 'เท่ากัน' : '**ไม่เท่ากัน**') + ' |');
   return '| ธาตุ | ซ้าย | ขวา | ผล |\n|---|---|---|---|\n' + rows.join('\n');
 }
+/* what kind of reaction it is, read from the formulas themselves (several can be true at once) */
+function chemKind(eq) {
+  const els = (x) => Object.keys(x.sp.el), isEl = (x) => !x.sp.e && els(x).length === 1 && !x.sp.charge, f = (x) => x.f.replace(/\((s|l|g|aq)\)$/i, '');
+  const L = eq.L.filter((x) => !x.sp.e), R = eq.R.filter((x) => !x.sp.e), out = [];
+  if (eq.L.some((x) => x.sp.e)) out.push('ครึ่งปฏิกิริยารีดักชัน (รับอิเล็กตรอน)');
+  if (eq.R.some((x) => x.sp.e)) out.push('ครึ่งปฏิกิริยาออกซิเดชัน (ให้อิเล็กตรอน)');
+  const has = (list, re) => list.some((x) => re.test(f(x)));
+  if (has(L, /^O2$/) && (has(R, /^CO2$/) || has(R, /^H2O$/)) && L.some((x) => !/^O2$/.test(f(x)) && (x.sp.el.C || x.sp.el.H))) out.push('การเผาไหม้');
+  else if (has(R, /^H2O$/) && L.some((x) => /OH\)?\d*$/.test(f(x)) && !/^H2O$/.test(f(x)) && !x.sp.el.C) && L.some((x) => /^H[A-Z]/.test(f(x)) || /^H\d*[A-Z]/.test(f(x)) || /^H\^?\+?$/.test(f(x)) || f(x) === 'H')) out.push('การสะเทิน (กรดกับเบส)');
+  else if (L.length >= 2 && R.length === 1) out.push('การรวมตัว (สังเคราะห์)');
+  else if (L.length === 1 && R.length >= 2) out.push('การสลายตัว');
+  else if (L.length === 2 && R.length === 2 && L.filter(isEl).length === 1 && R.filter(isEl).length === 1 && f(L.find(isEl)) !== f(R.find(isEl))) out.push('การแทนที่เดี่ยว');
+  else if (L.length === 2 && R.length === 2 && !L.concat(R).some(isEl) && !L.concat(R).some((x) => x.sp.charge)) out.push('การแทนที่สองตำแหน่ง (แลกเปลี่ยนไอออน)' + (R.some((x) => /\(s\)/i.test(x.state)) ? ' เกิดตะกอน' : R.some((x) => /\(g\)/i.test(x.state)) ? ' เกิดแก๊ส' : ''));
+  /* electrons move when an element is free on one side and combined on the other, or a simple ion changes its charge */
+  const free = (list) => new Set(list.filter(isEl).map((x) => els(x)[0])), comb = (list) => new Set(list.filter((x) => !isEl(x)).flatMap(els));
+  const fl = free(L), fr = free(R), cl = comb(L), cr = comb(R);
+  const ionQ = (list) => { const m = {}; for (const x of list) if (els(x).length === 1 && x.sp.charge) (m[els(x)[0]] = m[els(x)[0]] || new Set()).add(x.sp.charge); return m; };
+  const qL = ionQ(L), qR = ionQ(R), qChange = Object.keys(qL).some((e) => qR[e] && [...qL[e]].some((q) => !qR[e].has(q)));
+  if (!out.some((t) => /ครึ่งปฏิกิริยา/.test(t)) && ([...fl].some((e) => cr.has(e)) || [...fr].some((e) => cl.has(e)) || qChange || [...fl].some((e) => qR[e]) || [...fr].some((e) => qL[e]))) out.push('รีดอกซ์ (มีการรับส่งอิเล็กตรอน)');
+  return out;
+}
 async function balanceSelection() {
   if (!S.sel) return;
   const refs = S.sel.strokes.slice(), box = S.sel.box.slice();
@@ -14956,7 +15110,8 @@ async function balanceSelection() {
     const md = out.map((o) => {
       if (!o.co) return '**สมการ** ' + chemCe(o.eq, o.mine) + '\n\n' + o.msg;
       const head = o.same ? '**ดุลถูกต้องแล้ว** ' + chemCe(o.eq, o.mine) : (o.hasCo ? '**สมการที่เขียน** ' + chemCe(o.eq, o.mine) + ' ยังไม่ดุล\n\n' : '') + (o.same ? '' : '**สมการที่ดุลแล้ว** ' + chemCe(o.eq, o.co));
-      return head + '\n\n' + chemTable(o.eq, o.co);
+      const kd = chemKind(o.eq);
+      return head + '\n\n' + chemTable(o.eq, o.co) + (kd.length ? '\n\n**ประเภท** ' + kd.join(' และ ') : '');
     }).join('\n\n');
     const chk = out.filter((o) => o.co && o.hasCo && !o.same).map((o) => '**ตรวจสมการ** ' + chemCe(o.eq, o.mine) + '\n\n' + chemTable(o.eq, o.mine)).join('\n\n');
     B.d.innerHTML = '<span class="k">ดุลสมการ</span><div class="prf">' + mdToHtml(md) + '</div>'
@@ -24400,7 +24555,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1794127215';
+const BUILD = '1794185417';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
