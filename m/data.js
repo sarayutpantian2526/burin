@@ -188,4 +188,61 @@ function poolShow(p) {
   paint();
 }
 function poolEnd(p) { const c = $('#poolCard'); if (c && (!p || p.id === c.dataset.id)) c.hidden = true; }
+/* ---------- checking a worked calculation: the AI only reads the lines as written; the units, the arithmetic and the
+   significant figures are checked here with a units-aware calculator ---------- */
+function sigCount(str) {
+  let t = String(str).trim().replace(/^[+\-−]/, '').replace(/\s/g, ''); const m = t.match(/^([0-9]*\.?[0-9]*)(?:[eE×x]\*?10\^?\(?([+\-−]?\d+)\)?)?/); if (!m || !m[1]) return null;
+  let d = m[1]; const dot = d.includes('.'); d = d.replace('.', '');
+  d = d.replace(/^0+/, ''); if (!d) return dot ? 1 : null;
+  if (!dot) { const z = d.match(/0+$/); return { n: d.length - (z ? z[0].length : 0), exact: !dot && !m[2] }; }
+  return { n: d.length, exact: false };
+}
+async function unitCheck() {
+  if (!S.sel) return;
+  const refs = S.sel.strokes.slice(), box = S.sel.box.slice();
+  const texts = S.sel.items.map(findItem).filter((it) => it && (!it.type || it.type === 'text') && it.md).map((it) => it.md).join('\n').slice(0, 3000);
+  if (!refs.length && !texts) return; if (!needAI('read')) return;
+  openAI(); const B = busyCard('ตรวจหน่วยและเลขนัยสำคัญ');
+  try {
+    await loadLib('math');
+    const img = refs.length ? await inkBlob(refs) : null;
+    const res = await AI.run('read', 'This is a worked calculation in a science notebook. Read every line that computes a result, exactly as written (numbers with all their digits, units as written). Do not correct anything.\n'
+      + 'For each such line answer one line:\n@@STEP <the expression with its units in math.js syntax, each given quantity with its unit, e.g. (2.0 kg) * (9.8 m/s^2)> | <the result the writer wrote, number and unit, e.g. 19.6 N> | <the line as written, short>\n'
+      + 'Units in math.js names: m, cm, mm, km, s, min, h, kg, g, N, J, W, Pa, kPa, V, A, ohm, C, K, degC, mol, L, mL, Hz, rad, deg. Powers with ^. If a value has no unit, write it bare. No other words.' + (texts ? '\nTyped text in the selection:\n' + texts : ''),
+      { images: img ? [img.blob] : [], maxTokens: 1500, cache: false, signal: B.ctl.signal, noCtx: true });
+    const steps = String(res.text || '').split('\n').filter((l) => /^@@STEP/.test(l.trim())).map((l) => l.trim().replace(/^@@STEP\s*/, '').split('|').map((x) => x.trim()));
+    if (!steps.length) throw { msg: 'ไม่พบบรรทัดคำนวณที่อ่านได้ ลองวงเฉพาะบรรทัดคำนวณ' };
+    const M = window.math, out = [];
+    for (const [expr, wrote, line] of steps.slice(0, 12)) {
+      const r = { line: line || expr, expr, wrote, ok: true, msg: [] };
+      let val = null; try { val = M.evaluate(expr.replace(/−/g, '-').replace(/×/g, '*').replace(/÷/g, '/')); } catch (e) { r.msg.push('อ่านนิพจน์ไม่ได้'); r.ok = false; }
+      const wm = String(wrote || '').replace(/−/g, '-').match(/^\s*([+\-]?[0-9.]+(?:\s*[eE]\s*[+\-]?\d+|\s*[×x]\s*10\^?\(?[+\-]?\d+\)?)?)\s*(.*)$/);
+      const wnum = wm ? Number(wm[1].replace(/\s/g, '').replace(/[×x]10\^?\(?([+\-]?\d+)\)?/, 'e$1')) : NaN, wunit = wm ? wm[2].trim() : '';
+      if (val != null && wm) {
+        try {
+          const isU = val && typeof val === 'object' && val.type === 'Unit';
+          if (isU && wunit) {
+            let wu = null; try { wu = M.unit(wunit); } catch (e) { r.msg.push('ไม่รู้จักหน่วย ' + wunit); }
+            if (wu && !val.equalBase(wu)) { r.ok = false; r.msg.push('หน่วยไม่สอดคล้อง ผลที่คำนวณได้มีหน่วย ' + val.formatUnits()); }
+            else if (wu) { const v = val.toNumber(wunit); r.calc = v; if (Math.abs(v - wnum) > Math.max(1e-12, Math.abs(v) * 0.02)) { r.ok = false; r.msg.push('ค่าที่ถูกคือประมาณ ' + sig3(v) + ' ' + wunit); } }
+          } else if (isU && !wunit) { r.ok = false; r.msg.push('ผลลัพธ์ต้องมีหน่วย ' + val.formatUnits()); }
+          else if (!isU && wunit && !/^(%|rad|deg)?$/.test(wunit)) { r.msg.push('นิพจน์ไม่มีหน่วยแต่ผลเขียนหน่วย ' + wunit + ' ตรวจว่าลืมใส่หน่วยของข้อมูลหรือไม่'); }
+          else if (!isU) { const v = Number(val); r.calc = v; if (isFinite(v) && Math.abs(v - wnum) > Math.max(1e-12, Math.abs(v) * 0.02)) { r.ok = false; r.msg.push('ค่าที่ถูกคือประมาณ ' + sig3(v)); } }
+        } catch (e) { r.msg.push('ตรวจหน่วยไม่ได้'); }
+      }
+      /* significant figures: the result keeps as many as the least precise measured value (for multiplying and dividing) */
+      /* only measured values count (a number written with its unit); bare numbers such as 1/2 or 2 are exact */
+      const nums = (expr.match(/(?<![\w^.])\d+\.?\d*(?:e[+\-]?\d+)?(?=\s*[a-zA-Zµ°Ω])/g) || []).map((x) => sigCount(x)).filter(Boolean).map((x) => ({ n: x.n }));
+      const ws = wm ? sigCount(wm[1]) : null;
+      if (nums.length && ws && !/[+\-]\s*\(/.test(expr.replace(/^\s*-/, ''))) { const need = Math.min(...nums.map((x) => x.n)); r.sig = [ws.n, need]; if (ws.n !== need) r.msg.push('เลขนัยสำคัญ ' + ws.n + ' ตัว ควรเป็น ' + need + ' ตัว ตามข้อมูลที่มีเลขนัยสำคัญน้อยที่สุด'); }
+      out.push(r);
+    }
+    const okAll = out.every((r) => r.ok && !r.msg.length);
+    B.d.innerHTML = '<span class="k">ตรวจหน่วยและเลขนัยสำคัญ</span>' + (okAll ? '<div class="note">ทุกบรรทัดหน่วยสอดคล้อง ค่าถูก และเลขนัยสำคัญเหมาะสม</div>' : '')
+      + '<div class="dsres">' + out.map((r, i) => '<span><i>' + (i + 1) + ')</i> ' + esc(r.line) + ' <b>' + (r.ok && !r.msg.length ? 'ถูกต้อง' : esc(r.msg.join('; ') || 'ถูกต้อง')) + '</b></span>').join('') + '</div>'
+      + '<div class="note small">เลขนัยสำคัญตรวจตามกฎการคูณและหาร นับเฉพาะค่าที่วัดซึ่งมีหน่วย ตัวเลขที่ไม่มีหน่วย เช่น 1/2 หรือ 2 นับเป็นค่าที่แน่นอน ส่วนการบวกลบให้ดูตำแหน่งทศนิยมเอง</div>'
+      + '<div class="row"><button class="btn" data-a="put">วางผลตรวจบนหน้า</button></div>';
+    B.d.querySelector('[data-a="put"]').onclick = () => { const md = '**ตรวจหน่วยและเลขนัยสำคัญ**\n\n' + out.map((r, i) => (i + 1) + ') ' + r.line + ' : ' + (r.ok && !r.msg.length ? 'ถูกต้อง' : r.msg.join('; '))).join('\n\n'); proofPut(md, box, out.length * 2 + 2); toast('วางผลตรวจแล้ว', 1400); };
+  } catch (e) { B.d.innerHTML = '<span class="k">ตรวจหน่วยและเลขนัยสำคัญ</span><div class="note err">' + esc(e && e.msg ? e.msg : aiErr(e)) + '</div>'; }
+}
 
