@@ -3447,6 +3447,7 @@ const S = {
   eraserSize: clamp(parseInt(store_ls.get('tp-esize') || '1', 10) || 0, 0, 2), eraseMode: store_ls.get('tp-emode') === 'stroke' ? 'stroke' : 'part',
   laserMode: store_ls.get('tp-laser') === 'line' ? 'line' : 'dot',
   shapeKind: store_ls.get('tp-shapekind') || 'line',
+  optK: +(store_ls.get('tp-optk') || 2.6),
   scribble: store_ls.get('tp-scribble') !== '0', shapeSnap: store_ls.get('tp-shape') !== '0', focus: false,
   convMode: false, autoConv: store_ls.get('tp-autoconv') === '1', autoQueue: new Set(), pending: [],
   recent: (() => { const r = readList('tp-recent', null); return r && r.length ? r.slice(0, 6) : DEFAULT_RECENT.slice(); })(),
@@ -6160,6 +6161,7 @@ function shapeStrokeLists(kind, a, b) {
   if (isGeoMark(kind)) return geoMarkLists(kind, a, b);
   if (isChemMark(kind)) return chemMarkLists(kind, a, b);
   if (isCoordMark(kind) || isSolidMark(kind)) return coordStrokes(kind, a, b);
+  if (isSubjMark(kind)) return subjStrokes(kind, a, b);
   let x0 = a[0], y0 = a[1], x1 = b[0], y1 = b[1];
   if (Math.hypot(x1 - x0, y1 - y0) < 8) {
     if (kind === 'line' || kind === 'arrow' || kind === 'dashed') { x1 = x0 + 140; y1 = y0; }
@@ -6222,7 +6224,7 @@ function commitShape(pt) {
   saveMine(); emitInk(null);
   geoSegCache = null;
   /* a new shape stays selected, so it can be moved, resized or deleted straight away; a geometry mark does not, so the next one can follow at once */
-  if (!isGeoMark(S.shapeKind) && !isChemMark(S.shapeKind)) selectStrokes(list.map((st) => ({ layer: DEV, id: st.id })));
+  if (!isGeoMark(S.shapeKind) && !isChemMark(S.shapeKind) && !isPedMark(S.shapeKind)) selectStrokes(list.map((st) => ({ layer: DEV, id: st.id })));
 }
 /* the ink stroke under a point (pen lines count when the point is on the line), with its whole shape group */
 function strokeAt(x, y) {
@@ -9226,9 +9228,9 @@ function renderShapes() {
   /* three sets, one shown at a time so the panel stays short: shapes, geometry marks, chemistry structures.
      It opens on the set of the shape in use; the set for this notebook's subject comes first in the row */
   const subj = (S.nb && S.nb.subject) || 'phys';
-  const sets = { shp: ['รูปทรง', [['-', 'สองมิติ']].concat(SHAPES.filter((x) => x[0] !== 'axes'), SOLID_MARKS), 'ลากบนหน้าเพื่อวาดและกำหนดขนาด เส้นที่มองไม่เห็นเป็นเส้นประ'], coord: ['พิกัด', COORD_MARKS, 'ลากเป็นกรอบหรือแตะเพื่อวาง ตัวอักษรกำกับเป็นเส้นไปพร้อมรูป'], geo: ['เรขาคณิต', GEO_MARKS, 'แตะที่ด้านหรือที่มุมของรูป'], chem: ['เคมี', CHEM_MARKS, 'พันธะต่อกันเป็นมุม 120 องศาเอง แตะปลายพันธะเพื่อต่อ'] };
-  const order = subj === 'chem' ? ['chem', 'shp', 'coord', 'geo'] : subj === 'math' ? ['geo', 'coord', 'shp', 'chem'] : ['shp', 'coord', 'geo', 'chem'];
-  const kindSet = isChemMark(S.shapeKind) ? 'chem' : isGeoMark(S.shapeKind) ? 'geo' : (isCoordMark(S.shapeKind) || S.shapeKind === 'axes') ? 'coord' : 'shp';
+  const sets = { shp: ['รูปทรง', [['-', 'สองมิติ']].concat(SHAPES.filter((x) => x[0] !== 'axes'), SOLID_MARKS), 'ลากบนหน้าเพื่อวาดและกำหนดขนาด เส้นที่มองไม่เห็นเป็นเส้นประ'], coord: ['พิกัด', COORD_MARKS, 'ลากเป็นกรอบหรือแตะเพื่อวาง ตัวอักษรกำกับเป็นเส้นไปพร้อมรูป'], geo: ['เรขาคณิต', GEO_MARKS, 'แตะที่ด้านหรือที่มุมของรูป'], chem: ['เคมี', CHEM_MARKS, 'พันธะต่อกันเป็นมุม 120 องศาเอง แตะปลายพันธะเพื่อต่อ'], subj: ['เฉพาะวิชา', SUBJ_MARKS, 'แผนภาพรังสีหาภาพให้เอง สัญลักษณ์พันธุประวัติวางต่อกันได้'] };
+  const order = subj === 'chem' ? ['chem', 'shp', 'coord', 'geo', 'subj'] : subj === 'math' ? ['geo', 'coord', 'shp', 'chem', 'subj'] : subj === 'bio' ? ['subj', 'shp', 'chem', 'coord', 'geo'] : ['shp', 'coord', 'geo', 'chem', 'subj'];
+  const kindSet = isSubjMark(S.shapeKind) ? 'subj' : isChemMark(S.shapeKind) ? 'chem' : isGeoMark(S.shapeKind) ? 'geo' : (isCoordMark(S.shapeKind) || S.shapeKind === 'axes') ? 'coord' : 'shp';
   const tab = sets[renderShapes.tab] ? renderShapes.tab : kindSet;
   let tb = $('#shapeTabs');
   if (!tb) { tb = document.createElement('div'); tb.id = 'shapeTabs'; tb.className = 'chips shptabs'; tb.setAttribute('role', 'tablist'); const lb0 = g.parentNode.querySelector('.label'); g.parentNode.insertBefore(tb, lb0 || g); }
@@ -9241,8 +9243,17 @@ function renderShapes() {
     b.setAttribute('aria-pressed', k === S.shapeKind ? 'true' : 'false');
     b.innerHTML = '<svg viewBox="0 0 26 22" aria-hidden="true">' + svg + '</svg><span></span>';
     b.querySelector('span').textContent = n;
-    b.onclick = () => { S.shapeKind = k; store_ls.set('tp-shapekind', k); renderShapes.tab = null; renderShapes(); closePops(); toast(isChemMark(k) ? CHEM_HINT[k] : isGeoMark(k) ? (/^(ang|rang)/.test(k) ? 'แตะที่มุม หรือลากจากจุดยอดเข้าไปในมุม' : 'แตะที่ด้าน หรือลากไปตามด้าน') : 'ลากบนหน้าเพื่อวาด' + n, 1800); };
+    b.onclick = () => { S.shapeKind = k; store_ls.set('tp-shapekind', k); renderShapes.tab = null; renderShapes(); closePops(); toast(isOptMark(k) ? 'ลากจากยอดวัตถุไปที่กลาง' + n + ' เลือกตำแหน่งวัตถุจากแถบด้านล่าง' : isPedMark(k) ? 'แตะเพื่อวาง' + n + ' ลากเพื่อกำหนดขนาด' : isChemMark(k) ? CHEM_HINT[k] : isGeoMark(k) ? (/^(ang|rang)/.test(k) ? 'แตะที่มุม หรือลากจากจุดยอดเข้าไปในมุม' : 'แตะที่ด้าน หรือลากไปตามด้าน') : 'ลากบนหน้าเพื่อวาด' + n, 1800); };
     g.appendChild(b);
+  }
+  if (tab === 'subj') { /* where the object stands for the ray diagrams, and the Punnett square */
+    const row = document.createElement('div'); row.className = 'chips shp3d'; row.setAttribute('role', 'group'); row.setAttribute('aria-label', 'ตำแหน่งวัตถุ');
+    const lb = document.createElement('span'); lb.className = 'label'; lb.textContent = 'ตำแหน่งวัตถุ'; row.appendChild(lb);
+    for (const [nm, kv] of OPT_POS) { const c = document.createElement('button'); c.type = 'button'; c.className = 'chip'; c.textContent = nm; c.setAttribute('aria-pressed', +(S.optK || 2.6) === kv ? 'true' : 'false');
+      c.onclick = () => { S.optK = kv; store_ls.set('tp-optk', String(kv)); renderShapes(); }; row.appendChild(c); }
+    g.appendChild(row);
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'btn shp3d'; b.textContent = 'ตารางพันเนตต์จากจีโนไทป์พ่อแม่';
+    b.onclick = () => { closePops(); insertPunnett(); }; g.appendChild(b);
   }
   if (tab === 'chem') { /* the same orbitals as solid shapes that turn under a finger */
     const b = document.createElement('button'); b.type = 'button'; b.className = 'btn shp3d'; b.textContent = 'ออร์บิทัลสามมิติ หมุนดูได้';
@@ -11211,6 +11222,207 @@ function coordMarkLists(kind, a, b) {
 }
 function coordStrokes(kind, a, b) {
   return coordMarkLists(kind, a, b).map((o) => ({ id: 's' + uid(), k: 'p', c: S.color, w: o.w || curW(), p: o.pts }));
+}
+
+/* subject marks: ray diagrams for lenses and mirrors worked out from the object position, and pedigree symbols.
+   Everything is drawn as pen lines, so a diagram moves, scales and erases like any drawing */
+const SUBJ_MARKS = [
+  ['-', 'แสง ลากจากยอดวัตถุไปที่กลางเลนส์หรือกระจก'],
+  ['lensv', 'เลนส์นูน', '<path d="M13 2q5 9 0 18q-5-9 0-18z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M1 11h24" fill="none" stroke="currentColor" stroke-width="1"/>'],
+  ['lensc', 'เลนส์เว้า', '<path d="M9 2h8q-4 9 0 18H9q4-9 0-18z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M1 11h24" fill="none" stroke="currentColor" stroke-width="1"/>'],
+  ['mirv', 'กระจกเว้า', '<path d="M15 2q-6 9 0 18" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M15 4l3 -2 M14 8l3 -2 M13.2 12l3 -2 M14 16l3 -2 M15 20l3 -2 M1 11h24" fill="none" stroke="currentColor" stroke-width="1"/>'],
+  ['mirx', 'กระจกนูน', '<path d="M11 2q6 9 0 18" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M13 5l3 -2 M15 9l3 -2 M15.5 13l3 -2 M14 17l3 -2 M1 11h24" fill="none" stroke="currentColor" stroke-width="1"/>'],
+  ['-', 'พันธุประวัติ แตะเพื่อวาง ลากเพื่อกำหนดขนาด'],
+  ['pm', 'ชาย', '<rect x="6" y="4" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8"/>'],
+  ['pf', 'หญิง', '<circle cx="13" cy="11" r="7.5" fill="none" stroke="currentColor" stroke-width="1.8"/>'],
+  ['pma', 'ชาย แสดงลักษณะ', '<rect x="6" y="4" width="14" height="14" fill="currentColor" stroke="currentColor" stroke-width="1.8"/>'],
+  ['pfa', 'หญิง แสดงลักษณะ', '<circle cx="13" cy="11" r="7.5" fill="currentColor" stroke="currentColor" stroke-width="1.8"/>'],
+  ['pmc', 'ชาย พาหะ', '<rect x="6" y="4" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="13" cy="11" r="2.4" fill="currentColor"/>'],
+  ['pfc', 'หญิง พาหะ', '<circle cx="13" cy="11" r="7.5" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="13" cy="11" r="2.4" fill="currentColor"/>'],
+  ['pmh', 'ชาย ครึ่งทึบ', '<rect x="6" y="4" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M13 4h7v14h-7z" fill="currentColor"/>'],
+  ['pfh', 'หญิง ครึ่งทึบ', '<circle cx="13" cy="11" r="7.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M13 3.5a7.5 7.5 0 0 1 0 15z" fill="currentColor"/>'],
+  ['pu', 'ไม่ระบุเพศ', '<path d="M13 3l8 8-8 8-8-8z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>'],
+  ['pd', 'เสียชีวิต', '<rect x="6" y="4" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M3 21L23 1" fill="none" stroke="currentColor" stroke-width="1.6"/>'],
+  ['pfam', 'พ่อแม่และลูก', '<rect x="2" y="2" width="7" height="7" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="20.5" cy="5.5" r="3.6" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M9 5.5h8 M13 5.5v6 M6.5 11.5h13 M6.5 11.5v3 M19.5 11.5v3" fill="none" stroke="currentColor" stroke-width="1.3"/><rect x="3" y="14.5" width="7" height="7" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="19.5" cy="18" r="3.6" fill="none" stroke="currentColor" stroke-width="1.5"/>']
+];
+const isSubjMark = (k) => k !== '-' && SUBJ_MARKS.some((m) => m[0] === k);
+const isPedMark = (k) => /^p(m|f|u|d)/.test(k) && isSubjMark(k);
+const isOptMark = (k) => /^(lens|mir)/.test(k);
+/* where the object stands, as object distance over focal length */
+const OPT_POS = [['ไกลกว่า 2F', 2.6], ['ที่ 2F', 2], ['ระหว่าง F กับ 2F', 1.5], ['ที่ F', 1], ['ใกล้กว่า F', 0.6]];
+GLYPHS.F = [[[0, 0], [0, -0.78], [0.42, -0.78]], [[0, -0.4], [0.34, -0.4]]];
+GLYPHS['2'] = [[[0.03, -0.6], [0.12, -0.74], [0.28, -0.78], [0.43, -0.7], [0.46, -0.55], [0.38, -0.4], [0, 0], [0.48, 0]]];
+GLYPHS.C = [Array.from({ length: 17 }, (_, i) => { const t = 0.75 + (i / 16) * 4.8; return [0.3 + 0.3 * Math.cos(t), -0.39 - 0.39 * Math.sin(t)]; })];
+function subjMarkLists(kind, a, b) {
+  const w = curW(), out = [];
+  const P = (pts, o) => { if (pts.length > 1) out.push(Object.assign({ pts: shapePts({ type: 'poly', pts }, 55) }, o || {})); };
+  const dash = (p, q, o) => { const L = Math.hypot(q[0] - p[0], q[1] - p[1]), n = Math.max(1, Math.round(L / 11)); for (let i = 0; i < n; i++) { const t0 = i / n, t1 = (i + 0.55) / n; P([[p[0] + (q[0] - p[0]) * t0, p[1] + (q[1] - p[1]) * t0], [p[0] + (q[0] - p[0]) * t1, p[1] + (q[1] - p[1]) * t1]], o); } };
+  const label = (ch, at, sz) => { for (const l of glyphLists(ch, at, sz || 14)) P(l, { w: Math.max(1, w * 0.75) }); };
+  const thin = { w: Math.max(1, w * 0.7) };
+  if (isOptMark(kind)) {
+    /* page point of a diagram point: X along the axis away from the object side, Y up from the axis */
+    const dir = a[0] <= b[0] ? 1 : -1, pg = (X, Y) => [b[0] + dir * X, b[1] - Y];
+    let u = Math.abs(b[0] - a[0]); if (u < 30) u = 150;
+    let h = b[1] - a[1]; if (Math.abs(h) < 10) h = Math.min(90, u * 0.45);
+    const k = +(S.optK || 2.6), conv = kind === 'lensv' || kind === 'mirv', f = (conv ? 1 : -1) * u / k, lens = kind.startsWith('lens');
+    const atF = Math.abs(u - f) < 1e-6, v = atF ? null : u * f / (u - f), hi = v == null ? null : -v * h / u;
+    const y3 = atF ? null : h * f / (f - u); /* where the ray aimed along the focal point meets the element */
+    const af = Math.abs(f);
+    const far = (v != null && v > 0 && lens) || (v != null && v < 0 && !lens) ? Math.abs(v) : 0;
+    const ext = clamp(Math.max(far * 1.15, 2.3 * af, u * 0.7), 60, 6 * u);
+    const back = Math.max(u * 1.12, 2.3 * af, !lens && v != null && v > 0 && v < 6 * u ? v * 1.12 : 0);
+    const Hh = clamp(Math.max(Math.abs(h), y3 == null ? 0 : Math.abs(y3), hi == null ? 0 : Math.min(Math.abs(hi), 3 * Math.abs(h))) * 1.2, 30, 400);
+    /* axis */
+    P([pg(-back, 0), pg(lens ? ext : Math.max(0.25 * u, conv ? 0 : 2.3 * af, v != null && v < 0 && -v < 6 * u ? -v * 1.15 : 0), 0)], thin);
+    /* the element */
+    if (lens) {
+      const t = Math.max(6, Hh * 0.16), L = [], R = [];
+      if (conv) { for (let i = 0; i <= 20; i++) { const s = -1 + i / 10, y = s * Hh, x = t * (1 - s * s); L.push(pg(-x, y)); R.push(pg(x, y)); } P(L); P(R); }
+      else { const e = t * 0.9; for (let i = 0; i <= 20; i++) { const s = -1 + i / 10, y = s * Hh, x = e * 0.25 + e * s * s; L.push(pg(-x, y)); R.push(pg(x, y)); } P(L); P(R); P([pg(-e * 1.25, Hh), pg(e * 1.25, Hh)]); P([pg(-e * 1.25, -Hh), pg(e * 1.25, -Hh)]); }
+    } else {
+      const bow = Math.max(4, Hh * 0.12) * (conv ? 1 : -1), M = [];
+      for (let i = 0; i <= 20; i++) { const s = -1 + i / 10; M.push(pg(-bow * s * s, s * Hh)); }
+      P(M);
+      for (let i = 0; i <= 8; i++) { const s = -1 + i / 4, x = -bow * s * s, y = s * Hh; P([pg(x, y), pg(x + 9, y + 7)], thin); }
+    }
+    /* focal points and twice the focal length */
+    const tick = (X, a1, a2) => { P([pg(X, 4), pg(X, -4)], thin); const q = pg(X - 5, -9); label(a1, [q[0] - (a2 ? 5 : 0), q[1] + 14]); if (a2) label(a2, [q[0] + 4, q[1] + 14]); };
+    const fx = lens ? [-af, af] : [-f], cx = lens ? [-2 * af, 2 * af] : [-2 * f];
+    for (const X of fx) tick(X, 'F');
+    for (const X of cx) lens ? tick(X, '2', 'F') : tick(X, 'C');
+    /* the object as an arrow standing on the axis */
+    const arrowUp = (X, Y, dashed) => {
+      const p0 = pg(X, 0), p1 = pg(X, Y); if (dashed) dash(p0, p1); else P([p0, p1]);
+      const sg = Y > 0 ? 1 : -1, hl = clamp(Math.abs(Y) * 0.2, 6, 12);
+      P([pg(X - hl * 0.55, Y - sg * hl), p1, pg(X + hl * 0.55, Y - sg * hl)]);
+    };
+    arrowUp(-u, h);
+    /* a ray drawn with a small arrowhead halfway along to show which way the light goes */
+    const ray = (p, q) => { P([p, q]); const m = [(p[0] + q[0]) / 2, (p[1] + q[1]) / 2], ang = Math.atan2(q[1] - p[1], q[0] - p[0]), hl = 7; P([[m[0] - hl * Math.cos(ang - 0.45), m[1] - hl * Math.sin(ang - 0.45)], m, [m[0] - hl * Math.cos(ang + 0.45), m[1] - hl * Math.sin(ang + 0.45)]]); };
+    const out_ = lens ? ext : -back; /* how far the light goes after the element */
+    /* outgoing line through (0, y0) with slope m (dY/dX in diagram units) */
+    const go = (y0, m) => { const X = out_; let Y = y0 + m * X; const lim = Hh * 1.6; let X2 = X; if (Math.abs(Y) > lim) { X2 = (Math.sign(Y) * lim - y0) / m; Y = y0 + m * X2; } return pg(X2, Y); };
+    const Ob = pg(-u, h);
+    /* 1: parallel to the axis, then through (or away from) the focal point */
+    ray(Ob, pg(0, h)); ray(pg(0, h), go(h, lens ? -h / f : h / f));
+    /* 2: through the centre of the lens, or to the vertex of the mirror */
+    if (lens) { ray(Ob, pg(0, 0)); ray(pg(0, 0), go(0, -h / u)); }
+    else { ray(Ob, pg(0, 0)); ray(pg(0, 0), go(0, h / u)); }
+    /* 3: along the focal point, then parallel */
+    if (y3 != null && Math.abs(y3) < Hh * 1.05) {
+      ray(Ob, pg(0, y3)); ray(pg(0, y3), go(y3, 0));
+      const Fx = lens ? -f : -f; /* the focal point on the object side of a lens, in front of a mirror */
+      if (Fx < -u) dash(Ob, pg(Fx, 0), thin); else if (Fx > 0) dash(pg(0, y3), pg(Fx, 0), thin);
+    }
+    /* the image: real where the light meets, virtual where it only seems to come from (dashed lines back) */
+    if (v != null && Math.abs(v) < 6 * u) {
+      const Xi = lens ? v : -v, virt = v < 0;
+      if (virt) {
+        dash(pg(0, h), pg(Xi, hi), thin); dash(pg(0, 0), pg(Xi, hi), thin);
+        if (y3 != null && Math.abs(y3) < Hh * 1.05) dash(pg(0, y3), pg(Xi, hi), thin);
+      }
+      arrowUp(Xi, hi, virt);
+    }
+    return out;
+  }
+  if (isPedMark(kind)) {
+    const dx = b[0] - a[0], dy = b[1] - a[1], drag = Math.max(Math.abs(dx), Math.abs(dy));
+    const one = (c, s, kd) => {
+      const r = s / 2, sq = /^p(m|d)/.test(kd);
+      if (kd === 'pu') P([[c[0], c[1] - r * 1.15], [c[0] + r * 1.15, c[1]], [c[0], c[1] + r * 1.15], [c[0] - r * 1.15, c[1]], [c[0], c[1] - r * 1.15]]);
+      else if (sq) P([[c[0] - r, c[1] - r], [c[0] + r, c[1] - r], [c[0] + r, c[1] + r], [c[0] - r, c[1] + r], [c[0] - r, c[1] - r]]);
+      else out.push({ pts: shapePts({ type: 'ellipse', cx: c[0], cy: c[1], rx: r, ry: r }, 55) });
+      /* fill: close lines inside the outline, the left half only for a half-filled symbol */
+      const full = kd === 'pma' || kd === 'pfa', half = kd === 'pmh' || kd === 'pfh';
+      if (full || half) {
+        const gap = Math.max(1.6, w * 0.8), fw = { w: gap * 1.6 }, x0 = half ? c[0] : c[0] - r;
+        for (let y = -r + gap / 2; y < r; y += gap) {
+          const hw = sq ? r : Math.sqrt(Math.max(0, r * r - y * y));
+          const xa = Math.max(x0, c[0] - hw) + gap * 0.4, xb = c[0] + hw - gap * 0.4;
+          if (xb > xa) P([[xa, c[1] + y], [xb, c[1] + y]], fw);
+        }
+      }
+      if (kd === 'pmc' || kd === 'pfc') out.push({ pts: shapePts({ type: 'ellipse', cx: c[0], cy: c[1], rx: 0.6, ry: 0.6 }, 55), w: Math.max(4, s * 0.22) });
+      if (kd === 'pd') P([[c[0] - r * 1.5, c[1] + r * 1.5], [c[0] + r * 1.5, c[1] - r * 1.5]]);
+    };
+    if (kind === 'pfam') {
+      let x0 = Math.min(a[0], b[0]), y0 = Math.min(a[1], b[1]), W0 = Math.abs(dx), H0 = Math.abs(dy);
+      if (W0 < 60 || H0 < 50) { W0 = 220; H0 = 150; x0 = a[0] - 110; y0 = a[1] - 30; }
+      const s = clamp(Math.min(W0 / 5, H0 / 3.4), 16, 90), r = s / 2;
+      const top = y0 + r, bot = y0 + H0 - r, mid = (top + bot) / 2;
+      const pA = [x0 + r, top], pB = [x0 + W0 - r, top];
+      one(pA, s, 'pm'); one(pB, s, 'pf');
+      const cx = (pA[0] + pB[0]) / 2, cA = [x0 + W0 * 0.28, bot], cB = [x0 + W0 * 0.72, bot];
+      P([[pA[0] + r, top], [pB[0] - r, top]]); P([[cx, top], [cx, mid]]); P([[cA[0], mid], [cB[0], mid]]);
+      P([[cA[0], mid], [cA[0], bot - r]]); P([[cB[0], mid], [cB[0], bot - r]]);
+      one(cA, s, 'pm'); one(cB, s, 'pf');
+      return out;
+    }
+    const s = drag < 14 ? 34 : clamp(drag, 16, 140), c = drag < 14 ? a : [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+    one(c, drag < 14 ? s : Math.min(s, Math.max(Math.abs(dx), Math.abs(dy))), kind);
+    return out;
+  }
+  return out;
+}
+function subjStrokes(kind, a, b) {
+  return subjMarkLists(kind, a, b).map((o) => ({ id: 's' + uid(), k: 'p', c: S.color, w: o.w || curW(), p: o.pts }));
+}
+/* a Punnett square from the parents' genotypes, written as a table with the ratios below it.
+   Genes are letter pairs (AaBb); sex-linked genes are written with X and Y (XAXa x XaY) */
+function punnettParse(g) {
+  g = String(g || '').replace(/\s+/g, '');
+  if (/^X[A-Za-z]X[A-Za-z]$|^X[A-Za-z]Y$/.test(g)) return { x: true, al: g.match(/X[A-Za-z]|Y/g) };
+  if (!/^([A-Za-z])+$/.test(g) || g.length % 2) return null;
+  const genes = []; for (let i = 0; i < g.length; i += 2) { if (g[i].toLowerCase() !== g[i + 1].toLowerCase()) return null; genes.push([g[i], g[i + 1]]); }
+  return { x: false, genes };
+}
+function punnettGametes(p) {
+  if (p.x) return p.al.map((x) => [x]);
+  let out = [[]]; for (const gpair of p.genes) { const nx = []; for (const o of out) for (const al of gpair) nx.push(o.concat(al)); out = nx; }
+  /* each distinct gamete is equally likely, so repeats (from a gene that is the same on both chromosomes) are shown once */
+  const seen = new Set(); return out.filter((o) => { const k = o.join(','); if (seen.has(k)) return false; seen.add(k); return true; });
+}
+function punnettSort(alleles) { /* uppercase first within each gene, X before Y */
+  return alleles.slice().sort((p, q) => { const a = p.replace('X', ''), b = q.replace('X', ''); if (p === 'Y') return 1; if (q === 'Y') return -1; const la = a.toLowerCase(), lb = b.toLowerCase(); if (la !== lb) return la < lb ? -1 : 1; return a === a.toUpperCase() ? -1 : 1; });
+}
+function punnettTex(al) { return al.map((x) => x === 'Y' ? 'Y' : x[0] === 'X' && x.length === 2 ? 'X^{' + x[1] + '}' : x).join(''); }
+function punnettBuild(input) {
+  const m = String(input || '').split(/\s*[xX×*]\s*(?=[A-Za-z])/);
+  let parts = m.length === 2 ? m : String(input || '').trim().split(/\s+(?:x|X|×|\*)?\s*/);
+  parts = parts.filter(Boolean); if (parts.length !== 2) return null;
+  const p1 = punnettParse(parts[0]), p2 = punnettParse(parts[1]);
+  if (!p1 || !p2 || p1.x !== p2.x || (!p1.x && p1.genes.map((g) => g[0].toLowerCase()).join() !== p2.genes.map((g) => g[0].toLowerCase()).join())) return null;
+  const g1 = punnettGametes(p1), g2 = punnettGametes(p2);
+  const fmt = (al) => '$' + punnettTex(al) + '$';
+  const cells = [], rows = [];
+  rows.push('| ' + fmt([]).replace('$$', '') + ' | ' + g2.map(fmt).join(' | ') + ' |');
+  rows.push('|' + ' --- |'.repeat(g2.length + 1));
+  for (const a of g1) { const r = []; for (const b of g2) { const k = punnettSort(a.concat(b)); cells.push(k); r.push(fmt(k)); } rows.push('| **' + fmt(a) + '** | ' + r.join(' | ') + ' |'); }
+  const count = (key) => { const c = new Map(); for (const k of cells) { const s = key(k); c.set(s, (c.get(s) || 0) + 1); } return c; };
+  const gcd = (x, y) => y ? gcd(y, x % y) : x;
+  const ratio = (c, show) => { const v = [...c.values()], d = v.reduce(gcd); return [...c.entries()].map(([k, n]) => show(k) + ' ' + n / d).join(' : '); };
+  const gen = count((k) => k.join(','));
+  const lines = ['**ตารางพันเนตต์** ' + fmt(punnettSort(p1.x ? p1.al : p1.genes.flat())) + ' $\\times$ ' + fmt(punnettSort(p2.x ? p2.al : p2.genes.flat())), '', rows.join('\n'), '',
+    'อัตราส่วนจีโนไทป์ ' + ratio(gen, (s) => fmt(s.split(',')))];
+  if (p1.x) {
+    const ph = count((k) => { const male = k.includes('Y'), xs = k.filter((x) => x !== 'Y'), dom = xs.some((x) => x[1] === x[1].toUpperCase()), car = !male && dom && xs.some((x) => x[1] !== x[1].toUpperCase());
+      return (male ? 'ลูกชาย' : 'ลูกสาว') + (dom ? (car ? 'ลักษณะเด่น (พาหะ)' : 'ลักษณะเด่น') : 'ลักษณะด้อย'); });
+    lines.push('', 'อัตราส่วนฟีโนไทป์ ' + ratio(ph, (s) => s));
+  } else {
+    const ph = count((k) => p1.genes.map((g) => { const L = g[0].toUpperCase(); return k.includes(L) ? L + '_' : L.toLowerCase() + L.toLowerCase(); }).join(''));
+    lines.push('', 'อัตราส่วนฟีโนไทป์ ' + ratio(ph, (s) => '$' + s.replace(/_/g, '\\_') + '$'), '', 'ตัวพิมพ์ใหญ่ข่มตัวพิมพ์เล็ก ขีดล่างคือจะเป็นแอลลีลใดก็ได้');
+  }
+  return { md: lines.join('\n'), cols: g2.length + 1 };
+}
+function insertPunnett() {
+  if (!S.page) return;
+  const t = prompt('จีโนไทป์ของพ่อแม่ เช่น Aa x Aa, AaBb x aabb หรือยีนบนโครโมโซม X เช่น XAXa x XAY', store_ls.get('tp-punnett') || 'Aa x Aa'); if (t == null) return;
+  const r = punnettBuild(t);
+  if (!r) { toast('อ่านจีโนไทป์ไม่ได้ เขียนเป็นคู่ตัวอักษร เช่น Aa x Aa หรือ XAXa x XaY ยีนของทั้งสองฝ่ายต้องเป็นชุดเดียวกัน', 4200); return; }
+  store_ls.set('tp-punnett', t.trim());
+  const w = clamp(110 + r.cols * 78, 300, 900), [x, y] = viewSpot(w, 260);
+  addItem({ type: 'text', x, y, w, md: r.md });
+  toast('วางตารางพันเนตต์แล้ว', 2200);
 }
 
 function insertSim(kind) {
@@ -20651,7 +20863,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1794206216';
+const BUILD = '1794206662';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
