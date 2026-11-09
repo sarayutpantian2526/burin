@@ -195,6 +195,21 @@ body.flow:not(.flowlast) #bAddBelow { display: none; }
 #page > #cSharp { inset: auto; pointer-events: none; }
 #items .item.cvt { color: transparent !important; -webkit-text-fill-color: transparent; text-shadow: none !important; }
 #items .item.cvt .dink { color: transparent !important; }
+.vidsheet .panel { max-width: 980px; }
+.vastage { position: relative; display: flex; justify-content: center; background: #111; border-radius: 10px; overflow: hidden; min-height: 120px; }
+.vastage video { display: block; }
+.vastage .vaov { position: absolute; top: 0; left: 50%; transform: translateX(-50%); touch-action: none; cursor: crosshair; }
+.vactl { display: flex; align-items: center; gap: 8px; margin: 8px 0; flex-wrap: wrap; }
+.vactl input[type=range] { flex: 1; min-width: 140px; }
+.vatime { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.vaset { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 8px; margin: 8px 0; }
+.vagr { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; margin: 10px 0; }
+.vagr figure { margin: 0; border: 1px solid var(--line); border-radius: 8px; padding: 4px 6px; }
+.vagr figcaption { font-size: 12px; color: var(--muted); }
+.vatw { max-height: 220px; overflow: auto; border: 1px solid var(--line); border-radius: 8px; }
+.vatbl { border-collapse: collapse; width: 100%; font-size: 13px; font-variant-numeric: tabular-nums; }
+.vatbl th, .vatbl td { padding: 3px 8px; border-bottom: 1px solid var(--line); text-align: right; }
+.vatbl th { position: sticky; top: 0; background: var(--surface); }
 .item.modwait { background: repeating-linear-gradient(135deg, rgba(127,127,127,0.06) 0 12px, transparent 12px 24px); border-radius: 8px; }
 #page.exact > #cInk, #page.exact > #cLive, #page.exact > #cRemote { inset: 0 auto auto 0; width: var(--cw); height: var(--ch); }
 #page.px1 > #cInk, #page.px1 > #cRemote, #page.pxs > #cSharp { image-rendering: pixelated; }
@@ -2163,6 +2178,7 @@ body.role-student .scnpill .sbtns button[data-s="back"], body.role-student .scnp
       <button class="insb" id="iCalc"><b>เครื่องคิดเลขและแก้สมการ</b><span>คิดพร้อมหน่วย แก้สมการ อนุพันธ์ อินทิเกรต เมทริกซ์ สมการเชิงอนุพันธ์</span></button>
       <button class="insb" id="iSim"><b>แบบจำลองการทดลอง</b><span>ทุกวิชา ฟิสิกส์ โลกและอวกาศ เคมี ชีวะ สุขภาพ คณิต สถิติ ปรับค่าแล้วกดเล่น หรือให้ AI สร้าง</span></button>
       <button class="insb" id="iLab"><b>การทดลองและตารางผล</b><span>วางแผนตัวแปร บันทึกผล พล็อตกราฟ หาความชันและค่าที่ต้องการพร้อมความไม่แน่นอน</span></button>
+      <button class="insb" id="iVid"><b>วิเคราะห์วิดีโอ</b><span>ถ่ายหรือเลือกวิดีโอ ตั้งมาตราส่วน แตะหรือให้ติดตามวัตถุเอง ได้ตาราง t x y ความเร็ว และกราฟพร้อมความชัน</span></button>
       <button class="insb" id="iStats"><b>สถิติ</b><span>สถิติเชิงพรรณนา ทดสอบสมมติฐาน ถดถอย การแจกแจงความน่าจะเป็น พร้อมแผนภาพ</span></button>
       <button class="insb" id="iProof"><b>ตารางพิสูจน์เรขาคณิต</b><span>กำหนดให้ ต้องการพิสูจน์ ข้อความกับเหตุผลทีละขั้น พร้อมเหตุผลที่ใช้บ่อย</span></button>
     </div>
@@ -10294,7 +10310,7 @@ function buildSim(d, it, forExport) {
 /* parts that are not needed to open a notebook and write are loaded the first time they are used (moving models,
    the equation solver, drawing from a reference, statistics), so the app opens fast and stays fast however much is added.
    Each part is kept for offline use by the service worker */
-const MODS = { scene: 'm/scene.js', cas: 'm/cas.js', sketch: 'm/sketch.js', stats: 'm/stats.js' }, MODP = {}, MODOK = {}, MODEV = {};
+const MODS = { scene: 'm/scene.js', cas: 'm/cas.js', sketch: 'm/sketch.js', stats: 'm/stats.js', video: 'm/video.js' }, MODP = {}, MODOK = {}, MODEV = {};
 function need(name) {
   if (MODP[name]) return MODP[name];
   if (!MODS[name] || MODS[name] === 'inline') { MODOK[name] = true; return (MODP[name] = Promise.resolve()); }
@@ -10306,17 +10322,18 @@ function need(name) {
   }).catch((e) => { delete MODP[name]; throw e; }));
 }
 let SCENE_TPL, SCN, LIFE, renderScenePicker, scClean, scRender, restoreInk, openMotionPick, insertScene, buildScene, buildLife, sceneDomainFor, lifeBox, animKick, scReset;
-let texToCas, casVars, casWithUnits, casRun, casRowTex, casReady, solveSelection, openBgCut, openSketch, ST, openStats;
+let texToCas, casVars, casWithUnits, casRun, casRowTex, casReady, solveSelection, openBgCut, openSketch, ST, openStats, openVideoLab;
 const MOD_EXPORTS = {
   scene: ['SCENE_TPL', 'SCN', 'LIFE', 'renderScenePicker', 'scClean', 'scRender', 'restoreInk', 'openMotionPick', 'insertScene', 'buildScene', 'buildLife', 'sceneDomainFor', 'lifeBox', 'animKick', 'scReset'],
   cas: ['texToCas', 'casVars', 'casWithUnits', 'casRun', 'casRowTex', 'casReady', 'solveSelection'],
-  sketch: ['openBgCut', 'openSketch'], stats: ['ST', 'openStats']
+  sketch: ['openBgCut', 'openSketch'], stats: ['ST', 'openStats'], video: ['openVideoLab']
 };
 function modSet(name, x) {
   if (name === 'scene') { SCENE_TPL = x.SCENE_TPL; SCN = x.SCN; LIFE = x.LIFE; renderScenePicker = x.renderScenePicker; scClean = x.scClean; scRender = x.scRender; restoreInk = x.restoreInk; openMotionPick = x.openMotionPick; insertScene = x.insertScene; buildScene = x.buildScene; buildLife = x.buildLife; sceneDomainFor = x.sceneDomainFor; lifeBox = x.lifeBox; animKick = x.animKick; scReset = x.scReset; }
   else if (name === 'cas') { texToCas = x.texToCas; casVars = x.casVars; casWithUnits = x.casWithUnits; casRun = x.casRun; casRowTex = x.casRowTex; casReady = x.casReady; solveSelection = x.solveSelection; }
   else if (name === 'sketch') { openBgCut = x.openBgCut; openSketch = x.openSketch; }
   else if (name === 'stats') { ST = x.ST; openStats = x.openStats; }
+  else if (name === 'video') { openVideoLab = x.openVideoLab; }
 }
 /* a moving model or moving drawing on a page while its part is still loading: a quiet box of the same size, then the real one */
 function modHold(d, it, forExport) {
@@ -20506,7 +20523,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1794187841';
+const BUILD = '1794188900';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
@@ -20933,6 +20950,7 @@ $('#qsORGo').onclick = () => { const c = $('#qsORCode').value.trim(); if (c) orF
 $('#qsKey').addEventListener('input', () => { const g = detectVendor($('#qsKey').value); $('#qsWho').textContent = g ? 'ดูจากคีย์แล้ว เป็นของ ' + KEY_VENDORS[g].name.replace(/\s*\(.*\)/, '') + (g === 'openai' ? ' หรือ Typhoon' : '') : 'ระบบดูจากคีย์ว่าเป็นของผู้ให้บริการไหน'; }); $('#qsClose').onclick = () => { $('#aiSetup').hidden = true; };
 $('#qsMore').onclick = () => { $('#aiSetup').hidden = true; menuTab('acc'); $('#menu').hidden = false; const c = $('#cfgKey'); if (c) { c.open = true; setTimeout(() => c.scrollIntoView({ block: 'center' }), 50); } };
 $('#iLab').onclick = () => { closeSheets(); renderLabPicker(); $('#labSheet').hidden = false; };
+$('#iVid').onclick = withMod('video', () => { $('#insSheet').hidden = true; openVideoLab(); });
 $('#bLabClose').onclick = () => { $('#labSheet').hidden = true; };
 $('#iSim').onclick = withMod('scene', () => { closeSheets(); renderScenePicker($('#scnPick'), sceneDomainFor()); $('#simSheet').hidden = false; });
 $('#bSimClose').onclick = () => { $('#simSheet').hidden = true; };
