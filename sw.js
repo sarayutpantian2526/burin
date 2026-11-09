@@ -1,6 +1,6 @@
 /* BURIN offline cache: the app and its libraries keep working without internet */
-const CACHE = 'burin-v237';
-const SHELL = ['./', './index.html', './config.js', './vendor/supabase.js', './manifest.webmanifest', './icon-192.png', './icon-512.png', './icon-180.png', './icon-maskable-512.png', './favicon-64.png', './m/scene.js', './m/cas.js', './m/sketch.js', './m/stats.js', './m/video.js', './m/data.js', './m/measure.js', './m/imgmeas.js'];
+const CACHE = 'burin-v238';
+const SHELL = ['./', './index.html', './config.js', './vendor/supabase.js', './manifest.webmanifest', './icon-192.png', './icon-512.png', './icon-180.png', './icon-maskable-512.png', './favicon-64.png', './m/scene.js', './m/cas.js', './m/sketch.js', './m/stats.js', './m/video.js', './m/data.js', './m/measure.js', './m/imgmeas.js', './m/cite.js'];
 /* parts of the app loaded on first use (m/) are asked for with ?v=<build>; they are kept under their plain name so they also work offline */
 self.addEventListener('install', (e) => { e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting())); });
 self.addEventListener('activate', (e) => { e.waitUntil(caches.keys().then((ks) => Promise.all(ks.filter((k) => k !== CACHE).map((k) => caches.delete(k)))).then(() => self.clients.claim())); });
