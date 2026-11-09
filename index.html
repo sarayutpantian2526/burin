@@ -268,7 +268,7 @@ body[data-tool="text"] .item .tgrab, body[data-tool="text"] .item .tsize { opaci
 .shpsec { grid-column: 1 / -1; margin-top: 4px; }
 .shptabs { display: flex; gap: 6px; }
 .shp3d { grid-column: 1 / -1; margin-top: 4px; }
-.shptabs .chip { flex: 1; justify-content: center; }
+.shptabs .chip { flex: 1; justify-content: center; padding-left: 6px; padding-right: 6px; min-width: 0; }
 .shp[aria-pressed="true"] { border: 2px solid var(--accent); background: var(--accent-soft); }
 .dock { position: absolute; left: 12px; top: 12px; z-index: 7; display: flex; flex-wrap: nowrap; max-width: calc(100% - 24px); align-items: center; gap: 2px; padding: 4px; border-radius: 18px; background: var(--surface); box-shadow: var(--shadow); }
 .curc { width: 46px; height: 46px; border-radius: 13px; border: 0; background: transparent; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; }
@@ -6084,6 +6084,7 @@ function geoMarkLists(kind, a, b) {
 function shapeStrokeLists(kind, a, b) {
   if (isGeoMark(kind)) return geoMarkLists(kind, a, b);
   if (isChemMark(kind)) return chemMarkLists(kind, a, b);
+  if (isCoordMark(kind) || isSolidMark(kind)) return coordStrokes(kind, a, b);
   let x0 = a[0], y0 = a[1], x1 = b[0], y1 = b[1];
   if (Math.hypot(x1 - x0, y1 - y0) < 8) {
     if (kind === 'line' || kind === 'arrow' || kind === 'dashed') { x1 = x0 + 140; y1 = y0; }
@@ -9141,9 +9142,9 @@ function renderShapes() {
   /* three sets, one shown at a time so the panel stays short: shapes, geometry marks, chemistry structures.
      It opens on the set of the shape in use; the set for this notebook's subject comes first in the row */
   const subj = (S.nb && S.nb.subject) || 'phys';
-  const sets = { shp: ['รูปทรง', SHAPES, 'ลากบนหน้าเพื่อวาดและกำหนดขนาด'], geo: ['เรขาคณิต', GEO_MARKS, 'แตะที่ด้านหรือที่มุมของรูป'], chem: ['เคมี', CHEM_MARKS, 'พันธะต่อกันเป็นมุม 120 องศาเอง แตะปลายพันธะเพื่อต่อ'] };
-  const order = subj === 'chem' ? ['chem', 'shp', 'geo'] : subj === 'math' ? ['geo', 'shp', 'chem'] : ['shp', 'geo', 'chem'];
-  const kindSet = isChemMark(S.shapeKind) ? 'chem' : isGeoMark(S.shapeKind) ? 'geo' : 'shp';
+  const sets = { shp: ['รูปทรง', [['-', 'สองมิติ']].concat(SHAPES.filter((x) => x[0] !== 'axes'), SOLID_MARKS), 'ลากบนหน้าเพื่อวาดและกำหนดขนาด เส้นที่มองไม่เห็นเป็นเส้นประ'], coord: ['พิกัด', COORD_MARKS, 'ลากเป็นกรอบหรือแตะเพื่อวาง ตัวอักษรกำกับเป็นเส้นไปพร้อมรูป'], geo: ['เรขาคณิต', GEO_MARKS, 'แตะที่ด้านหรือที่มุมของรูป'], chem: ['เคมี', CHEM_MARKS, 'พันธะต่อกันเป็นมุม 120 องศาเอง แตะปลายพันธะเพื่อต่อ'] };
+  const order = subj === 'chem' ? ['chem', 'shp', 'coord', 'geo'] : subj === 'math' ? ['geo', 'coord', 'shp', 'chem'] : ['shp', 'coord', 'geo', 'chem'];
+  const kindSet = isChemMark(S.shapeKind) ? 'chem' : isGeoMark(S.shapeKind) ? 'geo' : (isCoordMark(S.shapeKind) || S.shapeKind === 'axes') ? 'coord' : 'shp';
   const tab = sets[renderShapes.tab] ? renderShapes.tab : kindSet;
   let tb = $('#shapeTabs');
   if (!tb) { tb = document.createElement('div'); tb.id = 'shapeTabs'; tb.className = 'chips shptabs'; tb.setAttribute('role', 'tablist'); const lb0 = g.parentNode.querySelector('.label'); g.parentNode.insertBefore(tb, lb0 || g); }
@@ -15125,6 +15126,159 @@ async function balanceSelection() {
     on('ck', () => { proofPut(chk, box, rowsOf(chk)); toast('วางผลตรวจแล้ว', 1400); });
     on('eq', () => { const e = out.map((o) => chemCe(o.eq, o.co || o.mine)).join('\n\n'); proofPut(e, box, out.length + 1); toast('วางสมการแล้ว', 1400); });
   } catch (e) { B.d.innerHTML = '<span class="k">ดุลสมการ</span><div class="note err">' + esc(e && e.msg ? e.msg : aiErr(e)) + '</div>'; }
+}
+
+/* coordinate systems (two and three dimensions) and solid figures drawn as pen lines, with their letters written as strokes
+   so the whole figure moves, scales and erases together like any drawing. Hidden edges of solids are dashed */
+const COORD_MARKS = [
+  ['-', 'สองมิติ'],
+  ['axes', 'แกน x y', '<path d="M4 20V3 M4 20h19 M2 5l2-2.5 2 2.5 M21 18l2.5 2-2.5 2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>'],
+  ['c2', 'สี่จตุภาค', '<path d="M13 21V2 M2 11.5h22 M11 4l2-2.5 2 2.5 M22 9.5l2.5 2-2.5 2 M7 10.5v2 M19 10.5v2 M12 6h2 M12 17h2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>'],
+  ['c1q', 'มีขีดสเกล', '<path d="M4 20V3 M4 20h19 M2 5l2-2.5 2 2.5 M21 18l2.5 2-2.5 2 M8 19v2 M12 19v2 M16 19v2 M3 16h2 M3 12h2 M3 8h2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>'],
+  ['cpol', 'เชิงขั้ว', '<circle cx="13" cy="11" r="9" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="13" cy="11" r="5" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M4 11h18 M13 2v18 M6.6 4.6l12.8 12.8 M19.4 4.6L6.6 17.4" stroke="currentColor" stroke-width="1" fill="none"/>'],
+  ['cpp', 'จุดเชิงขั้ว', '<path d="M3 19h20 M3 19L18 5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M10 19a7 7 0 0 0-2-4.8" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="18" cy="5" r="1.8" fill="currentColor"/>'],
+  ['-', 'สามมิติ'],
+  ['c3', 'แกน x y z', '<path d="M11 13V2 M11 13h13 M11 13L3 20 M9 4l2-2.5 2 2.5 M22 11l2.5 2-2.5 2 M3.5 17l-.5 3 3-.2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>'],
+  ['c3p', 'จุด (x, y, z)', '<path d="M10 14V2 M10 14h14 M10 14L3 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M19 6v10 M7 17h12 M19 16l-3 2.6 M7 17l5 -3" fill="none" stroke="currentColor" stroke-width="1.1" stroke-dasharray="1.6 1.6"/><circle cx="19" cy="6" r="1.8" fill="currentColor"/>'],
+  ['ccyl', 'r, φ, z', '<path d="M10 14V2 M10 14h14 M10 14L3 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M10 14l7 3 M17 17V6" fill="none" stroke="currentColor" stroke-width="1.2" stroke-dasharray="1.6 1.6"/><path d="M6 17.4a5 5 0 0 0 7 .6" fill="none" stroke="currentColor" stroke-width="1.2"/><circle cx="17" cy="6" r="1.8" fill="currentColor"/>'],
+  ['csph', 'r, θ, φ', '<path d="M10 14V2 M10 14h14 M10 14L3 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M10 14L18 5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M18 5v12 M10 14l8 3" fill="none" stroke="currentColor" stroke-width="1.1" stroke-dasharray="1.6 1.6"/><path d="M10 8a6 6 0 0 1 4 1.6" fill="none" stroke="currentColor" stroke-width="1.2"/><circle cx="18" cy="5" r="1.8" fill="currentColor"/>']
+];
+const SOLID_MARKS = [
+  ['-', 'สามมิติ'],
+  ['cube', 'ลูกบาศก์', '<path d="M3 8h12v12H3z M3 8l5-5h12l-5 5 M20 3v12l-5 5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M8 3v12H20 M8 15l-5 5" fill="none" stroke="currentColor" stroke-width="1" stroke-dasharray="1.6 1.6"/>'],
+  ['cuboid', 'ทรงสี่เหลี่ยม', '<path d="M2 10h16v10H2z M2 10l5-5h16l-5 5 M23 5v10l-5 5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M7 5v10H23 M7 15l-5 5" fill="none" stroke="currentColor" stroke-width="1" stroke-dasharray="1.6 1.6"/>'],
+  ['cyl3', 'ทรงกระบอก', '<ellipse cx="13" cy="5" rx="8" ry="2.6" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M5 5v13a8 2.6 0 0 0 16 0V5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M5 18a8 2.6 0 0 1 16 0" fill="none" stroke="currentColor" stroke-width="1" stroke-dasharray="1.6 1.6"/>'],
+  ['cone', 'กรวย', '<path d="M13 2L5 18a8 2.6 0 0 0 16 0L13 2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M5 18a8 2.6 0 0 1 16 0" fill="none" stroke="currentColor" stroke-width="1" stroke-dasharray="1.6 1.6"/>'],
+  ['sph', 'ทรงกลม', '<circle cx="13" cy="11" r="9" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M4 11a9 3 0 0 0 18 0" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M4 11a9 3 0 0 1 18 0" fill="none" stroke="currentColor" stroke-width="1" stroke-dasharray="1.6 1.6"/>'],
+  ['pyr', 'พีระมิด', '<path d="M12 2L3 19h13l6-5L12 2 M12 2l4 17" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M3 19l6-5h13 M12 2L9 14" fill="none" stroke="currentColor" stroke-width="1" stroke-dasharray="1.6 1.6"/>'],
+  ['prism', 'ปริซึม', '<path d="M2 19h13L8.5 8z M8.5 8l7-5 6.5 11-7 5 M15.5 3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M2 19l7-5h13 M9 14l6.5-11" fill="none" stroke="currentColor" stroke-width="1" stroke-dasharray="1.6 1.6"/>']
+];
+const isCoordMark = (k) => k !== '-' && k !== 'axes' && COORD_MARKS.some((m) => m[0] === k);
+const isSolidMark = (k) => k !== '-' && SOLID_MARKS.some((m) => m[0] === k);
+/* letters drawn as strokes in a box one unit high (baseline at 0, top at -1); a figure's labels move and scale with it */
+const GLYPHS = {
+  x: [[[0, -0.55], [0.48, 0]], [[0.48, -0.55], [0, 0]]],
+  y: [[[0, -0.55], [0.25, -0.05]], [[0.5, -0.55], [0.08, 0.3]]],
+  z: [[[0.02, -0.55], [0.48, -0.55], [0, 0], [0.5, 0]]],
+  r: [[[0.02, -0.56], [0.02, 0]], [[0.02, -0.3], [0.12, -0.5], [0.26, -0.57], [0.42, -0.52]]],
+  P: [[[0, 0], [0, -0.78], [0.3, -0.78], [0.46, -0.66], [0.46, -0.5], [0.3, -0.39], [0, -0.39]]],
+  O: 'O', th: 'th', ph: 'ph'
+};
+function glyphLists(ch, at, size) {
+  const k = size || 14, out = [], mv = (q) => [at[0] + q[0] * k, at[1] + q[1] * k];
+  const ell = (cx, cy, rx, ry) => { const p = []; for (let i = 0; i <= 28; i++) { const t = (i / 28) * Math.PI * 2; p.push(mv([cx + rx * Math.cos(t), cy + ry * Math.sin(t)])); } return p; };
+  if (ch === 'O') out.push(ell(0.28, -0.39, 0.27, 0.39));
+  else if (ch === 'th') { out.push(ell(0.25, -0.4, 0.21, 0.41)); out.push([mv([0.05, -0.4]), mv([0.45, -0.4])]); }
+  else if (ch === 'ph') { out.push(ell(0.28, -0.3, 0.25, 0.26)); out.push([mv([0.3, -0.78]), mv([0.26, 0.3])]); }
+  else for (const line of GLYPHS[ch] || []) out.push(line.map(mv));
+  return out;
+}
+function coordMarkLists(kind, a, b) {
+  const w = curW(), out = [];
+  const P = (pts, o) => { if (pts.length > 1) out.push(Object.assign({ pts: shapePts({ type: 'poly', pts }, 55) }, o || {})); };
+  const dash = (p, q, o) => { const L = Math.hypot(q[0] - p[0], q[1] - p[1]), n = Math.max(1, Math.round(L / 11)); for (let i = 0; i < n; i++) { const t0 = i / n, t1 = (i + 0.55) / n; P([[p[0] + (q[0] - p[0]) * t0, p[1] + (q[1] - p[1]) * t0], [p[0] + (q[0] - p[0]) * t1, p[1] + (q[1] - p[1]) * t1]], o); } };
+  const dashPath = (pts, o) => { let acc = 0, on = true, cur = [pts[0]]; for (let i = 1; i < pts.length; i++) { const d = Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]); acc += d; cur.push(pts[i]); if (acc > (on ? 6 : 5)) { if (on) P(cur, o); cur = [pts[i]]; acc = 0; on = !on; } } if (on) P(cur, o); };
+  const head = (at, ang, hl) => P([[at[0] - hl * Math.cos(ang - 0.42), at[1] - hl * Math.sin(ang - 0.42)], at, [at[0] - hl * Math.cos(ang + 0.42), at[1] - hl * Math.sin(ang + 0.42)]]);
+  const arrowTo = (p, q, hl) => { P([p, q]); head(q, Math.atan2(q[1] - p[1], q[0] - p[0]), hl || 10); };
+  const label = (ch, at, sz) => { for (const l of glyphLists(ch, at, sz || 15)) P(l, { w: Math.max(1, w * 0.75) }); };
+  const dot = (q) => out.push({ pts: shapePts({ type: 'ellipse', cx: q[0], cy: q[1], rx: 0.6, ry: 0.6 }, 55), w: clamp(w * 1.8, 3.5, 7) });
+  const arc = (c, r, t0, t1) => { const p = []; for (let i = 0; i <= 24; i++) { const t = t0 + (t1 - t0) * i / 24; p.push([c[0] + r * Math.cos(t), c[1] + r * Math.sin(t)]); } return p; };
+  const thin = { w: Math.max(1, w * 0.7) };
+  let x0 = Math.min(a[0], b[0]), y0 = Math.min(a[1], b[1]), x1 = Math.max(a[0], b[0]), y1 = Math.max(a[1], b[1]);
+  const tap = x1 - x0 < 40 || y1 - y0 < 40;
+  /* ----- two dimensions ----- */
+  if (kind === 'c2' || kind === 'c1q') {
+    if (tap) { const s = kind === 'c2' ? 110 : 0; x0 = a[0] - s; y0 = a[1] - (kind === 'c2' ? 110 : 200); x1 = a[0] + (kind === 'c2' ? 110 : 220); y1 = a[1] + (kind === 'c2' ? 110 : 0); }
+    const O = kind === 'c2' ? [(x0 + x1) / 2, (y0 + y1) / 2] : [x0, y1], step = 20;
+    arrowTo([kind === 'c2' ? x0 : O[0], O[1]], [x1, O[1]]); arrowTo([O[0], kind === 'c2' ? y1 : O[1]], [O[0], y0]);
+    for (let x = O[0] + step; x < x1 - 14; x += step) P([[x, O[1] - 3], [x, O[1] + 3]], thin);
+    for (let y = O[1] - step; y > y0 + 14; y -= step) P([[O[0] - 3, y], [O[0] + 3, y]], thin);
+    if (kind === 'c2') { for (let x = O[0] - step; x > x0 + 4; x -= step) P([[x, O[1] - 3], [x, O[1] + 3]], thin); for (let y = O[1] + step; y < y1 - 4; y += step) P([[O[0] - 3, y], [O[0] + 3, y]], thin); }
+    label('x', [x1 - 4, O[1] + 20]); label('y', [O[0] + 9, y0 + 10]); label('O', [O[0] - 15, O[1] + 18], 12);
+    return out;
+  }
+  if (kind === 'cpol') {
+    const c = tap ? a : [(x0 + x1) / 2, (y0 + y1) / 2], R = tap ? 110 : Math.min(x1 - x0, y1 - y0) / 2;
+    for (let i = 1; i <= 4; i++) out.push({ pts: shapePts({ type: 'ellipse', cx: c[0], cy: c[1], rx: R * i / 4, ry: R * i / 4 }, 55), w: Math.max(1, w * (i === 4 ? 0.9 : 0.6)) });
+    for (let k = 0; k < 12; k++) { const t = k * Math.PI / 6; if (k === 0) continue; P([[c[0] + R * 0.25 * Math.cos(t), c[1] - R * 0.25 * Math.sin(t)], [c[0] + R * Math.cos(t), c[1] - R * Math.sin(t)]], { w: Math.max(1, w * 0.5) }); }
+    arrowTo(c, [c[0] + R + 22, c[1]]); dot(c); label('O', [c[0] - 16, c[1] + 18], 12);
+    return out;
+  }
+  if (kind === 'cpp') {
+    const O = tap ? a : [x0, y1], R = tap ? 170 : Math.hypot(x1 - x0, y1 - y0) * 0.92, t = tap ? Math.PI / 5 : clamp(Math.atan2(y1 - y0, x1 - x0), 0.25, 1.35);
+    const Pp = [O[0] + R * Math.cos(t), O[1] - R * Math.sin(t)];
+    arrowTo(O, [O[0] + R * 1.12, O[1]]); P([O, Pp]); dot(Pp); P(arc(O, R * 0.28, 0, -t), thin);
+    label('O', [O[0] - 16, O[1] + 18], 12); label('P', [Pp[0] + 8, Pp[1] - 4]); label('r', [O[0] + R * 0.5 * Math.cos(t) - 16, O[1] - R * 0.5 * Math.sin(t) - 4]); label('th', [O[0] + R * 0.34 * Math.cos(t / 2) + 4, O[1] - R * 0.34 * Math.sin(t / 2) + 6]);
+    return out;
+  }
+  /* ----- three dimensions, oblique view: y to the right, z up, x towards the viewer down to the left ----- */
+  if (/^c(3|3p|cyl|sph)$/.test(kind)) {
+    const S = tap ? 150 : Math.min(x1 - x0, y1 - y0) * 0.8, O = tap ? [a[0], a[1]] : [x0 + (x1 - x0) * 0.4, y0 + (y1 - y0) * 0.62];
+    const ex = [-0.62, 0.5], ey = [1, 0], ez = [0, -1], pr = (x, y, z) => [O[0] + S * (x * ex[0] + y * ey[0] + z * ez[0]), O[1] + S * (x * ex[1] + y * ey[1] + z * ez[1])];
+    const ax = (e, lab) => { arrowTo(pr(0, 0, 0), pr(e[0], e[1], e[2]), 10); label(lab, (([p, q]) => [p + (e[0] ? -18 : e[1] ? -2 : 10), q + (e[0] ? 4 : e[1] ? 20 : 10)])(pr(e[0], e[1], e[2]))); };
+    dash(pr(0, 0, 0), pr(-0.3, 0, 0), thin); dash(pr(0, 0, 0), pr(0, -0.3, 0), thin);
+    ax([1, 0, 0], 'x'); ax([0, 1, 0], 'y'); ax([0, 0, 1], 'z'); label('O', [O[0] - 18, O[1] - 7], 12);
+    if (kind === 'c3') return out;
+    const X = 0.55, Y = 0.62, Z = 0.6, Pp = pr(X, Y, Z), F = pr(X, Y, 0);
+    dot(Pp); label('P', [Pp[0] + 8, Pp[1] - 6]);
+    if (kind === 'c3p') { dash(F, Pp, thin); dash(pr(X, 0, 0), F, thin); dash(pr(0, Y, 0), F, thin); dash(pr(0, 0, Z), Pp, thin); return out; }
+    if (kind === 'ccyl') {
+      dash(pr(0, 0, 0), F, thin); P([F, Pp], thin); dash(pr(0, 0, Z), Pp, thin); dot(F);
+      const fa = Math.atan2(F[1] - O[1], F[0] - O[0]), xa = Math.atan2(ex[1], ex[0]), r0 = S * 0.22, ap = arc(O, r0, xa, fa); P(ap, thin);
+      label('ph', [O[0] + r0 * Math.cos((xa + fa) / 2) - 2, O[1] + r0 * Math.sin((xa + fa) / 2) + 18]); label('r', [(O[0] + F[0]) / 2 + 2, (O[1] + F[1]) / 2 + 18]); label('z', [F[0] + 8, Pp[1] + (F[1] - Pp[1]) * 0.35]);
+      return out;
+    }
+    /* spherical: r from O to P, theta from the z axis down to OP, phi in the xy plane from x to the shadow of P */
+    P([pr(0, 0, 0), Pp]); dash(F, Pp, thin); dash(pr(0, 0, 0), F, thin);
+    const ta = Math.atan2(Pp[1] - O[1], Pp[0] - O[0]), za = -Math.PI / 2, r1 = S * 0.3; P(arc(O, r1, za, ta), thin);
+    label('th', [O[0] + (r1 + 6) * Math.cos((za + ta) / 2) + 2, O[1] + (r1 + 6) * Math.sin((za + ta) / 2) - 2]);
+    const fa = Math.atan2(F[1] - O[1], F[0] - O[0]), xa = Math.atan2(ex[1], ex[0]), r0 = S * 0.2; P(arc(O, r0, xa, fa), thin);
+    label('ph', [O[0] + r0 * Math.cos((xa + fa) / 2) - 2, O[1] + r0 * Math.sin((xa + fa) / 2) + 18]); label('r', [(O[0] + Pp[0]) / 2 + 8, (O[1] + Pp[1]) / 2 + 16]);
+    return out;
+  }
+  /* ----- solids: the front face square to the page, depth going back up to the right; edges out of sight dashed ----- */
+  if (isSolidMark(kind)) {
+    if (tap) { x0 = a[0]; y0 = a[1]; x1 = x0 + (kind === 'cube' || kind === 'sph' ? 150 : 190); y1 = y0 + (kind === 'cuboid' ? 120 : 150); }
+    const W2 = x1 - x0, H2 = y1 - y0;
+    if (kind === 'sph') {
+      const R = Math.min(W2, H2) / 2, c = [(x0 + x1) / 2, (y0 + y1) / 2], ry = R * 0.28;
+      out.push({ pts: shapePts({ type: 'ellipse', cx: c[0], cy: c[1], rx: R, ry: R }, 55) });
+      P(arc([0, 0], 1, 0, Math.PI).map(([u, v]) => [c[0] + R * u, c[1] + ry * v]));
+      dashPath(arc([0, 0], 1, Math.PI, Math.PI * 2).map(([u, v]) => [c[0] + R * u, c[1] + ry * v]), thin);
+      dot(c); return out;
+    }
+    if (kind === 'cyl3' || kind === 'cone') {
+      const rx = W2 / 2, ry = Math.max(6, Math.min(W2 * 0.16, H2 * 0.2)), cx = (x0 + x1) / 2, top = y0 + ry, bot = y1 - ry;
+      const ell = (cy, t0, t1) => arc([0, 0], 1, t0, t1).map(([u, v]) => [cx + rx * u, cy + ry * v]);
+      P(ell(bot, 0, Math.PI)); dashPath(ell(bot, Math.PI, Math.PI * 2), thin);
+      if (kind === 'cyl3') { out.push({ pts: shapePts({ type: 'ellipse', cx, cy: top, rx, ry }, 55) }); P([[x0, top], [x0, bot]]); P([[x1, top], [x1, bot]]); }
+      else { const ap = [cx, y0]; P([ap, [x0, bot]]); P([ap, [x1, bot]]); dash(ap, [cx, bot], thin); dash([cx, bot], [x1, bot], thin); }
+      return out;
+    }
+    /* boxes, pyramid and prism share the same receding depth */
+    const d = kind === 'cube' ? Math.min(W2, H2) * 0.55 : Math.min(W2, H2) * 0.5, D = [d * 0.62, -d * 0.55];
+    const fw = kind === 'cube' ? Math.min(W2 - D[0], H2 + D[1]) : W2 - D[0], fh = kind === 'cube' ? fw : H2 + D[1];
+    const F0 = [x0, y1], F1 = [x0 + fw, y1], F2 = [x0 + fw, y1 - fh], F3 = [x0, y1 - fh], bk = (p) => [p[0] + D[0], p[1] + D[1]];
+    if (kind === 'cube' || kind === 'cuboid') {
+      P([F0, F1, F2, F3, F0]); P([F3, bk(F3), bk(F2), F2]); P([bk(F2), bk(F1), F1]);
+      dash(bk(F0), bk(F1), thin); dash(bk(F0), bk(F3), thin); dash(F0, bk(F0), thin);
+      return out;
+    }
+    if (kind === 'pyr') {
+      const B0 = F0, B1 = F1, B2 = bk(F1), B3 = bk(F0), ap = [(B0[0] + B2[0]) / 2, y1 - fh - D[1] * 0.2 + D[1] / 2];
+      P([B0, B1, B2]); P([B0, ap]); P([B1, ap]); P([B2, ap]); dash(B2, B3, thin); dash(B3, B0, thin); dash(B3, ap, thin);
+      return out;
+    }
+    if (kind === 'prism') {
+      const T0 = F0, T1 = F1, T2 = [(F0[0] + F1[0]) / 2, y1 - fh];
+      P([T0, T1, T2, T0]); P([T2, bk(T2), bk(T1), T1]); dash(T0, bk(T0), thin); dash(bk(T0), bk(T1), thin); dash(bk(T0), bk(T2), thin);
+      return out;
+    }
+  }
+  return out;
+}
+function coordStrokes(kind, a, b) {
+  return coordMarkLists(kind, a, b).map((o) => ({ id: 's' + uid(), k: 'p', c: S.color, w: o.w || curW(), p: o.pts }));
 }
 
 function insertSim(kind) {
@@ -24555,7 +24709,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1794185417';
+const BUILD = '1794185689';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
