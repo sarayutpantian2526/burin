@@ -224,9 +224,12 @@ body.flow:not(.flowlast) #bAddBelow { display: none; }
 #page.exact > #cInk, #page.exact > #cLive, #page.exact > #cRemote { inset: 0 auto auto 0; width: var(--cw); height: var(--ch); }
 #page.px1 > #cInk, #page.px1 > #cRemote, #page.pxs > #cSharp { image-rendering: pixelated; }
 #page > #cSharp[hidden] { display: none; }
-#items, #itemsBg { position: absolute; left: 0; top: 0; width: 1000px; height: 1414px; transform-origin: 0 0; pointer-events: none; }
+#items, #itemsBg, #itemsUnder { position: absolute; left: 0; top: 0; width: 1000px; height: 1414px; transform-origin: 0 0; pointer-events: none; }
 /* a page picture (an imported PDF page) lies on the paper, under the writing: ink drawn on it shows on top */
-#itemsBg .item { pointer-events: none !important; }
+#itemsBg .item, #itemsUnder .item { pointer-events: none !important; }
+#items .item > img.imgabove { opacity: 0; }
+#itemsUnder .imgunder { position: absolute; }
+#itemsUnder .imgunder img { display: block; width: 100%; height: 100%; }
 .pleaf { position: absolute; z-index: 4; background: #FFFFFF; border-radius: 4px; overflow: hidden; pointer-events: none; backface-visibility: hidden; box-shadow: 0 10px 34px rgba(20, 26, 34, 0.18); will-change: transform; }
 .pleaf canvas { position: absolute; left: 0; top: 0; width: 100%; height: 100%; }
 .pleaf .pleafitems { position: absolute; left: 0; top: 0; width: 1000px; height: 1414px; transform-origin: 0 0; }
@@ -3445,6 +3448,31 @@ const S = {
 const vp = $('#viewport'), wrapEl = $('#wrap'), pageEl = $('#page');
 const itemsBgEl = $('#itemsBg');
 const isBgItem = (it) => !!(it && it.lock && it.type === 'img');
+/* a picture placed on the page shows under the writing, like an imported PDF page: the box keeps its place in the boxes
+   layer (handles, selection, moving) while the picture itself is shown again in a layer under the ink */
+const isUnderImg = (it) => !!(it && it.type === 'img' && !it.lock), isUnderItem = (it) => isBgItem(it) || isUnderImg(it);
+function underImgEl(it) { return isBgItem(it) ? itemsBgEl.querySelector('[data-id="' + it.id + '"] img') : (document.getElementById('itemsUnder') || itemsBgEl).querySelector('[data-mirror="' + it.id + '"] img'); }
+function imgUnderSync() {
+  let u = document.getElementById('itemsUnder');
+  if (!u) { u = document.createElement('div'); u.id = 'itemsUnder'; u.setAttribute('aria-hidden', 'true'); itemsBgEl.after(u); itemsXf(); }
+  const have = new Map([...u.children].map((m) => [m.dataset.mirror, m])), seen = new Set();
+  for (const it of (S.page && S.page.items) || []) {
+    if (!isUnderImg(it)) continue;
+    const d = itemsEl.querySelector('[data-id="' + it.id + '"]'), im = d && d.querySelector(':scope > img'); if (!im) continue;
+    seen.add(it.id); im.classList.add('imgabove');
+    let m = have.get(it.id);
+    if (!m) { m = document.createElement('div'); m.className = 'item imgunder'; m.dataset.mirror = it.id; m.appendChild(document.createElement('img')); u.appendChild(m); }
+    const mi = m.firstChild, src = im.currentSrc || im.getAttribute('src') || '';
+    if (src && mi.getAttribute('src') !== src) mi.setAttribute('src', src);
+    if (!src && !im._under) { im._under = true; im.addEventListener('load', () => imgUnderSync()); }
+    const hid = d.offsetParent === null;
+    m.hidden = hid; if (hid) continue;
+    m.style.left = (parseFloat(d.style.left) || 0) + im.offsetLeft + 'px'; m.style.top = (parseFloat(d.style.top) || 0) + im.offsetTop + 'px';
+    m.style.width = im.offsetWidth + 'px'; m.style.height = im.offsetHeight + 'px';
+    if (!m._r) { m._r = 1; try { mi.style.borderRadius = getComputedStyle(im).borderRadius; } catch (e) { /* square */ } }
+  }
+  for (const [id, m] of have) if (!seen.has(id)) m.remove();
+}
 function itemElOf(id) { return itemsEl.querySelector('[data-id="' + id + '"]') || itemsBgEl.querySelector('[data-id="' + id + '"]'); }
 const cBg = $('#cBg'), cInk = $('#cInk'), cLive = $('#cLive'), cRemote = $('#cRemote'), itemsEl = $('#items'), selEl = $('#sel');
 
@@ -3493,7 +3521,7 @@ function peekFromScreen() {
     const cv = document.createElement('canvas'); cv.width = Math.round(pw * k); cv.height = Math.round(ph * k);
     const c = cv.getContext('2d'); if (cBg.width > 1) c.drawImage(cBg, 0, 0, cv.width, cv.height); else { c.save(); c.setTransform(k, 0, 0, k, 0, 0); c.fillStyle = '#FFFFFF'; c.fillRect(0, 0, pw, ph); paper(c, (S.page && S.page.paper) || 'grid'); c.restore(); }
     /* a page picture is copied between the paper and the ink, as on the page */
-    for (const it of (S.page.items || []).filter(isBgItem)) { const im = itemsBgEl.querySelector('[data-id="' + it.id + '"] img'); if (im && im.complete && im.naturalWidth) { try { c.drawImage(im, it.x * k, it.y * k, (it.w || 600) * k, (it.w || 600) * (it.ar || 1.414) * k); } catch (e) { /* skip */ } } }
+    for (const it of (S.page.items || []).filter(isUnderItem)) { const im = underImgEl(it); if (im && im.complete && im.naturalWidth) { try { c.drawImage(im, it.x * k, it.y * k, (it.w || 600) * k, (it.w || 600) * (it.ar || 1.414) * k); } catch (e) { /* skip */ } } }
     c.drawImage(cInk, 0, 0, cv.width, cv.height);
     const lay = itemsEl.cloneNode(true); lay.removeAttribute('id'); lay.className = 'fitems'; lay.style.cssText = ''; lay.style.width = pw + 'px'; lay.style.height = ph + 'px'; lay.style.transform = 'scale(' + S.base + ')';
     lay.querySelectorAll('[id]').forEach((n) => n.removeAttribute('id')); lay.querySelectorAll('.dsvg, .diarydots').forEach((n) => n.remove());
@@ -3518,7 +3546,7 @@ async function peekBuild(pid, lo) {
   cv.width = Math.round(pw * kp); cv.height = Math.round(ph * kp);
   const c = cv.getContext('2d'); c.setTransform(kp, 0, 0, kp, 0, 0); const keep = [W, H]; W = pw; H = ph; c.fillStyle = '#FFFFFF'; c.fillRect(0, 0, W, H); try { paper(c, (page && page.paper) || 'grid'); } catch (e) { /* plain */ } [W, H] = keep;
   /* the neighbouring page's lines are drawn a few at a time, so scrolling on never stutters while it is made */
-  const bgs = ((page && page.items) || []).filter(isBgItem);
+  const bgs = ((page && page.items) || []).filter((it) => isUnderItem(it) && !(it.teacher && isStudentSide()));
   /* a page with a page picture (an imported PDF): paper, then the picture, then the ink on a see-through canvas */
   let ink = null, bgLay = null;
   if (bgs.length) {
@@ -3527,7 +3555,7 @@ async function peekBuild(pid, lo) {
     for (const it of bgs) { try { bgLay.appendChild(buildItemEl(it, true)); } catch (e) { /* skip */ } }
   } else await drawIntoSliced(c, strokes);
   const lay = document.createElement('div'); lay.className = 'fitems'; lay.style.width = pw + 'px'; lay.style.height = ph + 'px'; lay.style.transform = 'scale(' + S.base + ')';
-  for (const it of (page && page.items) || []) { if ((it.teacher && isStudentSide()) || isBgItem(it)) continue; try { lay.appendChild(buildItemEl(it, true)); } catch (e) { /* skip */ } }
+  for (const it of (page && page.items) || []) { if ((it.teacher && isStudentSide()) || isUnderItem(it)) continue; try { lay.appendChild(buildItemEl(it, true)); } catch (e) { /* skip */ } }
   const lb = document.createElement('div'); lb.className = 'plabel'; lb.textContent = 'หน้า ' + ((S.nb.pages || []).indexOf(pid) + 1);
   const out = { sig, dims: [pw, ph], nodes: bgs.length ? [cv, bgLay, ink, lay, lb] : [cv, lay, lb], lay, typeset: false, split: !!bgs.length };
   peekPut(pid, out);
@@ -3816,7 +3844,7 @@ function drawSharp() {
   c.setTransform(k, 0, 0, k, -(x0 - pr.left) * dq, -(y0 - pr.top) * dq); S.sharpXf = { k, ox: -(x0 - pr.left) * dq, oy: -(y0 - pr.top) * dq, pid: S.pid, w: bw };
   c.fillStyle = '#FFFFFF'; c.fillRect(0, 0, W, H); paper(c, (S.page && S.page.paper) || 'grid');
   /* the page picture (imported PDF) between the paper and the ink here too, or zooming in would hide it */
-  for (const it of ((S.page && S.page.items) || []).filter(isBgItem)) { const im = itemsBgEl.querySelector('[data-id="' + it.id + '"] img'); if (im && im.complete && im.naturalWidth) { try { c.drawImage(im, it.x, it.y, it.w || 600, (it.w || 600) * (it.ar || 1.414)); } catch (e) { /* skip */ } } }
+  for (const it of ((S.page && S.page.items) || []).filter(isUnderItem)) { const im = underImgEl(it); if (im && im.complete && im.naturalWidth) { try { c.drawImage(im, it.x, it.y, it.w || 600, (it.w || 600) * (it.ar || 1.414)); } catch (e) { /* skip */ } } }
   const ox = -(x0 - pr.left) * dq, oy = -(y0 - pr.top) * dq, vkey = [S.pid, bw, bh, k.toFixed(4), Math.round(ox), Math.round(oy)].join('|');
   if (vecs.length) { if (PDFV.last && PDFV.last.key === vkey) { c.save(); c.setTransform(1, 0, 0, 1, 0, 0); c.drawImage(PDFV.last.cv, 0, 0); c.restore(); } else pdfVecLater(vecs, vkey, bw, bh, k, ox, oy); }
   drawInto(c, allStrokes(), S.sel && !S.sel.quiet ? new Set(S.sel.strokes.map((r) => r.id)) : null);
@@ -3918,7 +3946,7 @@ let itemsRast = 0;
    view stands still zoomed in, the boxes are laid out K times larger (CSS zoom) and shrunk back by the same factor, so the
    letters are painted with K times more pixels; the boxes stay exactly where they are. Other browsers paint text sharp anyway */
 const ITEMS_HIDPI = /iPad|iPhone|Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1;
-function itemsXf() { const K = S.itemsK || 1; for (const el of [itemsEl, itemsBgEl]) { el.style.zoom = K === 1 ? '' : String(K); el.style.transform = 'scale(' + S.base / K + ')'; } }
+function itemsXf() { const K = S.itemsK || 1; for (const el of [itemsEl, itemsBgEl, document.getElementById('itemsUnder')]) { if (!el) continue; el.style.zoom = K === 1 ? '' : String(K); el.style.transform = 'scale(' + S.base / K + ')'; } }
 /* the larger layout is checked on the spot: a test box and a test letter must keep their size on screen; if this browser
    handles it differently (a letter came out smaller on one iPad), the old way is used from then on */
 function itemsProbe() { const d = document.createElement('div'); d.style.cssText = 'position:absolute;left:0;top:0;width:100px;font-size:100px;line-height:1;visibility:hidden;pointer-events:none;white-space:nowrap'; const sp = document.createElement('span'); sp.textContent = 'HH'; d.appendChild(sp); itemsEl.appendChild(d); const a = d.getBoundingClientRect(), b = sp.getBoundingClientRect(); d.remove(); return [a.width, b.width, b.height]; }
@@ -4301,7 +4329,7 @@ function visibleItems() { const a = (S.page && S.page.items) || []; return S.pre
 let editing = null;
 function renderItems() {
   if (editing) return;
-  sharpTextOff(); renderItems0(); markPicked(); if (typeof cSharp !== 'undefined' && cSharp && !cSharp.hidden) sharpLater();
+  sharpTextOff(); renderItems0(); markPicked(); imgUnderSync(); if (typeof cSharp !== 'undefined' && cSharp && !cSharp.hidden) sharpLater();
   edgeCheckLater();
 }
 /* a box or picture already on the page that runs past the edge of the paper (made before this check, or arriving from an
@@ -6256,6 +6284,7 @@ function doScaleF(pt, f) {
     const d = itemsEl.querySelector('[data-id="' + id + '"]');
     if (d) { d.style.left = it.x + 'px'; d.style.top = it.y + 'px'; d.style.width = it.w + 'px'; if (o.text) d.style.fontSize = it.fs + 'px'; }
   }
+  imgUnderSync();
   const xa = ox + (b0[0] - ox) * f, xb = ox + (b0[2] - ox) * f, ya = oy + (b0[1] - oy) * f, yb = oy + (b0[3] - oy) * f;
   S.sel.box = [Math.min(xa, xb), Math.min(ya, yb), Math.max(xa, xb), Math.max(ya, yb)];
   if (pt.orig.length) drawInk(); drawSelBox();
@@ -6389,6 +6418,7 @@ function moveItemEls() {
     const d = itemsEl.querySelector('[data-id="' + id + '"]');
     if (it && d) { d.style.left = it.x + 'px'; d.style.top = it.y + 'px'; }
   }
+  imgUnderSync();
 }
 function shiftBox(b, dx, dy) { return [b[0] + dx, b[1] + dy, b[2] + dx, b[3] + dy]; }
 function inBox(b, x, y) { return b && x >= b[0] && x <= b[2] && y >= b[1] && y <= b[3]; }
@@ -6600,7 +6630,7 @@ function pageFlip(pid) {
     /* the turning leaf is in motion: half the pixels are plenty and copy four times faster */
     const c = document.createElement('canvas'); c.width = Math.round((ink.width || W) / 3); c.height = Math.round((ink.height || H) / 3); const x = c.getContext('2d');
     if (bg.width > 1) x.drawImage(bg, 0, 0, c.width, c.height); else { x.save(); x.setTransform(c.width / W, 0, 0, c.width / W, 0, 0); x.fillStyle = '#FFFFFF'; x.fillRect(0, 0, W, H); paper(x, (S.page && S.page.paper) || 'grid'); x.restore(); }
-    { const kk = c.width / W; for (const it of ((S.page && S.page.items) || []).filter(isBgItem)) { const im = itemsBgEl.querySelector('[data-id="' + it.id + '"] img'); if (im && im.complete && im.naturalWidth) { try { x.drawImage(im, it.x * kk, it.y * kk, (it.w || 600) * kk, (it.w || 600) * (it.ar || 1.414) * kk); } catch (e) { /* skip */ } } } }
+    { const kk = c.width / W; for (const it of ((S.page && S.page.items) || []).filter(isUnderItem)) { const im = underImgEl(it); if (im && im.complete && im.naturalWidth) { try { x.drawImage(im, it.x * kk, it.y * kk, (it.w || 600) * kk, (it.w || 600) * (it.ar || 1.414) * kk); } catch (e) { /* skip */ } } } }
     if (ink.width) x.drawImage(ink, 0, 0, c.width, c.height);
     leaf.appendChild(c);
     const it = $('#items'); if (it) { const k = it.cloneNode(true); k.removeAttribute('id'); k.className = 'pleafitems'; k.style.cssText = it.style.cssText; k.querySelectorAll('[id]').forEach((n) => n.removeAttribute('id')); leaf.appendChild(k); }
@@ -8328,7 +8358,7 @@ async function exportPdf() {
       const cv = document.createElement('canvas'); cv.width = Math.round(pw * 1.6); cv.height = Math.round(ph * 1.6);
       cv.style.cssText = 'position:absolute;left:0;top:0;width:' + pw + 'px;height:' + ph + 'px';
       const c = cv.getContext('2d'); c.setTransform(1.6, 0, 0, 1.6, 0, 0);
-      const bgs = ((page && page.items) || []).filter(isBgItem), ci = bgs.length ? document.createElement('canvas') : null;
+      const bgs = ((page && page.items) || []).filter(isUnderItem), ci = bgs.length ? document.createElement('canvas') : null;
       W = pw; H = ph; c.fillStyle = '#FFFFFF'; c.fillRect(0, 0, W, H); { const pk = (page && page.paper) || 'grid'; paper(c, expLines() || pk === 'board' || pk === 'art' ? pk : 'blank'); }
       /* a page picture (imported PDF) goes between the paper and the writing, so the writing on it is in the file */
       if (ci) { ci.width = cv.width; ci.height = cv.height; ci.style.cssText = cv.style.cssText; const x2 = ci.getContext('2d'); x2.setTransform(1.6, 0, 0, 1.6, 0, 0); drawInto(x2, strokes, null); } else drawInto(c, strokes, null);
@@ -8336,7 +8366,7 @@ async function exportPdf() {
       pg.appendChild(cv);
       if (ci) { const bl = document.createElement('div'); bl.style.cssText = 'position:absolute;left:0;top:0;width:' + pw + 'px;height:' + ph + 'px'; for (const it of bgs) bl.appendChild(buildItemEl(it, true)); for (const im of bl.querySelectorAll('img')) { if (!im.complete) await new Promise((r) => { im.onload = r; im.onerror = r; setTimeout(r, 6000); }); } pg.appendChild(bl); pg.appendChild(ci); }
       const its = document.createElement('div'); its.style.cssText = 'position:absolute;left:0;top:0;width:' + pw + 'px;height:' + ph + 'px';
-      for (const it of ((page && page.items) || [])) if (!isBgItem(it)) its.appendChild(buildItemEl(it, true));
+      for (const it of ((page && page.items) || [])) if (!isUnderItem(it)) its.appendChild(buildItemEl(it, true));
       for (const im of its.querySelectorAll('img')) { if (!im.complete) await new Promise((r) => { im.onload = r; im.onerror = r; setTimeout(r, 6000); }); }
       pg.appendChild(its);
       host.appendChild(pg);
@@ -20540,7 +20570,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1794189157';
+const BUILD = '1794192348';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
