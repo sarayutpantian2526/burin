@@ -587,6 +587,7 @@ function scRender(it, r) {
   if (cv.width !== Math.round(w * dpr) || cv.height !== Math.round(h * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); }
   let c = cv.getContext('2d');
   if (sp.bare) { const cap = Math.min(dpr, Math.sqrt(9e6 / Math.max(1, w * h))); if (cv.width !== Math.round(w * cap) || cv.height !== Math.round(h * cap)) { cv.width = Math.round(w * cap); cv.height = Math.round(h * cap); } c.setTransform(cap, 0, 0, cap, 0, 0); c.clearRect(0, 0, w, h); }
+  else if (sp.clean) { c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, cv.width, cv.height); c.setTransform(dpr, 0, 0, dpr, 0, 0); }
   else { c.setTransform(dpr, 0, 0, dpr, 0, 0); c.fillStyle = '#FFFFFF'; c.fillRect(0, 0, w, h); }
   if (sp.dim === 3) { if (sc3Render(c, w, h, sp, r) === false) loadLib('math').then(() => scRender(it, r)).catch(() => {}); if (r.ro) r.ro.innerHTML = (r.read || []).map(([k, v]) => '<span><b>' + esc(String(k)) + '</b> ' + esc(String(v)) + '</span>').join(''); return; }
   if (sp.domain === 'phys') {
@@ -668,6 +669,24 @@ function buildScene(d, it, forExport) {
   rb.onclick = () => { const live = findItem(it.id) || it, R = scRuntime(live); R.playing = false; scReset(live, R); pb.textContent = 'เล่น'; scRender(live, R); };
   sb.onclick = () => { r.slow = !r.slow; sb.setAttribute('aria-pressed', r.slow ? 'true' : 'false'); };
   const bk = head.querySelector('[data-s="back"]'); if (bk) bk.onclick = () => restoreInk(findItem(it.id));
+  /* a model of orbitals, surfaces or curves can sit on the paper without its box; the box comes back from its small handle */
+  const frameSwap = (v) => { const before = clone(S.page.items || []), items = clone(before), x = items.find((t) => t.id === it.id); if (!x) return; x.spec.clean = v; if (v) x.spec.pen = x.spec.pen !== false; setItems(items, before); };
+  if (!forExport && !sp.bare && sp.dim === 3 && sp.domain === 'math' && !sp.clean) { const sb0 = head.querySelector('.sbtns'); const nf = document.createElement('button'); nf.type = 'button'; nf.textContent = 'ไม่มีกรอบ'; nf.title = 'วางบนกระดาษแบบไม่มีกรอบ ลงสีแบบสีไม้ ยังหมุนได้'; nf.onclick = () => frameSwap(true); sb0.appendChild(nf); }
+  if (sp.clean && !forExport) {
+    d.classList.add('clean');
+    const hb = document.createElement('button'); hb.type = 'button'; hb.className = 'lifedot scnhandle cleandot no-ink'; hb.title = 'ปรับแบบจำลอง'; hb.setAttribute('aria-label', 'ปรับแบบจำลอง'); hb.setAttribute('aria-expanded', r.open ? 'true' : 'false');
+    hb.innerHTML = '<svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="5" cy="10" r="1.6" fill="currentColor"/><circle cx="10" cy="10" r="1.6" fill="currentColor"/><circle cx="15" cy="10" r="1.6" fill="currentColor"/></svg>';
+    hb.addEventListener('pointerdown', (e) => e.stopPropagation());
+    const pill = document.createElement('div'); pill.className = 'scnpill cleanpill no-ink'; pill.hidden = !r.open; pill.addEventListener('pointerdown', (e) => e.stopPropagation());
+    hb.onclick = (e) => { e.stopPropagation(); r.open = !r.open; pill.hidden = !r.open; hb.setAttribute('aria-expanded', r.open ? 'true' : 'false'); };
+    const sb2 = head.querySelector('.sbtns');
+    sb2.querySelectorAll('[data-s="play"],[data-s="reset"],[data-s="slow"]').forEach((x) => { if (!sp.t || !sp.t.speed) x.hidden = true; });
+    const pen = document.createElement('button'); pen.type = 'button'; pen.textContent = sp.pen ? 'สีเรียบ' : 'สีไม้'; pen.onclick = () => { const before = clone(S.page.items || []), items = clone(before), x = items.find((t) => t.id === it.id); if (!x) return; x.spec.pen = !x.spec.pen; setItems(items, before); };
+    const fr = document.createElement('button'); fr.type = 'button'; fr.textContent = 'แสดงกรอบ'; fr.onclick = () => frameSwap(false);
+    sb2.append(pen, fr);
+    [...d.children].filter((x) => x !== cv).forEach((x) => pill.appendChild(x));
+    d.appendChild(hb); d.appendChild(pill);
+  }
   if (sp.bare) {
     /* a small floating bar beside the drawing instead of a box */
     /* folded away by default: only a small round button sits at the corner of the drawing; tap it for the controls */
@@ -1477,6 +1496,8 @@ const vDot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2], vLen = (a) => Ma
 const vUnit = (a) => { const L = vLen(a) || 1; return [a[0] / L, a[1] / L, a[2] / L]; };
 function sc3Clean(sp, o) {
   o.dim = 3;
+  if (sp.clean) o.clean = true; /* no frame: the model sits on the paper like a drawing */
+  if (sp.pen) o.pen = true; /* coloured as if with coloured pencils */
   if (o.domain === 'phys') {
     const wd = sp.world || {};
     o.world = { size: scNum(wd.size, 4, 0.1, 1e9), g: scNum(wd.g, 9.8, 0, 1000), ground: wd.ground !== false, mu: scNum(wd.mu, 0.3, 0, 5), tz: scNum(wd.tz, 0, -1e9, 1e9) };
@@ -1656,8 +1677,8 @@ function m3Scope(sp, t, extra) { return Object.assign({ t, pi: Math.PI, e: Math.
 function m3Col(f) { const a = [[47, 75, 184], [14, 154, 167], [46, 139, 87], [227, 155, 45], [194, 87, 26]], x = clamp(f, 0, 0.9999) * 4, i = Math.floor(x), u = x - i, A = a[i], Bc = a[i + 1]; return 'rgb(' + Math.round(A[0] + (Bc[0] - A[0]) * u) + ',' + Math.round(A[1] + (Bc[1] - A[1]) * u) + ',' + Math.round(A[2] + (Bc[2] - A[2]) * u) + ')'; }
 function m3Draw(c, w, h, sp, st, rt) {
   if (!window.math) { c.fillStyle = '#5A6472'; c.font = '14px Sarabun, sans-serif'; c.fillText('กำลังโหลดเครื่องคำนวณ', 16, 24); return false; }
-  const L = sp.view.L, P = cam3(rt, w, h, L * 1.2, 0), g = new G3(P), t = st.t;
-  axes3(g, L, ['x', 'y', 'z'], { neg: [1, 1, 1] });
+  const L = sp.view.L, P = cam3(rt, w, h, L * 1.2, 0), g = new G3(P), t = st.t, gp = sp.pen ? new G3(P) : null;
+  if (!sp.clean) axes3(g, L, ['x', 'y', 'z'], { neg: [1, 1, 1] });
   for (const it of sp.items) {
     if (it.type === 'surface' && it.expr) {
       const [x0, x1, y0, y1] = it.range && it.range.length === 4 ? it.range : [-L, L, -L, L], n = it.n, Z = [];
@@ -1677,12 +1698,12 @@ function m3Draw(c, w, h, sp, st, rt) {
       g.ball(p, L * 0.035, it.color); if (it.label) g.text(vAdd(p, [0, 0, L * 0.08]), it.label, it.color, 13);
       if (it.type === 'tangent') { const hh = 1e-3, sc2 = m3Scope(sp, t, { s: t + hh }), q = [mtEval(it.x, sc2, rt), mtEval(it.y, sc2, rt), mtEval(it.z, sc2, rt)], d = vUnit(vSub(q, p)); g.arrow(p, vAdd(p, vMul(d, L * 0.45)), '#C2571A', 2.4); }
       if (it.trace) { const tr = rt.traces[it.label || 'p'] || (rt.traces[it.label || 'p'] = []); tr.push(p); if (tr.length > 600) tr.shift(); g.line(tr, it.color, 1.6, { alpha: 0.55 }); }
-    } else if (it.type === 'orbital') { orb3Draw(g, it, sp, L, rt); continue;
+    } else if (it.type === 'orbital') { orb3Draw(gp || g, it, sp, L, rt); continue;
     } else if (it.type === 'vector') {
       const sc = m3Scope(sp, t), p = [mtEval(it.x, sc, rt), mtEval(it.y, sc, rt), mtEval(it.z, sc, rt)]; if (p.every(isFinite)) { g.arrow([0, 0, 0], p, it.color, 2.4); if (it.label) g.text(p, it.label, it.color, 13); }
     }
   }
-  g.draw(c); return true;
+  g.draw(c); if (gp) pencilDraw(c, w, h, gp, rt); return true;
 }
 /* ----- atomic orbitals as solid shapes: the surface is r = |psi(direction)|^2 (the angular part), coloured by the sign
    of psi, so the two phases show; hybrids mix s and p along a direction. Shaded towards the viewer as it turns ----- */
@@ -1712,12 +1733,44 @@ function orb3Draw(g, it, sp, L, rt) {
     const pa = P(a), pb = P(b), pc = P(c), pd = P(d), cen = vMul(vAdd(vAdd(pa, pb), vAdd(pc, pd)), 0.25);
     if (vLen(cen) < R * 0.012) continue; /* the pinched middle where the lobes meet */
     let nv = vCross(vSub(pc, pa), vSub(pd, pb)); if (vLen(nv) < 1e-12) continue; nv = vUnit(nv); if (vDot(nv, cen) < 0) nv = vMul(nv, -1);
-    const lit = 0.55 + 0.6 * Math.max(0, vDot(nv, Lt)) + 0.12 * Math.max(0, vDot(nv, V));
-    g.poly([pa, pb, pc, pd], mixc(vm >= 0 ? c1 : c2, clamp(lit, 0.45, 1.35)), null);
+    const lit = sp.pen ? 0.92 + 0.42 * Math.max(0, vDot(nv, Lt)) : 0.55 + 0.6 * Math.max(0, vDot(nv, Lt)) + 0.12 * Math.max(0, vDot(nv, V));
+    const fc = mixc(vm >= 0 ? c1 : c2, clamp(lit, 0.45, 1.35));
+    g.poly([pa, pb, pc, pd], fc, sp.pen ? fc : null); /* in pencil the faces are closed up, so no seams show through the grain */
   }
-  g.ball([0, 0, 0], L * 0.025, '#333333');
+  if (sp.pen) g.ball([0, 0, 0], L * 0.02, '#3A3F48'); else g.ball([0, 0, 0], L * 0.025, '#333333');
   const nm = list.length > 1 && !it.pick ? list.map((x) => ORB_NAMES[x] || x).join(', ') : (ORB_NAMES[o] || o);
   rt.read = [['ออร์บิทัล', nm], ['สี', 'น้ำเงิน เฟสบวก, ส้ม เฟสลบ']];
+}
+/* ----- coloured pencil: the shape is drawn on a layer of its own, its colour broken into short slanted strokes so the
+   paper shows through, with a soft pencil line round the outside. The grain stays put on the paper while the shape turns ----- */
+let PENCIL_TEX = null;
+function pencilTex() {
+  if (PENCIL_TEX) return PENCIL_TEX;
+  const T = document.createElement('canvas'); T.width = T.height = 120; const c = T.getContext('2d');
+  c.fillStyle = 'rgba(0,0,0,0.42)'; c.fillRect(0, 0, 120, 120);
+  let seed = 7; const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+  c.lineCap = 'round';
+  for (let i = 0; i < 190; i++) {
+    const x = rnd() * 120, y = rnd() * 120, L = 8 + rnd() * 26, a = -0.62 + (rnd() - 0.5) * 0.18;
+    c.strokeStyle = 'rgba(0,0,0,' + (0.35 + rnd() * 0.55).toFixed(2) + ')'; c.lineWidth = 0.8 + rnd() * 1.6;
+    /* drawn again one tile over in each direction, so the tiles join without a seam */
+    for (const ox of [-120, 0, 120]) for (const oy of [-120, 0, 120]) { c.beginPath(); c.moveTo(x + ox, y + oy); c.lineTo(x + ox + Math.cos(a) * L, y + oy + Math.sin(a) * L); c.stroke(); }
+  }
+  PENCIL_TEX = T; return T;
+}
+function pencilDraw(c, w, h, gp, rt) {
+  const M = c.getTransform(), cw = c.canvas.width, ch = c.canvas.height;
+  const mk = (k) => { const x = rt[k] && rt[k].width === cw && rt[k].height === ch ? rt[k] : (rt[k] = document.createElement('canvas')); if (x.width !== cw) x.width = cw; if (x.height !== ch) x.height = ch; const g = x.getContext('2d'); g.setTransform(1, 0, 0, 1, 0, 0); g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1; g.clearRect(0, 0, cw, ch); return [x, g]; };
+  const [A, a] = mk('_penA'), [O, o] = mk('_penO');
+  a.setTransform(M); gp.draw(a); a.setTransform(1, 0, 0, 1, 0, 0);
+  /* the outline: the shape grown a little in every direction, less the shape itself */
+  const r = Math.max(1, 1.25 * M.a);
+  for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1], [0.7, 0.7], [-0.7, 0.7], [0.7, -0.7], [-0.7, -0.7]]) o.drawImage(A, dx * r, dy * r);
+  o.globalCompositeOperation = 'source-in'; o.fillStyle = 'rgba(52,58,72,0.85)'; o.fillRect(0, 0, cw, ch);
+  o.globalCompositeOperation = 'destination-out'; o.drawImage(A, 0, 0);
+  /* the colour, broken by the pencil grain */
+  a.globalCompositeOperation = 'destination-in'; const pat = a.createPattern(pencilTex(), 'repeat'); a.fillStyle = pat; a.fillRect(0, 0, cw, ch);
+  c.save(); c.setTransform(1, 0, 0, 1, 0, 0); c.drawImage(A, 0, 0); c.drawImage(O, 0, 0); c.restore();
 }
 /* ----- one entry for the runtime ----- */
 function sc3Reset(sp, r) {

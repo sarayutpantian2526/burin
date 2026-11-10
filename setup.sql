@@ -64,7 +64,10 @@ create policy "shares: owner writes" on public.shares for all to authenticated u
 grant select on public.shares to anon;
 grant select, insert, update, delete on public.shares to authenticated;
 
--- 6) งานมอบหมายและการส่งงาน (ผู้เรียนส่งได้โดยไม่ต้องมีบัญชี เฉพาะงานที่เปิดรับ ครูเจ้าของงานเท่านั้นที่เห็นงานที่ส่ง)
+-- 6) งานมอบหมายและการส่งงาน
+--    ผู้เรียนส่งได้โดยไม่ต้องมีบัญชี เฉพาะงานที่เปิดรับและยังไม่เลยกำหนดส่ง (หรือครูขยายเวลาให้)
+--    ผู้เรียนเปิดงานได้เฉพาะงานที่มีลิงก์ ดูรายการงานของห้องได้ด้วยรหัสห้อง ไม่มีใครดึงงานของครูทุกคนออกไปได้
+--    เวลาส่งใช้เวลาของเซิร์ฟเวอร์ ผู้เรียนแก้เวลาส่งหรือใส่คะแนนให้ตัวเองไม่ได้ ครูเจ้าของงานเท่านั้นที่เห็นงานที่ส่ง
 create table if not exists public.assignments (
   id text primary key,
   owner uuid not null default auth.uid() references auth.users (id) on delete cascade,
@@ -77,9 +80,8 @@ create table if not exists public.assignments (
 alter table public.assignments enable row level security;
 drop policy if exists "assignments: read with the link" on public.assignments;
 drop policy if exists "assignments: owner writes" on public.assignments;
-create policy "assignments: read with the link" on public.assignments for select to anon, authenticated using (true);
 create policy "assignments: owner writes" on public.assignments for all to authenticated using (owner = auth.uid()) with check (owner = auth.uid());
-grant select on public.assignments to anon;
+revoke select on public.assignments from anon;
 grant select, insert, update, delete on public.assignments to authenticated;
 
 create table if not exists public.submissions (
@@ -89,13 +91,39 @@ create table if not exists public.submissions (
   data jsonb not null,
   created_at timestamptz not null default now()
 );
+create index if not exists submissions_assignment on public.submissions (assignment);
 alter table public.submissions enable row level security;
+
+-- รับงานชิ้นนี้ได้ไหม: งานเปิดรับ ยังไม่เลยกำหนด หรือครูขยายเวลาให้ทั้งห้องหรือให้ผู้เรียนคนนี้
+-- (รหัสผู้เรียนที่ได้ขยายเวลาเก็บเป็นค่าแฮช) เวลาส่งต้องเป็นเวลาจริง และผู้เรียนใส่คะแนนหรือผลตรวจเองไม่ได้
+create or replace function public.hw_submit_ok(p_aid text, p_data jsonb, p_at timestamptz)
+returns boolean language sql stable security definer set search_path = public as $$
+  select exists (select 1 from public.assignments a where a.id = p_aid and (
+    a.owner = auth.uid()
+    or (a.open
+      and p_at between now() - interval '5 minutes' and now() + interval '5 minutes'
+      and not (coalesce(p_data, '{}'::jsonb) ?| array['manual', 'manualWork', 'ai'])
+      and coalesce(p_data->>'by', '') <> 'teacher'
+      and (a.due is null or now() <= a.due
+        or now() <= nullif(a.data->'ext'->>'all', '')::timestamptz
+        or (p_data->'stu' ? 'sid' and now() <= nullif(a.data->'ext'->'stu'->>left(encode(sha256(convert_to(coalesce(a.data->>'clsId', '') || '|id|' || lower(p_data->'stu'->>'sid'), 'UTF8')), 'hex'), 18), '')::timestamptz)))));
+$$;
+-- มีผู้เรียนคนใดที่ยังส่งงานนี้ได้อยู่ไหม (ใช้กับไฟล์แนบ ซึ่งยังไม่รู้ว่าเป็นของใคร)
+create or replace function public.hw_accepts_any(aid text)
+returns boolean language sql stable security definer set search_path = public as $$
+  select exists (select 1 from public.assignments a where a.id = aid and a.open and (
+    a.due is null or now() <= a.due
+    or now() <= nullif(a.data->'ext'->>'all', '')::timestamptz
+    or exists (select 1 from jsonb_each_text(coalesce(a.data->'ext'->'stu', '{}'::jsonb)) e where now() <= nullif(e.value, '')::timestamptz)));
+$$;
+
 drop policy if exists "submissions: hand in to an open assignment" on public.submissions;
+drop policy if exists "submissions: hand in on time" on public.submissions;
 drop policy if exists "submissions: teacher reads" on public.submissions;
 drop policy if exists "submissions: teacher marks" on public.submissions;
 drop policy if exists "submissions: teacher deletes" on public.submissions;
-create policy "submissions: hand in to an open assignment" on public.submissions for insert to anon, authenticated
-  with check (exists (select 1 from public.assignments a where a.id = assignment and a.open));
+create policy "submissions: hand in on time" on public.submissions for insert to anon, authenticated
+  with check (public.hw_submit_ok(assignment, data, created_at));
 create policy "submissions: teacher reads" on public.submissions for select to authenticated
   using (exists (select 1 from public.assignments a where a.id = assignment and a.owner = auth.uid()));
 create policy "submissions: teacher marks" on public.submissions for update to authenticated
@@ -105,6 +133,29 @@ create policy "submissions: teacher deletes" on public.submissions for delete to
 grant insert on public.submissions to anon;
 grant select, insert, update, delete on public.submissions to authenticated;
 
+create or replace function public.hw_is_owner(aid text)
+returns boolean language sql stable security definer set search_path = public as $$
+  select exists (select 1 from public.assignments a where a.id = aid and a.owner = auth.uid());
+$$;
+-- เปิดงานด้วยลิงก์ และดูรายการงานของห้อง
+create or replace function public.hw_get(p_id text)
+returns setof public.assignments language sql stable security definer set search_path = public as $$
+  select * from public.assignments where id = p_id;
+$$;
+create or replace function public.hw_class(p_cls text)
+returns setof public.assignments language sql stable security definer set search_path = public as $$
+  select * from public.assignments where p_cls is not null and length(p_cls) >= 6 and data->>'clsId' = p_cls order by created_at limit 300;
+$$;
+-- ผู้เรียนดูว่าตัวเองส่งงานใดไปแล้วเมื่อไร (ไม่เห็นคำตอบหรือคะแนน และไม่เห็นงานของคนอื่น)
+create or replace function public.hw_mine(p_cls text, p_sid text, p_ids text[] default '{}')
+returns table (a_id text, s_id text, at timestamptz) language sql stable security definer set search_path = public as $$
+  select s.assignment, s.id, s.created_at from public.submissions s join public.assignments a on a.id = s.assignment
+  where (p_cls is not null and p_sid is not null and length(p_sid) > 0 and a.data->>'clsId' = p_cls and lower(s.data->'stu'->>'sid') = lower(p_sid))
+     or s.id = any(coalesce(p_ids, '{}'))
+  order by s.created_at desc limit 500;
+$$;
+grant execute on function public.hw_get(text), public.hw_class(text), public.hw_mine(text, text, text[]), public.hw_accepts_any(text), public.hw_submit_ok(text, jsonb, timestamptz), public.hw_is_owner(text) to anon, authenticated;
+
 insert into storage.buckets (id, name, public, file_size_limit)
 values ('burin-sub', 'burin-sub', false, 10485760)
 on conflict (id) do update set public = false, file_size_limit = 10485760;
@@ -112,7 +163,7 @@ drop policy if exists "homework files: hand in" on storage.objects;
 drop policy if exists "homework files: teacher reads" on storage.objects;
 drop policy if exists "homework files: teacher deletes" on storage.objects;
 create policy "homework files: hand in" on storage.objects for insert to anon, authenticated
-  with check (bucket_id = 'burin-sub' and exists (select 1 from public.assignments a where a.id = (storage.foldername(name))[1] and a.open));
+  with check (bucket_id = 'burin-sub' and (public.hw_accepts_any((storage.foldername(name))[1]) or public.hw_is_owner((storage.foldername(name))[1])));
 create policy "homework files: teacher reads" on storage.objects for select to authenticated
   using (bucket_id = 'burin-sub' and exists (select 1 from public.assignments a where a.id = (storage.foldername(name))[1] and a.owner = auth.uid()));
 create policy "homework files: teacher deletes" on storage.objects for delete to authenticated
