@@ -41,6 +41,7 @@ function hwReceipts() { return hwLS('tp-hwrc', {}); }
 function hwReceiptAdd(aid, sid) {
   const r = hwReceipts(); (r[aid] = r[aid] || []).push({ s: sid, at: now() }); r[aid] = r[aid].slice(-10); store_ls.set('tp-hwrc', JSON.stringify(r));
   const sent = hwLS('tp-sent', []); if (!sent.includes(aid)) { sent.push(aid); store_ls.set('tp-sent', JSON.stringify(sent.slice(-300))); }
+  hwEntryShow();
 }
 /* the classes this device has confirmed a learner in */
 function hwIdents() { const out = []; try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k && k.indexOf('tp-ident-') === 0) { const v = hwLS(k, null); if (v && v.sid) out.push({ cls: k.slice(9), who: v }); } } } catch (e) { /* storage blocked */ } return out; }
@@ -94,6 +95,7 @@ async function hwHubOpen(clsId) {
   hwRemember(all.map((a) => ({ id: a.id, title: a.title, due: a.due, cls: a.data && a.data.clsId })));
   const myIds = idents.filter((x) => classes.includes(x.cls));
   const mine = await hwMine(sb, myIds);
+  if (mine.cloud) { const sent = hwLS('tp-sent', []); for (const aid of Object.keys(mine.got)) if (!sent.includes(aid)) sent.push(aid); store_ls.set('tp-sent', JSON.stringify(sent.slice(-300))); hwEntryShow(); }
   host.innerHTML = '';
   const lbl = clsId && all[0] && all[0].data.cls && all[0].data.cls.label; if (lbl) $('#hwsTitle').textContent = 'งานทั้งเทอม ' + lbl;
   if (failed && !all.length) { host.appendChild(exEl('div', 'note err', 'โหลดงานไม่ได้ ลองอีกครั้ง')); return; }

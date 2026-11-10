@@ -999,6 +999,8 @@ details.qsopt[open] { gap: 10px; }
 #painterBox { display: flex; flex-direction: column; gap: 8px; }
 #painterBox[hidden] { display: none; }
 .sonly { display: none; }
+#bMyWorkTop { position: relative; }
+#bMyWorkTop .wkn { position: absolute; top: -6px; right: -6px; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 999px; background: var(--danger); color: #FFFFFF; font-size: 12px; line-height: 20px; text-align: center; }
 body.role-student .sonly { display: inline-flex; }
 body.role-student #bLive, body.role-student #bPresent, body.role-student #fqAI,
 body.role-student #exTabs button[data-t="build"], body.role-student #exTabs button[data-t="sets"], body.role-student #bTray, body.role-student #sKey, body.role-student #exTabs button[data-t="analysis"], body.role-student #exTabs button[data-t="bank"], body.role-student #exTabs button[data-t="grades"], body.role-student #exTabs button[data-t="hw"], body.role-student #exTabs button[data-t="cls"], body.role-student #iPrep { display: none !important; }
@@ -1936,6 +1938,7 @@ body.role-student .scnpill .sbtns button[data-s="back"], body.role-student .scnp
     <button class="btn" id="bLive" aria-label="ห้องเรียนสด" title="ห้องเรียนสด"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="2.5" y="4" width="15" height="9.5" rx="1.6" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M6 17h8 M10 13.5V17" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="8.7" r="1.9" fill="currentColor"/></svg><span class="lbl">ห้องสด</span><i id="bLiveN"></i></button>
     <button class="btn" id="bViewer" aria-label="นำเสนอ" title="นำเสนอ: ต่อจอใหญ่ หรือเปิดจอแสดงผลแบบนักเรียนบนเครื่องอื่น"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="2.5" y="3.5" width="15" height="10" rx="1.4" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M7 17h6 M10 13.5V17" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M8.5 6.5v4l3.5-2z" fill="currentColor"/></svg><span class="lbl">นำเสนอ</span></button>
     <button class="btn" id="bExam" aria-label="ฝึกโจทย์และสอบ" title="ฝึกโจทย์และสอบ"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6 3.5h8v3.5a4 4 0 0 1-8 0z M6 5H3.5v1a3 3 0 0 0 3 3 M14 5h2.5v1a3 3 0 0 1-3 3 M10 11v3 M7 16.5h6 M8 14h4v2.5H8z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/></svg><span class="lbl">ฝึกแข่งขัน</span></button>
+    <button class="btn sonly" id="bMyWorkTop" aria-label="งานของฉัน การบ้านที่ครูมอบหมายและสิ่งที่ส่งแล้ว" title="การบ้านที่ครูมอบหมาย ส่งงาน และดูว่าส่งอะไรไปแล้ว"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7 3.5h6v2H7z M5.5 4.5H4v13h12v-13h-1.5 M7 11l2 2 4-4.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/></svg><span class="lbl">งานของฉัน</span><b class="wkn" id="bMyWorkN" hidden></b></button>
     <span class="tsep" aria-hidden="true"></span>
     <button class="btn" id="bExport" aria-label="ส่งออก PDF" title="ส่งออก PDF"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3v9 M6.5 8.5L10 12l3.5-3.5 M4 14.5V17h12v-2.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="lbl">ส่งออก</span></button>
     <button class="btn icon" id="bFull" aria-label="เต็มหน้าจอ" title="เต็มหน้าจอ"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 7.5V3h4.5 M12.5 3H17v4.5 M17 12.5V17h-4.5 M7.5 17H3v-4.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
@@ -17860,8 +17863,12 @@ function hwKeep(list) {
   for (const a of list || []) { if (!a || !a.id) continue; const i = known.findIndex((x) => x.id === a.id), v = { id: a.id, title: a.title || '', due: a.due || null, cls: a.cls || null, at: now() }; if (i >= 0) known[i] = Object.assign(known[i], v); else known.push(v); }
   store_ls.set('tp-myhw', JSON.stringify(known.slice(-200))); hwEntryShow();
 }
-function hwEntryShow() { const b = $('#bMyWork'); if (!b) return; let n = 0; try { n = JSON.parse(store_ls.get('tp-myhw') || '[]').length; for (let i = 0; i < localStorage.length && !n; i++) if (String(localStorage.key(i)).indexOf('tp-ident-') === 0 && localStorage.getItem(localStorage.key(i))) n = 1; } catch (e) { n = 0; } b.hidden = !n; }
+function hwEntryShow() {
+  /* the top bar on the learner's side shows how many pieces of work are still open and not handed in from here */
+  try { const n0 = $('#bMyWorkN'); if (n0) { const sent = JSON.parse(store_ls.get('tp-sent') || '[]'), t = now(); const n = JSON.parse(store_ls.get('tp-myhw') || '[]').filter((x) => !sent.includes(x.id) && (!x.due || Date.parse(x.due) > t)).length; n0.textContent = n; n0.hidden = !n; } } catch (e) { /* storage blocked */ }
+  const b = $('#bMyWork'); if (!b) return; let n = 0; try { n = JSON.parse(store_ls.get('tp-myhw') || '[]').length; for (let i = 0; i < localStorage.length && !n; i++) if (String(localStorage.key(i)).indexOf('tp-ident-') === 0 && localStorage.getItem(localStorage.key(i))) n = 1; } catch (e) { n = 0; } b.hidden = !n; }
 $('#bMyWork').onclick = () => { location.hash = 'mywork'; openMyWork(); };
+$('#bMyWorkTop').onclick = () => { location.hash = 'mywork'; openMyWork(); };
 hwEntryShow();
 function liveStudentPill(msg) {
   { const f = $('#lpFollow'); if (f) f.setAttribute('aria-pressed', LIVE.follow ? 'true' : 'false'); } $('#lpMsg').textContent = 'ห้อง ' + LIVE.code + (/^(เชื่อมต่อแล้ว|กำลังเชื่อมต่อ)$/.test(msg) ? '' : ' ' + msg); $('#lpDot').title = 'ห้อง ' + LIVE.code + ' ' + msg; $('#livePill').dataset.s = /เชื่อมต่อแล้ว/.test(msg) ? 'on' : 'wait'; $('#lpFollow').setAttribute('aria-pressed', LIVE.follow ? 'true' : 'false'); }
@@ -20842,7 +20849,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1794280437';
+const BUILD = '1794285288';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
