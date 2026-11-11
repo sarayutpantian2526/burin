@@ -859,11 +859,170 @@ function scSprite(id) {
   return s.ok ? s.im : null;
 }
 /* the selected strokes and pictures on a clear background, cut tight */
+/* ---------- what moves and what stays. A drawing that is coloured, on a page with a coloured background (sky, ground, a
+   picture underneath), is circled loosely: the circle catches bits of the background too. The object is what its outline
+   holds: the outline lines and the colour mostly inside them move; colour mostly outside (the background) stays, and so
+   does a picture larger than the object (a photo it sits on). The object's colour that ran over its edge is trimmed to the
+   edge, the object is solid (paper white inside its outline) so it does not show what it passes over, and where it leaves a
+   hole in a coloured background the hole is filled from the colour around it ---------- */
+const MV_SOFT = new Set(['brush', 'marker', 'crayon', 'water', 'oil', 'spray', 'soft', 'chalk']);
+/* an outline line, as opposed to colouring */
+const mvIsLine = (s) => s.k !== 'h' && s.k !== 'n' && !(s.o > 0 && s.o < 0.85) && (s.w || 3) <= 9 && !MV_SOFT.has(s.t);
+const mvPts = (s) => { const p = s.p || [], o = []; for (let j = 0; j + 1 < p.length; j += 3) o.push([p[j] / 10, p[j + 1] / 10]); return o; };
+/* the same points with more in between (every 3 px), so a long straight piece of colour is judged along its length */
+function mvDense(p) { const o = []; for (let j = 0; j + 2 < p.length + 1; j += 3) { if (j >= 3) { const ax = p[j - 3], ay = p[j - 2], az = p[j - 1], bx = p[j], by = p[j + 1], bz = p[j + 2], L = Math.hypot(bx - ax, by - ay) / 10, n = Math.min(200, Math.floor(L / 3)); for (let i = 1; i < n; i++) { const t = i / n; o.push(Math.round(ax + (bx - ax) * t), Math.round(ay + (by - ay) * t), Math.round(az + (bz - az) * t)); } } o.push(p[j], p[j + 1], p[j + 2]); } return o; }
+/* the shape the outlines hold, on a coarse grid: lines are thickened to close small gaps, then everything the page edge
+   cannot reach is inside */
+function mvShape(strokes) {
+  const lines = strokes.filter(mvIsLine), use = lines.length ? lines : strokes;
+  let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+  for (const s of use) for (const [x, y] of mvPts(s)) { x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y); }
+  if (!(x1 > x0) && !(y1 > y0)) return null;
+  const pad = 14; x0 -= pad; y0 -= pad; x1 += pad; y1 += pad;
+  const m = clamp(320 / Math.max(x1 - x0, y1 - y0), 0.2, 1), mw = Math.max(4, Math.ceil((x1 - x0) * m)), mh = Math.max(4, Math.ceil((y1 - y0) * m));
+  const cv = document.createElement('canvas'); cv.width = mw; cv.height = mh; const c = cv.getContext('2d');
+  c.setTransform(m, 0, 0, m, -x0 * m, -y0 * m); c.strokeStyle = '#000'; c.fillStyle = '#000'; c.lineCap = 'round'; c.lineJoin = 'round';
+  for (const s of use) { const P = mvPts(s); if (!P.length) continue; c.lineWidth = (s.w || 3) + (lines.length ? 7 : 2); c.beginPath(); c.moveTo(P[0][0], P[0][1]); if (P.length === 1) c.lineTo(P[0][0] + 0.1, P[0][1]); for (const q of P) c.lineTo(q[0], q[1]); c.stroke(); }
+  const d = c.getImageData(0, 0, mw, mh).data, N = mw * mh, ink = new Uint8Array(N), out = new Uint8Array(N), st = [];
+  for (let i = 0; i < N; i++) ink[i] = d[i * 4 + 3] > 100 ? 1 : 0;
+  const push = (i) => { if (!out[i] && !ink[i]) { out[i] = 1; st.push(i); } };
+  for (let x = 0; x < mw; x++) { push(x); push((mh - 1) * mw + x); } for (let y = 0; y < mh; y++) { push(y * mw); push(y * mw + mw - 1); }
+  while (st.length) { const i = st.pop(), x = i % mw, y = (i / mw) | 0; if (x > 0) push(i - 1); if (x < mw - 1) push(i + 1); if (y > 0) push(i - mw); if (y < mh - 1) push(i + mw); }
+  const inside = new Uint8Array(N); let nIn = 0, nInk = 0; for (let i = 0; i < N; i++) { if (!out[i]) { inside[i] = 1; nIn++; } if (ink[i]) nInk++; }
+  const at = (x, y) => { const X = Math.floor((x - x0) * m), Y = Math.floor((y - y0) * m); return X >= 0 && Y >= 0 && X < mw && Y < mh && inside[Y * mw + X] === 1; };
+  /* how deep each inside point is (in page px), to trim colour at the drawn edge rather than at the widened one */
+  const dist = new Uint8Array(N), q = []; for (let i = 0; i < N; i++) if (!inside[i]) q.push(i); else dist[i] = 255;
+  for (let h0 = 0; h0 < q.length; h0++) { const i = q[h0], x = i % mw, y = (i / mw) | 0, dv = dist[i] + 1; if (dv > 40) continue; for (const j of [x > 0 ? i - 1 : -1, x < mw - 1 ? i + 1 : -1, y > 0 ? i - mw : -1, y < mh - 1 ? i + mw : -1]) if (j >= 0 && dist[j] > dv) { dist[j] = dv; q.push(j); } }
+  const deep = (x, y, need) => { const X = Math.floor((x - x0) * m), Y = Math.floor((y - y0) * m); return X >= 0 && Y >= 0 && X < mw && Y < mh && inside[Y * mw + X] === 1 && dist[Y * mw + X] / m >= need; };
+  return { x0, y0, x1, y1, m, mw, mh, inside, at, deep, band: lines.length ? 3.5 : 1, solid: lines.length > 0 && nIn > nInk * 1.25, lines: new Set(lines.map((q) => q.id)) };
+}
+/* which of the circled strokes belong to the object */
+function mvSplit(list) {
+  const sh = mvShape(list.map((r) => r.s)); if (!sh || !sh.lines.size) return { keep: list, drop: [] };
+  const bw = sh.x1 - sh.x0, bh = sh.y1 - sh.y0, keep = [], drop = [];
+  for (const r of list) {
+    if (sh.lines.has(r.s.id)) { keep.push(r); continue; }
+    const P = mvPts({ p: mvDense(r.s.p || []) }); if (!P.length) { keep.push(r); continue; }
+    let k = 0; for (const q of P) if (sh.at(q[0], q[1])) k++;
+    const f = k / P.length, b = sbox(r.s), big = (b[2] - b[0]) * (b[3] - b[1]) > 1.5 * bw * bh;
+    if (f >= 0.6 || (f > 0.2 && !big)) keep.push(r); else drop.push(r);
+  }
+  return { keep, drop };
+}
+/* colour trimmed at the object's edge (the same stroke, its points outside the outline left out) */
+function mvTrim(s, sh) {
+  if (sh.lines.has(s.id) || !sh.solid) return s;
+  const need = sh.band + Math.max(0, (s.w || 3) / 2 - 1.5), p = mvDense(s.p || []), q = []; let cut = false; for (let j = 0; j + 2 < p.length + 1; j += 3) { if (sh.deep(p[j] / 10, p[j + 1] / 10, need)) q.push(p[j], p[j + 1], p[j + 2]); else cut = true; }
+  return q.length >= 3 && cut ? Object.assign({}, s, { p: q }) : s;
+}
+/* the object made solid: paper white across what its outline holds, drawn under it as close rows of white */
+function mvFill(sh) {
+  if (!sh || !sh.solid) return [];
+  const out = [], step = Math.max(1, Math.round(3 * sh.m)), w = 3 / 1 + 1.8;
+  for (let Y = 0; Y < sh.mh; Y += step) {
+    let X = 0;
+    while (X < sh.mw) {
+      const ok = (X) => sh.deep(sh.x0 + (X + 0.5) / sh.m, sh.y0 + (Y + 0.5) / sh.m, sh.band);
+      while (X < sh.mw && !ok(X)) X++; const a = X;
+      while (X < sh.mw && ok(X)) X++; const z = X;
+      if (z > a) { const y = sh.y0 + (Y + 0.5) / sh.m; out.push({ id: 'u' + uid(), k: 'p', c: '#FFFFFF', w: w * Math.max(1, step / sh.m / 3), p: [Math.round((sh.x0 + a / sh.m) * 10), Math.round(y * 10), 50, Math.round((sh.x0 + z / sh.m) * 10), Math.round(y * 10), 50] }); }
+    }
+  }
+  return out.length > 600 ? [] : out;
+}
+/* the hole the object leaves in a coloured background, filled from the colour around it (only where nothing else is
+   drawn), as a picture under the writing */
+async function mvPatch(sh, objIds) {
+  if (!sh || !sh.solid) return null;
+  const pad = 56, X0 = sh.x0 - pad, Y0 = sh.y0 - pad, X1 = sh.x1 + pad, Y1 = sh.y1 + pad, k = clamp(Math.min(window.devicePixelRatio || 1, 2) * Math.min(1, 520 / Math.max(X1 - X0, Y1 - Y0)), 0.3, 2); /* drawn at the screen's own sharpness, so crayon and brush grain match */
+  const w = Math.max(4, Math.round((X1 - X0) * k)), h = Math.max(4, Math.round((Y1 - Y0) * k));
+  const cv = document.createElement('canvas'); cv.width = w; cv.height = h; const c = cv.getContext('2d'); c.setTransform(k, 0, 0, k, -X0 * k, -Y0 * k);
+  for (const it of (S.page.items || []).filter((t) => t.type === 'img')) { const el = itemsEl.querySelector('.item[data-id="' + it.id + '"] img'); if (el && el.complete && el.naturalWidth) { const b = itemBox(it); if (b[2] < X0 || b[0] > X1 || b[3] < Y0 || b[1] > Y1) continue; try { c.drawImage(el, b[0], b[1], b[2] - b[0], b[3] - b[1]); } catch (e) { /* skip */ } } }
+  const rest = allStrokes().filter((r) => !objIds.has(r.s.id) && r.layer !== 'teacher').filter((r) => { const b = sbox(r.s); return !(b[2] < X0 || b[0] > X1 || b[3] < Y0 || b[1] > Y1); });
+  drawInto(c, rest, null);
+  let img; try { img = c.getImageData(0, 0, w, h); } catch (e) { return null; } /* a picture from another site cannot be read */
+  const d = img.data, N = w * h, ins = new Uint8Array(N), ring = new Uint8Array(N);
+  const inAt = (x, y) => sh.at(X0 + (x + 0.5) / k, Y0 + (y + 0.5) / k);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (inAt(x, y)) ins[y * w + x] = 1;
+  const r = Math.max(2, Math.round(16 * k)); /* the white margin often left when colouring round a drawing */
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const i = y * w + x; if (ins[i]) continue; let near = false; for (let dy = -r; dy <= r && !near; dy += Math.max(1, r >> 1)) for (let dx = -r; dx <= r && !near; dx += Math.max(1, r >> 1)) { const X = x + dx, Y = y + dy; if (X >= 0 && Y >= 0 && X < w && Y < h && ins[Y * w + X]) near = true; } if (near) ring[i] = 1; }
+  const colored = (i) => d[i * 4 + 3] > 40 && !(d[i * 4] > 235 && d[i * 4 + 1] > 235 && d[i * 4 + 2] > 235);
+  let nr = 0, nc = 0, nh = 0, ni = 0; for (let i = 0; i < N; i++) { if (ring[i]) { nr++; if (colored(i)) nc++; } if (ins[i]) { ni++; if (!colored(i)) nh++; } }
+  if (!nr || nc < 0.3 * nr || nh < 0.12 * ni) return null; /* no coloured background round it, or nothing left uncovered */
+  /* known colour spreads inward ring by ring into the uncovered part of the hole */
+  const known = new Uint8Array(N), hole = new Uint8Array(N);
+  for (let i = 0; i < N; i++) { if ((ins[i] || ring[i]) && !colored(i)) hole[i] = 1; else if (colored(i)) known[i] = 1; }
+  { /* a wider white gap, when the colour closes round it all the way (one that runs out to open paper is left alone) */
+    const reg = new Uint8Array(N), st = []; let edge = false;
+    for (let i = 0; i < N; i++) if (hole[i]) { reg[i] = 1; st.push(i); }
+    while (st.length && !edge) { const i = st.pop(), x = i % w, y = (i / w) | 0; if (x === 0 || y === 0 || x === w - 1 || y === h - 1) { edge = true; break; } for (const j of [i - 1, i + 1, i - w, i + w]) if (!reg[j] && !colored(j)) { reg[j] = 1; st.push(j); } }
+    if (!edge) for (let i = 0; i < N; i++) if (reg[i]) hole[i] = 1;
+  }
+  const src = new Uint8ClampedArray(d); /* the background as drawn, for its texture */
+  const out = new Uint8ClampedArray(N * 4); let left = 0; for (let i = 0; i < N; i++) if (hole[i]) left++;
+  /* ring by ring from the known colour inward: each wave takes the average of the neighbours already known */
+  let wave = []; const queued = new Uint8Array(N);
+  const nb = (i) => { const x = i % w, y = (i / w) | 0, o = []; if (x > 0) o.push(i - 1); if (x < w - 1) o.push(i + 1); if (y > 0) o.push(i - w); if (y < h - 1) o.push(i + w); return o; };
+  for (let i = 0; i < N; i++) if (hole[i] && !known[i] && nb(i).some((j) => known[j])) { wave.push(i); queued[i] = 1; }
+  for (let pass = 0; pass < 2000 && wave.length; pass++) {
+    const vals = wave.map((i) => { let R = 0, G = 0, B = 0, A = 0, n = 0; for (const j of nb(i)) if (known[j]) { R += d[j * 4]; G += d[j * 4 + 1]; B += d[j * 4 + 2]; A += d[j * 4 + 3]; n++; } return [R / n, G / n, B / n, A / n]; });
+    const next = [];
+    wave.forEach((i, t) => { const v = vals[t]; d[i * 4] = out[i * 4] = v[0]; d[i * 4 + 1] = out[i * 4 + 1] = v[1]; d[i * 4 + 2] = out[i * 4 + 2] = v[2]; d[i * 4 + 3] = out[i * 4 + 3] = v[3]; known[i] = 1; });
+    for (const i of wave) for (const j of nb(i)) if (hole[j] && !known[j] && !queued[j]) { queued[j] = 1; next.push(j); }
+    wave = next;
+  }
+  /* the colour alone looks flat beside crayon or brush: each filled point takes the texture of a nearby piece of the same
+     background (a small square fully coloured, outside the hole), repeated */
+  const T = Math.max(8, Math.round(26 * k)), tiles = [];
+  for (let ty = 0; ty + T <= h; ty += T >> 1) for (let tx = 0; tx + T <= w; tx += T >> 1) {
+    let n = 0, R = 0, G = 0, B = 0, A = 0, bad = false;
+    for (let y = ty; y < ty + T && !bad; y++) for (let x = tx; x < tx + T; x++) { const i = y * w + x; if (ins[i] || ring[i]) { bad = true; break; } const a = src[i * 4 + 3]; if (a > 10) n++; R += src[i * 4] * a; G += src[i * 4 + 1] * a; B += src[i * 4 + 2] * a; A += a; }
+    if (bad || n < 0.3 * T * T || !A) continue;
+    tiles.push({ tx, ty, R: R / A, G: G / A, B: B / A, n });
+  }
+  { const mx = Math.max(0, ...tiles.map((t) => t.n)); for (let i = tiles.length - 1; i >= 0; i--) if (tiles[i].n < 0.8 * mx) tiles.splice(i, 1); } /* only the fullest pieces: a texture, not the edge of a patch of colour */
+  /* a few pixels past the hole too, under the thin ragged edge of the colour round it, so no pale seam is left */
+  { const r2 = Math.max(1, Math.round(4 * k)), add = [];
+    for (let i = 0; i < N; i++) { if (hole[i] || !(src[i * 4 + 3] > 0 && src[i * 4 + 3] < 200)) continue; const x = i % w, y = (i / w) | 0; let near = false; for (let dy = -r2; dy <= r2 && !near; dy++) for (let dx = -r2; dx <= r2; dx++) { const X = x + dx, Y = y + dy; if (X >= 0 && Y >= 0 && X < w && Y < h && hole[Y * w + X]) { near = true; break; } } if (near) add.push(i); }
+    for (const i of add) { out[i * 4] = src[i * 4]; out[i * 4 + 1] = src[i * 4 + 1]; out[i * 4 + 2] = src[i * 4 + 2]; out[i * 4 + 3] = 255; } }
+  if (tiles.length) {
+    for (let i = 0; i < N; i++) {
+      if (!out[i * 4 + 3]) continue; const x = i % w, y = (i / w) | 0, r0 = out[i * 4], g0 = out[i * 4 + 1], b0 = out[i * 4 + 2]; /* the colour spread in, matched to the nearest texture of that colour */
+      let best = null, bd = 1e9; for (const t of tiles) { const dd = (t.R - r0) ** 2 + (t.G - g0) ** 2 + (t.B - b0) ** 2 + 0.002 * ((t.tx - x) ** 2 + (t.ty - y) ** 2); if (dd < bd) { bd = dd; best = t; } }
+      if (!best || bd > 5000) continue;
+      const j = (best.ty + (y % T)) * w + best.tx + (x % T); out[i * 4] = src[j * 4]; out[i * 4 + 1] = src[j * 4 + 1]; out[i * 4 + 2] = src[j * 4 + 2]; out[i * 4 + 3] = src[j * 4 + 3];
+    }
+  }
+  const pc = document.createElement('canvas'); pc.width = w; pc.height = h; pc.getContext('2d').putImageData(new ImageData(out, w, h), 0, 0);
+  const blob = await new Promise((res) => pc.toBlob(res, 'image/png')); if (!blob) return null;
+  return { blob, x: X0, y: Y0, w: X1 - X0, ar: (Y1 - Y0) / (X1 - X0) };
+}
+/* applied to a moving drawing as it is made: what it draws (trimmed, solid), what comes back as ink, and the hole's fill */
+async function mvApply(item, opt) {
+  opt = opt || {};
+  const orig = (item.ink || []).map(clone); if (!orig.length) return [];
+  const sh = mvShape(orig); if (!sh) return [];
+  item.orig = orig;
+  if (!opt.person) { item.ink = orig.map((s) => mvTrim(s, sh)); const u = mvFill(sh); if (u.length) item.under = u; }
+  if (opt.noPatch) return [];
+  try {
+    const P = await mvPatch(sh, new Set(orig.map((s) => s.id))); if (!P) return [];
+    const A = await getAssets(); if (!A) return [];
+    const up = await A.upload(P.blob, { type: 'image/png' }); blobUrls.set(up.id, URL.createObjectURL(P.blob));
+    const pid = 'i' + uid(); item.patch = pid;
+    return [{ id: pid, by: DEV, type: 'img', asset: up.id, x: Math.round(P.x), y: Math.round(P.y), w: Math.round(P.w), ar: +P.ar.toFixed(4), mvfill: 1 }];
+  } catch (e) { return []; }
+}
 async function spriteFromSel() {
   const sel = S.sel; if (!sel) return null;
-  const list = sel.strokes.map(findStroke).filter(Boolean).map((s) => ({ s }));
-  const imgs = sel.items.map(findItem).filter((it) => it && it.type === 'img');
+  let list = sel.strokes.map((r) => { const s = findStroke(r); return s ? { s, r } : null; }).filter(Boolean);
+  let imgs = sel.items.map(findItem).filter((it) => it && it.type === 'img');
   if (!list.length && !imgs.length) return null;
+  /* the background caught by the circle stays where it is */
+  if (list.length > 1) list = mvSplit(list).keep;
+  if (list.length) { let a = 1e9, b = 1e9, c2 = -1e9, d2 = -1e9; for (const r of list) { const q = sbox(r.s); a = Math.min(a, q[0]); b = Math.min(b, q[1]); c2 = Math.max(c2, q[2]); d2 = Math.max(d2, q[3]); } const area = Math.max(1, (c2 - a) * (d2 - b)); imgs = imgs.filter((it) => { const q = itemBox(it), ia = (q[2] - q[0]) * (q[3] - q[1]); return !(ia > 2.5 * area && q[0] <= a + 4 && q[1] <= b + 4 && q[2] >= c2 - 4 && q[3] >= d2 - 4); }); }
+  if (!list.length && !imgs.length) return null;
+  const sh = list.length ? mvShape(list.map((r) => r.s)) : null;
   let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
   for (const r of list) { boxCache.delete(r.s); const b = sbox(r.s), pw = (r.s.w || 3) / 2 + 2; x0 = Math.min(x0, b[0] - pw); y0 = Math.min(y0, b[1] - pw); x1 = Math.max(x1, b[2] + pw); y1 = Math.max(y1, b[3] + pw); }
   for (const it of imgs) { const b = itemBox(it); x0 = Math.min(x0, b[0]); y0 = Math.min(y0, b[1]); x1 = Math.max(x1, b[2]); y1 = Math.max(y1, b[3]); }
@@ -871,10 +1030,11 @@ async function spriteFromSel() {
   const cv = document.createElement('canvas'); cv.width = Math.round(w * k); cv.height = Math.round(h * k);
   const c = cv.getContext('2d'); c.setTransform(k, 0, 0, k, -x0 * k, -y0 * k);
   for (const it of imgs) { const el = itemsEl.querySelector('.item[data-id="' + it.id + '"] img'); if (el && el.complete && el.naturalWidth) { const b = itemBox(it); try { c.drawImage(el, b[0], b[1], b[2] - b[0], b[3] - b[1]); } catch (e) { /* picture from another site */ } } }
-  if (list.length) drawInto(c, list, null);
+  if (sh) for (const u of mvFill(sh)) drawStroke(c, u);
+  if (list.length) drawInto(c, list.map((r) => ({ s: sh ? mvTrim(r.s, sh) : r.s })), null);
   let blob = null; try { blob = await new Promise((res) => cv.toBlob(res, 'image/png')); } catch (e) { blob = null; }
   if (!blob) return null;
-  return { blob, box: [x0, y0, x1, y1], ar: h / w, refs: sel.strokes.slice(), items: imgs.map((it) => it.id), ink: list.map((r) => clone(r.s)) };
+  return { blob, box: [x0, y0, x1, y1], ar: h / w, refs: list.map((r) => r.r), items: imgs.map((it) => it.id), ink: list.map((r) => clone(r.s)) };
 }
 function spriteBody(img, ar, S0, extra) { const w = ar >= 1 ? S0 / ar : S0, h = ar >= 1 ? S0 : S0 * ar; return Object.assign({ id: 'A', label: 'วัตถุ', shape: 'box', img, w: +w.toFixed(3), h: +h.toFixed(3), m: 1, e: 0, hull: [[-w / 2, -h / 2], [w / 2, -h / 2], [w / 2, h / 2], [-w / 2, h / 2]], skin: 0.004 }, extra || {}); }
 function ipHull(pts) {
@@ -1127,17 +1287,19 @@ async function placeMotion(sp, make, person) {
   const keepImgs = sp.items.map(findItem).filter(Boolean).map(clone);
   const before = clone(S.page.items || []);
   const item = { id: 'i' + uid(), by: DEV, type: 'scene', spec: scClean(spec), x, y, w, ink: sp.ink.slice(0, 400), pics: keepImgs.slice(0, 6) };
-  setItems(before.filter((t) => !sp.items.includes(t.id)).concat([item]), before);
+  const extra = person ? [] : await mvApply(item, {}); delete item.under; if (item.orig) { item.ink = item.orig; delete item.orig; }
+  setItems(before.filter((t) => !sp.items.includes(t.id)).concat([item], extra), before);
   clearSel();
   toast('ภาพเคลื่อนที่ได้แล้ว กดเล่น ปรับค่าด้วยแถบเลื่อน', 2600);
 }
 function restoreInk(it) {
   if (!it || !S.page) return;
   const mine = layerArr(DEV), have = new Set(mine.map((s) => s.id));
-  for (const s of (it.ink || []).concat(it.hide || [])) if (!have.has(s.id)) mine.push(clone(s));
-  if ((it.ink || []).length || (it.hide || []).length) { saveLayers(new Set([DEV])); drawInk(); }
+  const ink0 = it.orig || it.ink || [];
+  for (const s of ink0.concat(it.hide || [])) if (!have.has(s.id)) mine.push(clone(s));
+  if (ink0.length || (it.hide || []).length) { saveLayers(new Set([DEV])); drawInk(); }
   const before = clone(S.page.items || []);
-  setItems(before.filter((t) => t.id !== it.id).concat((it.back || (it.spec && it.spec.bare ? [] : it.pics) || []).map(clone)), before);
+  setItems(before.filter((t) => t.id !== it.id && t.id !== it.patch).concat((it.back || (it.spec && it.spec.bare ? [] : it.pics) || []).map(clone)), before);
   SCN.delete(it.id);
 }
 
@@ -1335,6 +1497,7 @@ function ipDrawInk(c, it, r, b, X, Y) {
     const wheels = rig.wheels || [], inW = new Set(); wheels.forEach((w) => w.i.forEach((k) => inW.add(k)));
     if (wheels.length) { const last = r.lastPos || [b.x, b.y]; const ds = (b.x - last[0]) * Math.cos(b.ang) + (b.y - last[1]) * Math.sin(b.ang); r.roll = (r.roll || 0) + ds; r.lastPos = [b.x, b.y]; }
     for (const q of it.pics || []) { const im = q.asset ? scSprite(q.asset) : q.url ? scSpriteUrl(q.url) : null; if (im) c.drawImage(im, q.x, q.y, q.w, q.h); }
+    for (const u of it.under || []) drawStroke(c, u);
     it.ink.forEach((s, k) => { if (!inW.has(k)) drawStroke(c, s); });
     for (const w of wheels) { const kpx = rig.K || 100; c.save(); c.translate(w.cx, w.cy); c.rotate((r.roll || 0) * kpx / Math.max(4, w.r)); c.translate(-w.cx, -w.cy); w.i.forEach((k) => it.ink[k] && drawStroke(c, it.ink[k])); c.restore(); }
   }
@@ -1384,7 +1547,7 @@ async function placeInPlace(sp, kind, act, edge) {
   let top = B[1]; if (att) top = Math.min(top, att.end[1]);
   const ry0 = Math.round(clamp(top - 90, 0, H - 200)), ry1 = H;
   const surf = [];
-  for (const r of others) { if (att && r === att.r) continue; const P = ipRdp(ipPts(r.s), 3); for (let i = 1; i < P.length && surf.length < 40; i++) { const a = P[i - 1], z = P[i]; if (Math.hypot(z[0] - a[0], z[1] - a[1]) < 18) continue; if (Math.max(a[1], z[1]) < ry0) continue; const A = toW(a), Z = toW(z); surf.push({ x1: +A[0].toFixed(3), y1: +A[1].toFixed(3), x2: +Z[0].toFixed(3), y2: +Z[1].toFixed(3), mu: 0.25, mus: 0.35 }); } }
+  for (const r of others) { if (att && r === att.r) continue; if (r.s.k === 'h' || r.s.k === 'n' || (MV_SOFT.has(r.s.t) && (r.s.w || 3) > 14)) continue; /* colouring (a sky, a lawn) is not a floor or a wall */ const P = ipRdp(ipPts(r.s), 3); for (let i = 1; i < P.length && surf.length < 40; i++) { const a = P[i - 1], z = P[i]; if (Math.hypot(z[0] - a[0], z[1] - a[1]) < 18) continue; if (Math.max(a[1], z[1]) < ry0) continue; const A = toW(a), Z = toW(z); surf.push({ x1: +A[0].toFixed(3), y1: +A[1].toFixed(3), x2: +Z[0].toFixed(3), y2: +Z[1].toFixed(3), mu: 0.25, mus: 0.35 }); } }
   const spec = { domain: 'phys', bare: true, title: '', world: { w: W / K, h: (ry1 - ry0) / K, x0: 0, y0: 0, g: kind === 'const' ? 0 : 9.8 }, bodies: [], surfaces: surf, ropes: [], springs: [], forces: [], params: [], show: { fbd: false, trail: false, graph: 'none' } };
   const c = [(B[0] + B[2]) / 2, (B[1] + B[3]) / 2], cw = toW(c);
   const muP = { key: 'mu', label: 'แรงเสียดทานของพื้น μ', min: 0, max: 1, step: 0.05 };
@@ -1434,7 +1597,8 @@ async function placeInPlace(sp, kind, act, edge) {
   if (removed.length) { pushUndo({ t: 'erase', removed }); saveLayers(touched); drawInk(); }
   const before = clone(S.page.items || []);
   const item = { id: 'i' + uid(), by: DEV, type: 'scene', spec: scClean(spec), x: 0, y: ry0, w: W, h: ry1 - ry0, ink: body.map((x) => x.s), hide: att ? [clone(att.r.s)] : [], pics: pics.map((q) => ({ asset: q.asset, x: q.x, y: q.y, w: q.w, h: q.h })), back: pics.map((q) => q.item), rig, ctl: [Math.round(clamp(B[0] - 20, 4, W - 380)), 0] };
-  setItems(before.filter((t) => !sp.items.includes(t.id)).concat([item]), before);
+  const extra = await mvApply(item, { person });
+  setItems(before.filter((t) => !sp.items.includes(t.id)).concat([item], extra), before);
   clearSel();
   if (!animOn()) animSet(true, true);
   setTimeout(() => { const R = SCN.get(item.id); const live = findItem(item.id); if (R && live) { R.playing = true; if (!scnRaf) scnRaf = requestAnimationFrame(scTick); const pb = itemsEl.querySelector('.item[data-id="' + item.id + '"] [data-s="play"]'); if (pb) pb.textContent = 'หยุด'; } }, 350);
@@ -1900,7 +2064,8 @@ async function placeLife(sp, kind, edge, face, extra) {
   if (!animOn()) animSet(true, true);
   const R0 = lifeRegion(B, beh), before = clone(S.page.items || []);
   const item = { id: 'i' + uid(), by: DEV, type: 'life', x: R0[0], y: R0[1], w: R0[2] - R0[0], h: R0[3] - R0[1], B, beh, wheels, ink: body.map((x) => x.s), pics: pics.map((q) => ({ asset: q.asset, x: q.x, y: q.y, w: q.w, h: q.h })), back: pics.map((q) => q.item) };
-  setItems(before.filter((t) => !sp.items.includes(t.id)).concat([item]), before);
+  const mvx = await mvApply(item, {});
+  setItems(before.filter((t) => !sp.items.includes(t.id)).concat([item], mvx), before);
   clearSel(); toast('ภาพมีชีวิตแล้ว เล่นวนเองทุกครั้งที่เปิดหน้านี้ แตะปุ่มเล็กข้างภาพเพื่อปรับ', 3000);
 }
 function lifeSet(it, patch) {
@@ -2229,6 +2394,8 @@ function lifeDraw(it, rt) {
       armUp = (x, y) => { if (y <= R.neck[1] || y >= R.hip[1] + 0.1 * Hd || Math.abs(x - tx(y)) <= 0.07 * Hd || Math.hypot(x - R.headC[0], y - R.headC[1]) <= R.headR * 1.2) return [x, y]; const left = x < tx(y), a = (left ? 1 : -1) * 1.9 * f, dx = x - R.sh[0], dy = y - R.sh[1], ca = Math.cos(a), sa = Math.sin(a); return [R.sh[0] + dx * ca - dy * sa, R.sh[1] + dx * sa + dy * ca]; }; }
   }
   const fc = ex ? lifeFaceParts(it, rt) : null, hide = new Set(fc ? (['laugh', 'surprise'].includes(ex) ? fc.eyes.concat([fc.mouth]) : [fc.mouth]).filter((q) => q != null) : []);
+  /* the object's white, under it, when it moves as one piece (legs, wings or arms that swing leave it out) */
+  if ((it.under || []).length && !legOf.size && !wingSet.size && !armUp) for (const u of it.under) { if (!deforms) { drawStroke(c, u); continue; } const p = u.p.slice(); for (let j = 0; j + 1 < p.length; j += 3) { const n = deform(p[j] / 10, p[j + 1] / 10); if (n) { p[j] = n[0] * 10; p[j + 1] = n[1] * 10; } } drawStroke(c, Object.assign({}, u, { p })); }
   it.ink.forEach((s, i) => {
     if (inW.has(i) || hide.has(i)) return;
     if (legOf.has(i)) { const g = legOf.get(i), ph = gait.ph0 + g.ph, th = -face * 0.38 * A * gait.a * Math.sin(ph), lift = Math.max(0, Math.cos(ph)) * 0.12 * gait.L * A * gait.a; c.save(); c.translate(g.px, g.top - lift * 0.5); c.rotate(th); c.translate(-g.px, -g.top); drawStroke(c, s); c.restore(); return; }
