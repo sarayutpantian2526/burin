@@ -16296,7 +16296,12 @@ function exChips(box, list, cur, on) {
 }
 function exRenderWho() {
   const sel = $('#exWho'); sel.innerHTML = '';
-  for (const n of EX.people) { const o = document.createElement('option'); o.value = n; o.textContent = n; sel.appendChild(o); }
+  /* learners are listed under their class (from their latest score), so a name is found in the right room */
+  const last = {}; for (const a of EX.att) if (a.cls && (!last[a.who] || last[a.who].at < a.at)) last[a.who] = a;
+  const byC = new Map(); for (const n of EX.people) { const c = last[n] ? last[n].cls : ''; if (!byC.has(c)) byC.set(c, []); byC.get(c).push(n); }
+  const lab = (c) => { const k = c && CLS.list.find((x) => x.id === c); return k ? classLabel(k) : c ? 'ห้องอื่น' : 'ไม่ระบุห้อง'; };
+  const groups = [...byC.keys()].sort((p, q) => (p === '' ? 1 : q === '' ? -1 : lab(p).localeCompare(lab(q), 'th')));
+  for (const c of groups) { const host = groups.length > 1 ? document.createElement('optgroup') : sel; if (host !== sel) { host.label = lab(c); sel.appendChild(host); } for (const n of byC.get(c)) { const o = document.createElement('option'); o.value = n; o.textContent = n; host.appendChild(o); } }
   const o = document.createElement('option'); o.value = '+'; o.textContent = 'เพิ่มผู้ฝึก'; sel.appendChild(o);
   sel.value = EX.who;
 }
@@ -16706,11 +16711,22 @@ function exCsv() {
 
 /* gradebook: every learner against every set (latest attempt), with averages */
 function exRenderGrades(body) {
-  const sets = (EX.sets || []).filter((st) => EX.att.some((a) => a.setId === st.id)).sort((a, b) => a.at - b.at);
-  const free = EX.att.filter((a) => !a.setId);
+  /* each class sees its own learners: scores from a live room or homework carry their class, so classes are never mixed in one table */
+  const ck = (a) => a.cls || '', cids = [...new Set(EX.att.map(ck))];
+  const cName = (c) => { if (!c) return 'ไม่ระบุห้อง'; const k = CLS.list.find((x) => x.id === c); return k ? classLabel(k) : CLS.loaded ? 'ห้องที่ลบไปแล้ว' : 'ห้องเรียน'; };
+  if (!CLS.loaded && cids.some((c) => c) && !EX.gLoading) { EX.gLoading = true; clsLoad().then(() => { EX.gLoading = false; if (EX.tab === 'grades' && !EX.run && !$('#examSheet').hidden) exRender(); }, () => { EX.gLoading = false; }); }
+  if (EX.gcls == null || (EX.gcls !== '*' && !cids.includes(EX.gcls))) { const m = CLS.loaded ? nbClass() : null; EX.gcls = cids.length < 2 ? '*' : (m && cids.includes(m) ? m : cids.find((c) => c) || '*'); }
+  if (cids.length > 1) {
+    const bar = exEl('div', 'chips hwcls'), opts = cids.slice().sort((p, q) => (p === '' ? 1 : q === '' ? -1 : cName(p).localeCompare(cName(q), 'th'))).map((c) => [c, cName(c)]).concat([['*', 'รวมทุกห้อง']]);
+    for (const [v, t] of opts) { const x = exEl('button', 'chip', esc(t)); x.type = 'button'; x.setAttribute('aria-pressed', EX.gcls === v ? 'true' : 'false'); x.onclick = () => { EX.gcls = v; exRender(); }; bar.appendChild(x); }
+    body.appendChild(bar);
+  }
+  const ATT = EX.gcls === '*' ? EX.att : EX.att.filter((a) => ck(a) === EX.gcls);
+  const sets = (EX.sets || []).filter((st) => ATT.some((a) => a.setId === st.id)).sort((a, b) => a.at - b.at);
+  const free = ATT.filter((a) => !a.setId);
   if (!sets.length && !free.length) { body.appendChild(exEl('div', 'note', 'ยังไม่มีคะแนน เมื่อผู้เรียนทำแบบฝึกในห้องสดหรือบนเครื่องนี้ คะแนนจะมาเรียงที่นี่')); return; }
-  const who = [...new Set(EX.att.map((a) => a.who))].sort((a, b) => a.localeCompare(b, 'th'));
-  const cell = (w, st) => { const l = EX.att.filter((a) => a.who === w && a.setId === st.id).sort((a, b) => b.at - a.at)[0]; return l ? l.ok / l.n : null; };
+  const who = [...new Set(ATT.map((a) => a.who))].sort((a, b) => a.localeCompare(b, 'th'));
+  const cell = (w, st) => { const l = ATT.filter((a) => a.who === w && a.setId === st.id).sort((a, b) => b.at - a.at)[0]; return l ? l.ok / l.n : null; };
   const tb = exEl('table', 'extab grades');
   let h = '<thead><tr><th>ผู้เรียน</th>' + sets.map((st, i) => '<th title="' + esc(st.title) + '">ชุด ' + (i + 1) + '<small>' + esc(st.title.replace(/^ชุด /, '').slice(0, 24)) + '</small></th>').join('') + '<th>ฝึกเอง</th><th>เฉลี่ย</th></tr></thead><tbody>';
   const colSum = sets.map(() => [0, 0]);
@@ -16729,7 +16745,7 @@ function exRenderGrades(body) {
     const q = (x) => '"' + String(x).replace(/"/g, '""') + '"';
     const lines = [['ผู้เรียน'].concat(sets.map((st) => st.title)).concat(['เฉลี่ย']).map(q).join(',')];
     for (const w of who) { const vals = sets.map((st) => cell(w, st)); const all = vals.filter((v) => v != null); lines.push([q(w)].concat(vals.map((v) => (v == null ? '' : Math.round(v * 100)))).concat([all.length ? Math.round(all.reduce((a, c) => a + c, 0) / all.length * 100) : '']).join(',')); }
-    saveFile('burin-gradebook.csv', new Blob(['﻿' + lines.join('\n')], { type: 'text/csv' }));
+    saveFile('คะแนนแบบฝึก' + (EX.gcls && EX.gcls !== '*' ? ' ' + cName(EX.gcls) : '') + '.csv', new Blob(['﻿' + lines.join('\n')], { type: 'text/csv' }));
   };
   body.appendChild(b);
 }
@@ -20194,12 +20210,14 @@ async function clsSync(c) {
   for (const it of c.items || []) {
     if (it.kind === 'hw' && CLOUD.state === 'on') {
       let a = (HW.list || []).find((x) => x.id === it.ref); if (!a) { try { await hwLoad(); a = HW.list.find((x) => x.id === it.ref); } catch (e) { a = null; } }
-      if (!a) continue; if (a.due && !it.due) it.due = a.due;
+      if (!a) continue; if (a.data && a.data.clsId && a.data.clsId !== c.id) continue; /* another class's work never fills this class's book */
+      if (a.due && !it.due) it.due = a.due;
+      const inRoster = new Set((c.roster || []).map((r) => String(r.sid).toLowerCase()));
       let subs = []; try { subs = await hwLoadSubs(a.id); } catch (e) { continue; }
-      for (const s of subs) { const sid = s.data.stu && s.data.stu.sid; if (!sid) continue; const sc = hwScore(a, s); if (!sc.checked) continue; const old = c.scores && c.scores[it.id] && c.scores[it.id][sid]; if (old && !old.auto) continue; setCell(c, it.id, sid, Math.round(sc.got / sc.n * it.max * 10) / 10, true, !!(a.due && Date.parse(s.created_at) > Date.parse(a.due))); n++; }
+      for (const s of subs) { let sid = s.data.stu && s.data.stu.sid; if (!sid || !inRoster.has(String(sid).toLowerCase())) continue; sid = (c.roster.find((r) => String(r.sid).toLowerCase() === String(sid).toLowerCase()) || {}).sid || sid; const sc = hwScore(a, s); if (!sc.checked) continue; const old = c.scores && c.scores[it.id] && c.scores[it.id][sid]; if (old && !old.auto) continue; setCell(c, it.id, sid, Math.round(sc.got / sc.n * it.max * 10) / 10, true, !!(a.due && Date.parse(s.created_at) > Date.parse(a.due))); n++; }
     } else if (it.kind === 'set') {
       for (const r of c.roster || []) {
-        const att = EX.att.filter((a) => a.setId === it.ref && (a.stu === r.sid || (!a.stu && a.who === r.name))).sort((x, y) => y.at - x.at)[0];
+        const att = EX.att.filter((a) => a.setId === it.ref && (!a.cls || a.cls === c.id) && (a.stu === r.sid || (!a.stu && !a.cls && a.who === r.name))).sort((x, y) => y.at - x.at)[0];
         if (!att) continue; const old = c.scores && c.scores[it.id] && c.scores[it.id][r.sid]; if (old && !old.auto) continue;
         setCell(c, it.id, r.sid, Math.round(att.ok / att.n * it.max * 10) / 10, true); n++;
       }
@@ -20614,6 +20632,7 @@ async function hwImport(a, subs) {
     const key = 'hw_' + a.id + '_' + s.name.trim().replace(/[^\wก-๙]/g, '_').slice(0, 30);
     const items = sc.res.filter((r) => r.ok != null).map((r) => [r.q.id, (r.q.t || 'olymp') + ':' + (r.q.ch || 0), (r.ans != null ? r.ans : r.ok >= 1 ? 1 : 0), 0, r.choice]);
     const rec = { key, who: s.name.trim(), at: Date.parse(s.created_at) || now(), setId: a.data.setId, title: a.title, mode: 'homework', n: items.length, ok: items.filter((x) => x[2]).length, items };
+    if (a.data.clsId) { rec.cls = a.data.clsId; if (s.data && s.data.stu && s.data.stu.sid) rec.stu = String(s.data.stu.sid); } /* the scores stay with the class the work was set to */
     EX.att = EX.att.filter((x) => x.key !== key); EX.att.push(rec); await S.store.set('exa/' + key, rec).catch(() => {});
     if (!EX.people.includes(rec.who)) { EX.people.push(rec.who); }
     n++;
@@ -20934,7 +20953,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1794368699';
+const BUILD = '1794369489';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
