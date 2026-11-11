@@ -1302,6 +1302,9 @@ body.present .peekcard { display: none !important; }
 .hwhost { display: flex; flex-direction: column; gap: 10px; }
 .hwtop { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .hwme { color: var(--muted); margin-left: auto; }
+.hwcls { margin: 4px 0 10px; } .hwcls .hwn { font-style: normal; font-size: .8em; background: var(--accent-soft, rgba(43,58,103,.12)); border-radius: 999px; padding: 0 7px; margin-left: 4px; }
+.hwcls .chip[aria-pressed="true"] .hwn { background: rgba(255,255,255,.28); color: inherit; }
+.hwgh { margin: 14px 2px 6px; font-size: .95rem; opacity: .8; }
 .hwtiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; }
 .hwtile { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 12px 14px; border-radius: 14px; border: 1px solid var(--line); background: var(--surface); color: var(--fg); cursor: pointer; text-align: left; font: inherit; }
 .hwtile b { font-size: 28px; line-height: 1.1; font-variant-numeric: tabular-nums; }
@@ -17558,7 +17561,8 @@ async function liveOpen() {
 async function liveSendHw(reload) {
   if (LIVE.role !== 'teacher' || !LIVE.ready) return;
   try { if (reload || !HW.list) await hwLoad(); } catch (e) { return; }
-  const list = (HW.list || []).filter((a) => a.open !== false && a.data && a.data.nb && a.data.nb.id === LIVE.nbId).slice(0, 12).map((a) => ({ id: a.id, title: a.title, due: a.due || null }));
+  /* only this room's class gets its work: the same notebook taught to another class does not show that class's homework here */
+  const list = (HW.list || []).filter((a) => a.open !== false && a.data && a.data.nb && a.data.nb.id === LIVE.nbId && (LIVE.clsId ? a.data.clsId === LIVE.clsId : !a.data.clsId)).slice(0, 12).map((a) => ({ id: a.id, title: a.title, due: a.due || null, cls: a.data.clsId || null }));
   LIVE.hw = list; liveSend('hw', { list });
 }
 async function liveSendRoster(p) {
@@ -17870,7 +17874,7 @@ async function studentJoin(code) {
   rkOnTeacher(ch, 'poolend', (m) => { if (poolEnd) poolEnd(m.payload); });
   rkOnTeacher(ch, 'roster', (m) => studentRoster(m.payload));
   rkOnTeacher(ch, 'rename', (m) => { const d = m.payload; if (!d || d.sid !== LIVE.sid || typeof d.name !== 'string' || LIVE.stu) return; LIVE.name = d.name.slice(0, 60); store_ls.set('tp-sname', LIVE.name); try { ch.track({ role: 'student', name: LIVE.name, v: 2 }); } catch (e) { /* offline */ } toast('ผู้สอนตั้งชื่อของคุณในห้องนี้เป็น ' + LIVE.name, 3000); });
-  rkOnTeacher(ch, 'hw', (m) => { const L = (m.payload && Array.isArray(m.payload.list)) ? m.payload.list.filter((a) => a && typeof a.id === 'string' && /^[a-z0-9]{6,20}$/.test(a.id)).slice(0, 12) : []; LIVE.hwList = L; const b = $('#lpHw'); b.hidden = !L.length; b.textContent = 'การบ้าน ' + L.length; hwKeep(L); });
+  rkOnTeacher(ch, 'hw', (m) => { const L = (m.payload && Array.isArray(m.payload.list)) ? m.payload.list.filter((a) => a && typeof a.id === 'string' && /^[a-z0-9]{6,20}$/.test(a.id)).slice(0, 12) : []; for (const a of L) if (typeof a.cls !== 'string' || !/^c[a-z0-9]{3,30}$/i.test(a.cls)) a.cls = null; LIVE.hwList = L; const b = $('#lpHw'); b.hidden = !L.length; b.textContent = 'การบ้าน ' + L.length; hwKeep(L); });
   rkOnTeacher(ch, 'end', () => { liveStudentPill('ผู้สอนปิดห้องแล้ว สมุดยังอยู่ในเครื่องนี้'); });
   /* is the teacher in the room? if not yet, wait and join by itself the moment the teacher opens it */
   LIVE.gotPage = false;
@@ -20448,7 +20452,7 @@ function clsAddItem(c) {
   { const P = clsPlan(c), r2 = exEl('div', 'row2'); r2.innerHTML = '<label class="field"><span>กำหนดส่ง (เว้นว่างได้)</span><input id="iDue" type="date"></label>' + (P.cats.length ? '<label class="field"><span>หมวดคะแนน</span><select id="iCat" class="traysel">' + P.cats.map((x) => '<option value="' + x.id + '"' + ((P.newCat || P.cats[0].id) === x.id ? ' selected' : '') + '>' + esc(x.name) + '</option>').join('') + '</select></label>' : ''); f.insertBefore(r2, f.querySelector('#iSrc').closest('label')); }
   const sel = f.querySelector('#iSrc');
   for (const st of (EX.sets || []).slice().sort((a, b) => b.at - a.at).slice(0, 20)) { const o = document.createElement('option'); o.value = 'set:' + st.id; o.textContent = 'แบบฝึกในห้องสด หรือฝึกในแอป: ' + st.title; sel.appendChild(o); }
-  (CLOUD.state === 'on' ? hwLoad().catch(() => []) : Promise.resolve([])).then((list) => { for (const a of list || []) { const o = document.createElement('option'); o.value = 'hw:' + a.id; o.textContent = 'การบ้าน: ' + a.title; sel.insertBefore(o, sel.children[1] || null); } });
+  (CLOUD.state === 'on' ? hwLoad().catch(() => []) : Promise.resolve([])).then((list) => { for (const a of (list || []).filter((x) => !(x.data && x.data.clsId) || x.data.clsId === c.id)) { /* only this class's homework (or work not tied to a class) */ const o = document.createElement('option'); o.value = 'hw:' + a.id; o.textContent = 'การบ้าน: ' + a.title; sel.insertBefore(o, sel.children[1] || null); } });
   const ok = exEl('button', 'btn solid', 'เพิ่ม'); ok.onclick = async () => {
     const name = f.querySelector('#iName').value.trim(), max = +f.querySelector('#iMax').value; if (!name || !(max > 0)) { toast('ใส่ชื่อและคะแนนเต็ม', 1800); return; }
     const [kind, ref] = sel.value.split(':'), P = clsPlan(c), dv = f.querySelector('#iDue').value, cs = f.querySelector('#iCat'); c.items = (c.items || []).concat([{ id: 'k' + uid(), name, max, kind, ref: ref || null, at: now(), due: dv ? new Date(dv + 'T23:59:00').toISOString() : null, cat: cs ? cs.value : (P.newCat || (P.cats[0] && P.cats[0].id) || null) }]);
@@ -20930,7 +20934,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1794362495';
+const BUILD = '1794368699';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;

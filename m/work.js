@@ -101,16 +101,29 @@ async function hwHubOpen(clsId) {
   if (failed && !all.length) { host.appendChild(exEl('div', 'note err', 'โหลดงานไม่ได้ ลองอีกครั้ง')); return; }
   /* who is looking: the hashed ID unlocks extensions given to this learner alone */
   const hs = {}; for (const it of idents) hs[it.cls] = await hashKey(it.cls + '|id|' + String(it.who.sid).toLowerCase());
-  const rows = all.map((a) => { const cls = a.data && a.data.clsId, s = hwState(a, cls ? hs[cls] : null), g = mine.got[a.id]; return { a, s, g, sent: !!g }; });
+  const rowsAll = all.map((a) => { const cls = a.data && a.data.clsId, s = hwState(a, cls ? hs[cls] : null), g = mine.got[a.id]; return { a, s, g, sent: !!g, c: cls || '' }; });
+  /* each class keeps its own work: a learner in two classes picks the class, and counts, list and scores are that class's alone */
+  const groups = [...new Set(rowsAll.map((r) => r.c))].sort((p, q) => (p === '' ? 1 : q === '' ? -1 : 0));
+  const gLabel = (c) => { if (!c) return 'งานที่ไม่ได้ผูกห้อง'; const r = rowsAll.find((x) => x.c === c); return (r && r.a.data.cls && r.a.data.cls.label) || 'ห้องเรียน'; };
+  if (clsId) HWX.scls = clsId; else if (!groups.includes(HWX.scls)) { const g = groups.find((c) => rowsAll.some((r) => r.c === c && !r.sent && r.s.ok)); HWX.scls = (g != null ? g : groups[0]) || ''; }
+  if (!clsId && groups.length > 1) {
+    const bar = exEl('div', 'chips hwcls'); bar.setAttribute('role', 'tablist'); host.appendChild(bar);
+    for (const c of groups) { const n = rowsAll.filter((r) => r.c === c && !r.sent && r.s.ok).length, x = exEl('button', 'chip', esc(gLabel(c)) + (n ? ' <em class="hwn">' + n + '</em>' : '')); x.type = 'button'; x.setAttribute('role', 'tab'); x.setAttribute('aria-pressed', HWX.scls === c ? 'true' : 'false'); x.onclick = () => { HWX.scls = c; HWX.filter = 'all'; bar.querySelectorAll('.chip').forEach((y, i) => y.setAttribute('aria-pressed', groups[i] === c ? 'true' : 'false')); view(); }; bar.appendChild(x); }
+  }
+  const pane = exEl('div', ''); host.appendChild(pane);
+  const view = () => {
+  pane.innerHTML = ''; const host = pane, sc = HWX.scls;
+  const rows = clsId || groups.length < 2 ? rowsAll : rowsAll.filter((r) => r.c === sc);
   const todo = rows.filter((r) => !r.sent && r.s.ok), late = rows.filter((r) => !r.sent && !r.s.ok), done = rows.filter((r) => r.sent);
-  if (myIds.length) { const w = myIds[0].who; top.appendChild(exEl('span', 'hwme', 'ของ <b>' + esc('เลขที่ ' + w.no + ' ' + w.name) + '</b>')); }
+  const me = (idents.find((x) => x.cls === (clsId || sc)) || (groups.length < 2 ? myIds[0] : null)), meEl = top.querySelector('.hwme'); if (meEl) meEl.remove();
+  if (me) top.appendChild(exEl('span', 'hwme', 'ของ <b>' + esc('เลขที่ ' + me.who.no + ' ' + me.who.name) + '</b>'));
   const tiles = exEl('div', 'hwtiles');
   const tile = (n, t, cls, f) => { const x = exEl('button', 'hwtile ' + cls, '<b>' + n + '</b><span>' + t + '</span>'); x.type = 'button'; x.setAttribute('aria-pressed', HWX.filter === f ? 'true' : 'false'); x.onclick = () => { HWX.filter = HWX.filter === f ? 'all' : f; paint(); }; return x; };
   tiles.append(tile(rows.length, 'งานที่ครูมอบหมาย', 'all', 'all'), tile(done.length, 'ส่งแล้ว', 'ok', 'done'), tile(todo.length, 'ยังต้องทำ', 'todo', 'todo'), tile(late.length, 'เลยกำหนดไม่ได้ส่ง', 'bad', 'late'));
   host.appendChild(tiles);
   if (rows.length) { const pct = Math.round(done.length / rows.length * 100); host.appendChild(exEl('div', 'hwprog', '<i style="width:' + pct + '%"></i><span>ส่งแล้ว ' + done.length + ' จาก ' + rows.length + ' งาน (' + pct + '%)</span>')); }
   if (!mine.cloud && rows.length) host.appendChild(exEl('div', 'note small', 'สถานะการส่งอ่านจากเครื่องนี้ ถ้าเคยส่งจากเครื่องอื่นอาจยังไม่ขึ้น'));
-  if (!myIds.length && rows.some((r) => r.a.data && r.a.data.cls)) {
+  if (!me && rows.some((r) => r.a.data && r.a.data.cls)) {
     const c0 = rows.find((r) => r.a.data && r.a.data.cls).a.data.cls;
     const idb = exEl('button', 'btn solid', 'ยืนยันตัวตนเพื่อดูว่าส่งงานไหนแล้ว'); idb.type = 'button'; idb.onclick = async () => { await askIdentity(c0); hwHubOpen(clsId); }; host.appendChild(idb);
   }
@@ -127,13 +140,15 @@ async function hwHubOpen(clsId) {
       const el = exEl('div', 'hwrow' + (r.sent ? ' sent' : !s.ok ? ' miss' : s.st === 'soon' ? ' soon' : ''));
       el.innerHTML = '<span class="hwdot" aria-hidden="true"></span><div class="hwri"><b></b><small></small><div class="hwchips">' + hwStateChip(s, r.sent) + (r.sent && g.last ? '<em class="hwc">เมื่อ ' + esc(hwWhen(g.last)) + (g.n > 1 ? ' (ส่ง ' + g.n + ' ครั้ง)' : '') + '</em>' : '') + '</div></div>';
       el.querySelector('b').textContent = a.title;
-      el.querySelector('small').textContent = [nq + ' ข้อ' + (nw ? ' แสดงวิธีทำ ' + nw + ' ข้อ' : ''), s.due ? 'ส่งภายใน ' + hwWhen(s.due) : '', A.cls && !clsId ? A.cls.label : ''].filter(Boolean).join(' : ');
+      el.querySelector('small').textContent = [nq + ' ข้อ' + (nw ? ' แสดงวิธีทำ ' + nw + ' ข้อ' : ''), s.due ? 'ส่งภายใน ' + hwWhen(s.due) : ''].filter(Boolean).join(' : ');
       if (s.ok || r.sent) { const go = exEl('button', 'btn' + (!r.sent && s.ok ? ' solid' : ''), r.sent ? (s.ok ? 'ดูหรือส่งใหม่' : 'ดูงาน') : 'ทำงานนี้'); go.type = 'button'; go.onclick = () => { location.hash = 'hw=' + a.id; hwStudentOpen(a.id, clsId); }; el.appendChild(go); }
       listEl.appendChild(el);
     }
   };
   paint();
-  if (clsId || classes.length === 1) myGradesForm(host, clsId || classes[0]);
+  const gc = clsId || (groups.length > 1 ? sc : classes.length === 1 ? classes[0] : (groups[0] || null)); if (gc) myGradesForm(host, gc);
+  };
+  view();
 }
 
 /* ---------- learner: one piece of work ---------- */
@@ -457,7 +472,16 @@ async function hwBoard(body) {
   const sel = HWX.sel || (HWX.sel = new Set()); for (const k of [...sel]) if (!list.some((x) => x.id === k)) sel.delete(k);
   const host = exEl('div', 'hwalist');
   const q = document.createElement('input'); q.type = 'search'; q.className = 'traysel'; q.placeholder = 'ค้นงาน'; q.value = HWX.q || ''; q.setAttribute('aria-label', 'ค้นงาน');
-  const shown = () => list.filter((a) => !HWX.q || (a.title + ' ' + ((a.data.cls && a.data.cls.label) || '')).toLowerCase().includes(HWX.q.toLowerCase()));
+  /* each class has its own work: the board opens on the class this notebook is taught to, and can show one class at a time */
+  const ck = (a) => (a.data && a.data.clsId) || '', cids = [...new Set(list.map(ck))];
+  const cName = (c) => { if (!c) return 'ไม่ผูกห้อง'; const k = CLS.list.find((x) => x.id === c); if (k) return classLabel(k); const a = list.find((x) => ck(x) === c); return (a && a.data.cls && a.data.cls.label) || 'ห้องที่ลบไปแล้ว'; };
+  if (HWX.cls == null || (HWX.cls !== '*' && !cids.includes(HWX.cls))) { const m = typeof nbClass === 'function' ? nbClass() : null; HWX.cls = cids.length < 2 ? '*' : (m && cids.includes(m) ? m : '*'); }
+  if (cids.length > 1) {
+    const bar = exEl('div', 'chips hwcls'); const opts = [['*', 'ทุกห้อง', list.length]].concat(cids.slice().sort((p, q) => (p === '' ? 1 : q === '' ? -1 : cName(p).localeCompare(cName(q), 'th'))).map((c) => [c, cName(c), list.filter((a) => ck(a) === c).length]));
+    for (const [v, t, n] of opts) { const x = exEl('button', 'chip', esc(t) + ' <em class="hwn">' + n + '</em>'); x.type = 'button'; x.setAttribute('aria-pressed', HWX.cls === v ? 'true' : 'false'); x.onclick = () => { HWX.cls = v; sel.clear(); bar.querySelectorAll('.chip').forEach((y, i) => y.setAttribute('aria-pressed', opts[i][0] === v ? 'true' : 'false')); draw(); }; bar.appendChild(x); }
+    body.appendChild(bar);
+  }
+  const shown = () => list.filter((a) => (HWX.cls === '*' || ck(a) === HWX.cls) && (!HWX.q || (a.title + ' ' + ((a.data.cls && a.data.cls.label) || '')).toLowerCase().includes(HWX.q.toLowerCase())));
   const ms = mselBar(body, { sel, all: () => shown().map((a) => a.id), redraw: () => draw(), noun: 'งาน', actions: [
     ['ปิดรับ', async (ids) => { await hwBulk(ids, (a) => ({ open: false })); }],
     ['เปิดรับอีกครั้ง', async (ids) => { await hwBulk(ids, (a) => ({ open: true })); }],
@@ -468,7 +492,10 @@ async function hwBoard(body) {
   q.oninput = debounce(() => { HWX.q = q.value; draw(); }, 200);
   function draw() {
     host.innerHTML = '';
-    for (const a of shown()) {
+    const sh = shown(); if (HWX.cls === '*' && cids.length > 1) sh.sort((p, q) => (ck(p) === ck(q) ? 0 : ck(p) === '' ? 1 : ck(q) === '' ? -1 : cName(ck(p)).localeCompare(cName(ck(q)), 'th')));
+    let lastG = null;
+    for (const a of sh) {
+      if (HWX.cls === '*' && cids.length > 1 && ck(a) !== lastG) { lastG = ck(a); host.appendChild(exEl('h4', 'hwgh', esc(cName(lastG)))); }
       const s = hwState(a, null), c = a.data.clsId && CLS.list.find((x) => x.id === a.data.clsId), n = counts[a.id] ? counts[a.id].size : null, tot = c ? (c.roster || []).length : 0;
       const el = exEl('div', 'hwacard' + (ms.on() ? ' msel' : '') + (sel.has(a.id) ? ' picked' : ''));
       const nw = (a.data.qs || []).filter((x) => hwQm(a.data, x) === 'work').length;
