@@ -16110,12 +16110,21 @@ function defaultTrack(nb) {
   const pool = mine.filter((t) => (lv === 'olymp' ? trackExam(t) !== 'normal' : trackExam(t) === 'normal'));
   return byLevel(pool.length ? pool : mine, nb)[0];
 }
+/* a learner is known by class and student ID whenever the score came from a class (live room or homework), so two
+   learners with the same name in different classes never share weak points; a name alone is used only without a class */
+const exWhoKey = (a) => (a && a.cls && a.stu ? 'id:' + a.cls + ':' + a.stu : (a && a.who) || '');
+function exWhoName(k) {
+  if (!String(k).startsWith('id:')) return k;
+  const [, c, sid] = k.split(':'), cl = CLS.list.find((x) => x.id === c), r = cl && (cl.roster || []).find((x) => String(x.sid) === sid);
+  if (r) return r.name; for (let i = EX.att.length - 1; i >= 0; i--) if (exWhoKey(EX.att[i]) === k) return EX.att[i].who; return sid;
+}
+function exWhoClass(k) { return String(k).startsWith('id:') ? k.split(':')[1] : ''; }
 /* mastery by objective and by thinking level, from the answers of one learner (or everyone) */
 function exMastery(who, track) {
   const map = new Map(exAllQs().map((q) => [q.id, q]));
   const byO = {}, byB = {};
   for (const a of EX.att) {
-    if (who && a.who !== who) continue;
+    if (who && exWhoKey(a) !== who) continue;
     for (const it of a.items || []) {
       const q = map.get(it[0]); if (!q || (track && q.t !== track)) continue;
       if (q.o) { const k = q.t + ':' + q.ch + ':' + q.o; const s = byO[k] || (byO[k] = { t: q.t, ch: q.ch, o: q.o, n: 0, ok: 0 }); s.n++; if (it[2]) s.ok++; }
@@ -16155,14 +16164,14 @@ async function exLoad() {
     EX.att = (aa || []).sort((a, b) => (a.at || 0) - (b.at || 0));
     EX.own = qq || [];
   } catch (e) { /* offline first run: keep what we have */ }
-  if (!EX.people.includes(EX.who)) EX.people.unshift(EX.who);
+  if (!EX.people.includes(EX.who) && !String(EX.who).startsWith('id:')) EX.people.unshift(EX.who);
   EX.loaded = true;
 }
 async function exSavePeople() { await S.store.set('exp/people', { names: EX.people, at: now() }).catch(() => {}); }
 function exStats(who) {
   const by = {}, hist = {};
   for (const a of EX.att) {
-    if (a.who !== who) continue;
+    if (exWhoKey(a) !== who) continue;
     for (const it of a.items || []) {
       const k = it[1]; const s = by[k] || (by[k] = { n: 0, ok: 0, recent: [] });
       s.n++; if (it[2]) s.ok++; s.recent.push(it[2] ? 1 : 0); if (s.recent.length > 10) s.recent.shift();
@@ -16232,7 +16241,8 @@ async function exFinish() {
   R.done = true; clearInterval(EX.tick);
   for (const x of R.items) if (x.pick < 0 && x.work && x.work.res && x.work.res.final === 'correct') x.pick = x.key;
   const items = R.items.map((x) => [x.q.id, x.q.t + ':' + x.q.ch, x.pick === x.key ? 1 : 0, Math.round(x.sec), x.pick >= 0 ? x.order[x.pick] : -1]);
-  const rec = { who: EX.who, at: now(), setId: R.setId || null, title: R.title, mode: R.mode, n: items.length, ok: items.filter((x) => x[2]).length, sec: Math.round((now() - R.t0) / 1000), items };
+  const rec = { who: exWhoName(EX.who), at: now(), setId: R.setId || null, title: R.title, mode: R.mode, n: items.length, ok: items.filter((x) => x[2]).length, sec: Math.round((now() - R.t0) / 1000), items };
+  if (String(EX.who).startsWith('id:')) { const p = EX.who.split(':'); rec.cls = p[1]; rec.stu = p.slice(2).join(':'); }
   EX.att.push(rec);
   await S.store.set('exa/' + rec.at.toString(36) + uid().slice(0, 4), rec).catch(() => toast('บันทึกคะแนนไม่สำเร็จ จะลองใหม่เมื่อต่อเน็ต', 2600));
   exRender();
@@ -16296,12 +16306,14 @@ function exChips(box, list, cur, on) {
 }
 function exRenderWho() {
   const sel = $('#exWho'); sel.innerHTML = '';
-  /* learners are listed under their class (from their latest score), so a name is found in the right room */
-  const last = {}; for (const a of EX.att) if (a.cls && (!last[a.who] || last[a.who].at < a.at)) last[a.who] = a;
-  const byC = new Map(); for (const n of EX.people) { const c = last[n] ? last[n].cls : ''; if (!byC.has(c)) byC.set(c, []); byC.get(c).push(n); }
-  const lab = (c) => { const k = c && CLS.list.find((x) => x.id === c); return k ? classLabel(k) : c ? 'ห้องอื่น' : 'ไม่ระบุห้อง'; };
+  /* learners are listed under their class and known by student ID there; names typed on this device (no class) come last */
+  const byC = new Map(), add = (c, k) => { if (!byC.has(c)) byC.set(c, []); if (!byC.get(c).includes(k)) byC.get(c).push(k); };
+  for (const a of EX.att) if (a.cls && a.stu) add(a.cls, exWhoKey(a));
+  for (const n of EX.people) if (!EX.att.some((a) => a.who === n) || EX.att.some((a) => a.who === n && !(a.cls && a.stu))) add('', n);
+  if (![...byC.values()].some((l) => l.includes(EX.who))) add(exWhoClass(EX.who), EX.who);
+  const lab = (c) => { const k = c && CLS.list.find((x) => x.id === c); return k ? classLabel(k) : c ? 'ห้องเรียน' : 'ไม่ระบุห้อง'; };
   const groups = [...byC.keys()].sort((p, q) => (p === '' ? 1 : q === '' ? -1 : lab(p).localeCompare(lab(q), 'th')));
-  for (const c of groups) { const host = groups.length > 1 ? document.createElement('optgroup') : sel; if (host !== sel) { host.label = lab(c); sel.appendChild(host); } for (const n of byC.get(c)) { const o = document.createElement('option'); o.value = n; o.textContent = n; host.appendChild(o); } }
+  for (const c of groups) { const host = groups.length > 1 ? document.createElement('optgroup') : sel; if (host !== sel) { host.label = lab(c); sel.appendChild(host); } for (const k of byC.get(c).sort((p, q) => exWhoName(p).localeCompare(exWhoName(q), 'th'))) { const o = document.createElement('option'); o.value = k; o.textContent = exWhoName(k); host.appendChild(o); } }
   const o = document.createElement('option'); o.value = '+'; o.textContent = 'เพิ่มผู้ฝึก'; sel.appendChild(o);
   sel.value = EX.who;
 }
@@ -16412,7 +16424,7 @@ function exRenderSetup(body) {
     if (EX.mode === 'work') mr.appendChild(exEl('div', 'note small', 'แต่ละข้อมีที่ให้เขียนวิธีทำด้วยปากกาหรือนิ้ว กดตรวจจากลายมือ แล้ว AI จะอ่านวิธีทำและบอกว่าแต่ละขั้นทำได้ดีแค่ไหน: ' + SOL_STEPS.map((x, i) => (i + 1) + ' ' + x).join(' ') + (AI.anyReady() ? '' : ' ต้องเชื่อมต่อ AI ก่อน')));
     const gor = exEl('div', 'row2 exgo');
     const go = exEl('button', 'btn solid', 'เริ่มทำ'); go.onclick = exStartFromSetup; gor.appendChild(go);
-    const wk = exEl('button', 'btn', 'ฝึกจุดอ่อนของ ' + esc(EX.who)); wk.onclick = exStartWeak; gor.appendChild(wk);
+    const wk = exEl('button', 'btn', 'ฝึกจุดอ่อนของ ' + esc(exWhoName(EX.who))); wk.onclick = exStartWeak; gor.appendChild(wk);
     body.appendChild(gor);
   }
   if (!isStudentSide() || AI.anyReady()) { const more = document.createElement('details'); more.className = 'exmore'; more.innerHTML = '<summary><span>สร้างโจทย์เพิ่มด้วย AI</span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6 8l4 4 4-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></summary>'; more.ontoggle = () => { if (more.open && !more.querySelector('.aibank')) aiBankPanel(more, st.filter((t) => CURRIC[t])); }; body.appendChild(more); }
@@ -16644,7 +16656,7 @@ function exRenderResult(body) {
   const R = EX.run, L = 'กขคง';
   const ok = R.items.filter((x) => x.pick === x.key).length, n = R.items.length;
   const sec = Math.round((now() - R.t0) / 1000);
-  body.appendChild(exEl('div', 'exscore', '<b>' + ok + '<small> / ' + n + '</small></b><span>' + esc(EX.who) + ' ได้ ' + Math.round(ok / n * 100) + '% ใช้เวลา ' + Math.floor(sec / 60) + ' นาที ' + (sec % 60) + ' วินาที</span>'));
+  body.appendChild(exEl('div', 'exscore', '<b>' + ok + '<small> / ' + n + '</small></b><span>' + esc(exWhoName(EX.who)) + ' ได้ ' + Math.round(ok / n * 100) + '% ใช้เวลา ' + Math.floor(sec / 60) + ' นาที ' + (sec % 60) + ' วินาที</span>'));
   const per = {};
   for (const x of R.items) { const k = exChName(x.q.t, x.q.ch); const p = per[k] || (per[k] = [0, 0]); p[1]++; if (x.pick === x.key) p[0]++; }
   const tb = exEl('div', 'exper');
@@ -16676,8 +16688,8 @@ function exSpark(vals) {
   return '<svg class="exspark" viewBox="0 0 ' + w + ' ' + h + '" aria-label="คะแนนแต่ละชุดล่าสุด"><line x1="6" x2="' + (w - 6) + '" y1="' + (h - 6 - 0.6 * (h - 12)) + '" y2="' + (h - 6 - 0.6 * (h - 12)) + '" class="g"/><polyline points="' + pts.map((p) => p.join(',')).join(' ') + '"/>' + pts.map((p) => '<circle cx="' + p[0] + '" cy="' + p[1] + '" r="3"/>').join('') + '</svg>';
 }
 function exRenderStats(body) {
-  const mine = EX.att.filter((a) => a.who === EX.who);
-  if (!mine.length) { body.appendChild(exEl('div', 'note', 'ยังไม่มีคะแนนของ ' + esc(EX.who) + ' ' + (isStudentSide() ? 'ไปที่แท็บ ทำแบบฝึก แล้วทำสัก' : 'เลือก ลองทำเองก่อน ในแท็บ เลือกจากคลัง หรือให้ผู้เรียนทำบนเครื่องนี้ แล้วทำสัก')+'ชุด')); return; }
+  const mine = EX.att.filter((a) => exWhoKey(a) === EX.who);
+  if (!mine.length) { body.appendChild(exEl('div', 'note', 'ยังไม่มีคะแนนของ ' + esc(exWhoName(EX.who)) + ' ' + (isStudentSide() ? 'ไปที่แท็บ ทำแบบฝึก แล้วทำสัก' : 'เลือก ลองทำเองก่อน ในแท็บ เลือกจากคลัง หรือให้ผู้เรียนทำบนเครื่องนี้ แล้วทำสัก')+'ชุด')); return; }
   const n = mine.reduce((s, a) => s + a.n, 0), ok = mine.reduce((s, a) => s + a.ok, 0);
   body.appendChild(exEl('div', 'exsum', '<div><b>' + mine.length + '</b><span>ชุดที่ทำ</span></div><div><b>' + n + '</b><span>ข้อที่ตอบ</span></div><div><b>' + Math.round(ok / n * 100) + '%</b><span>ตอบถูก</span></div><div>' + exSpark(mine.slice(-12).map((a) => a.ok / a.n)) + '<span>12 ชุดล่าสุด เส้นจางคือ 60%</span></div>'));
   const { by } = exStats(EX.who);
@@ -16701,11 +16713,12 @@ function exRenderStats(body) {
   body.appendChild(hl);
 }
 function exCsv() {
-  const lines = [['ผู้ฝึก', 'วันเวลา', 'ชุด', 'รูปแบบ', 'ถูก', 'ทั้งหมด', 'ร้อยละ', 'เวลา (วินาที)'].join(',')];
+  const lines = [['ผู้ฝึก', 'ห้อง', 'วันเวลา', 'ชุด', 'รูปแบบ', 'ถูก', 'ทั้งหมด', 'ร้อยละ', 'เวลา (วินาที)'].join(',')];
   const q = (s) => '"' + String(s).replace(/"/g, '""') + '"';
-  for (const a of EX.att) lines.push([q(a.who), q(new Date(a.at).toLocaleString(LOC)), q(a.title || ''), a.mode === 'exam' ? 'สอบ' : 'ฝึก', a.ok, a.n, Math.round(a.ok / a.n * 100), a.sec || ''].join(','));
-  lines.push(''); lines.push(['ผู้ฝึก', 'สนาม', 'บท', 'ถูก', 'ทั้งหมด', 'ร้อยละ'].join(','));
-  for (const who of EX.people) { const { by } = exStats(who); for (const [k, s] of Object.entries(by)) { const [t, ch] = k.split(':'); lines.push([q(who), q(exTrackName(t)), q(exChName(t, +ch)), s.ok, s.n, Math.round(s.ok / s.n * 100)].join(',')); } }
+  for (const a of EX.att) lines.push([q(a.who), q(a.cls ? (CLS.list.find((x) => x.id === a.cls) ? classLabel(CLS.list.find((x) => x.id === a.cls)) : '') : ''), q(new Date(a.at).toLocaleString(LOC)), q(a.title || ''), a.mode === 'exam' ? 'สอบ' : 'ฝึก', a.ok, a.n, Math.round(a.ok / a.n * 100), a.sec || ''].join(','));
+  lines.push(''); lines.push(['ผู้ฝึก', 'ห้อง', 'สนาม', 'บท', 'ถูก', 'ทั้งหมด', 'ร้อยละ'].join(','));
+  const keys = [...new Set(EX.att.map(exWhoKey).concat(EX.people))];
+  for (const who of keys) { const { by } = exStats(who), cl = CLS.list.find((x) => x.id === exWhoClass(who)); for (const [k, s] of Object.entries(by)) { const [t, ch] = k.split(':'); lines.push([q(exWhoName(who)), q(cl ? classLabel(cl) : ''), q(exTrackName(t)), q(exChName(t, +ch)), s.ok, s.n, Math.round(s.ok / s.n * 100)].join(',')); } }
   saveFile('burin-scores.csv', new Blob(['﻿' + lines.join('\n')], { type: 'text/csv' }));
 }
 
@@ -16725,17 +16738,18 @@ function exRenderGrades(body) {
   const sets = (EX.sets || []).filter((st) => ATT.some((a) => a.setId === st.id)).sort((a, b) => a.at - b.at);
   const free = ATT.filter((a) => !a.setId);
   if (!sets.length && !free.length) { body.appendChild(exEl('div', 'note', 'ยังไม่มีคะแนน เมื่อผู้เรียนทำแบบฝึกในห้องสดหรือบนเครื่องนี้ คะแนนจะมาเรียงที่นี่')); return; }
-  const who = [...new Set(ATT.map((a) => a.who))].sort((a, b) => a.localeCompare(b, 'th'));
-  const cell = (w, st) => { const l = ATT.filter((a) => a.who === w && a.setId === st.id).sort((a, b) => b.at - a.at)[0]; return l ? l.ok / l.n : null; };
+  const who = [...new Set(ATT.map(exWhoKey))].sort((a, b) => exWhoName(a).localeCompare(exWhoName(b), 'th'));
+  const wName = (w) => exWhoName(w) + (EX.gcls === '*' && exWhoClass(w) ? ' (' + cName(exWhoClass(w)) + ')' : '');
+  const cell = (w, st) => { const l = ATT.filter((a) => exWhoKey(a) === w && a.setId === st.id).sort((a, b) => b.at - a.at)[0]; return l ? l.ok / l.n : null; };
   const tb = exEl('table', 'extab grades');
   let h = '<thead><tr><th>ผู้เรียน</th>' + sets.map((st, i) => '<th title="' + esc(st.title) + '">ชุด ' + (i + 1) + '<small>' + esc(st.title.replace(/^ชุด /, '').slice(0, 24)) + '</small></th>').join('') + '<th>ฝึกเอง</th><th>เฉลี่ย</th></tr></thead><tbody>';
   const colSum = sets.map(() => [0, 0]);
   for (const w of who) {
     const vals = sets.map((st, i) => { const v = cell(w, st); if (v != null) { colSum[i][0] += v; colSum[i][1]++; } return v; });
-    const fr = free.filter((a) => a.who === w), frv = fr.length ? fr.reduce((x, a) => x + a.ok, 0) / fr.reduce((x, a) => x + a.n, 0) : null;
+    const fr = free.filter((a) => exWhoKey(a) === w), frv = fr.length ? fr.reduce((x, a) => x + a.ok, 0) / fr.reduce((x, a) => x + a.n, 0) : null;
     const all = vals.filter((v) => v != null), avg = all.length ? all.reduce((a, b) => a + b, 0) / all.length : frv;
     const pc = (v) => (v == null ? '<td class="na">-</td>' : '<td class="' + (v < 0.5 ? 'lo' : v >= 0.8 ? 'hi' : '') + '">' + Math.round(v * 100) + '</td>');
-    h += '<tr><td>' + esc(w) + '</td>' + vals.map(pc).join('') + pc(frv) + pc(avg) + '</tr>';
+    h += '<tr><td>' + esc(wName(w)) + '</td>' + vals.map(pc).join('') + pc(frv) + pc(avg) + '</tr>';
   }
   h += '<tr class="avg"><td>เฉลี่ยทั้งห้อง</td>' + colSum.map(([a, n]) => '<td>' + (n ? Math.round(a / n * 100) : '-') + '</td>').join('') + '<td></td><td></td></tr></tbody>';
   tb.innerHTML = h;
@@ -16744,7 +16758,7 @@ function exRenderGrades(body) {
   const b = exEl('button', 'btn', 'ส่งออกสมุดคะแนน CSV'); b.onclick = () => {
     const q = (x) => '"' + String(x).replace(/"/g, '""') + '"';
     const lines = [['ผู้เรียน'].concat(sets.map((st) => st.title)).concat(['เฉลี่ย']).map(q).join(',')];
-    for (const w of who) { const vals = sets.map((st) => cell(w, st)); const all = vals.filter((v) => v != null); lines.push([q(w)].concat(vals.map((v) => (v == null ? '' : Math.round(v * 100)))).concat([all.length ? Math.round(all.reduce((a, c) => a + c, 0) / all.length * 100) : '']).join(',')); }
+    for (const w of who) { const vals = sets.map((st) => cell(w, st)); const all = vals.filter((v) => v != null); lines.push([q(wName(w))].concat(vals.map((v) => (v == null ? '' : Math.round(v * 100)))).concat([all.length ? Math.round(all.reduce((a, c) => a + c, 0) / all.length * 100) : '']).join(',')); }
     saveFile('คะแนนแบบฝึก' + (EX.gcls && EX.gcls !== '*' ? ' ' + cName(EX.gcls) : '') + '.csv', new Blob(['﻿' + lines.join('\n')], { type: 'text/csv' }));
   };
   body.appendChild(b);
@@ -17106,7 +17120,7 @@ async function exWorksheet(qs, withKey) {
 /* ---------- item analysis (classical test theory) ---------- */
 function analyseSet(set) {
   const atts = EX.att.filter((a) => a.setId === set.id);
-  const byWho = new Map(); for (const a of atts) byWho.set(a.who, a); /* latest attempt per learner */
+  const byWho = new Map(); for (const a of atts) byWho.set(exWhoKey(a), a); /* latest attempt per learner */
   const rows = [...byWho.values()];
   const k = set.qs.length, N = rows.length;
   const resp = rows.map((a) => { const m = {}; for (const it of a.items || []) m[it[0]] = it; return { who: a.who, m, total: (a.items || []).reduce((s, it) => s + it[2], 0) }; });
@@ -20953,7 +20967,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1794369489';
+const BUILD = '1794370795';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
