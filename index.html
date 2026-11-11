@@ -1566,6 +1566,9 @@ body.present .peekcard { display: none !important; }
 
 .item.hand-neat { font-family: 'Mali', var(--doc); line-height: 1.65; }
 .item.hand-pen { font-family: 'Sriracha', var(--doc); line-height: 1.6; }
+/* the teacher's own hand: Thai letters taken from the handwriting given as a sample, cleaned so they read easily; other letters and digits in a pen hand */
+@font-face { font-family: 'BurinHand'; src: url('fonts/burin-hand.woff2?v=1') format('woff2'); font-display: swap; unicode-range: U+0E01-0E5B; }
+.item.hand-teach { font-family: 'BurinHand', 'Sriracha', var(--doc); line-height: 1.6; }
 .item.hand-script { font-family: 'Charm', var(--doc); line-height: 1.5; }
 .handopts { display: grid; gap: 10px; margin: 10px 0; }
 .handopt { text-align: left; border: 2px solid var(--line, #d7dbe3); border-radius: 14px; padding: 10px 14px; background: #FFFFFF; color: #1A2230; cursor: pointer; font: inherit; }
@@ -5102,7 +5105,7 @@ function diaryDraw(sketch, x0, y0, dw, dh, lw, ink, fs, pid) {
   };
   requestAnimationFrame(frame);
 }
-const DIARY_HAND = () => (HAND_IDS.includes(S.handDefault) ? S.handDefault : 'pen');
+const DIARY_HAND = () => (HAND_IDS.includes(S.handDefault) ? S.handDefault : 'teach');
 /* the reply appears as if an invisible pen were writing it: one letter at a time, ink soaking in */
 function diaryWriteIn(id, from) {
   const el = itemsEl.querySelector('.item[data-id="' + id + '"]'); if (!el) return;
@@ -7360,7 +7363,7 @@ function replaceGroup(g, text, eq) {
   pushUndo({ t: 'combo', ops: [{ t: 'erase', removed }, { t: 'items', before, after: clone(S.page.items) }] });
 }
 /* ---------- prettier handwriting: the reading is typed text set in a handwriting face, so it stays editable and reflows ---------- */
-const HANDS = [['neat', 'เรียบร้อย อ่านง่าย', 'กลม ชัด เหมือนลายมือนักเรียนเรียบร้อย', 1.0], ['pen', 'ลายมือปากกา', 'เป็นธรรมชาติ เหมือนเขียนด้วยปากกาลูกลื่น', 1.05], ['script', 'ตัวเขียนวิจิตร', 'มีหัวมีหาง สวยแบบคัดลายมือ', 1.2]];
+const HANDS = [['teach', 'ลายมือครู', 'ถอดแบบจากลายมือจริง เขียนเร็วแบบไม่มีหัว แต่อ่านง่าย', 1.0], ['neat', 'เรียบร้อย อ่านง่าย', 'กลม ชัด เหมือนลายมือนักเรียนเรียบร้อย', 1.0], ['pen', 'ลายมือปากกา', 'เป็นธรรมชาติ เหมือนเขียนด้วยปากกาลูกลื่น', 1.05], ['script', 'ตัวเขียนวิจิตร', 'มีหัวมีหาง สวยแบบคัดลายมือ', 1.2]];
 const HAND_IDS = HANDS.map((h) => h[0]);
 S.handDefault = HAND_IDS.includes(store_ls.get('tp-hand')) ? store_ls.get('tp-hand') : null;
 function inkOf(strokes) { const n = {}; for (const s of strokes) if (okHex(s.c) && s.k !== 'h') n[s.c] = (n[s.c] || 0) + 1; const top = Object.entries(n).sort((a, b) => b[1] - a[1])[0]; return top ? top[0] : null; }
@@ -7374,7 +7377,7 @@ function openHand() {
   const opts = HANDS.map((h) => [h[0], h[1], h[2]]); if (texts.length && !n) opts.push(['', 'ตัวพิมพ์ปกติ', 'กลับเป็นตัวพิมพ์']);
   for (const [k, name, sub] of opts) {
     const b = document.createElement('button'); b.type = 'button'; b.className = 'handopt';
-    b.innerHTML = '<b>' + esc(name) + ' <small style="font-weight:400;color:#5A6474">' + esc(sub) + '</small></b><span style="font-family:' + (k === 'neat' ? "'Mali'" : k === 'pen' ? "'Sriracha'" : k === 'script' ? "'Charm'" : 'var(--doc)') + ',var(--doc)">' + esc(sample) + ' v = u + at</span>';
+    b.innerHTML = '<b>' + esc(name) + ' <small style="font-weight:400;color:#5A6474">' + esc(sub) + '</small></b><span style="font-family:' + (k === 'teach' ? "'BurinHand','Sriracha'" : k === 'neat' ? "'Mali'" : k === 'pen' ? "'Sriracha'" : k === 'script' ? "'Charm'" : 'var(--doc)') + ',var(--doc)">' + esc(sample) + ' v = u + at</span>';
     b.setAttribute('aria-pressed', k === pick ? 'true' : 'false');
     b.onclick = () => { pick = k; box.querySelectorAll('.handopt').forEach((x) => x.setAttribute('aria-pressed', x === b ? 'true' : 'false')); };
     box.appendChild(b);
@@ -7626,7 +7629,7 @@ function renderAIPages() {
     b.setAttribute('aria-pressed', sel.includes(pid) ? 'true' : 'false');
     b.onclick = () => {
       GA.custom = true; const cur = gaPids().slice(); const k = cur.indexOf(pid);
-      if (k >= 0) { if (cur.length > 1) cur.splice(k, 1); } else { if (cur.length >= 4) { toast('เลือกได้ครั้งละไม่เกิน 4 หน้า', 1600); return; } cur.push(pid); }
+      if (k >= 0) { if (cur.length > 1) cur.splice(k, 1); } else { if (cur.length >= 5) { toast('เลือกได้ครั้งละไม่เกิน 5 หน้า', 1600); return; } cur.push(pid); }
       GA.pids = cur.sort((a, z) => pages.indexOf(a) - pages.indexOf(z)); renderAIPages();
     };
     el.appendChild(b);
@@ -7659,7 +7662,7 @@ async function gaSource(fromSel) {
     if (tx) texts.push('[page ' + n + ']\n' + tx.slice(0, 2500));
     if (useImg) { const shot = await pageShot(pid, c.strokes); if (shot) images.push(shot.blob); else if (c.strokes.length) { const b = await strokesBlob(c.strokes.map((x) => ({ s: x }))); if (b) images.push(b.blob); } } /* an imported PDF page is read with its printed content */
   }
-  return { images, text: texts.join('\n\n').slice(0, 6000), label: pids.length > 1 ? pids.length + ' notebook pages (pages ' + pids.map((p) => pages.indexOf(p) + 1).join(', ') + '), one image per page in that order' : 'the current notebook page' };
+  return { images, text: texts.join('\n\n').slice(0, 8000), label: pids.length > 1 ? pids.length + ' notebook pages (pages ' + pids.map((p) => pages.indexOf(p) + 1).join(', ') + '), one image per page in that order' : 'the current notebook page' };
 }
 /* one run at a time: a second tap waits for the first instead of starting another */
 async function generate(fromSel, more) {
@@ -7673,7 +7676,7 @@ async function generateRun(fromSel, more) {
   openAI(); renderAIPages();
   const src = more && GA.src ? GA.src : await gaSource(fromSel);
   if (!src.images.length && !src.text) { toast('หน้าที่เลือกยังไม่มีเนื้อหาให้สร้างโจทย์'); return; }
-  if (!more) { GA.src = src; GA.made = []; GA.set = null; }
+  if (!more) { GA.src = src; GA.made = []; GA.set = null; GA.hwSet = null; }
   const B = busyCard(more ? 'สร้างโจทย์เพิ่ม' : 'สร้างโจทย์จาก' + (fromSel ? 'ส่วนที่เลือก' : gaPids().length > 1 ? ' ' + gaPids().length + ' หน้า' : 'หน้านี้'));
   const tools = !!(AI.limits('gen') && AI.limits('gen').tools);
   if (tools) { try { await loadLib('math'); } catch (e) { /* run without the calculator */ } }
@@ -7736,7 +7739,8 @@ async function generateRun(fromSel, more) {
     const items = r.items.filter((it) => it.question).slice(0, 3);
     if (!items.length) throw { code: 'empty_completion', text: res.text };
     const names = { example: 'ตัวอย่าง', drill: 'โจทย์ฝึก', mcq: 'ข้อสอบปรนัย' };
-    const det = detectTopics(), t = det.track, ch = det.chs[0] || 0;
+    /* chapter tag: physics chapters found on the page in a physics notebook; otherwise the notebook subject's course, kept as from the page */
+    let t, ch; if (isPhys()) { const det = detectTopics(); t = det.track; ch = det.chs[0] || 0; } else { const tl = subjTracks(); t = curSubj()[0] === 'sci' && tl.includes('sci') && !(S.nb && S.nb.level === 'p') ? 'sci' : tl[0] || 'page'; ch = -1; }
     /* each item becomes a question the notebook's answer key understands */
     const qs = items.map((it) => {
       const kind = names[it.kind] ? it.kind : 'example';
@@ -7757,16 +7761,44 @@ async function generateRun(fromSel, more) {
         + '<div class="q">' + mdToHtml(q.q.replace(/^\*\*[^*]+\*\*\s*/, '') + (q.c.length ? '\n' + q.c.map((c, o) => 'กขคง'[o] + '. ' + c).join('\n') : '')) + '</div>'
         + '<button class="btn sm kbtn" type="button" data-a="key">ดูเฉลย</button>'
         + '<div class="keyhid" hidden><div class="sol">' + keyLine(q) + (q.e ? '<br>' + mdToHtml(q.e) : '') + '</div></div>'
-        + '<div class="row"><button class="btn solid" data-a="ins">แทรกลงสมุด</button></div>';
+        + '<div class="row"><button class="btn solid" data-a="ins">แทรกลงสมุด</button><button class="btn" data-a="set" type="button">เข้าชุดโจทย์</button></div>';
       head.after(card);
       typeset(card);
       const kb = card.querySelector('[data-a="key"]'), kh = card.querySelector('.keyhid');
       kb.onclick = () => { kh.hidden = !kh.hidden; kb.textContent = kh.hidden ? 'ดูเฉลย' : 'ซ่อนเฉลย'; };
       const ib = card.querySelector('[data-a="ins"]');
       ib.onclick = async () => { ib.disabled = true; const ok = await gaInsert(q); ib.disabled = false; if (ok) { card.classList.add('ins'); ib.textContent = 'แทรกอีกครั้ง'; } };
+      const sb = card.querySelector('[data-a="set"]'); sb.onclick = () => gaToSetMenu(sb, [q]);
     }
+    gaAllBar(head);
     $('#aiMore').hidden = false;
   } catch (e) { B.d.innerHTML = '<span class="k">สร้างโจทย์</span><div class="note err">' + esc(aiErr(e)) + '</div>' + (e && e.text ? '<span class="meta">' + esc(String(e.text).slice(0, 300)) + '</span>' : ''); }
+}
+/* every question made so far: into a question set (an existing one or a new one), or set straight away as homework */
+const gaQ = (q) => ({ id: q.id, t: q.t, ch: q.ch, d: q.d, k: q.k, q: q.q, c: q.c, a: q.a, ans: q.ans, e: q.e, src: 'assist' });
+async function gaToSet(qs, set) {
+  if (!EX.loaded && typeof exLoad === 'function') await exLoad().catch(() => {});
+  if (!set) { const id = 's' + now().toString(36) + uid().slice(0, 3); set = { id, title: 'โจทย์จาก ' + ((S.nb && S.nb.title) || 'สมุด') + ' ' + new Date().toLocaleDateString(LOC, { day: 'numeric', month: 'short' }), at: now(), src: 'assist', nb: S.nid || null, qs: [] }; EX.sets = (EX.sets || []).concat([set]); }
+  let n = 0; for (const q of qs) if (!set.qs.some((x) => x.id === q.id)) { set.qs.push(gaQ(q)); n++; }
+  await S.store.set('exs/' + set.id, Object.assign({}, set, { id: undefined })).catch(() => {});
+  return { set, n };
+}
+async function gaToSetMenu(anchor, qs) {
+  if (!EX.loaded && typeof exLoad === 'function') await exLoad().catch(() => {});
+  const sets = (EX.sets || []).slice().sort((a, b) => (b.at || 0) - (a.at || 0)).slice(0, 12);
+  popMenu(anchor, 'เอา ' + qs.length + ' ข้อเข้าชุดโจทย์', [['ชุดใหม่', async () => { const r = await gaToSet(qs, null); toast('สร้างชุด ' + r.set.title + ' แล้ว ' + r.n + ' ข้อ', 2200); }]].concat(sets.map((st) => [st.title + ' (' + st.qs.length + ' ข้อ)', async () => { const r = await gaToSet(qs, st); toast(r.n ? 'เพิ่มเข้าชุด ' + st.title + ' แล้ว ' + r.n + ' ข้อ' : 'ข้อนี้อยู่ในชุดนั้นแล้ว', 2000); }])));
+}
+function gaAllBar(head) {
+  const old = document.getElementById('gaAll'); if (old) old.remove();
+  const bar = document.createElement('div'); bar.className = 'card gaall'; bar.id = 'gaAll';
+  bar.innerHTML = '<span class="k">ทุกข้อที่สร้าง ' + GA.made.length + ' ข้อ</span><div class="row"><button class="btn" type="button" data-a="set">เอาทุกข้อเข้าชุดโจทย์</button><button class="btn solid" type="button" data-a="hw">มอบหมายเป็นการบ้าน</button></div><span class="meta">ข้อปรนัยตรวจให้ทันที ข้อที่ไม่มีตัวเลือกให้ผู้เรียนแสดงวิธีทำ ปรับรูปแบบรายข้อได้ก่อนมอบหมาย</span>';
+  head.after(bar);
+  bar.querySelector('[data-a="set"]').onclick = (e) => gaToSetMenu(e.currentTarget, GA.made.slice());
+  bar.querySelector('[data-a="hw"]').onclick = async () => {
+    if (CLOUD.state !== 'on') { toast('การมอบหมายงานต้องเข้าระบบคลาวด์ก่อน', 3000); return; }
+    const r = await gaToSet(GA.made.slice(), GA.hwSet && setById(GA.hwSet.id) ? GA.hwSet : null); GA.hwSet = r.set;
+    openAssign(r.set);
+  };
 }
 /* the question goes on the page; its answer lives in a question set of this notebook, opened by the "เฉลย" key on the box */
 async function gaInsert(q) {
@@ -20087,7 +20119,7 @@ function makeHandout() {
 }
 
 /* ---------- homework: teacher assigns a set, students answer online and/or hand in photos or files of paper work; checked and analysed automatically ---------- */
-const HW = { list: [], subs: {}, all: {}, keys: {}, cur: null };
+const HW = { list: [], subs: {}, all: {}, keys: {}, model: {}, cur: null };
 /* ---------- classes, rosters and scores: by class, academic year and term ---------- */
 const CLS = { list: [], loaded: false, year: null, term: null, cur: null };
 function thaiYearTerm(d) {
@@ -20464,7 +20496,7 @@ async function hwLoad() {
   const { data, error } = await CLOUD.client.from('assignments').select('id,title,data,due,open,created_at').eq('owner', CLOUD.user.id).order('created_at', { ascending: false });
   if (error) throw error; HW.list = (data || []).filter((x) => !(x.data && x.data.kind === 'grades'));
   /* the answer keys kept privately with the teacher when the work was set (a set edited or deleted later does not change the marking) */
-  await Promise.all(HW.list.filter((x) => !HW.keys[x.id]).map((x) => Promise.resolve(S.store.get('hwkey/' + x.id)).then((k) => { if (k && k.k) HW.keys[x.id] = k.k; }).catch(() => {})));
+  await Promise.all(HW.list.filter((x) => !HW.keys[x.id]).map((x) => Promise.resolve(S.store.get('hwkey/' + x.id)).then((k) => { if (k && k.k) HW.keys[x.id] = k.k; if (k && k.m) HW.model[x.id] = k.m; }).catch(() => {})));
   return HW.list;
 }
 async function hwLoadSubs(aid) {
@@ -20524,7 +20556,7 @@ async function hwCheckOne(a, s) {
   if (!AI.ready('read')) throw { code: 'ai_off' };
   const imgs = await hwFileBlobs(s, a); if (!imgs.length) throw { code: 'empty_text', why: 'เปิดไฟล์ที่ส่งมาไม่ได้' };
   const L = 'กขคง', A = a.data, anyWork = (A.qs || []).some((q) => hwQm(A, q) === 'work');
-  const qs = A.qs.map((q, i) => { const k = hwKeyFor(a, q), hasC = q.c && q.c.length >= 2, mode = hwQm(A, q); return (i + 1) + ') [' + (mode === 'work' ? 'SHOW WORKING' : 'CHOOSE AN ANSWER') + '] ' + q.q + (hasC ? '\n   choices: ' + q.c.map((c, j) => L[j] + '. ' + c).join(' | ') : '') + (k != null && hasC ? '\n   correct: ' + L[k] + ' (' + q.c[k] + ')' : '') + (!hasC && q.e ? '\n   model answer: ' + String(q.e).slice(0, 400) : ''); }).join('\n');
+  const qs = A.qs.map((q, i) => { const k = hwKeyFor(a, q), hasC = q.c && q.c.length >= 2, mode = hwQm(A, q); return (i + 1) + ') [' + (mode === 'work' ? 'SHOW WORKING' : 'CHOOSE AN ANSWER') + '] ' + q.q + (hasC ? '\n   choices: ' + q.c.map((c, j) => L[j] + '. ' + c).join(' | ') : '') + (k != null && hasC ? '\n   correct: ' + L[k] + ' (' + q.c[k] + ')' : '') + (!hasC && (q.e || (HW.model[a.id] || {})[q.id]) ? '\n   model answer: ' + String(q.e || HW.model[a.id][q.id]).slice(0, 500) : ''); }).join('\n');
   const prompt = 'These images are a Thai student\'s handed-in work for this assignment. The images in order are: ' + imgs.labels.map((t, i) => (i + 1) + ') ' + t).join('; ') + '.\n' + qs + '\n'
     + 'For every question, find what the student answered (a marked choice letter ก ข ค ง, or a final answer, or their working). Use the image labelled for a question first. Compare with the correct answer. Give SCORE 1 if the final answer is correct, 0 if wrong or missing, or 0.5 if nearly right. Add a short Thai note on the mistake or the good point.\n'
     + (anyWork ? 'Questions marked SHOW WORKING are also judged on the working apart from the final answer: WORK is 1 if the method is complete and logical (right formula, substitution, units, steps), 0.5 if partly right or steps are missing, 0 if there is no working or it is wrong or only a copied answer. A correct final answer with no working still gets WORK 0. Do not give credit for working that is not on the images. For CHOOSE AN ANSWER questions write WORK: -\n' : '')
@@ -20880,7 +20912,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1794361499';
+const BUILD = '1794361989';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;

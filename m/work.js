@@ -424,7 +424,7 @@ async function hwAssignCreate(dueIn) {
     const { error } = await CLOUD.client.from('assignments').insert({ id, owner: CLOUD.user.id, title: data.title, data, due, open: true });
     if (error) throw error;
     HW.list = null;
-    { const k = {}; for (const q of set.qs) if (q.c && q.c.length >= 2) k[q.id] = q.a || 0; HW.keys[id] = k; Promise.resolve(S.store.set('hwkey/' + id, { k, at: now() })).catch(() => {}); }
+    { const k = {}, m = {}; for (const q of set.qs) { if (q.c && q.c.length >= 2) k[q.id] = q.a || 0; const mm = [q.ans, q.e].filter(Boolean).join('\n'); if (mm) m[q.id] = mm.slice(0, 1500); } HW.keys[id] = k; HW.model[id] = m; Promise.resolve(S.store.set('hwkey/' + id, { k, m, at: now() })).catch(() => {}); } /* the keys and model answers stay with the teacher, not in the work learners can read */
     if (LIVE.role === 'teacher' && data.nb && data.nb.id === LIVE.nbId) setTimeout(() => liveSendHw(true), 500);
     if (cls && !(cls.items || []).some((it) => it.ref === id)) { const P = clsPlan(cls); cls.items = (cls.items || []).concat([{ id: 'k' + uid(), name: data.title.slice(0, 40), max: qs.length, kind: 'hw', ref: id, at: now(), due, cat: P.newCat || (P.cats[0] && P.cats[0].id) || null }]); await clsSave(cls); }
     out.innerHTML = '<div class="livetop"><div class="qr" id="hwQR"></div><div class="lcode"><span>ลิงก์การบ้าน ส่งในกลุ่มแชตของห้องได้เลย ปิดรับ ' + esc(hwWhen(t)) + '</span><small>' + esc(hwLink(id)) + '</small></div></div>';
