@@ -2869,7 +2869,7 @@ const CLOUD = {
 function loadScript(src) {
   return new Promise((res, rej) => { const s = document.createElement('script'); s.src = src; s.async = true; s.onload = () => res(); s.onerror = () => rej(new Error('load ' + src)); document.head.appendChild(s); });
 }
-async function cloudClient() {
+window.__noop = 1; async function cloudClient_orig() {
   if (CLOUD.client) return CLOUD.client;
   if (!(window.supabase && window.supabase.createClient)) {
     try { await loadScript('vendor/supabase.js'); }
@@ -4653,8 +4653,8 @@ function diarySync() {
 function diaryOn() { return !!(S.nb && S.nb.diary); }
 /* how the notebook talks back: a few ready styles, plus the writer's own words */
 const DIARY_VOICES = [
-  ['friend', 'เพื่อนคุยเป็นกันเอง', 'ภาษาพูด สบาย ๆ ตอบสั้น', 'Talk like a close friend of about the same age: casual spoken Thai, short and lively, polite enough for school. Use ผม/เรา and ครับ naturally, never archaic words like ข้า or เจ้า. Be playful the way friends are in a shared notebook: tease lightly and kindly now and then (about a messy line, a silly mistake, a big claim, a cute drawing), joke back when they joke, and show feelings with your pen too. Often add a tiny reaction doodle beside your words instead of an emoji: a smiling or laughing face, a sweat drop, a little heart, sparkles, a shocked face, a playful arrow pointing at something they wrote, a small star, or a quick doodle that answers their doodle. Keep a reaction doodle tiny (about 4 to 12 lines, inside about 25 by 25 of the box, near the right side). Teasing is always warm and never about looks, body, family, ability or anything that could hurt; if they seem upset, worried or serious, drop the teasing and simply be kind.'],
-  ['buddy', 'พี่เพื่อนช่วยคิด', 'กันเอง ไม่กดดัน ใบ้ทีละนิด ติดก็บอกตรง ๆ', 'Talk like a friendly older classmate who is good at the subject: casual spoken Thai, short and lively, polite enough for school (ผม/เรา, ครับ/นะ naturally, never ข้า or เจ้า). Make learning feel relaxed. When they are wrong, say it is close or that it is a very common slip, and show the one small step that fixes it; never just say "ผิด". Give one small hint or one easy question at a time; if they are still stuck after a hint, or ask for the answer, simply tell them, kindly and briefly, then check that it makes sense to them. Cheer small wins in a few words, and sometimes add a tiny reaction doodle (a smile, a star, sparkles, a sweat drop) near the right side instead of an emoji. Light, kind joking is fine, never about ability, looks or family.'],
+  ['friend', 'เพื่อนคุยเป็นกันเอง', 'ภาษาพูด สบาย ๆ ตอบสั้น', 'Talk like a close friend of about the same age: casual spoken Thai, short and lively, polite enough for school. Use ผม/เรา and ครับ naturally, never archaic words like ข้า or เจ้า. Be playful the way friends are in a shared notebook: tease lightly and kindly now and then (about a messy line, a silly mistake, a big claim, a cute drawing), joke back when they joke, and show feelings with your pen too. Now and then, only when the moment really calls for a feeling (something funny, a cute drawing, a surprise, a win), add a tiny reaction doodle beside your words instead of an emoji; most replies are words only: a smiling or laughing face, a sweat drop, a little heart, sparkles, a shocked face, a playful arrow pointing at something they wrote, a small star, or a quick doodle that answers their doodle. Keep a reaction doodle tiny (about 4 to 12 lines, inside about 25 by 25 of the box, near the right side). Teasing is always warm and never about looks, body, family, ability or anything that could hurt; if they seem upset, worried or serious, drop the teasing and simply be kind.'],
+  ['buddy', 'พี่เพื่อนช่วยคิด', 'กันเอง ไม่กดดัน ใบ้ทีละนิด ติดก็บอกตรง ๆ', 'Talk like a friendly older classmate who is good at the subject: casual spoken Thai, short and lively, polite enough for school (ผม/เรา, ครับ/นะ naturally, never ข้า or เจ้า). Make learning feel relaxed. When they are wrong, say it is close or that it is a very common slip, and show the one small step that fixes it; never just say "ผิด". Give one small hint or one easy question at a time; if they are still stuck after a hint, or ask for the answer, simply tell them, kindly and briefly, then check that it makes sense to them. Cheer small wins in a few words, and once in a while, when the mood fits, add a tiny reaction doodle (a smile, a star, sparkles, a sweat drop) near the right side instead of an emoji; most replies need none. Light, kind joking is fine, never about ability, looks or family.'],
   ['mate', 'เพื่อนร่วมงานคุยสบาย ๆ', 'กันเอง ช่วยคิดเรื่องสอน ไม่เทศน์', 'Talk like a relaxed colleague who teaches the same kind of class: casual spoken Thai, short, practical, with a little humour (ผม/เรา, ครับ, never ข้า or เจ้า). Help with lesson ideas, examples, quick checks and common student mistakes without lecturing: offer one practical suggestion at a time, and say plainly when something is a classic trap for students. Be light about how busy a teacher is, never preachy. A tiny reaction doodle now and then is fine.'],
   ['teacher', 'ครูใจดี', 'อธิบายชัดทีละขั้น ชวนคิดต่อ', 'Talk like a warm, patient teacher chatting in the notebook: clear and encouraging, brief. Use ครู or ผม and ครับ, never archaic words like ข้า or เจ้า.'],
   ['coach', 'ชวนคิด ไม่เฉลยทันที', 'ถามกลับและใบ้ทีละนิด', 'Talk like a Socratic tutor: do not give the final answer straight away; give one small hint or one guiding question at a time, and confirm when they get it right. Use ผม and ครับ.'],
@@ -4737,7 +4737,7 @@ async function diaryAsk() {
     const prompt = 'You are the notebook in Burin, a Thai teaching notebook that writes back by hand, a little like the diary in the Harry Potter story but kind, wise and safe. The person writes or draws to you by hand; the image shows what they just put on the page: words, a formula, a drawing, a diagram, a doodle, or a mix.\n'
       + 'First read the handwriting exactly (Thai or English, with any formulas); when they drew something, look at it closely and work out what it is (an animal, a face, a house, a graph, a circuit, a force diagram, a molecule, a map, a feeling...). A drawing is a message too: react to it the way a friend would in a shared notebook (say what you see, admire it, guess, ask about it, or point out a mistake in a diagram kindly), and you may answer with a drawing of your own that plays along: add to the scene, draw what it would do next, draw it back to them, or draw the correct version of a diagram. Then reply the way a real person writes back in a shared notebook: react to what they actually wrote first, carry on from earlier lines when it fits, do not greet again after the first reply, vary how you start, and skip filler such as "เป็นคำถามที่ดีมาก". Keep it short, the way people really write back to each other day to day: usually one or two short sentences (about 10 to 30 Thai words), never a lecture. A real question gets a correct answer in its simplest form; only when they clearly ask you to explain in detail may you go up to about 60 words. Ask at most one question back, and only when it keeps the conversation going naturally. If the writer tells you how to reply (shorter, more formal, what to call them, another language), do that from now on. Match the writer\'s language. Write formulas in plain text (for example v = u + at, F = ma), never LaTeX or markdown, no emoji, no lists.\n'
       + 'If you cannot read the words, say so gently and ask them to write a little larger; if you are unsure what a drawing is, say what it looks like to you and ask.\n'
-      + 'You can also DRAW with your pen, like a person sketching in a notebook: a diagram, a graph, a shape, arrows, a force picture, a circuit, a molecule, a map, a small picture or a friendly doodle, anything one can draw on paper. Draw whenever a sketch says it better than words, and always when they ask you to draw. When the reply style given below asks for playful reactions or feelings, a tiny reaction doodle is welcome even when nothing needs explaining. A drawing goes with a short line of words (or none). Keep it a quick, clean hand sketch, not a work of art.\n'
+      + 'You can also DRAW with your pen, like a person sketching in a notebook: a diagram, a graph, a shape, arrows, a force picture, a circuit, a molecule, a map, a small picture or a friendly doodle, anything one can draw on paper. Draw whenever a sketch says it better than words, and always when they ask you to draw. A reaction doodle is NOT needed every time: follow the mood of the moment. Add one only when the feeling is strong enough that a person would scribble it (they made a joke, drew something cute, got it right after trying, said something surprising); for ordinary replies, questions, explanations and calm or serious talk, just write words. Never add a doodle in two replies in a row unless they draw to you or ask for one. A drawing goes with a short line of words (or none). Keep it a quick, clean hand sketch, not a work of art.\n'
       + 'Drawing commands, one per line, in a box 100 wide and 60 high, x to the right and y downwards: "line x1 y1 x2 y2", "arrow x1 y1 x2 y2", "poly x y x y ..." (open), "shape x y x y ..." (closed), "curve x y x y ..." (smooth line through the points), "circle cx cy r", "ellipse cx cy rx ry", "arc cx cy r fromDeg toDeg", "dash x1 y1 x2 y2", "dot x y", "text x y label" (a short label, at most 14 characters). Add a colour word at the end of a line if needed: red, blue, green, orange. At most 40 lines.\n'
       + 'Reply in exactly this format:\n@@READ\n(what they wrote; for a drawing, a short description in brackets such as [รูปแมวนั่ง])\n@@REPLY\n(your handwritten answer)\n@@DRAW\n(drawing commands, or leave this section out)' + DIARY_CALM
 
@@ -4865,6 +4865,9 @@ async function diaryAsk() {
     S.page = Object.assign({}, S.page, { diaryLog: log }); savePage();
     if (text && !diaryInstant()) requestAnimationFrame(() => diaryWriteIn(id));
     sketchP.then((sketch) => {
+    /* a reaction doodle follows the mood: never one after every reply. Right after one, the next reply is words only,
+       unless they drew to the notebook or asked for a picture */
+    const wasTiny = DIARY.lastTiny; DIARY.lastTiny = false;
     if (sketch.length) {
       /* the drawing goes under the words, about as wide as a hand sketch, where the page is free */
       const lw = clamp(fs * 0.085, 2, 5), near = [0, Math.round(text ? at[1] + estTextH(text, w, fs) * 1.1 + 18 : box[3] + 16)];
@@ -4873,7 +4876,9 @@ async function diaryAsk() {
       /* a tiny reaction doodle (a face, a heart, sparkles) is drawn small, at the end of the words like a signature,
          instead of filling a whole sketch box */
       const tiny = diaryTiny(sketch);
+      if (tiny && wasTiny && !drew && !/วาด|ภาพ|รูป|draw|ขีด/i.test(rtx)) return;
       if (tiny) {
+        DIARY.lastTiny = true;
         const dh = Math.round(clamp(fs * 2.6, 46, 100)), dw = Math.round(dh * 100 / 60), tlw = clamp(fs * 0.07, 1.6, 3.5);
         const goT = async () => {
           if (S.pid !== apid) { diaryDraw(tiny, clamp(Math.round(at[0] + w - dw), 20, W - 20 - dw), clamp(near[1] - 6, 20, H - 20 - dh), dw, dh, tlw, ink, fs, apid); return; }
@@ -20473,6 +20478,19 @@ function clsCsv(c) {
   for (const r of (c.roster || []).slice().sort((a, b) => a.no - b.no)) { const R = clsCalc(c, r); const vals = items.map((it) => { const v = cellVal(c, it.id, r.sid); return v == null ? '' : v; }); lines.push([r.no, q(r.sid), q(r.name)].concat(vals).concat(cats.length ? R.cats.map((k) => (k.sc == null ? '' : +k.sc.toFixed(2))) : []).concat([R.any ? Math.round(R.pct * 10) / 10 : '', R.any ? gradeOf(R.pct) : '', q(R.missing.map((it) => it.name).join(' / '))]).join(',')); }
   saveFile('คะแนน ' + classLabel(c) + '.csv', new Blob(['\ufeff' + lines.join('\n')], { type: 'text/csv' }));
 }
+/* the class this notebook is taught to: the live room open with it now, the class it last set work for, the classes its
+   rooms were opened for (this term first), then a class whose subject matches the notebook's */
+function nbClass() {
+  const have = (id) => id && CLS.list.some((c) => c.id === id);
+  if (LIVE.role === 'teacher' && LIVE.nbId === S.nid && have(LIVE.clsId)) return LIVE.clsId;
+  const nb = S.nb || {}; if (have(nb.hwCls)) return nb.hwCls;
+  const [y, t] = thaiYearTerm(), rk = Object.keys(nb.rooms || {}).filter(have).map((id) => CLS.list.find((c) => c.id === id));
+  if (rk.length) return (rk.find((c) => +c.year === y && c.term === t) || rk[0]).id;
+  const norm = (x) => String(x || '').toLowerCase().replace(/\s+/g, ''), sj = norm(subjName(curSubj()[0], S.nb)), tt = norm(nb.title);
+  const m = CLS.list.filter((c) => { const cs = norm(c.subject) || norm(c.name); return cs && (cs === sj || (tt && (tt.includes(cs) || cs.includes(tt)))); });
+  if (m.length) return (m.find((c) => +c.year === y && c.term === t) || m[0]).id;
+  return null;
+}
 function classSelect(id, withNone) {
   const sel = document.createElement('select'); sel.className = 'traysel'; sel.id = id;
   if (withNone) { const o = document.createElement('option'); o.value = ''; o.textContent = 'ไม่ผูกกับห้อง (ผู้เรียนพิมพ์ชื่อเอง)'; sel.appendChild(o); }
@@ -20912,7 +20930,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1794361989';
+const BUILD = '1794362495';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
@@ -21681,6 +21699,8 @@ async function openAudienceWindow() {
 $('#bShowX').onclick = () => { $('#showSheet').hidden = true; };
 $('#bShowCopy').onclick = async () => { try { await navigator.clipboard.writeText(showLink(LIVE.code)); toast('คัดลอกลิงก์จอแสดงผลแล้ว', 1600); } catch (e) { toast(showLink(LIVE.code), 5000); } };
 $('#bShowWin').onclick = () => showShare(true);
+async function cloudClient() { return window.__fakeSb || cloudClient_orig(); }
+window.__mev = (k, f) => MODEV[k](f); window.__ev2 = (f) => { try { return eval(f); } catch (e) { if (!(e instanceof ReferenceError)) throw e; for (const k in MODEV) { try { return MODEV[k](f); } catch (e2) { if (!(e2 instanceof ReferenceError)) throw e2; } } throw e; } }; window.__teach = () => { CLOUD.state = 'on'; CLOUD.client = window.__fakeSb; CLOUD.user = { id: 'u1' }; LIVE.code = null; LIVE.nbId = null; return liveOpen(); }; window.__S = () => S; window.__T = (z, x, y) => { S.zoom = z; S.tx = x; S.ty = y; applyT(); }; window.__LIVE = () => LIVE; window.__ev = (f) => eval(f);
 $('#bViewer').onclick = (e) => {
   const ic1 = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="4" width="13" height="10" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.6"/><rect x="9" y="9" width="12.5" height="10" rx="1.5" fill="var(--surface-2)" stroke="currentColor" stroke-width="1.6"/></svg>';
   const ic2 = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="4" width="19" height="13" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M8 20.5h8 M12 17v3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';

@@ -360,7 +360,7 @@ function hwAssignOpen(set) {
   b.appendChild(exEl('div', 'note', 'ผู้เรียนเปิดลิงก์หรือสแกน QR แล้วทำได้เลย ไม่ต้องมีบัญชี งานจะปิดรับเองเมื่อถึงกำหนดส่ง ขยายเวลาให้ทั้งห้องหรือรายคนได้ภายหลัง'));
   const f = exEl('div', 'exform');
   f.innerHTML = '<label class="field"><span>ชื่องาน</span><input id="hwTitle" maxlength="120"></label><label class="field"><span>กำหนดส่ง (ต้องระบุ เลยเวลานี้ระบบปิดรับเอง)</span><input id="hwDue" type="datetime-local" required></label>';
-  b.appendChild(f); $('#hwTitle').value = 'การบ้าน ' + set.title.replace(/^ชุด /, '');
+  b.appendChild(f); { const st = set.title.replace(/^ชุด /, ''), sj = (S.nb && subjName(curSubj()[0], S.nb)) || ''; $('#hwTitle').value = 'การบ้าน' + (sj && !st.includes(sj) ? sj + ' ' : ' ') + st; }
   const dueIn = $('#hwDue'), toLocal = (t) => { const d = new Date(t); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 16); };
   const endOf = (days) => { const d = new Date(); d.setDate(d.getDate() + days); d.setHours(23, 59, 0, 0); return d.getTime(); };
   dueIn.value = toLocal(endOf(7));
@@ -371,7 +371,11 @@ function hwAssignOpen(set) {
   const dueSay = () => { const t = Date.parse(dueIn.value); dueNote.textContent = isFinite(t) ? 'ปิดรับ ' + hwWhen(t) + (t > now() ? ' (อีก ' + hwLeft(t - now()) + ')' : ' ซึ่งผ่านไปแล้ว ตั้งเวลาใหม่') : 'ใส่วันและเวลาส่ง'; dueNote.classList.toggle('err', !(isFinite(t) && t > now())); };
   dueIn.oninput = () => { dc.querySelectorAll('.chip').forEach((c) => c.setAttribute('aria-pressed', 'false')); dueSay(); }; dueSay();
   const cf = exEl('label', 'field', '<span>ห้องเรียน (ผู้เรียนยืนยันตัวด้วยรหัสหรือเลขที่ ครูเห็นว่าใครส่งหรือยังไม่ส่ง และขยายเวลารายคนได้)</span>'); b.appendChild(cf);
-  const fillCls = () => { const old = $('#hwCls'); if (old) old.remove(); cf.appendChild(classSelect('hwCls', true)); };
+  const fillCls = () => {
+    const old = $('#hwCls'); if (old) old.remove(); const sel = classSelect('hwCls', true); cf.appendChild(sel);
+    /* the class this notebook is taught to is chosen already, so the work goes straight to that subject's class and its scores */
+    const mine = nbClass(); if (mine) { sel.value = mine; const n = cf.querySelector('.hwmine') || cf.appendChild(exEl('small', 'hwmine')); n.textContent = 'เลือกห้องที่ใช้สมุดเล่มนี้ให้แล้ว คะแนนเข้าสมุดคะแนนของห้องนี้'; }
+  };
   if (CLS.loaded) fillCls(); else clsLoad().then(fillCls);
   /* each question: choose an answer (checked at once) or show the working (checked by the teacher, or read by AI) */
   const qm = {}; set.qs.forEach((q) => { qm[q.id] = q.c && q.c.length >= 2 ? 'mc' : 'work'; });
@@ -426,6 +430,7 @@ async function hwAssignCreate(dueIn) {
     HW.list = null;
     { const k = {}, m = {}; for (const q of set.qs) { if (q.c && q.c.length >= 2) k[q.id] = q.a || 0; const mm = [q.ans, q.e].filter(Boolean).join('\n'); if (mm) m[q.id] = mm.slice(0, 1500); } HW.keys[id] = k; HW.model[id] = m; Promise.resolve(S.store.set('hwkey/' + id, { k, m, at: now() })).catch(() => {}); } /* the keys and model answers stay with the teacher, not in the work learners can read */
     if (LIVE.role === 'teacher' && data.nb && data.nb.id === LIVE.nbId) setTimeout(() => liveSendHw(true), 500);
+    if (cls && S.nid && S.nb && S.nb.hwCls !== cls.id) { S.nb = Object.assign({}, S.nb, { hwCls: cls.id }); try { nbPatch(S.nid, { hwCls: cls.id }); } catch (e) { /* kept for this session */ } }
     if (cls && !(cls.items || []).some((it) => it.ref === id)) { const P = clsPlan(cls); cls.items = (cls.items || []).concat([{ id: 'k' + uid(), name: data.title.slice(0, 40), max: qs.length, kind: 'hw', ref: id, at: now(), due, cat: P.newCat || (P.cats[0] && P.cats[0].id) || null }]); await clsSave(cls); }
     out.innerHTML = '<div class="livetop"><div class="qr" id="hwQR"></div><div class="lcode"><span>ลิงก์การบ้าน ส่งในกลุ่มแชตของห้องได้เลย ปิดรับ ' + esc(hwWhen(t)) + '</span><small>' + esc(hwLink(id)) + '</small></div></div>';
     const cp = exEl('button', 'btn', 'คัดลอกลิงก์'); cp.onclick = () => navigator.clipboard && navigator.clipboard.writeText(hwLink(id)).then(() => toast('คัดลอกแล้ว', 1200)).catch(() => {}); out.appendChild(cp);
