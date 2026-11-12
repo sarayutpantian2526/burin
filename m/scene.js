@@ -2421,13 +2421,19 @@ const LIFE_EXPR = [['none', 'ปกติ'], ['shout', 'ตะโกน'], ['tal
 function lifeBurst(t) { const u = t % 2.3; return u < 1.35 ? 0.55 + 0.45 * Math.abs(Math.sin(u * 7.2)) : Math.max(0, 1 - (u - 1.35) * 6) * 0.3; }
 function lifeFaceParts(it, rt) {
   if (rt.face !== undefined) return rt.face;
+  /* two guesses at the head: the stick-figure rig's, and the biggest line drawn round other marks (a sun, a ball, a face on
+     its own); the one with the eyes and mouth inside it wins, so a face is never looked for in a ray or an arm */
+  const inner = (hc, r) => { const out = []; it.ink.forEach((s, i) => { const P = ipPts(s); if (!P.length) return; if (P.every((p) => Math.hypot(p[0] - hc[0], p[1] - hc[1]) < r * 0.92)) { const b = ipBox([s]); if (Math.max(b[2] - b[0], b[3] - b[1]) < r * 1.5) out.push({ i, b, cy: (b[1] + b[3]) / 2, cx: (b[0] + b[2]) / 2 }); } }); return out; };
+  const cand = [];
   let R = null; try { R = typeof ipRig === 'function' && it.ink.length >= 2 ? ipRig(it.ink) : null; } catch (e) { R = null; }
-  if (!R || !R.headC) { /* a face drawn on its own: the biggest closed line is the head */
-    let bi = -1, ba = 0; it.ink.forEach((s, i) => { const b = ipBox([s]), a = (b[2] - b[0]) * (b[3] - b[1]); if (a > ba) { ba = a; bi = i; } });
-    if (bi < 0) return (rt.face = null); const b = ipBox([it.ink[bi]]); R = { headC: [(b[0] + b[2]) / 2, (b[1] + b[3]) / 2], headR: Math.max(b[2] - b[0], b[3] - b[1]) / 2 };
-  }
-  const hc = R.headC, r = R.headR, parts = [];
-  it.ink.forEach((s, i) => { const P = ipPts(s); if (!P.length) return; if (P.every((p) => Math.hypot(p[0] - hc[0], p[1] - hc[1]) < r * 0.92)) { const b = ipBox([s]); parts.push({ i, b, cy: (b[1] + b[3]) / 2, cx: (b[0] + b[2]) / 2 }); } });
+  if (R && R.headC) cand.push({ hc: R.headC, r: R.headR });
+  { let bi = -1, ba = 0; it.ink.forEach((s, i) => { const b = ipBox([s]), a = (b[2] - b[0]) * (b[3] - b[1]); if (a > ba) { ba = a; bi = i; } });
+    const P0 = bi >= 0 ? ipPts(it.ink[bi]) : [], b0 = bi >= 0 ? ipBox([it.ink[bi]]) : null, shut = P0.length > 5 && Math.hypot(P0[0][0] - P0[P0.length - 1][0], P0[0][1] - P0[P0.length - 1][1]) < 0.35 * Math.max(b0[2] - b0[0], b0[3] - b0[1]);
+    if (shut) { const b = b0; cand.push({ hc: [(b[0] + b[2]) / 2, (b[1] + b[3]) / 2], r: Math.max(b[2] - b[0], b[3] - b[1]) / 2 }); } }
+  if (!cand.length) return (rt.face = null);
+  for (const c of cand) c.parts = inner(c.hc, c.r);
+  const pick = cand.reduce((a, c) => (c.parts.length > a.parts.length ? c : a), cand[0]);
+  const hc = pick.hc, r = pick.r, parts = pick.parts;
   let mouth = null; for (const q of parts) if (q.cy > hc[1] + 0.12 * r && (!mouth || q.b[2] - q.b[0] > mouth.b[2] - mouth.b[0])) mouth = q;
   const eyes = parts.filter((q) => q !== mouth && q.cy < hc[1] + 0.12 * r);
   const mw = mouth ? Math.max(0.25 * r, mouth.b[2] - mouth.b[0]) : 0.55 * r, m = mouth ? [mouth.cx, mouth.cy] : [hc[0], hc[1] + 0.42 * r];
@@ -2486,7 +2492,7 @@ function lifeAnchor(it, rt, o, at) {
   if (Array.isArray(at)) { u = clamp(+at[0] || 0, -0.5, 1.5); v = clamp(+at[1] || 0, -0.5, 1.5); }
   else if (at === 'front') { u = d > 0 ? 0.92 : 0.08; v = 0.35; } else if (at === 'back') { u = d > 0 ? 0.05 : 0.95; v = 0.5; }
   else if (at === 'top') { u = 0.5; v = 0; } else if (at === 'bottom') { u = 0.5; v = 1; }
-  else if (at === 'mouth') { const F = lifeFaceParts(it, rt); if (F && F.mouth != null) return [F.m[0] + ox, F.m[1] + oy, F.r * 0.8]; u = d > 0 ? 0.9 : 0.1; v = 0.3; }
+  else if (at === 'mouth') { const F = lifeFaceParts(it, rt); if (F && (F.mouth != null || F.eyes.length)) return [F.m[0] + ox, F.m[1] + oy, F.r * 0.8]; u = d > 0 ? 0.9 : 0.1; v = 0.3; }
   /* the picture may be drawn facing one way and now facing the other */
   if (face !== d) u = 1 - u;
   return [B[0] + u * bw + ox, B[1] + v * bh + oy, clamp(Math.max(bw, bh) * 0.12, 6, 40)];
