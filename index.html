@@ -5598,10 +5598,18 @@ function onDown(e) {
   }
   if (e.pointerType === 'touch') {
     const big = (e.width || 0) > 90 || (e.height || 0) > 90 || ((e.width || 0) > 70 && (e.height || 0) > 70); /* a palm, not a thumb sliding the page */
+    /* a hand resting while the pen writes is never an eraser */
+    if (S.penDown > 0 || t - S.lastPen < 650) { pt.mode = 'ignore'; return; }
     if (S.palm && big) { pt.mode = 'palm'; pt.removed = []; const [x, y] = toLogical(e.clientX, e.clientY); eraseAt(x, y, Math.max(40, (e.width || 60) / S.base / S.zoom / 2), pt); toast('ฝ่ามือ กำลังลบ', 1200); return; }
     if (S.penDown > 0 || t - S.lastPen < 650) { pt.mode = 'ignore'; return; }
     const touches = [...P.values()].filter((p) => p.type === 'touch' && p.mode !== 'ignore' && p.mode !== 'palm');
-    if (touches.length >= 2) { startGesture(touches); return; }
+    if (touches.length >= 2) {
+      /* a finger already writing (moving for a moment) keeps writing when another finger or a knuckle brushes the glass;
+         two fingers put down together still zoom and slide the page */
+      const writing = touches.find((p) => p !== pt && p.mode === 'draw' && p.stroke && t - p.t0 > 120 && strokeLenU(p.stroke) >= 8);
+      if (writing) { pt.mode = 'ignore'; return; }
+      startGesture(touches); return;
+    }
     if (!S.finger) {
       /* the finger moves things as in other notebook apps: tap a box or picture to select it, drag the frame to move it,
          or press and hold on it for half a second and drag straight away; anywhere else the finger slides the page */
@@ -5782,7 +5790,7 @@ function onUp(e) {
   }
   /* the system can cancel a pen that rests still on the glass (holding to make a shape is exactly that): keep what was
      drawn, the snapped shape included, instead of throwing it away; only a tiny accidental mark is dropped */
-  if (e.type === 'pointercancel' && pt.mode === 'draw') { const sp = pt.stroke && pt.stroke.p || []; let L = 0; for (let i = 3; i < sp.length; i += 3) L += Math.hypot(sp[i] - sp[i - 3], sp[i + 1] - sp[i - 2]) / 10; if (!pt.snapped && L < 12) { clearLive(); return; } }
+  if (e.type === 'pointercancel' && pt.mode === 'draw') { const sp = pt.stroke && pt.stroke.p || []; let L = 0; for (let i = 3; i < sp.length; i += 3) L += Math.hypot(sp[i] - sp[i - 3], sp[i + 1] - sp[i - 2]) / 10; if (!pt.snapped && L < 12 && now() - pt.t0 < 250) { clearLive(); return; } }
   if (pt.mode === 'draw' && S.convMode && tap) {
     clearLive(); const [x, y] = toLogical(e.clientX, e.clientY); convertAt(x, y); return;
   }
@@ -5797,7 +5805,7 @@ function onUp(e) {
     if (!pt.snapped) inkSimplify(pt.stroke); S.mine.push(pt.stroke); clearLive();
     /* only the finished line is added to the page picture: redrawing the whole page after every stroke was the main delay */
     if (pt.stroke.k === 'h' || S.sel) drawInk(); else { const c = cInk.getContext('2d'); c.setTransform(S.res, 0, 0, S.res, 0, 0); drawStroke(c, pt.stroke); S.inkSigDrawn = inkSig(); if (typeof refreshCurThumb === 'function') refreshCurThumb(); sharpAdd([pt.stroke]); }
-    pushUndo({ t: 'add', stroke: pt.stroke }); saveMine(); diaryStroke(pt.stroke);
+    pushUndo({ t: 'add', stroke: pt.stroke }); saveMine(); diaryStroke(pt.stroke); S.lastInk = now();
     if (S.convMode && S.autoConv && pt.stroke.k !== 'h') { S.autoQueue.add(pt.stroke.id); autoConvert(); }
   } else if (pt.mode === 'erase' && pt.snap && Object.keys(pt.snap).length) {
     clearLive();
@@ -5831,7 +5839,9 @@ function onUp(e) {
 }
 
 /* gestures */
+function strokeLenU(st) { const sp = (st && st.p) || []; let L = 0; for (let i = 3; i < sp.length; i += 3) L += Math.hypot(sp[i] - sp[i - 3], sp[i + 1] - sp[i - 2]) / 10; return L; }
 function startGesture(touches) {
+  const drew = touches.some((p) => p.mode === 'draw' && p.stroke && strokeLenU(p.stroke) >= 8); /* was really writing, not just the first finger of a tap */
   for (const p of touches) {
     /* a second finger arriving while a finger drawing rests still (holding to make a shape) keeps that drawing */
     if (p.mode === 'draw' && p.stroke) { clearTimeout(p.holdT); const sp = p.stroke.p || []; let L = 0; for (let i = 3; i < sp.length; i += 3) L += Math.hypot(sp[i] - sp[i - 3], sp[i + 1] - sp[i - 2]) / 10; if (p.snapped || L >= 30) { if (!p.snapped) inkSimplify(p.stroke); S.mine.push(p.stroke); drawInk(); pushUndo({ t: 'add', stroke: p.stroke }); saveMine(); diaryStroke(p.stroke); } }
@@ -5840,7 +5850,7 @@ function startGesture(touches) {
   }
   const ids = touches.slice(0, 3).map((p) => p.id);
   const pts = ids.map((id) => P.get(id));
-  G = { ids, wide: pts.some((p) => (p.cw || 0) > 36), apart: Math.hypot(pts[0].lx - pts[1].lx, pts[0].ly - pts[1].ly), count: ids.length, t0: now(), moved: false, d0: dist(pts[0], pts[1]), m0: mid(pts[0], pts[1]), z0: S.zoom, tx0: S.tx, ty0: S.ty };
+  G = { drew, ids, wide: pts.some((p) => (p.cw || 0) > 36), apart: Math.hypot(pts[0].lx - pts[1].lx, pts[0].ly - pts[1].ly), count: ids.length, t0: now(), moved: false, d0: dist(pts[0], pts[1]), m0: mid(pts[0], pts[1]), z0: S.zoom, tx0: S.tx, ty0: S.ty };
   if (S.sel && S.sel.box && ids.length === 2) {
     const a = toLogical(pts[0].lx, pts[0].ly), b = toLogical(pts[1].lx, pts[1].ly), pad = 40 / (S.base * S.zoom);
     const bx = S.sel.box, inside = (p) => p[0] > bx[0] - pad && p[0] < bx[2] + pad && p[1] > bx[1] - pad && p[1] < bx[3] + pad;
@@ -5872,7 +5882,7 @@ function endGesture() {
   if (g.sel) { if (g.moved) { endScale(g.sel); return; } }
   if (S.pull) releasePull();
   /* a quick two-finger tap undoes; a resting palm (wide contact, fingers far apart, or the pen in use around it) never does */
-  const palmish = g.wide || g.apart > 220 || S.penDown > 0 || Math.abs(now() - (S.lastPen || 0)) < 1500 || (S.lastPen || 0) > g.t0 - 1500;
+  const palmish = g.wide || g.drew || now() - (S.lastInk || 0) < 600 || g.apart > 220 || S.penDown > 0 || Math.abs(now() - (S.lastPen || 0)) < 1500 || (S.lastPen || 0) > g.t0 - 1500;
   if (!g.moved && !palmish && now() - g.t0 < 300) { if (g.count >= 3) { redo(); toast('ทำซ้ำ', 900); } else { undo(); toast('ย้อนกลับ', 900); } }
 }
 
@@ -6268,7 +6278,7 @@ function tryScribble(stroke) {
   const before = clone((S.page && S.page.items) || []);
   const gone = [];
   for (const it of visibleItems()) {
-    if (isLockedRef(it.id)) continue;
+    if (isLockedRef(it.id) || it.lock || (isStudentSide() && it.by === 'teacher')) continue;
     const b = itemBox(it), iw = b[2] - b[0], ih = b[3] - b[1];
     const ox = Math.max(0, Math.min(b[2], x1) - Math.max(b[0], x0)), oy = Math.max(0, Math.min(b[3], y1) - Math.max(b[1], y0));
     if (iw > 0 && ih > 0 && ox * oy >= 0.5 * iw * ih) gone.push(it.id);
@@ -21073,7 +21083,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1794501080';
+const BUILD = '1794524740';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
