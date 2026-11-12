@@ -51,7 +51,7 @@ window.MathJax = {
   --ui: 'IBM Plex Sans Thai', 'Thonburi', 'Leelawadee UI', system-ui, sans-serif;
   --doc: 'Sarabun', 'Thonburi', 'Leelawadee UI', serif;
   --r: 14px;
-  --wpaper: #FBF7EC; --wink: #2B3A67; --wglow: #F2C46B; --wrule: rgba(43, 58, 103, 0.07); --wmargin: rgba(214, 120, 110, 0.38);
+  --wpaper: rgba(251, 247, 236, 0.62); --wedge: rgba(43, 58, 103, 0.12); --wink: #2B3A67; --wglow: #F2C46B; --wrule: rgba(43, 58, 103, 0.07); --wmargin: rgba(214, 120, 110, 0.38);
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
@@ -59,7 +59,7 @@ window.MathJax = {
     --fg: #E8ECF2; --muted: #A2ACBA; --accent: #9DB0FF; --accent-soft: #263152; --accent-fg: #0E1217;
     --ok: #74D3A5; --ok-soft: #173427; --warn: #F0BE7A; --warn-soft: #3A2D17; --danger: #FF9C90; --danger-soft: #3D1D1A;
     --chrome: #E8ECF2; --chrome-fg: #0E1217; --shadow: 0 8px 26px rgba(0, 0, 0, 0.45);
-    --wpaper: #1E2430; --wink: #D7DEF5; --wglow: #E8B85A; --wrule: rgba(215, 222, 245, 0.06); --wmargin: rgba(232, 140, 128, 0.32);
+    --wpaper: rgba(30, 36, 48, 0.62); --wedge: rgba(215, 222, 245, 0.12); --wink: #D7DEF5; --wglow: #E8B85A; --wrule: rgba(215, 222, 245, 0.06); --wmargin: rgba(232, 140, 128, 0.32);
     color-scheme: dark;
   }
 }
@@ -68,7 +68,7 @@ window.MathJax = {
   --fg: #E8ECF2; --muted: #A2ACBA; --accent: #9DB0FF; --accent-soft: #263152; --accent-fg: #0E1217;
   --ok: #74D3A5; --ok-soft: #173427; --warn: #F0BE7A; --warn-soft: #3A2D17; --danger: #FF9C90; --danger-soft: #3D1D1A;
   --chrome: #E8ECF2; --chrome-fg: #0E1217; --shadow: 0 8px 26px rgba(0, 0, 0, 0.45);
-  --wpaper: #1E2430; --wink: #D7DEF5; --wglow: #E8B85A; --wrule: rgba(215, 222, 245, 0.06); --wmargin: rgba(232, 140, 128, 0.32);
+  --wpaper: rgba(30, 36, 48, 0.62); --wedge: rgba(215, 222, 245, 0.12); --wink: #D7DEF5; --wglow: #E8B85A; --wrule: rgba(215, 222, 245, 0.06); --wmargin: rgba(232, 140, 128, 0.32);
   color-scheme: dark;
 }
 html, body { height: 100%; }
@@ -908,8 +908,20 @@ body.tv .pagenav.left { left: 14px; }
 .pagenav #zNum.off { color: var(--accent); background: var(--surface-2); }
 /* waiting on AI looks like the notebook thinking, the same as when it writes back by hand:
    a slip of lined paper, a drop of ink breathing in a warm light with a small smile, and a pen line being written */
-.busy { display: flex; flex-direction: column; gap: 8px; padding: 12px 14px 12px 22px; border-radius: 14px; color: var(--wink); border: 1px solid var(--line);
-  background: linear-gradient(90deg, transparent 11px, var(--wmargin) 11px, var(--wmargin) 12.5px, transparent 12.5px), repeating-linear-gradient(180deg, transparent 0 25px, var(--wrule) 25px 26px), var(--wpaper); }
+.busy { display: flex; flex-direction: column; gap: 8px; padding: 10px 14px 10px 22px; border-radius: 14px; color: var(--wink); border: 1px solid var(--wedge);
+  background: linear-gradient(90deg, transparent 11px, var(--wmargin) 11px, var(--wmargin) 12.5px, transparent 12.5px), repeating-linear-gradient(180deg, transparent 0 25px, var(--wrule) 25px 26px), var(--wpaper);
+  -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+.busy .bh { cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.busy.fold .bs, .busy.fold .bcancel, .busy.fold:not(.slow) .bhint { display: none; }
+.busy.fold { gap: 4px; }
+/* on the page it folds right down to the smile, and opens on a tap */
+#aiFloat .busy.fold { width: fit-content; margin: 0 auto; padding: 6px 10px; border-radius: 999px; background: var(--wpaper); }
+#aiFloat .busy.fold:not(.slow) .bh b, #aiFloat .busy.fold:not(.slow) .bt { display: none; }
+/* learners never see that AI is at work: no floating card on the page, and in a panel only the smile, which does not open */
+body.present #aiFloat, body.student #aiFloat .busy:not(.mini) { display: none !important; }
+body.student .busy:not(.mini) .bh b, body.student .busy:not(.mini) .bt, body.student .busy:not(.mini) .bs, body.student .busy:not(.mini) .bhint, body.student .busy:not(.mini) .bcancel { display: none !important; }
+body.student .busy:not(.mini) { width: fit-content; padding: 6px 10px; border-radius: 999px; }
+body.student .busy:not(.mini) .bh { pointer-events: none; }
 .busy .bh { display: flex; align-items: center; gap: 10px; }
 .busy .bh b { flex: 1; font-size: 15px; color: var(--wink); }
 .busy .bt { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
@@ -918,10 +930,6 @@ body.tv .pagenav.left { left: 14px; }
 .busy .spin .dg { fill: var(--wglow); opacity: 0; transform-box: fill-box; transform-origin: center; filter: blur(2.5px); animation: dqGlow 3.2s ease-in-out infinite; }
 .busy .spin .dd { fill: var(--wink); transform-box: fill-box; transform-origin: center; animation: dqDot 3.2s ease-in-out infinite; }
 .busy .spin .ds { fill: none; stroke: var(--wink); stroke-width: 2.2; stroke-linecap: round; stroke-dasharray: 100 120; stroke-dashoffset: 100; animation: dqSmile 3.2s ease-in-out infinite; }
-.busy .bar { height: 14px; margin: -2px 0; }
-.busy .bar svg { width: 100%; height: 100%; display: block; overflow: visible; -webkit-clip-path: inset(0 100% 0 0); clip-path: inset(0 100% 0 0); animation: bwrite 2.8s ease-in-out infinite; }
-.busy .bar path { fill: none; stroke: var(--wink); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; opacity: 0.55; }
-@keyframes bwrite { 0% { -webkit-clip-path: inset(0 100% 0 0); clip-path: inset(0 100% 0 0); opacity: 1; } 62% { -webkit-clip-path: inset(0 0 0 0); clip-path: inset(0 0 0 0); opacity: 1; } 84% { -webkit-clip-path: inset(0 0 0 0); clip-path: inset(0 0 0 0); opacity: 1; } 100% { -webkit-clip-path: inset(0 0 0 0); clip-path: inset(0 0 0 0); opacity: 0; } }
 .busy .bs { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 4px; font-size: 14px; color: var(--muted); }
 .busy .bs li { display: flex; align-items: center; gap: 9px; }
 .busy .bs li::before { content: ""; width: 6px; height: 6px; margin: 0 2px; border-radius: 999px; background: var(--line); flex: none; }
@@ -944,7 +952,7 @@ body.tv .pagenav.left { left: 14px; }
 .busy.mini { padding-left: 22px; }
 .busy.mini .spin { width: 22px; height: 19px; }
 .card > .busy { margin: 0; }
-@media (prefers-reduced-motion: reduce) { .busy .spin .dd, .busy .spin .dg, .busy .bar svg, .busy .bs li.now::before { animation: none; } .busy .spin .ds { stroke-dashoffset: 0; } .busy .bar svg { -webkit-clip-path: none; clip-path: none; } }
+@media (prefers-reduced-motion: reduce) { .busy .spin .dd, .busy .spin .dg, .busy .bs li.now::before { animation: none; } .busy .spin .ds { stroke-dashoffset: 0; } }
 .kadv summary { cursor: pointer; font-size: 14px; padding: 6px 0; }
 .kadv summary small { color: var(--muted); margin-left: 6px; }
 .kadv[open] { display: flex; flex-direction: column; gap: 10px; }
@@ -985,7 +993,7 @@ body.tv .pagenav.left { left: 14px; }
 .btn.danger { color: var(--danger); }
 #tTitle { cursor: pointer; }
 #aiFloat { position: fixed; left: 50%; bottom: max(76px, env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); z-index: 55; display: flex; flex-direction: column; gap: 8px; width: min(420px, calc(100% - 24px)); }
-#aiFloat .busy { box-shadow: var(--shadow); }
+#aiFloat .busy { box-shadow: 0 4px 14px rgba(20, 26, 34, 0.10); }
 #aiFloat .busy.mini { width: fit-content; max-width: 100%; margin: 0 auto; box-sizing: border-box; }
 body.present #aiFloat { display: none; }
 .consent { display: flex; gap: 10px; align-items: flex-start; padding: 12px; border-radius: 14px; border: 1.5px solid var(--warn); background: var(--warn-soft); cursor: pointer; }
@@ -6942,20 +6950,23 @@ const INKDROP = '<span class="spin" aria-hidden="true"><svg viewBox="0 0 30 26">
 /* a clear "working" card: the notebook thinking, steps, seconds counting, and a way out */
 function waitCard(el, title, steps, opt) {
   opt = opt || {}; const t0 = now(); let cur = 0, dead = false, cancelled = false;
-  const box = document.createElement('div'); box.className = 'busy';
-  box.innerHTML = '<div class="bh">' + INKDROP + '<b></b><span class="bt">0 วินาที</span></div><div class="bar"><svg viewBox="0 0 240 14" preserveAspectRatio="none" aria-hidden="true"><path vector-effect="non-scaling-stroke" d="M2 9 C 14 2, 20 2, 24 8 S 34 12, 40 6 S 52 2, 58 8 S 70 12, 78 7 S 92 3, 100 8 S 112 12, 120 6 S 134 2, 142 8 S 154 12, 162 7 S 176 3, 184 8 S 198 12, 206 6 S 222 3, 238 8"/></svg></div><ol class="bs"></ol><div class="bhint"></div>';
+  const box = document.createElement('div'); box.className = 'busy fold'; box.setAttribute('role', 'status');
+  box.innerHTML = '<div class="bh" role="button" tabindex="0" aria-expanded="false">' + INKDROP + '<b></b><span class="bt">0 วินาที</span></div><ol class="bs"></ol><div class="bhint"></div>';
   box.querySelector('b').textContent = title;
   const ol = box.querySelector('.bs');
   (steps || []).forEach((s) => { const li = document.createElement('li'); li.textContent = s; ol.appendChild(li); });
   if (opt.onCancel || opt.cancel !== false) { const c = document.createElement('button'); c.type = 'button'; c.className = 'btn bcancel'; c.textContent = opt.cancelText || 'ยกเลิก'; c.onclick = () => { cancelled = true; stop(); el.innerHTML = '<div class="note">ยกเลิกแล้ว</div>'; if (opt.onCancel) opt.onCancel(); }; box.appendChild(c); }
   el.innerHTML = ''; el.appendChild(box);
+  /* folded to the smile by default; a tap shows how far it has got, another tap folds it again */
+  const bh = box.querySelector('.bh'), flip = () => { const f = box.classList.toggle('fold'); bh.setAttribute('aria-expanded', f ? 'false' : 'true'); };
+  bh.setAttribute('aria-label', title + ' แตะเพื่อดูว่าถึงไหนแล้ว'); bh.onclick = flip; bh.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); flip(); } };
   const paint = () => { [...ol.children].forEach((li, i) => { li.className = i < cur ? 'done' : i === cur ? 'now' : ''; }); };
   paint();
   const tick = setInterval(() => {
     if (!box.isConnected) { clearInterval(tick); return; }
     const sec = Math.round((now() - t0) / 1000); box.querySelector('.bt').textContent = sec + ' วินาที';
     const h = box.querySelector('.bhint');
-    h.textContent = sec >= 40 ? 'นานกว่าปกติมาก อาจติดที่เน็ตหรือผู้ให้บริการ AI ไม่ว่าง กดยกเลิกแล้วลองใหม่ได้' : sec >= 12 ? (opt.slowHint || aiSlowHint()) : '';
+    box.classList.toggle('slow', sec >= 40); h.textContent = sec >= 40 ? 'นานกว่าปกติมาก อาจติดที่เน็ตหรือผู้ให้บริการ AI ไม่ว่าง กดยกเลิกแล้วลองใหม่ได้' : sec >= 12 ? (opt.slowHint || aiSlowHint()) : '';
   }, 500);
   function stop() { dead = true; clearInterval(tick); }
   return { step(i) { cur = i; paint(); }, stop, get cancelled() { return cancelled; }, get dead() { return dead; } };
@@ -20982,7 +20993,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1794468223';
+const BUILD = '1794468549';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
