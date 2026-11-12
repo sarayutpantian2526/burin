@@ -289,6 +289,7 @@ body.showscr #livePill, body.showscr #presentExit, body.showscr .exitfull, body.
 .item .chrow.c4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .item .chrow.c1 { grid-template-columns: minmax(0, 1fr); }
 .item .chrow .ch { padding-left: 1.4em; text-indent: -1.4em; } /* a long choice wraps under its own text, not under its letter */
+.item .chrow .ch * { text-indent: 0; } /* Safari passes the hanging indent into the math, which then slides back over the letter */
 .item .ch { display: inline-block; max-width: 100%; }
 /* handles keep the same small size on screen at any zoom: --hk undoes the page scale */
 .item .tgrab { position: absolute; left: calc(-14px * var(--hk, 1)); top: calc(-14px * var(--hk, 1)); width: calc(26px * var(--hk, 1)); height: calc(26px * var(--hk, 1)); border-radius: 999px; border: 1px solid #C9D2E3; background: rgba(255,255,255,0.92); color: #5F6F94; display: grid; place-items: center; pointer-events: auto; cursor: grab; padding: 0; opacity: 0.75; touch-action: none; z-index: 2; }
@@ -20967,7 +20968,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1794370795';
+const BUILD = '1794449498';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
