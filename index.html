@@ -918,7 +918,13 @@ body.tv .pagenav.left { left: 14px; }
 #aiFloat .busy.fold { width: fit-content; margin: 0 auto; padding: 6px 10px; border-radius: 999px; background: var(--wpaper); }
 #aiFloat .busy.fold:not(.slow) .bh b, #aiFloat .busy.fold:not(.slow) .bt { display: none; }
 /* learners never see that AI is at work: no floating card on the page, and in a panel only the smile, which does not open */
-body.present #aiFloat, body.student #aiFloat .busy:not(.mini) { display: none !important; }
+body.present #aiFloat, body.student #aiFloat .busy:not(.mini), body.present .aiat, body.student .aiat { display: none !important; }
+.aiat { position: absolute; z-index: 5; pointer-events: auto; transform: scale(var(--hk, 1)); transform-origin: 0 0; width: max-content; max-width: 420px; }
+.aiat.up { transform-origin: 0 100%; }
+.aiat .busy { box-shadow: 0 4px 14px rgba(20, 26, 34, 0.10); }
+.aiat .busy.fold { padding: 6px 10px; border-radius: 999px; background: var(--wpaper); }
+.aiat .busy.fold:not(.slow) .bh b, .aiat .busy.fold:not(.slow) .bt { display: none; }
+.aiat .busy:not(.fold) { width: min(380px, 80vw); }
 body.student .busy:not(.mini) .bh b, body.student .busy:not(.mini) .bt, body.student .busy:not(.mini) .bs, body.student .busy:not(.mini) .bhint, body.student .busy:not(.mini) .bcancel { display: none !important; }
 body.student .busy:not(.mini) { width: fit-content; padding: 6px 10px; border-radius: 999px; }
 body.student .busy:not(.mini) .bh { pointer-events: none; }
@@ -4488,9 +4494,53 @@ function visibleItems() { const a = (S.page && S.page.items) || []; return S.pre
 let editing = null;
 function renderItems() {
   if (editing) return;
+  svgFitLater();
   sharpTextOff(); renderItems0(); markPicked(); imgUnderSync(); lockBanSync(); if (typeof cSharp !== 'undefined' && cSharp && !cSharp.hidden) sharpLater();
   edgeCheckLater();
 }
+/* words in a drawn diagram stay inside their boxes: a label wider than its box is set smaller (and nudged in), so nothing
+   spills over the frame; done once per picture and kept, so the exported page and other devices show the same */
+function svgFitText(svg) {
+  const sb = svg.getBoundingClientRect(); if (!sb.width) return false;
+  const rects = [...svg.querySelectorAll('rect')].map((r) => ({ r, b: r.getBoundingClientRect() })).filter((x) => x.b.width > 12 && x.b.height > 10 && x.b.width * x.b.height < 0.7 * sb.width * sb.height);
+  if (!rects.length) return false;
+  let changed = false;
+  for (const t of svg.querySelectorAll('text')) {
+    let tb = t.getBoundingClientRect(); if (!tb.width) continue;
+    const cx = tb.left + tb.width / 2, cy = tb.top + tb.height / 2;
+    const home = rects.filter((x) => cx > x.b.left && cx < x.b.right && cy > x.b.top && cy < x.b.bottom).sort((p, q) => p.b.width * p.b.height - q.b.width * q.b.height)[0];
+    if (!home) continue;
+    const rb = home.b, pad = Math.max(3, rb.height * 0.12), room = rb.width - 2 * pad;
+    if (tb.left >= rb.left + pad - 0.5 && tb.right <= rb.right - pad + 0.5) continue;
+    if (tb.width > room) {
+      const k = Math.max(0.55, room / tb.width), fs = parseFloat(getComputedStyle(t).fontSize) || 16;
+      t.setAttribute('font-size', +(fs * k).toFixed(2)); t.style.removeProperty('font-size');
+      for (const sp of t.querySelectorAll('tspan')) { const f2 = parseFloat(sp.getAttribute('font-size') || sp.style.fontSize); if (f2) { sp.setAttribute('font-size', +(f2 * k).toFixed(2)); sp.style.removeProperty('font-size'); } }
+      tb = t.getBoundingClientRect();
+    }
+    const m = t.getScreenCTM(), sc = m && m.a ? m.a : 1;
+    let dx = 0; if (tb.right > rb.right - pad) dx = (rb.right - pad) - tb.right; if (tb.left + dx < rb.left + pad) dx = (rb.left + pad) - tb.left;
+    if (Math.abs(dx) > 0.5) { const tr = t.getAttribute('transform') || ''; t.setAttribute('transform', ('translate(' + +(dx / sc).toFixed(2) + ' 0) ' + tr).trim()); }
+    changed = true;
+  }
+  return changed;
+}
+const svgFitLater = debounce(() => {
+  if (!S.page || !(S.page.items || []).some((it) => it.type === 'svg' && !it.vec3 && !it.tfit)) return;
+  const run = () => {
+    if (!S.page) return; let items = null;
+    for (const it of S.page.items || []) {
+      if (it.type !== 'svg' || it.vec3 || it.tfit) continue;
+      const d = itemsEl.querySelector('[data-id="' + it.id + '"]'), sv = d && d.querySelector('svg'); if (!sv) continue;
+      const ch = svgFitText(sv);
+      if (S.present || (isStudentSide() && it.by === 'teacher')) continue;
+      items = items || S.page.items.map((x) => x);
+      const i = items.indexOf(it); items[i] = Object.assign({}, it, { tfit: 1 }, ch ? { svg: cleanSvg(sv.outerHTML) || it.svg } : {});
+    }
+    if (items) { S.page = Object.assign({}, S.page, { items }); savePage(); }
+  };
+  (document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve()).then(() => requestAnimationFrame(run));
+}, 300);
 /* a box or picture already on the page that runs past the edge of the paper (made before this check, or arriving from an
    older version) is brought back inside once, so its handle can be reached and it can be moved again */
 const edgeCheckLater = debounce(() => {
@@ -6994,12 +7044,25 @@ function floatLine(text) {
   const slot = document.createElement('div'); host.appendChild(slot); waitLine(slot, text);
   return () => slot.remove();
 }
-function floatWait(title, steps, onCancel) {
-  const host = floatHost();
-  const slot = document.createElement('div'); host.appendChild(slot);
-  const B = waitCard(slot, title, steps, { cancelText: 'ยกเลิก', onCancel: () => { if (onCancel) onCancel(); setTimeout(() => slot.remove(), 900); } });
-  B.close = () => { B.stop(); slot.remove(); };
+function floatWait(title, steps, onCancel, at) {
+  /* the smile sits right by what was asked about (the part circled, or the part being worked on), not far off at the foot of the screen */
+  const box = at || (S.sel && S.sel.box) || (S.pending && S.pending.length ? S.pending[S.pending.length - 1] : null);
+  const slot = document.createElement('div');
+  const pin = box ? pageWaitPin(box, slot) : null; if (!pin) floatHost().appendChild(slot);
+  const B = waitCard(slot, title, steps, { cancelText: 'ยกเลิก', onCancel: () => { if (onCancel) onCancel(); setTimeout(() => { slot.remove(); if (pin) pin.end(); }, 900); } });
+  B.close = () => { B.stop(); slot.remove(); if (pin) pin.end(); };
   return B;
+}
+/* a waiting smile pinned to a place on the page: it moves and zooms with the paper but stays the same size on screen,
+   and is put back if the page is drawn again underneath; it leaves when the work ends or the page changes */
+function pageWaitPin(box, content) {
+  if (!S.pid || !box || !isFinite(box[0])) return null;
+  const pid = S.pid, el = document.createElement('div'); el.className = 'aiat no-ink'; el.appendChild(content);
+  const below = box[3] + 70 < H; el.style.left = Math.round(clamp(box[0], 8, W - 60)) + 'px'; el.style.top = Math.round(below ? box[3] + 8 : Math.max(8, box[1] - 44)) + 'px';
+  if (!below) el.classList.add('up');
+  let live = true; const keep = () => { if (!live) return; if (S.pid !== pid) { el.remove(); return setTimeout(keep, 400); } if (!el.isConnected) itemsEl.appendChild(el); setTimeout(keep, 300); };
+  itemsEl.appendChild(el); setTimeout(keep, 300);
+  return { el, end() { live = false; el.remove(); } };
 }
 
 /* consent first, then connect with an OpenRouter account (OAuth with PKCE: the person logs in and approves, no key to copy) */
@@ -7279,6 +7342,8 @@ function busyCard(title) {
   const ctl = new AbortController();
   /* the same waiting card as everywhere else: what is happening, seconds so far, and a way to stop */
   const d = aiCard(''), W8 = waitCard(d, 'AI กำลัง' + title, null, { cancelText: 'หยุด', onCancel: () => ctl.abort() });
+  /* the panel shows the details; the page shows the smile beside the part that was circled, until the answer arrives */
+  if (S.sel && S.sel.box) { const sm = document.createElement('div'); sm.innerHTML = '<div class="busy fold" role="status" aria-label="' + esc('AI กำลัง' + title) + '"><div class="bh">' + INKDROP + '</div></div>'; const pin = pageWaitPin(S.sel.box, sm); if (pin) { const watch = () => { if (!d.isConnected || !d.querySelector('.busy')) { pin.end(); return; } setTimeout(watch, 400); }; setTimeout(watch, 400); } }
   return { d, ctl, status: (t) => { const b = d.querySelector('.busy .bh b'); if (b) b.textContent = t; } };
 }
 
@@ -7517,7 +7582,7 @@ async function tidySelection() {
     + 'Redraw it as a clean, correct diagram of the same subject:\n'
     + '- Keep the same situation, objects, labels and the intended layout.\n'
     + '- Correct it by the facts of its own subject (for a maths figure: exact shapes, right angles and proportions; for a biology or chemistry drawing: the true structure and labels; for a chart or flowchart: clear boxes and arrows). For a physics diagram: directions and relative lengths of vectors (for example the horizontal velocity component has the same length at every point of a projectile path, gravity points straight down, the normal force is perpendicular to the surface, friction lies along the surface), true proportions when numbers are given, right angles where implied.\n'
-    + '- SVG only, viewBox about 600 wide fitted to the content, no background rectangle. Objects: stroke #14181F width 2, fill none or #FFFFFF. Velocity: #2F4BB8. Force or acceleration: #C2571A. Arrowheads as small filled polygons. Labels as <text> with font-family="Sarabun, sans-serif", symbols in italic, size 18 to 22.\n'
+    + '- SVG only, viewBox about 600 wide fitted to the content, no background rectangle. Objects: stroke #14181F width 2, fill none or #FFFFFF. Velocity: #2F4BB8. Force or acceleration: #C2571A. Arrowheads as small filled polygons. Labels as <text> with font-family="Sarabun, sans-serif", symbols in italic, size 18 to 22. Every box must be wide enough for its own words (allow about 0.6 x the font size per Thai character, plus margins); split a long label onto two lines with <tspan> rather than let it run past the box.\n'
     + '- Do not use <style>, <script>, <image>, <foreignObject>, <use>, <defs> markers or any external reference.\n'
     + 'Reply in exactly this format and nothing else:\n@@SVG\n<svg ...>...</svg>\n@@FIXES\n(one short Thai sentence per line for each correction you made, or leave empty)';
   try {
@@ -20993,7 +21058,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1794468549';
+const BUILD = '1794470132';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
