@@ -1379,6 +1379,7 @@ body.present .peekcard { display: none !important; }
 .hwacard { display: flex; align-items: center; gap: 12px; padding: 14px; border-radius: 14px; border: 1px solid var(--line); background: var(--surface); cursor: pointer; }
 .hwacard:hover { border-color: var(--accent); }
 .hwai { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.hwacard .hwamore { flex: 0 0 auto; align-self: center; }
 .hwan { flex: 0 0 110px; display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
 .hwan b { font-size: 24px; font-variant-numeric: tabular-nums; } .hwan b small { font-size: 14px; color: var(--muted); }
 .hwan i { width: 100%; height: 6px; border-radius: 999px; background: var(--surface-2); overflow: hidden; } .hwan i s { display: block; height: 100%; background: var(--ok); }
@@ -20968,7 +20969,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1794449498';
+const BUILD = '1794451322';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
