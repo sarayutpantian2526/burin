@@ -6907,8 +6907,10 @@ function openPage(pid) {
         const rev = d.rev || 0;
         if (!S.ownLoaded && S.mine.length) { /* written on this page before its saved lines arrived (just moved onto it): keep both */ const have = new Set((d.strokes || []).map((x) => x.id)); S.mine = clone(d.strokes || []).concat(S.mine.filter((x) => !have.has(x.id))); S.myRev = rev; saveMine(); }
         else if (!S.ownLoaded || (!saveMine.pending() && !S.saving && rev > S.myRev)) { S.mine = clone(d.strokes || []); S.myRev = rev; }
-      } else { const prev = S.others[d.id], nx = d.strokes || []; others[d.id] = prev && layerSame(prev, nx) ? prev : clone(nx); } /* an unchanged layer is not copied again */
+      } else if (d.id === 'teacher' && stuTeacherHeld(pid, d.rev)) others.teacher = S.others.teacher;
+      else { const prev = S.others[d.id], nx = d.strokes || []; others[d.id] = prev && layerSame(prev, nx) ? prev : clone(nx); } /* an unchanged layer is not copied again */
     }
+    if (!others.teacher && stuTeacherHeld(pid, 0)) others.teacher = S.others.teacher;
     S.ownLoaded = true;
     S.others = others;
     if (DIARY.later[S.pid]) setTimeout(diaryFlushLater, 500);
@@ -17920,10 +17922,14 @@ async function tcopyFetch(lpid, items) {
 }
 async function studentPutPage(nid, lpid, idx, d, strokes) {
   const old = await S.store.get('pages/' + lpid);
-  const mine = ((old && old.items) || []).filter((it) => it.by !== 'teacher');
-  await S.store.set('pages/' + lpid, { nb: nid, paper: d.paper || 'grid', orient: d.orient === 'land' ? 'land' : undefined, items: tcopyApply((d.items || []).map((it) => Object.assign({}, it, { by: 'teacher' }))).concat(mine), rev: now(), tidx: idx });
+  /* the learner's own boxes on this page: as they are on screen when the page is open (one just added may not be saved yet) */
+  const mine = ((S.pid === lpid && S.page && S.page.items) || (old && old.items) || []).filter((it) => it.by !== 'teacher');
+  const items = tcopyApply((d.items || []).map((it) => Object.assign({}, it, { by: 'teacher' }))).concat(mine);
+  /* the learner's own change to this page is still waiting to be saved: it is saved with the teacher's boxes in it, not over them */
+  if (S.pid === lpid && S.page && savePage.pending()) { S.page = Object.assign({}, S.page, { items: clone(items), paper: d.paper || 'grid' }); renderItems(); }
+  await S.store.set('pages/' + lpid, { nb: nid, paper: d.paper || 'grid', orient: d.orient === 'land' ? 'land' : undefined, items, rev: now(), tidx: idx });
   setTimeout(() => tcopyFetch(lpid, d.items), 50);
-  if (strokes) await S.store.set('pages/' + lpid + '/layers/teacher', { strokes, rev: now(), dev: 'teacher' });
+  if (strokes) { const rev = now(); if (S.pid === lpid) { S.others.teacher = strokes.slice(); LIVE.tRev = { pid: lpid, rev }; } await S.store.set('pages/' + lpid + '/layers/teacher', { strokes, rev, dev: 'teacher' }); }
   const nb = await S.store.get('notebooks/' + nid); if (!nb) return; const pages = (nb.pages || []).slice();
   const tid = (x) => 'T' + String(x).replace(/[^A-Za-z0-9]/g, '');
   const order = Array.isArray(d.order) ? d.order.map(tid) : null;
@@ -17965,7 +17971,7 @@ async function showShare(win) {
   drawQR($('#showQR'), link, 220);
 }
 async function studentJoin(code) {
-  LIVE.code = code; LIVE.role = 'student';
+  LIVE.code = code; LIVE.role = 'student'; LIVE.placed = false;
   /* remembered for a few hours: reopening the app (or it reloading for an update) joins the same room again by itself */
   if (!S.student) store_ls.set('tp-live-join', JSON.stringify({ code, at: now() }));
   if (!LIVE.name) { openJoin(code); return; }
@@ -18157,9 +18163,10 @@ async function studentApplyNow(tpid) {
    something missing) never pulls a learner back from a page they went to themselves, and never in the middle of writing */
 function stuFollow(lpid) {
   /* on joining, the learner is put on the teacher's page once; after that the page changes only with "ตามผู้สอน" on */
-  const first = !LIVE.cur || !String(S.pid || '').startsWith('T'), turned = LIVE.cur !== lpid; LIVE.cur = lpid;
-  if (!(first || (LIVE.follow && turned)) || S.pid === lpid) return;
-  const go = () => { if (LIVE.cur !== lpid || S.pid === lpid) return; if (penBusy() || now() - (S.lastPen || 0) < 900) { setTimeout(go, 500); return; } if (S.show) presentTurn(lpid); else openPage(lpid); };
+  const first = !LIVE.placed, turned = LIVE.cur !== lpid; LIVE.cur = lpid;
+  if (S.pid === lpid) { LIVE.placed = true; return; }
+  if (!(first || (LIVE.follow && turned))) return;
+  const go = () => { if (LIVE.cur !== lpid || S.pid === lpid) return; LIVE.placed = true; if (penBusy() || now() - (S.lastPen || 0) < 900) { setTimeout(go, 500); return; } if (S.show) presentTurn(lpid); else openPage(lpid); };
   go();
 }
 /* live ink is played back at the teacher's own pen speed, a fraction of a second behind, so it flows instead of jumping */
@@ -18200,7 +18207,15 @@ function inkTick() {
   if (more) PV.inkRaf = requestAnimationFrame(inkTick);
 }
 /* a finished stroke joins the student's copy of the teacher's page at once, without waiting for the whole page */
-const studentSaveInk = debounce(() => { const pid = S.pid; if (!/^T/.test(pid || '')) return; Promise.resolve(S.store.set('pages/' + pid + '/layers/teacher', { strokes: (S.others.teacher || []).slice(), rev: now(), dev: 'teacher' })).catch(() => {}); }, 1500);
+const studentSaveInk = debounce(() => { const pid = S.pid; if (!/^T/.test(pid || '')) return; const rev = now(); LIVE.tRev = { pid, rev }; Promise.resolve(S.store.set('pages/' + pid + '/layers/teacher', { strokes: (S.others.teacher || []).slice(), rev, dev: 'teacher' })).catch(() => {}); }, 1500);
+/* on a learner's screen the teacher's lines that just arrived live are kept until they are saved: any other save on the
+   page (the learner's own writing above all) reads the page back from storage, and that older copy used to wipe them
+   off for a moment, or for good when it was then saved over them */
+function stuTeacherHeld(pid, rev) {
+  if (LIVE.role !== 'student' || pid !== S.pid || !/^T/.test(pid || '') || !Array.isArray(S.others.teacher)) return false;
+  if (studentSaveInk.pending()) return true;
+  const t = LIVE.tRev; return !!(t && t.pid === pid && (rev || 0) < t.rev);
+}
 function studentInk(d) {
   if (d && typeof d.e === 'string' && !Array.isArray(d.p)) { const p = ptsDec(d.e); if (!p) return; d = Object.assign({}, d, { p }); }
   if (!d || typeof d.id !== 'string' || !Array.isArray(d.p)) return;
@@ -21058,7 +21073,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1794471454';
+const BUILD = '1794501080';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
