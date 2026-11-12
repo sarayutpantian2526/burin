@@ -51,6 +51,7 @@ window.MathJax = {
   --ui: 'IBM Plex Sans Thai', 'Thonburi', 'Leelawadee UI', system-ui, sans-serif;
   --doc: 'Sarabun', 'Thonburi', 'Leelawadee UI', serif;
   --r: 14px;
+  --wpaper: #FBF7EC; --wink: #2B3A67; --wglow: #F2C46B; --wrule: rgba(43, 58, 103, 0.07); --wmargin: rgba(214, 120, 110, 0.38);
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
@@ -58,6 +59,7 @@ window.MathJax = {
     --fg: #E8ECF2; --muted: #A2ACBA; --accent: #9DB0FF; --accent-soft: #263152; --accent-fg: #0E1217;
     --ok: #74D3A5; --ok-soft: #173427; --warn: #F0BE7A; --warn-soft: #3A2D17; --danger: #FF9C90; --danger-soft: #3D1D1A;
     --chrome: #E8ECF2; --chrome-fg: #0E1217; --shadow: 0 8px 26px rgba(0, 0, 0, 0.45);
+    --wpaper: #1E2430; --wink: #D7DEF5; --wglow: #E8B85A; --wrule: rgba(215, 222, 245, 0.06); --wmargin: rgba(232, 140, 128, 0.32);
     color-scheme: dark;
   }
 }
@@ -66,6 +68,7 @@ window.MathJax = {
   --fg: #E8ECF2; --muted: #A2ACBA; --accent: #9DB0FF; --accent-soft: #263152; --accent-fg: #0E1217;
   --ok: #74D3A5; --ok-soft: #173427; --warn: #F0BE7A; --warn-soft: #3A2D17; --danger: #FF9C90; --danger-soft: #3D1D1A;
   --chrome: #E8ECF2; --chrome-fg: #0E1217; --shadow: 0 8px 26px rgba(0, 0, 0, 0.45);
+  --wpaper: #1E2430; --wink: #D7DEF5; --wglow: #E8B85A; --wrule: rgba(215, 222, 245, 0.06); --wmargin: rgba(232, 140, 128, 0.32);
   color-scheme: dark;
 }
 html, body { height: 100%; }
@@ -903,23 +906,30 @@ body.tv .pagenav.left { left: 14px; }
 .pagenav #zNum.said .fitlbl { display: inline; }
 .pagenav #zNum.said svg { display: none; }
 .pagenav #zNum.off { color: var(--accent); background: var(--surface-2); }
-.busy { display: flex; flex-direction: column; gap: 8px; padding: 12px 14px; border-radius: 14px; background: var(--accent-soft); border: 1px solid var(--line); }
+/* waiting on AI looks like the notebook thinking, the same as when it writes back by hand:
+   a slip of lined paper, a drop of ink breathing in a warm light with a small smile, and a pen line being written */
+.busy { display: flex; flex-direction: column; gap: 8px; padding: 12px 14px 12px 22px; border-radius: 14px; color: var(--wink); border: 1px solid var(--line);
+  background: linear-gradient(90deg, transparent 11px, var(--wmargin) 11px, var(--wmargin) 12.5px, transparent 12.5px), repeating-linear-gradient(180deg, transparent 0 25px, var(--wrule) 25px 26px), var(--wpaper); }
 .busy .bh { display: flex; align-items: center; gap: 10px; }
-.busy .bh b { flex: 1; font-size: 15px; }
+.busy .bh b { flex: 1; font-size: 15px; color: var(--wink); }
 .busy .bt { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
-.busy .spin { width: 20px; height: 20px; border-radius: 999px; border: 3px solid rgba(47,75,184,0.2); border-top-color: var(--accent); animation: bspin 0.8s linear infinite; flex: none; }
-@keyframes bspin { to { transform: rotate(360deg); } }
-.busy .bar { height: 4px; border-radius: 4px; background: rgba(47,75,184,0.15); overflow: hidden; }
-.busy .bar i { display: block; height: 100%; width: 35%; background: var(--accent); border-radius: 4px; animation: bslide 1.3s ease-in-out infinite; }
-@keyframes bslide { 0% { transform: translateX(-100%); } 100% { transform: translateX(290%); } }
+.busy .spin { position: relative; width: 28px; height: 24px; flex: none; }
+.busy .spin svg { width: 100%; height: 100%; overflow: visible; display: block; }
+.busy .spin .dg { fill: var(--wglow); opacity: 0; transform-box: fill-box; transform-origin: center; filter: blur(2.5px); animation: dqGlow 3.2s ease-in-out infinite; }
+.busy .spin .dd { fill: var(--wink); transform-box: fill-box; transform-origin: center; animation: dqDot 3.2s ease-in-out infinite; }
+.busy .spin .ds { fill: none; stroke: var(--wink); stroke-width: 2.2; stroke-linecap: round; stroke-dasharray: 100 120; stroke-dashoffset: 100; animation: dqSmile 3.2s ease-in-out infinite; }
+.busy .bar { height: 14px; margin: -2px 0; }
+.busy .bar svg { width: 100%; height: 100%; display: block; overflow: visible; -webkit-clip-path: inset(0 100% 0 0); clip-path: inset(0 100% 0 0); animation: bwrite 2.8s ease-in-out infinite; }
+.busy .bar path { fill: none; stroke: var(--wink); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; opacity: 0.55; }
+@keyframes bwrite { 0% { -webkit-clip-path: inset(0 100% 0 0); clip-path: inset(0 100% 0 0); opacity: 1; } 62% { -webkit-clip-path: inset(0 0 0 0); clip-path: inset(0 0 0 0); opacity: 1; } 84% { -webkit-clip-path: inset(0 0 0 0); clip-path: inset(0 0 0 0); opacity: 1; } 100% { -webkit-clip-path: inset(0 0 0 0); clip-path: inset(0 0 0 0); opacity: 0; } }
 .busy .bs { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 4px; font-size: 14px; color: var(--muted); }
-.busy .bs li { display: flex; align-items: center; gap: 8px; }
-.busy .bs li::before { content: ""; width: 10px; height: 10px; border-radius: 999px; border: 2px solid var(--line); flex: none; }
-.busy .bs li.now { color: var(--fg); font-weight: 600; }
-.busy .bs li.now::before { border-color: var(--accent); background: var(--accent); animation: bpulse 1s ease-in-out infinite; }
+.busy .bs li { display: flex; align-items: center; gap: 9px; }
+.busy .bs li::before { content: ""; width: 6px; height: 6px; margin: 0 2px; border-radius: 999px; background: var(--line); flex: none; }
+.busy .bs li.now { color: var(--wink); font-weight: 600; }
+.busy .bs li.now::before { background: var(--wink); box-shadow: 0 0 0 3px rgba(242, 196, 107, 0.45); animation: bpulse 1.6s ease-in-out infinite; }
 .busy .bs li.done { color: var(--ok); }
-.busy .bs li.done::before { border-color: var(--ok); background: var(--ok); }
-@keyframes bpulse { 50% { opacity: 0.35; } }
+.busy .bs li.done::before { width: 5px; height: 10px; margin: -3px 3px 0 3px; border-radius: 1px; background: none; border-right: 2.4px solid var(--ok); border-bottom: 2.4px solid var(--ok); transform: rotate(40deg); }
+@keyframes bpulse { 50% { transform: scale(1.35); } }
 .busy .bhint { font-size: 13px; color: var(--warn); }
 .busy .bhint:empty { display: none; }
 .busy .bcancel { align-self: flex-start; }
@@ -929,11 +939,12 @@ body.tv .pagenav.left { left: 14px; }
 .skpick.on { border-color: var(--accent); }
 .skpair { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-start; justify-content: center; margin-top: 6px; }
 .skpair > * { max-width: calc(50% - 6px); height: auto; border-radius: 8px; border: 1px solid var(--line); background: #FFFFFF; }
-.busy.mini { padding: 9px 12px; background: var(--surface-2, var(--accent-soft)); }
+.busy.mini { padding: 9px 12px; }
 .busy.mini .bh b { font-weight: 600; font-size: 14px; color: var(--muted); }
-.busy.mini .spin { width: 16px; height: 16px; border-width: 2.5px; }
-.card > .busy { margin: 0; padding: 0; border: 0; background: none; }
-@media (prefers-reduced-motion: reduce) { .busy .spin, .busy .bar i, .busy .bs li.now::before { animation: none; } }
+.busy.mini { padding-left: 22px; }
+.busy.mini .spin { width: 22px; height: 19px; }
+.card > .busy { margin: 0; }
+@media (prefers-reduced-motion: reduce) { .busy .spin .dd, .busy .spin .dg, .busy .bar svg, .busy .bs li.now::before { animation: none; } .busy .spin .ds { stroke-dashoffset: 0; } .busy .bar svg { -webkit-clip-path: none; clip-path: none; } }
 .kadv summary { cursor: pointer; font-size: 14px; padding: 6px 0; }
 .kadv summary small { color: var(--muted); margin-left: 6px; }
 .kadv[open] { display: flex; flex-direction: column; gap: 10px; }
@@ -974,7 +985,7 @@ body.tv .pagenav.left { left: 14px; }
 .btn.danger { color: var(--danger); }
 #tTitle { cursor: pointer; }
 #aiFloat { position: fixed; left: 50%; bottom: max(76px, env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); z-index: 55; display: flex; flex-direction: column; gap: 8px; width: min(420px, calc(100% - 24px)); }
-#aiFloat .busy { background: var(--surface); box-shadow: var(--shadow); }
+#aiFloat .busy { box-shadow: var(--shadow); }
 #aiFloat .busy.mini { width: fit-content; max-width: 100%; margin: 0 auto; box-sizing: border-box; }
 body.present #aiFloat { display: none; }
 .consent { display: flex; gap: 10px; align-items: flex-start; padding: 12px; border-radius: 14px; border: 1.5px solid var(--warn); background: var(--warn-soft); cursor: pointer; }
@@ -6926,11 +6937,13 @@ function needAI(task) {
   return false;
 }
 
-/* a clear "working" card: spinner, steps, seconds counting, and a way out */
+/* the drop of ink the notebook thinks with, the same one it shows before writing back by hand */
+const INKDROP = '<span class="spin" aria-hidden="true"><svg viewBox="0 0 30 26"><circle class="dg" cx="15" cy="10" r="3.4"/><circle class="dd" cx="15" cy="10" r="2.6"/><path class="ds" pathLength="100" d="M8.8 15.2 Q 15 22.4, 21.2 15.2"/></svg></span>';
+/* a clear "working" card: the notebook thinking, steps, seconds counting, and a way out */
 function waitCard(el, title, steps, opt) {
   opt = opt || {}; const t0 = now(); let cur = 0, dead = false, cancelled = false;
   const box = document.createElement('div'); box.className = 'busy';
-  box.innerHTML = '<div class="bh"><span class="spin" aria-hidden="true"></span><b></b><span class="bt">0 วินาที</span></div><div class="bar"><i></i></div><ol class="bs"></ol><div class="bhint"></div>';
+  box.innerHTML = '<div class="bh">' + INKDROP + '<b></b><span class="bt">0 วินาที</span></div><div class="bar"><svg viewBox="0 0 240 14" preserveAspectRatio="none" aria-hidden="true"><path vector-effect="non-scaling-stroke" d="M2 9 C 14 2, 20 2, 24 8 S 34 12, 40 6 S 52 2, 58 8 S 70 12, 78 7 S 92 3, 100 8 S 112 12, 120 6 S 134 2, 142 8 S 154 12, 162 7 S 176 3, 184 8 S 198 12, 206 6 S 222 3, 238 8"/></svg></div><ol class="bs"></ol><div class="bhint"></div>';
   box.querySelector('b').textContent = title;
   const ol = box.querySelector('.bs');
   (steps || []).forEach((s) => { const li = document.createElement('li'); li.textContent = s; ol.appendChild(li); });
@@ -6950,7 +6963,7 @@ function waitCard(el, title, steps, opt) {
 /* a short wait (opening, loading): one compact line in the same style; the seconds show only if it takes a while */
 function waitLine(el, text) {
   if (!el) return;
-  el.innerHTML = '<div class="busy mini" role="status"><div class="bh"><span class="spin" aria-hidden="true"></span><b></b><span class="bt"></span></div></div>';
+  el.innerHTML = '<div class="busy mini" role="status"><div class="bh">' + INKDROP + '<b></b><span class="bt"></span></div></div>';
   el.querySelector('b').textContent = text;
   const t0 = now(), bt = el.querySelector('.bt'), box = el.querySelector('.busy');
   const tk = setInterval(() => { if (!box.isConnected) { clearInterval(tk); return; } const sec = Math.round((now() - t0) / 1000); bt.textContent = sec >= 3 ? sec + ' วินาที' : ''; }, 500);
@@ -20969,7 +20982,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1794451322';
+const BUILD = '1794468223';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
