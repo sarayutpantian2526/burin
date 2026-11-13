@@ -527,6 +527,9 @@ body.tv #pages { width: 300px; }
 .sheet { position: fixed; inset: 0; z-index: 20; background: rgba(10, 14, 20, 0.45); display: flex; align-items: flex-start; justify-content: center; padding: max(24px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) 24px max(16px, env(safe-area-inset-left, 0px)); }
 .sheet .panel { width: min(560px, 100%); max-height: calc(100% - 20px); overflow-y: auto; background: var(--surface); border-radius: 22px; box-shadow: var(--shadow); padding: 18px; display: flex; flex-direction: column; gap: 14px; box-sizing: border-box; }
 .sheet h2 { margin: 0; font-size: 20px; }
+.newsbody h3 { margin: 4px 0 6px; font-size: 16px; }
+.newsbody ul { margin: 0 0 8px; padding-left: 22px; display: flex; flex-direction: column; gap: 6px; line-height: 1.5; }
+.nowrap { white-space: nowrap; }
 .sheet h3 { margin: 6px 0 0; font-size: 14px; color: var(--muted); }
 .nbrow { display: flex; align-items: center; gap: 12px; min-height: 60px; padding: 8px 10px; border-radius: 14px; border: 1px solid var(--line); background: var(--surface); cursor: pointer; text-align: left; width: 100%; box-sizing: border-box; }
 .nbrow .cover { width: 36px; height: 46px; flex: none; border-radius: 4px 9px 9px 4px; box-shadow: inset 5px 0 0 rgba(0, 0, 0, 0.18); }
@@ -2248,6 +2251,9 @@ body.role-student .scnpill .sbtns button[data-s="back"], body.role-student .scnp
       <span><b>แตะสองนิ้ว</b> ย้อนกลับ</span><span><b>แตะสามนิ้ว</b> ทำซ้ำ</span>
       <span><b>บ่วงเลือกแล้วลาก</b> ย้ายลายมือ</span><span class="keys"><b>แป้นลัดบนคีย์บอร์ด</b> <kbd>P</kbd> ปากกา <kbd>H</kbd> ไฮไลต์ <kbd>E</kbd> ยางลบ <kbd>L</kbd> บ่วงเลือก <kbd>S</kbd> รูปทรง <kbd>T</kbd> ข้อความ <kbd>K</kbd> เลเซอร์</span>
     </div>
+    <h3>เกี่ยวกับแอป</h3>
+    <div class="note" id="verNote"></div>
+    <div class="row2"><button class="btn" id="bNews" type="button">มีอะไรใหม่</button></div>
     </div>
     <div data-mp="acc" hidden>
     <div id="cloudBox" hidden>
@@ -2459,6 +2465,13 @@ body.role-student .scnpill .sbtns button[data-s="back"], body.role-student .scnp
   <div class="panel wide" role="dialog" aria-label="ห้องเรียนสด">
     <div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><h2>ห้องเรียนสด</h2><button class="btn" id="liveClose">ปิด</button></div>
     <div id="liveBody" class="exbody"></div>
+  </div>
+</div>
+<div class="sheet" id="newsSheet" hidden>
+  <div class="panel" role="dialog" aria-label="มีอะไรใหม่">
+    <h2>มีอะไรใหม่</h2>
+    <div class="newsbody" id="newsBody"></div>
+    <div class="row2"><button class="btn solid" id="bNewsOk" type="button">รับทราบ</button></div>
   </div>
 </div>
 <div class="sheet" id="roleSheet" hidden>
@@ -10706,11 +10719,26 @@ function researchTemplate() {
    the equation solver, drawing from a reference, statistics), so the app opens fast and stays fast however much is added.
    Each part is kept for offline use by the service worker */
 const MODS = { scene: 'm/scene.js', cas: 'm/cas.js', sketch: 'm/sketch.js', stats: 'm/stats.js', video: 'm/video.js', data: 'm/data.js', measure: 'm/measure.js', imgmeas: 'm/imgmeas.js', cite: 'm/cite.js', work: 'm/work.js' }, MODP = {}, MODOK = {}, MODEV = {};
+/* switches to turn a part of the app off without putting a new release up: flags.json next to index.html,
+   for example {"off": ["video"]}. Read once when the app opens; when it cannot be read, everything stays on */
+const FLAGS = { off: {}, told: {} };
+FLAGS.ready = (location.protocol === 'file:' || (window.claude && window.claude.use) ? Promise.resolve() : fetch('flags.json', { cache: 'no-store' }).then((r) => (r.ok ? r.json() : null)).then((j) => { if (j && Array.isArray(j.off)) j.off.forEach((n) => { if (typeof n === 'string') FLAGS.off[n] = true; }); }).catch(() => { /* no switches: everything on */ }));
+function flagOn(name) { return !FLAGS.off[name]; }
+function flagsReady() { return Promise.race([FLAGS.ready, new Promise((r) => setTimeout(r, 2500))]); }
+/* each release keeps its parts in m/<build>/, so a page left open (in the middle of a class) keeps getting the
+   parts of its own release after a new one goes up; a copy that was not built (no number) uses m/<name>.js */
+function modUrl(name) { let v = ''; try { v = BUILD; } catch (e) { v = ''; } return /^\d+$/.test(v) ? MODS[name].replace(/^m\//, 'm/' + v + '/') : MODS[name] + '?v=' + (v || Date.now()); }
 function need(name) {
   if (MODP[name]) return MODP[name];
   if (!MODS[name] || MODS[name] === 'inline') { MODOK[name] = true; return (MODP[name] = Promise.resolve()); }
-  let v = ''; try { v = BUILD; } catch (e) { v = String(Date.now()); }
-  return (MODP[name] = fetch(MODS[name] + '?v=' + v).then((r) => (r.ok ? r.text() : Promise.reject(new Error('mod ' + name)))).then((code) => {
+  return (MODP[name] = flagsReady().then(() => {
+    if (!flagOn(name)) {
+      /* after the caller's own message, once per part */
+      if (!FLAGS.told[name]) { FLAGS.told[name] = 1; setTimeout(() => toast('ส่วนนี้ปิดใช้ชั่วคราว ส่วนอื่นของแอปใช้ได้ตามปกติ', 4000), 0); }
+      const e = new Error('mod ' + name + ' is off'); e.off = true; throw e;
+    }
+    return fetch(modUrl(name));
+  }).then((r) => (r.ok ? r.text() : Promise.reject(new Error('mod ' + name)))).then((code) => {
     /* run inside the app's own scope, so the part sees everything the app has; what the app calls back is handed out */
     const ex = eval(code + '\n;({ ' + MOD_EXPORTS[name].join(', ') + ', __ev: (f) => eval(f) })');
     modSet(name, ex); MODEV[name] = ex.__ev; MODOK[name] = true;
@@ -21085,7 +21113,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1794555266';
+const BUILD = '1794558810';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
@@ -21093,13 +21121,86 @@ async function checkUpdate() {
     const r = await fetch('./index.html?check=' + now(), { cache: 'no-store' }); if (!r.ok) return;
     const m = (await r.text()).match(/const BUILD = '(\d+)'/);
     if (!m || m[1] === BUILD) return;
-    if (S.present) { location.reload(); return; }
+    /* the audience screen neither reloads nor shows the bar: a new release starts the next time it is opened */
+    if (S.present) return;
     updShown = true; $('#updBar').hidden = false;
   } catch (e) { /* offline: try again later */ }
 }
 $('#updBar').onclick = async () => { $('#updBar').textContent = 'กำลังอัปเดต'; try { saveMine.flush(); savePage.flush(); if (S.store && S.store.flush) await S.store.flush(); } catch (e) { /* reload anyway */ } location.reload(); };
 document.addEventListener('visibilitychange', () => { if (!document.hidden) checkUpdate(); });
 setInterval(checkUpdate, 30 * 60 * 1000); setTimeout(checkUpdate, 8000);
+
+/* ---------- version and what is new ---------- */
+const VERSION = '20261113-4fc1a95e';
+const NEWS = [{"id": 1, "date": "2026-11-13", "items": ["ดูเวอร์ชันของแอปได้ที่เมนู แท็บตั้งค่า หัวข้อเกี่ยวกับแอป", "เมื่อมีเวอร์ชันใหม่ระหว่างใช้งาน แอปจะไม่รีโหลดเอง รวมถึงจอผู้ชม เวอร์ชันใหม่จะมีผล เมื่อเปิดแอปครั้งถัดไป หรือเมื่อแตะแถบ มีเวอร์ชันใหม่", "หน้าที่เปิดค้างไว้ ใช้ส่วนต่าง ๆ ของแอป จากเวอร์ชันเดียวกับตัวเองเสมอ ไม่ปนกับเวอร์ชันใหม่", "เมื่อแอปทำงานผิดพลาด แอปจะส่งรายงาน ให้ผู้พัฒนา โดยส่งเฉพาะ ข้อความแจ้งข้อผิดพลาด ตำแหน่งในโค้ด รุ่นเครื่อง และเวอร์ชันของแอป ไม่ส่งเนื้อหาสมุด ชื่อ หรืออีเมล"]}];
+const TH_MON = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+function thDay(iso) { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || ''); return m ? (+m[3]) + ' ' + TH_MON[+m[2] - 1] + ' ' + (+m[1] + 543) : ''; }
+function renderVersion() { const el = $('#verNote'); if (el) el.innerHTML = 'เวอร์ชัน <span class="nowrap">' + esc(VERSION.startsWith('__') ? 'ในเครื่อง (ยังไม่ได้ประกอบ)' : VERSION) + '</span>'; }
+function openNews(list) {
+  const body = $('#newsBody'); body.innerHTML = '';
+  (list || NEWS).forEach((n) => {
+    const h = document.createElement('h3'); h.textContent = thDay(n.date); body.appendChild(h);
+    const ul = document.createElement('ul'); (n.items || []).forEach((t) => {
+      /* lines break only at the spaces between phrases (never inside a word, a name or a number with its unit) */
+      const li = document.createElement('li');
+      String(t).split(/ (?!ๆ)/).forEach((w, i) => { if (i) li.appendChild(document.createTextNode(' ')); const sp = document.createElement('span'); sp.className = 'nowrap'; sp.textContent = w; li.appendChild(sp); });
+      ul.appendChild(li);
+    }); body.appendChild(ul);
+  });
+  if (!body.firstChild) body.innerHTML = '<div class="note">ยังไม่มีรายการ</div>';
+  closeSheets(); $('#newsSheet').hidden = false;
+}
+/* shown once after an update, never on the audience screen or the learner's side, and not over another sheet */
+function newsCheck() {
+  const top = NEWS.reduce((a, n) => Math.max(a, +n.id || 0), 0), seen = store_ls.get('tp-news');
+  if (seen === null) { store_ls.set('tp-news', String(top)); return; } /* a new device: nothing to tell yet */
+  const fresh = NEWS.filter((n) => (+n.id || 0) > (+seen || 0));
+  if (!fresh.length) return;
+  if (S.present || S.show || isStudentSide() || document.querySelector('.sheet:not([hidden])')) return; /* next time */
+  store_ls.set('tp-news', String(top)); openNews(fresh);
+}
+$('#bNews').onclick = () => openNews();
+$('#bNewsOk').onclick = () => { $('#newsSheet').hidden = true; };
+$('#newsSheet').addEventListener('click', (e) => { if (e.target === $('#newsSheet')) $('#newsSheet').hidden = true; });
+renderVersion();
+
+/* ---------- error reports ----------
+   Only the error message, where in the code, the kind of device and the app version are sent: never notebook
+   content, names or e-mail addresses. They go to the site's own cloud project (config.js, table client_errors,
+   which anyone can add to but nobody can read without the owner's key), at most 5 per page and 20 per day per device.
+   Turned off with "errors" in flags.json. */
+const ERRS = { n: 0, seen: {} };
+function errClean(t) {
+  return String(t || '').replace(/[^\s@'"<>]+@[^\s@'"<>]+\.[a-z]{2,}/gi, '[email]').replace(/(["'])([^"']{24,})\1/g, '$1...$1')
+    .replace(/https?:\/\/[^\s)]+/g, (u) => { try { const x = new URL(u); return x.origin === location.origin ? x.pathname.split('/').pop() || 'index' : x.hostname; } catch (e) { return 'url'; } }).replace(/\s+/g, ' ').trim();
+}
+function errDevice() {
+  const ua = navigator.userAgent || '', touchMac = /Macintosh/.test(ua) && navigator.maxTouchPoints > 1;
+  const os = /iPad/.test(ua) || touchMac ? 'iPad' : /iPhone/.test(ua) ? 'iPhone' : /Android/.test(ua) ? 'Android' : /Windows/.test(ua) ? 'Windows' : /CrOS/.test(ua) ? 'ChromeOS' : /Macintosh/.test(ua) ? 'Mac' : /Linux/.test(ua) ? 'Linux' : 'other';
+  const osv = (ua.match(/OS (\d+[_.]\d+)/) || ua.match(/Android (\d+(\.\d+)?)/) || ua.match(/Mac OS X (\d+[_.]\d+)/) || [])[1] || '';
+  const br = (ua.match(/(Edg|CriOS|FxiOS|Firefox|Chrome)\/(\d+)/) || []), sv = (ua.match(/Version\/(\d+(\.\d+)?)/) || [])[1];
+  return (os + ' ' + osv.replace('_', '.') + ' ' + (br[1] ? br[1] + ' ' + br[2] : sv ? 'Safari ' + sv : '') + (S && S.present ? ' audience' : '') + ' ' + screen.width + 'x' + screen.height + '@' + (window.devicePixelRatio || 1)).replace(/\s+/g, ' ').trim().slice(0, 120);
+}
+function errReport(msg, where) {
+  try {
+    if (!flagOn('errors') || BUILD.startsWith('__')) return;
+    const cfg = window.BURIN_CONFIG || {}, url = String(cfg.supabaseUrl || '').replace(/\/+$/, ''), key = String(cfg.supabaseKey || '');
+    if (!/^https:\/\/[a-z0-9]+\.supabase\.co$/.test(url) || !key) return; /* the site has no cloud project: nowhere to send */
+    msg = errClean(msg).slice(0, 300); where = errClean(where).slice(0, 300);
+    if (!msg || /^Script error\.?$/.test(msg) || ERRS.n >= 5 || ERRS.seen[msg + where]) return;
+    const day = new Date().toISOString().slice(0, 10); let d = null; try { d = JSON.parse(store_ls.get('tp-errs') || 'null'); } catch (e) { d = null; }
+    if (!d || d.d !== day) d = { d: day, n: 0 };
+    if (d.n >= 20) return;
+    d.n++; store_ls.set('tp-errs', JSON.stringify(d)); ERRS.seen[msg + where] = 1; ERRS.n++;
+    fetch(url + '/rest/v1/client_errors', { method: 'POST', keepalive: true, headers: { apikey: key, 'Content-Type': 'application/json', Prefer: 'return=minimal' }, body: JSON.stringify({ message: msg, place: where, device: errDevice(), version: VERSION.slice(0, 40) }) }).catch(() => { /* offline: dropped */ });
+  } catch (e) { /* reporting must never break the app */ }
+}
+function errWhere(stack, file, line, col) {
+  const top = String(stack || '').split('\n').map((l) => l.trim()).filter((l) => /:\d+:\d+\)?$/.test(l)).slice(0, 3).join(' | ');
+  return top || (file ? file + ':' + (line || 0) + ':' + (col || 0) : '');
+}
+window.addEventListener('error', (e) => { if (e && e.message) errReport(e.message, errWhere(e.error && e.error.stack, e.filename, e.lineno, e.colno)); });
+window.addEventListener('unhandledrejection', (e) => { const r = e && e.reason; if (!r || r.off) return; errReport((r && r.message) || String(r), errWhere(r && r.stack)); });
 
 /* ---------- cloud account UI ---------- */
 function openAuth() { closeSheets(); $('#aMsg').innerHTML = ''; $('#authSheet').hidden = false; setTimeout(() => $('#aEmail').focus({ preventScroll: true }), 50); }
@@ -21363,7 +21464,7 @@ function syncToggles() {
 }
 function hideLoading() { $('#loading').hidden = true; }
 function togglePages(v) { const el = $('#pages'); el.hidden = v === undefined ? !el.hidden : !v; $('#bPages').setAttribute('aria-pressed', el.hidden ? 'false' : 'true'); setTimeout(fit, 0); }
-function closeSheets() { $('#acctSheet').hidden = true; $('#acctPop').hidden = true; $('#shareSheet').hidden = true; $('#startSheet').hidden = true; $('#deckSheet').hidden = true; $('#hwSheet').hidden = true; $('#hoSheet').hidden = true; $('#pdfSheet').hidden = true; $('#qmSheet').hidden = true; $('#liveSheet').hidden = true; $('#sqSheet').hidden = true; $('#handSheet').hidden = true; $('#examSheet').hidden = true; $('#aiSetup').hidden = true; $('#labSheet').hidden = true; $('#simSheet').hidden = true; $('#mediaSheet').hidden = true; $('#menu').hidden = true; $('#exportSheet').hidden = true; $('#insSheet').hidden = true; if ($('#stkSheet')) $('#stkSheet').hidden = true; }
+function closeSheets() { $('#acctSheet').hidden = true; $('#acctPop').hidden = true; $('#shareSheet').hidden = true; $('#startSheet').hidden = true; $('#deckSheet').hidden = true; $('#hwSheet').hidden = true; $('#hoSheet').hidden = true; $('#pdfSheet').hidden = true; $('#qmSheet').hidden = true; $('#liveSheet').hidden = true; $('#sqSheet').hidden = true; $('#handSheet').hidden = true; $('#examSheet').hidden = true; $('#aiSetup').hidden = true; $('#labSheet').hidden = true; $('#simSheet').hidden = true; $('#mediaSheet').hidden = true; $('#menu').hidden = true; $('#exportSheet').hidden = true; $('#insSheet').hidden = true; if ($('#stkSheet')) $('#stkSheet').hidden = true; if ($('#newsSheet')) $('#newsSheet').hidden = true; }
 
 /* ---------- wiring ---------- */
 document.querySelectorAll('.tool[data-tool]').forEach((b) => {
@@ -22317,6 +22418,7 @@ async function boot() {
   } catch (e) { /* no query */ }
   if (CLOUD.state === 'signedout' && !S.present && !S.student) openStart();
   else if (!S.student && !S.present && !store_ls.get('tp-role') && CLOUD.state === 'on') setTimeout(() => { if (!store_ls.get('tp-role')) { closeSheets(); $('#roleSheet').hidden = false; } }, 900);
+  setTimeout(newsCheck, 2500);
   setTimeout(() => { if (!S.pid) { const l = $('#loading'); $('#loadMsg').textContent = 'ยังเชื่อมต่อไม่ได้ ตรวจอินเทอร์เน็ตแล้วเปิดหน้านี้ใหม่'; } }, 12000);
 }
 exTidyWatch();
