@@ -2088,9 +2088,10 @@ function buildLife(d, it, forExport) {
   dot.addEventListener('pointerdown', (e) => e.stopPropagation());
   d.appendChild(dot);
   if (!lifeRaf) lifeRaf = requestAnimationFrame(lifeTick);
+  requestAnimationFrame(lifeUp); /* drawn afresh (a setting changed): an open panel went with the old picture */
 }
 function lifePanel(d, it, dot) {
-  const old = d.querySelector('.lifepanel'); if (old) { old.remove(); return; }
+  const old = d.querySelector('.lifepanel'); if (old) { old.remove(); lifeUp(); return; }
   const live = findItem(it.id) || it, rt = LIFE.get(it.id), p = document.createElement('div'); p.className = 'lifepanel';
   p.style.left = dot.style.left; p.style.top = (parseFloat(dot.style.top) + 30) + 'px';
   p.addEventListener('pointerdown', (e) => e.stopPropagation());
@@ -2121,11 +2122,30 @@ function lifePanel(d, it, dot) {
   sl('ความเร็ว', 'sp', 0.2, 3); sl('ความแรงของท่าทาง', 'amp', 0.2, 2.5);
   const row = document.createElement('div'); row.className = 'row2';
   const pb = document.createElement('button'); pb.type = 'button'; pb.className = 'btn'; pb.textContent = rt && rt.playing ? 'หยุด' : 'เล่น'; pb.onclick = () => { const R = LIFE.get(it.id); if (!R) return; R.playing = !R.playing; pb.textContent = R.playing ? 'หยุด' : 'เล่น'; if (R.playing && !lifeRaf) lifeRaf = requestAnimationFrame(lifeTick); };
-  const bk = document.createElement('button'); bk.type = 'button'; bk.className = 'btn'; bk.textContent = 'คืนเป็นภาพวาด'; bk.onclick = () => { LIFE.delete(it.id); restoreInk(findItem(it.id)); };
-  const dl = document.createElement('button'); dl.type = 'button'; dl.className = 'btn danger'; dl.textContent = 'ลบ'; dl.onclick = () => { const before = clone(S.page.items || []); setItems(before.filter((x) => x.id !== it.id), before); LIFE.delete(it.id); };
-  const fo = document.createElement('button'); fo.type = 'button'; fo.className = 'btn'; fo.textContent = 'ย่อ'; fo.onclick = () => p.remove();
+  const bk = document.createElement('button'); bk.type = 'button'; bk.className = 'btn'; bk.textContent = 'คืนเป็นภาพวาด'; bk.onclick = () => { LIFE.delete(it.id); restoreInk(findItem(it.id)); lifeUp(); };
+  const dl = document.createElement('button'); dl.type = 'button'; dl.className = 'btn danger'; dl.textContent = 'ลบ'; dl.onclick = () => { const before = clone(S.page.items || []); setItems(before.filter((x) => x.id !== it.id), before); LIFE.delete(it.id); lifeUp(); };
+  const fo = document.createElement('button'); fo.type = 'button'; fo.className = 'btn'; fo.textContent = 'ย่อ'; fo.onclick = () => { p.remove(); lifeUp(); };
   row.append(pb, bk, dl, fo); p.appendChild(row); d.appendChild(p);
-  lifePanelFit(p, live, dot);
+  lifePanelFit(p, live, dot); lifeUp(); lifePanelScreen(p, dot);
+}
+/* while a panel is open its page sits above the pages before and after it, so a panel reaching past the page is never covered */
+function lifeUp() { pageEl.classList.toggle('lifeup', !!document.querySelector('#items .lifepanel')); }
+/* then keep the whole panel where it can be seen: inside the screen and clear of the tool bar. Only when its button is on the
+   screen (the panel opens next to what was tapped); a panel taller than the room left scrolls inside */
+function lifePanelScreen(p, dot) {
+  const v = vp.getBoundingClientRect(), m = 8, dr = dot.getBoundingClientRect();
+  if (dr.bottom < v.top || dr.top > v.bottom || dr.right < v.left || dr.left > v.right) return;
+  let r = p.getBoundingClientRect(); const k = r.height / (p.offsetHeight || 1) || 1;
+  let top = v.top + m, bot = v.bottom - m;
+  const dk = document.getElementById('dock'), kr = dk && dk.offsetParent ? dk.getBoundingClientRect() : null;
+  if (kr && kr.height && kr.right > r.left && kr.left < r.right) { if (kr.top + kr.height / 2 < v.top + v.height / 2) top = Math.max(top, kr.bottom + m); else bot = Math.min(bot, kr.top - m); }
+  if (r.height > bot - top) { p.style.maxHeight = Math.max(80, (bot - top) / k) + 'px'; p.style.overflowY = 'auto'; r = p.getBoundingClientRect(); }
+  let dx = 0, dy = 0;
+  if (r.bottom > bot) dy = bot - r.bottom;
+  if (r.top + dy < top) dy = top - r.top;
+  if (r.right > v.right - m) dx = v.right - m - r.right;
+  if (r.left + dx < v.left + m) dx = v.left + m - r.left;
+  if (dx || dy) { p.style.left = (parseFloat(p.style.left) + dx / k) + 'px'; p.style.top = (parseFloat(p.style.top) + dy / k) + 'px'; }
 }
 /* keep the panel on the paper: below the button when there is room, above it when not, pulled in from the right edge,
    and scrolling inside when the page is shorter than the panel (page units, like the item itself) */

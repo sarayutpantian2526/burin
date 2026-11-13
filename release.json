@@ -1,0 +1,20 @@
+{
+  "release": "20261113-95394e7a",
+  "source": "95394e7ab095a9ac7af4cf0b041f03748b265fcc",
+  "built": "2026-11-13T07:36:35Z",
+  "cache": "burin-v259",
+  "files": {
+    "index.html": "e23eeedfcdc5b6622b1aef2da258c4f134f59f17ae2d8b2507244093ac74f321",
+    "m/cas.js": "28e9fa9ec3554d5872706a6fbca82b697b5813f0019feb89e954071d4dbd936d",
+    "m/cite.js": "fb590632ec78bc00a866ecde448378e35d0de65f614d7a24b0fbb722c5ff577c",
+    "m/data.js": "937ec615df5d6dcf3f94fe6eb4c5ccc3c2660e505c16050f9a9ae09349694ec7",
+    "m/imgmeas.js": "309774b1fa7236eaa941e0e76fc2b9686001fb52b2108531c7864cc830548701",
+    "m/measure.js": "d310871d552524c6f7ddd6948bbc390bbb6c610be5cce7de78166dd5d52f6852",
+    "m/scene.js": "dfa387c28fc4f042d1f9e510172f2fd4b38a6e62007fd413b50ec6971fe0b953",
+    "m/sketch.js": "797921011fb5aba413b51240c548080f4a753dd245af261192f72c62add69f20",
+    "m/stats.js": "95bf87c5e98adcb0b2343d801679153b17320746bf927444dd74027156c79e55",
+    "m/video.js": "988074ca01631c0ffbaee16b311747ab031dbf90bf3e306e517a2971a157d256",
+    "m/work.js": "de51dc4bb719952ba0c815a517631bb849bdf0251d385d51ba5f1c5834cead80"
+  },
+  "promoted": "2026-11-13T07:52:25Z"
+}

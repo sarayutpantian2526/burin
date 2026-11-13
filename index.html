@@ -1919,6 +1919,8 @@ body.noctl .cleandot, body.present .cleandot { display: none !important; }
 .lifedot:hover, .lifedot:focus-visible { opacity: 1; }
 .lifedot svg { width: 100%; height: 100%; display: block; }
 .lifepanel { position: absolute; z-index: 5; pointer-events: auto; display: flex; flex-direction: column; gap: 8px; padding: 10px 12px; width: min(340px, 86vw); background: #FFFFFF; background: var(--surface, #FFFFFF); border: 1px solid #D6DCE4; border-color: var(--line, #D6DCE4); border-radius: 14px; box-shadow: 0 8px 24px rgba(20,26,34,0.18); font-family: var(--ui); font-size: 13.5px; color: #14181F; color: var(--fg, #14181F); }
+#page.lifeup { z-index: 1; }
+.lifepanel { overscroll-behavior: contain; }
 .lifepanel .chips { display: flex; flex-wrap: wrap; gap: 5px; }
 .lifepanel .chip { font-size: 12.5px; }
 .lifesl { display: flex; align-items: center; gap: 8px; }
@@ -2899,7 +2901,7 @@ const CLOUD = {
 function loadScript(src) {
   return new Promise((res, rej) => { const s = document.createElement('script'); s.src = src; s.async = true; s.onload = () => res(); s.onerror = () => rej(new Error('load ' + src)); document.head.appendChild(s); });
 }
-window.__noop = 1; async function cloudClient_orig() {
+async function cloudClient() {
   if (CLOUD.client) return CLOUD.client;
   if (!(window.supabase && window.supabase.createClient)) {
     try { await loadScript('vendor/supabase.js'); }
@@ -21083,7 +21085,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1794554542';
+const BUILD = '1794555266';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
@@ -21852,8 +21854,6 @@ async function openAudienceWindow() {
 $('#bShowX').onclick = () => { $('#showSheet').hidden = true; };
 $('#bShowCopy').onclick = async () => { try { await navigator.clipboard.writeText(showLink(LIVE.code)); toast('คัดลอกลิงก์จอแสดงผลแล้ว', 1600); } catch (e) { toast(showLink(LIVE.code), 5000); } };
 $('#bShowWin').onclick = () => showShare(true);
-async function cloudClient() { return window.__fakeSb || cloudClient_orig(); }
-window.__mev = (k, f) => MODEV[k](f); window.__ev2 = (f) => { try { return eval(f); } catch (e) { if (!(e instanceof ReferenceError)) throw e; for (const k in MODEV) { try { return MODEV[k](f); } catch (e2) { if (!(e2 instanceof ReferenceError)) throw e2; } } throw e; } }; window.__teach = () => { CLOUD.state = 'on'; CLOUD.client = window.__fakeSb; CLOUD.user = { id: 'u1' }; LIVE.code = null; LIVE.nbId = null; return liveOpen(); }; window.__S = () => S; window.__T = (z, x, y) => { S.zoom = z; S.tx = x; S.ty = y; applyT(); }; window.__LIVE = () => LIVE; window.__ev = (f) => eval(f);
 $('#bViewer').onclick = (e) => {
   const ic1 = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="4" width="13" height="10" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.6"/><rect x="9" y="9" width="12.5" height="10" rx="1.5" fill="var(--surface-2)" stroke="currentColor" stroke-width="1.6"/></svg>';
   const ic2 = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="4" width="19" height="13" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M8 20.5h8 M12 17v3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
