@@ -1918,7 +1918,7 @@ body.noctl .cleandot, body.present .cleandot { display: none !important; }
 .lifedot { position: absolute; pointer-events: auto; width: 28px; height: 28px; padding: 5px; border-radius: 50%; border: 1px solid #D6DCE4; background: rgba(255,255,255,0.92); color: #6A4FB8; box-shadow: 0 2px 8px rgba(20,26,34,0.14); opacity: 0.55; cursor: pointer; }
 .lifedot:hover, .lifedot:focus-visible { opacity: 1; }
 .lifedot svg { width: 100%; height: 100%; display: block; }
-.lifepanel { position: absolute; z-index: 5; pointer-events: auto; display: flex; flex-direction: column; gap: 8px; padding: 10px 12px; width: min(340px, 86vw); background: #FFFFFF; border: 1px solid #D6DCE4; border-radius: 14px; box-shadow: 0 8px 24px rgba(20,26,34,0.18); font-family: var(--ui); font-size: 13.5px; color: #14181F; }
+.lifepanel { position: absolute; z-index: 5; pointer-events: auto; display: flex; flex-direction: column; gap: 8px; padding: 10px 12px; width: min(340px, 86vw); background: #FFFFFF; background: var(--surface, #FFFFFF); border: 1px solid #D6DCE4; border-color: var(--line, #D6DCE4); border-radius: 14px; box-shadow: 0 8px 24px rgba(20,26,34,0.18); font-family: var(--ui); font-size: 13.5px; color: #14181F; color: var(--fg, #14181F); }
 .lifepanel .chips { display: flex; flex-wrap: wrap; gap: 5px; }
 .lifepanel .chip { font-size: 12.5px; }
 .lifesl { display: flex; align-items: center; gap: 8px; }
@@ -21083,7 +21083,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1794524740';
+const BUILD = '1794554542';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;

@@ -2094,7 +2094,9 @@ function lifePanel(d, it, dot) {
   const live = findItem(it.id) || it, rt = LIFE.get(it.id), p = document.createElement('div'); p.className = 'lifepanel';
   p.style.left = dot.style.left; p.style.top = (parseFloat(dot.style.top) + 30) + 'px';
   p.addEventListener('pointerdown', (e) => e.stopPropagation());
-  const sel = document.createElement('select'); sel.className = 'traysel'; for (const [k, n] of LIFE_KINDS) { const o = document.createElement('option'); o.value = k; o.textContent = n; sel.appendChild(o); } sel.value = live.beh.k;
+  const sel = document.createElement('select'); sel.className = 'traysel'; for (const [k, n] of LIFE_KINDS) { const o = document.createElement('option'); o.value = k; o.textContent = n; sel.appendChild(o); }
+  if (!LIFE_KINDS.some((x) => x[0] === live.beh.k)) { const o = document.createElement('option'); o.value = live.beh.k; o.textContent = live.beh.k === 'path' ? 'เคลื่อนที่ตามที่บอก' : live.beh.k === 'phys' ? 'ตามหลักฟิสิกส์' : 'แบบที่เลือกไว้'; sel.insertBefore(o, sel.firstChild); } /* moves the AI planned have no name in the list, and the box showed empty */
+  sel.value = live.beh.k;
   sel.onchange = () => { const m = LIFE_KINDS.find((x) => x[0] === sel.value); lifeSet(it, { k: sel.value, move: m[3] ? 1 : 0, edge: m[3] ? (live.beh.edge === 'stay' ? 'bounce' : live.beh.edge) : 'stay' }); };
   p.appendChild(sel);
   const chips = document.createElement('div'); chips.className = 'chips';
@@ -2123,6 +2125,18 @@ function lifePanel(d, it, dot) {
   const dl = document.createElement('button'); dl.type = 'button'; dl.className = 'btn danger'; dl.textContent = 'ลบ'; dl.onclick = () => { const before = clone(S.page.items || []); setItems(before.filter((x) => x.id !== it.id), before); LIFE.delete(it.id); };
   const fo = document.createElement('button'); fo.type = 'button'; fo.className = 'btn'; fo.textContent = 'ย่อ'; fo.onclick = () => p.remove();
   row.append(pb, bk, dl, fo); p.appendChild(row); d.appendChild(p);
+  lifePanelFit(p, live, dot);
+}
+/* keep the panel on the paper: below the button when there is room, above it when not, pulled in from the right edge,
+   and scrolling inside when the page is shorter than the panel (page units, like the item itself) */
+function lifePanelFit(p, it, dot) {
+  const m = 8, ix = +it.x || 0, iy = +it.y || 0, dl = parseFloat(dot.style.left) || 0, dt = parseFloat(dot.style.top) || 0;
+  if (p.offsetHeight > H - 2 * m) { p.style.maxHeight = (H - 2 * m) + 'px'; p.style.overflowY = 'auto'; }
+  const ph = p.offsetHeight, pw = p.offsetWidth;
+  let top = dt + 30; if (iy + top + ph > H - m) { const up = dt - 6 - ph; top = iy + up >= m ? up : H - m - ph - iy; }
+  top = Math.max(m - iy, top);
+  let left = dl; if (ix + left + pw > W - m) left = W - m - pw - ix; left = Math.max(m - ix, left);
+  p.style.top = top + 'px'; p.style.left = left + 'px';
 }
 function lifeTick(ts) {
   lifeRaf = 0; const dt = lifeLast ? Math.min(0.05, (ts - lifeLast) / 1000) : 0.016; lifeLast = ts; let any = false;
