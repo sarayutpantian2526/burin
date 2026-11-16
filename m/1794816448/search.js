@@ -181,7 +181,9 @@ function findGo(nid, pid, itemId) {
     const it = ((S.page && S.page.items) || []).find((x) => x && x.id === itemId);
     const el = document.querySelector(sel);
     if (!it || !el) { if (++tries < 30) setTimeout(look, 100); return; }
-    if (!FLOW.on && vp) {
+    /* moved the same way in both ways of turning pages: in continuous scrolling the page shown is placed by S.ty too
+       (the page is not scrolled natively, so scrollIntoView would leave a box low on the page out of view) */
+    if (vp) {
       const k = S.base * S.zoom, top = S.ty + (it.y || 0) * k, vh = vp.clientHeight;
       if (top < 60 || top > vh * 0.7) { S.ty = vh * 0.3 - (it.y || 0) * k; S.pull = 0; clampT(); applyT(); }
     } else if (el.scrollIntoView) el.scrollIntoView({ block: 'center' });
