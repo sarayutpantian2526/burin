@@ -70,7 +70,8 @@ async function keepMake(say) {
     const d = S.store.peek(k); if (d == null) continue;
     const j = JSON.stringify(d);
     parts.push((parts.length ? ',' : '') + JSON.stringify(k) + ':' + j);
-    const re = /"(L[a-z0-9]{6,40})"/gi; let m;
+    /* L: a picture kept on this device; S: one that came from a cloud account (a file of a whole account brought here) */
+    const re = /"([LS][a-z0-9]{6,40})"/gi; let m;
     while ((m = re.exec(j))) used.add(m[1]);
     if (/^notebooks\/[^/]+$/.test(k)) books++; else if (/^pages\/[^/]+$/.test(k)) pages++;
     if (++i % 150 === 0 && Date.now() - t0 > 40) { await new Promise((r) => setTimeout(r, 0)); t0 = Date.now(); }
@@ -160,7 +161,7 @@ async function keepRead(file) {
     blobs.push({ id: b.id, type: typeof b.type === 'string' ? b.type : '', blob: file.slice(off, off + size, typeof b.type === 'string' ? b.type : '') });
     off += size;
   }
-  return { docs: head.docs, blobs, made: +head.made || 0 };
+  return { docs: head.docs, blobs, made: +head.made || 0, acct: !!(head.acct && typeof head.acct === 'object') };
 }
 /* only adds: an item that is already on this device stays as it is, so bringing a backup back never loses work */
 async function keepLoad(file, say) {
@@ -172,7 +173,7 @@ async function keepLoad(file, say) {
     const r = await keepRead(file);
     let added = 0, kept = 0, books = 0, files = 0;
     for (const b of r.blobs) {
-      if (!/^L[a-z0-9]{6,40}$/i.test(b.id)) continue;
+      if (!/^[LS][a-z0-9]{6,40}$/i.test(b.id)) continue;
       let have = null; try { have = await IDB.get('blobs', b.id); } catch (e) { have = null; }
       if (have) continue;
       const bl = b.blob.type || !b.type ? b.blob : b.blob.slice(0, b.blob.size, b.type);
@@ -189,7 +190,7 @@ async function keepLoad(file, say) {
       if (/^notebooks\/[^/]+$/.test(k)) books++;
       if (++i % 200 === 0) await new Promise((res) => setTimeout(res, 0));
     }
-    say && say(added || files ? (books ? 'นำคืนแล้ว สมุด ' + books + ' เล่ม (รวม ' + added + ' รายการ' + (files ? ' รูปและวิดีโอ ' + files + ' ไฟล์' : '') + ')' : 'นำคืนส่วนที่ขาดแล้ว ' + added + ' รายการ' + (files ? ' รูปและวิดีโอ ' + files + ' ไฟล์' : '')) + (kept ? ' ส่วนที่มีอยู่แล้วในเครื่อง ' + kept + ' รายการคงไว้ตามเดิม' : '') : 'สมุดในไฟล์นี้มีอยู่ในเครื่องครบแล้ว ไม่ได้เปลี่ยนอะไร', 'ok');
+    say && say((added || files ? (books ? 'นำคืนแล้ว สมุด ' + books + ' เล่ม (รวม ' + added + ' รายการ' + (files ? ' รูปและวิดีโอ ' + files + ' ไฟล์' : '') + ')' : 'นำคืนส่วนที่ขาดแล้ว ' + added + ' รายการ' + (files ? ' รูปและวิดีโอ ' + files + ' ไฟล์' : '')) + (kept ? ' ส่วนที่มีอยู่แล้วในเครื่อง ' + kept + ' รายการคงไว้ตามเดิม' : '') : 'สมุดในไฟล์นี้มีอยู่ในเครื่องครบแล้ว ไม่ได้เปลี่ยนอะไร') + (r.acct ? ' การบ้านและเลคเชอร์ที่แชร์ในไฟล์นี้นำเข้าได้เมื่อเข้าระบบบัญชีคลาวด์' : ''), 'ok');
     return { added, kept, books, files };
   } catch (e) {
     if (e && e.code === 'not_backup') { say && say('ไฟล์นี้ไม่ใช่ไฟล์สำรองสมุดของ BURIN', 'err'); return null; }
@@ -206,8 +207,12 @@ function keepPick(say) {
 /* ----- the section in Settings ----- */
 async function keepRender() {
   const box = $('#keepSet'); if (!box) return;
-  if (!keepLocal()) { box.hidden = true; return; }
+  /* an account in the cloud: the section stays, says where the notebooks are, and has no buttons */
+  const cloud = !!(S.store && S.store.kind === 'cloud');
+  if (!keepLocal() && !cloud) { box.hidden = true; return; }
   box.hidden = false;
+  $('#keepBtns').hidden = cloud; $('#keepMsg').hidden = cloud;
+  if (cloud) { $('#keepNote').textContent = 'สมุดของบัญชีนี้เก็บบนคลาวด์ ซิงก์ทุกเครื่องที่เข้าระบบด้วยบัญชีเดียวกัน ไม่ต้องสำรองในเครื่อง'; return; }
   const msg = $('#keepMsg');
   const say = (t, k) => { msg.innerHTML = '<div class="note' + (k === 'err' ? ' err' : k === 'ok' ? ' ok' : '') + '"></div>'; msg.firstChild.textContent = t; return msg.firstChild; };
   $('#bKeepSave').onclick = () => keepSave(say).then(() => keepNote());
