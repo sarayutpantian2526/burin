@@ -190,7 +190,13 @@ function findGo(nid, pid, itemId) {
     /* the box may be drawn again while it glows (a graph once its maths has loaded): the new one glows too */
     const until = Date.now() + 2600;
     el.classList.add('findglow');
-    const keep = () => { const e2 = document.querySelector(sel); if (Date.now() >= until || S.pid !== pid) { if (e2) e2.classList.remove('findglow'); return; } if (e2 && !e2.classList.contains('findglow')) e2.classList.add('findglow'); setTimeout(keep, 150); };
+    /* a box drawn again gets the glow before the screen is painted, not up to 150 ms later (it went dark for a moment
+       on a slow device); the check every 150 ms stays for the end of the glow and in case the page itself is replaced */
+    const relit = () => { const e2 = document.querySelector(sel); if (e2 && Date.now() < until && S.pid === pid && !e2.classList.contains('findglow')) e2.classList.add('findglow'); };
+    const pgEl = document.getElementById('page');
+    const mo = window.MutationObserver && pgEl ? new MutationObserver(relit) : null;
+    if (mo) mo.observe(pgEl, { childList: true, subtree: true });
+    const keep = () => { const e2 = document.querySelector(sel); if (Date.now() >= until || S.pid !== pid) { if (mo) mo.disconnect(); if (e2) e2.classList.remove('findglow'); return; } if (e2 && !e2.classList.contains('findglow')) e2.classList.add('findglow'); setTimeout(keep, 150); };
     setTimeout(keep, 150);
   };
   setTimeout(look, 60);

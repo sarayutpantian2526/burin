@@ -275,7 +275,7 @@ body.present .nbscroll, body.showscr .nbscroll { display: none !important; }
 .item.teacher.svg { background: rgba(255, 250, 230, 0.6); }
 .item.teacher::before { content: "เฉลย"; display: block; font-family: var(--ui); font-size: 13px; font-weight: 700; color: #8A4A0C; }
 .item.svg { padding: 0; }
-body.showscr #livePill, body.showscr #presentExit, body.showscr .exitfull, body.showscr #bExitFull { display: none !important; }
+body.shellaud #presentExit, body.shellaud #presentWait, body.showscr #livePill, body.showscr #presentExit, body.showscr .exitfull, body.showscr #bExitFull { display: none !important; }
 .showbox { display: flex; gap: 18px; align-items: center; flex-wrap: wrap; margin: 12px 0; }
 .showqr { width: 220px; height: 220px; background: #FFFFFF; padding: 8px; border-radius: 12px; }
 .showcode { display: block; font-size: 30px; letter-spacing: 4px; margin: 2px 0 8px; }
@@ -930,6 +930,11 @@ body.present .updbar { display: none !important; }
 .livepill { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); z-index: 8; display: flex; align-items: center; gap: 8px; padding: 6px 8px 6px 14px; border-radius: 999px; background: var(--chrome); color: var(--chrome-fg); font-size: 13px; box-shadow: var(--shadow); max-width: calc(100% - 24px); }
 .livepill button { min-height: 32px; padding: 0 12px; border-radius: 999px; border: 0; background: rgba(255,255,255,0.14); color: inherit; font: inherit; cursor: pointer; }
 .livepill button[aria-pressed="true"] { background: var(--ok); color: #FFFFFF; }
+.audpill { padding-left: 14px; }
+.audpill .audlbl { font-weight: 700; white-space: nowrap; }
+.audpill button { min-height: 36px; white-space: nowrap; }
+#audBlackout { position: absolute; inset: 0; z-index: 50; background: #000; }
+body.present #audPill { display: none !important; }
 .sqq { display: flex; flex-direction: column; gap: 8px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
 body.student #bLive, body.student #bPresent, body.student #bViewer { display: none; }
 #qmBody textarea { min-height: 70px; }
@@ -3316,7 +3321,7 @@ function makeCloudRoom(sb, user) {
   const ch = sb.channel('room-' + user.id, { config: { broadcast: { self: false }, presence: { key: TAB } } });
   const topics = {}, peerCbs = [];
   let pres = null, ready = false, prev = {};
-  for (const t of ['view', 'ink', 'laser', 'page']) ch.on('broadcast', { event: t }, (m) => (topics[t] || []).forEach((f) => f({ data: m.payload, sameTab: false })));
+  for (const t of ['view', 'ink', 'laser', 'page', 'aud']) ch.on('broadcast', { event: t }, (m) => (topics[t] || []).forEach((f) => f({ data: m.payload, sameTab: false })));
   const peersNow = () => {
     const st = ch.presenceState(), out = [];
     for (const k in st) { if (k === TAB) continue; const metas = st[k] || []; const m = metas[metas.length - 1] || {}; out.push({ id: k, presence: m.p || null, sameTab: false }); }
@@ -4020,7 +4025,7 @@ function nbsGo(f) {
    stays one screen pixel sharp wherever the page sits; while the zoom changes they are smoothed as usual */
 function pxSync() { try { pageEl.classList.toggle('px1', !!S.inkExact && Math.abs((S.zoom || 1) - 1) < 1e-4); pageEl.classList.toggle('pxs', !!S.sharpExact && S.sharpZoom === S.zoom); } catch (e) { /* not ready */ } }
 function applyT() { if (FLOW.on) flowCheckLater(); const zn = document.getElementById('zNum'); if (zn) { const pc = Math.round(S.zoom * 100); zn.classList.toggle('off', Math.abs(pc - 100) > 1); zn.title = pc === 100 ? 'พอดีหน้า' : 'ตอนนี้ ' + pc + '% แตะเพื่อกลับมาพอดีหน้า'; zn.setAttribute('aria-label', zn.title); } { const hk = (1 / ((S.base || 1) * (S.zoom || 1))).toFixed(3); if (hk !== S.hk) { S.hk = hk; itemsEl.style.setProperty('--hk', hk); } } /* set only when the zoom changed: setting it restyled every box on the page each frame */ wrapEl.style.willChange = 'transform'; S.lastT = performance.now(); pxSync(); { const dpr = window.devicePixelRatio || 1, rx = Math.round(S.tx * dpr) / dpr, ry = Math.round((S.ty + rubber(S.pull || 0)) * dpr) / dpr; wrapEl.style.transform = 'translate(' + rx + 'px,' + ry + 'px) scale(' + S.zoom + ')'; } if ((S.watchers || liveDisplays()) && !S.present) emitView(); /* throttled inside, with a last update when the movement stops: the audience screen follows while the teacher is still scrolling, not only after */ sharpLater(); if (NBS.on) nbsSync(); }
-function topY() { return S.tv ? 12 : 72; }
+function topY() { return S.tv || S.clean ? 12 : 72; }
 function bounds() {
   const vw = vp.clientWidth, vh = vp.clientHeight;
   const pw = W * S.base * S.zoom, ph = H * S.base * S.zoom + 100;
@@ -4179,6 +4184,7 @@ function fit() {
   applyT();
   resizeCanvases(true);
   if (flowWanted()) renderPeeksLater();
+  if (S.clean && cleanFit) cleanFit();
 }
 function resizeCanvases(force) {
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -9308,7 +9314,17 @@ function dragItem(el, o) {
   el.addEventListener('contextmenu', (e) => { e.preventDefault(); if (o.onHold) o.onHold(el); });
 }
 const moveIn = (arr, from, to) => { const a = arr.slice(); a.splice(to, 0, a.splice(from, 1)[0]); return a; };
+/* a button inside a group (or inside เพิ่มเติม) opens its menu next to the group's button, which is still on screen:
+   the list it was in has closed, and a menu left where that list was floated far from anything (task 2.6) */
+function menuAnchor(a) {
+  const pop = a && a.closest && a.closest('.tgpop'); if (!pop) return a;
+  const g = document.getElementById(pop.id.replace(/Pop$/, '')), more = document.getElementById('bMore');
+  if (g && g.getBoundingClientRect().width > 0) return g;
+  if (more && more.getBoundingClientRect().width > 0) return more;
+  return a;
+}
 function popMenu(anchor, title, actions) {
+  anchor = menuAnchor(anchor);
   const m = $('#tabMenu'); m.innerHTML = ''; m.classList.remove('tight');
   const t = document.createElement('b'); t.textContent = title; m.appendChild(t);
   /* an action may carry a short explanation and an icon: it then shows as a card */
@@ -11120,7 +11136,7 @@ function researchTemplate() {
 /* parts that are not needed to open a notebook and write are loaded the first time they are used (moving models,
    the equation solver, drawing from a reference, statistics), so the app opens fast and stays fast however much is added.
    Each part is kept for offline use by the service worker */
-const MODS = { scene: 'm/scene.js', cas: 'm/cas.js', sketch: 'm/sketch.js', stats: 'm/stats.js', video: 'm/video.js', data: 'm/data.js', measure: 'm/measure.js', imgmeas: 'm/imgmeas.js', cite: 'm/cite.js', work: 'm/work.js', search: 'm/search.js', toc: 'm/toc.js', keep: 'm/keep.js', trash: 'm/trash.js', export: 'm/export.js', history: 'm/history.js', aipages: 'm/aipages.js', cmds: 'm/cmds.js' }, MODP = {}, MODOK = {}, MODEV = {};
+const MODS = { scene: 'm/scene.js', cas: 'm/cas.js', sketch: 'm/sketch.js', stats: 'm/stats.js', video: 'm/video.js', data: 'm/data.js', measure: 'm/measure.js', imgmeas: 'm/imgmeas.js', cite: 'm/cite.js', work: 'm/work.js', search: 'm/search.js', toc: 'm/toc.js', keep: 'm/keep.js', trash: 'm/trash.js', export: 'm/export.js', history: 'm/history.js', aipages: 'm/aipages.js', cmds: 'm/cmds.js', clean: 'm/clean.js' }, MODP = {}, MODOK = {}, MODEV = {};
 /* switches to turn a part of the app off without putting a new release up: flags.json next to index.html,
    for example {"off": ["video"]}. Read once when the app opens; when it cannot be read, everything stays on */
 const FLAGS = { off: {}, told: {} };
@@ -11147,12 +11163,12 @@ function need(name) {
   }).catch((e) => { delete MODP[name]; throw e; }));
 }
 let SCENE_TPL, SCN, LIFE, renderScenePicker, scClean, scRender, restoreInk, openMotionPick, insertScene, buildScene, buildLife, sceneDomainFor, lifeBox, animKick, scReset;
-let findShow, findRun, findGo, tocShow, tocHeads, tocMark, keepBoot, keepRender, keepSave, keepLoad, keepBanner, trashShow, trashPurge, trashRestore, trashDrop, trashList, expRender, expSave, expLoad, histNote, histOpen, histPurge, histRestore, histVersions, apRender, apSource, apWanted, apReading, cmdShow, cmdList, cmdFind, cmdRun;
+let findShow, findRun, findGo, tocShow, tocHeads, tocMark, keepBoot, keepRender, keepSave, keepLoad, keepBanner, trashShow, trashPurge, trashRestore, trashDrop, trashList, expRender, expSave, expLoad, histNote, histOpen, histPurge, histRestore, histVersions, apRender, apSource, apWanted, apReading, cmdShow, cmdList, cmdFind, cmdRun, cleanStart, cleanEnd, cleanFit;
 let texToCas, casVars, casWithUnits, casRun, casRowTex, casReady, solveSelection, openBgCut, openSketch, ST, openStats, openVideoLab, dataSelection, poolSection, poolShow, poolGot, poolEnd, openMeasure, openImgMeasure, unitCheck, openCite, captionSel, captionRenumber, hwHubOpen, hwStudentOpen, hwAssignOpen, hwBoard, hwDetail;
 const MOD_EXPORTS = {
   scene: ['SCENE_TPL', 'SCN', 'LIFE', 'renderScenePicker', 'scClean', 'scRender', 'restoreInk', 'openMotionPick', 'insertScene', 'buildScene', 'buildLife', 'sceneDomainFor', 'lifeBox', 'animKick', 'scReset'],
   cas: ['texToCas', 'casVars', 'casWithUnits', 'casRun', 'casRowTex', 'casReady', 'solveSelection'],
-  sketch: ['openBgCut', 'openSketch'], stats: ['ST', 'openStats'], video: ['openVideoLab'], data: ['dataSelection', 'poolSection', 'poolShow', 'poolGot', 'poolEnd', 'unitCheck'], measure: ['openMeasure'], imgmeas: ['openImgMeasure'], cite: ['openCite', 'captionSel', 'captionRenumber'], work: ['hwHubOpen', 'hwStudentOpen', 'hwAssignOpen', 'hwBoard', 'hwDetail'], search: ['findShow', 'findRun', 'findGo'], toc: ['tocShow', 'tocHeads', 'tocMark'], keep: ['keepBoot', 'keepRender', 'keepSave', 'keepLoad', 'keepBanner'], trash: ['trashShow', 'trashPurge', 'trashRestore', 'trashDrop', 'trashList'], export: ['expRender', 'expSave', 'expLoad'], history: ['histNote', 'histOpen', 'histPurge', 'histRestore', 'histVersions'], aipages: ['apRender', 'apSource', 'apWanted', 'apReading'], cmds: ['cmdShow', 'cmdList', 'cmdFind', 'cmdRun']
+  sketch: ['openBgCut', 'openSketch'], stats: ['ST', 'openStats'], video: ['openVideoLab'], data: ['dataSelection', 'poolSection', 'poolShow', 'poolGot', 'poolEnd', 'unitCheck'], measure: ['openMeasure'], imgmeas: ['openImgMeasure'], cite: ['openCite', 'captionSel', 'captionRenumber'], work: ['hwHubOpen', 'hwStudentOpen', 'hwAssignOpen', 'hwBoard', 'hwDetail'], search: ['findShow', 'findRun', 'findGo'], toc: ['tocShow', 'tocHeads', 'tocMark'], keep: ['keepBoot', 'keepRender', 'keepSave', 'keepLoad', 'keepBanner'], trash: ['trashShow', 'trashPurge', 'trashRestore', 'trashDrop', 'trashList'], export: ['expRender', 'expSave', 'expLoad'], history: ['histNote', 'histOpen', 'histPurge', 'histRestore', 'histVersions'], aipages: ['apRender', 'apSource', 'apWanted', 'apReading'], cmds: ['cmdShow', 'cmdList', 'cmdFind', 'cmdRun'], clean: ['cleanStart', 'cleanEnd', 'cleanFit']
 };
 function modSet(name, x) {
   if (name === 'scene') { SCENE_TPL = x.SCENE_TPL; SCN = x.SCN; LIFE = x.LIFE; renderScenePicker = x.renderScenePicker; scClean = x.scClean; scRender = x.scRender; restoreInk = x.restoreInk; openMotionPick = x.openMotionPick; insertScene = x.insertScene; buildScene = x.buildScene; buildLife = x.buildLife; sceneDomainFor = x.sceneDomainFor; lifeBox = x.lifeBox; animKick = x.animKick; scReset = x.scReset; }
@@ -11169,6 +11185,7 @@ function modSet(name, x) {
   else if (name === 'trash') { trashShow = x.trashShow; trashPurge = x.trashPurge; trashRestore = x.trashRestore; trashDrop = x.trashDrop; trashList = x.trashList; }
   else if (name === 'export') { expRender = x.expRender; expSave = x.expSave; expLoad = x.expLoad; }
   else if (name === 'cmds') { cmdShow = x.cmdShow; cmdList = x.cmdList; cmdFind = x.cmdFind; cmdRun = x.cmdRun; }
+  else if (name === 'clean') { cleanStart = x.cleanStart; cleanEnd = x.cleanEnd; cleanFit = x.cleanFit; }
   else if (name === 'aipages') { apRender = x.apRender; apSource = x.apSource; apWanted = x.apWanted; apReading = x.apReading; }
   else if (name === 'history') { histNote = x.histNote; histOpen = x.histOpen; histPurge = x.histPurge; histRestore = x.histRestore; histVersions = x.histVersions; }
   else if (name === 'keep') { keepBoot = x.keepBoot; keepRender = x.keepRender; keepSave = x.keepSave; keepLoad = x.keepLoad; keepBanner = x.keepBanner; }
@@ -21524,7 +21541,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1794874466';
+const BUILD = '1794891443';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
@@ -21550,8 +21567,8 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden) chec
 setInterval(checkUpdate, 30 * 60 * 1000); setTimeout(checkUpdate, 8000);
 
 /* ---------- version and what is new ---------- */
-const VERSION = '20261117-81440c87';
-const NEWS = [{"id": 9, "date": "2026-11-17", "items": ["แถบบนเหลือปุ่มน้อยลง ปุ่มที่ใช้นาน ๆ ครั้ง รวมอยู่ในสองกลุ่ม", "ปุ่ม ต่อยอดจากหน้า มี แปลงเป็นตัวพิมพ์ สร้างโจทย์ และ ชุดโจทย์", "ปุ่ม สอนและนำเสนอ มี ห้องสด นำเสนอ และ ห้องเรียนและโจทย์ (ฝั่งนักเรียนชื่อ ห้องเรียน มี สแกน QR และ เข้าห้องเรียน ด้วย)", "เลือกด้วยบ่วงแล้ว แถบเหนือส่วนที่เลือก แสดงคำสั่งที่ใช้บ่อยก่อน คำสั่งอื่นอยู่ที่ปุ่ม เพิ่มเติม", "หาคำสั่งไม่เจอ พิมพ์ชื่อในช่องค้นหาที่เมนู เช่น PDF หรือ สามมิติ แล้วแตะคำสั่งที่ขึ้นมา"]}, {"id": 8, "date": "2026-11-16", "items": ["สร้างโจทย์ด้วย AI จากกี่หน้าก็ได้ ทั้งเล่ม ตามบท หรือเป็นช่วงหน้า", "อยู่ที่ปุ่ม สร้างโจทย์ด้วย AI หัวข้อ หน้าที่ใช้สร้างโจทย์ แตะ ทั้งเล่ม หรือแตะชื่อบท หรือใส่ช่วงหน้า แล้วกด เลือกช่วงนี้", "หน้าที่ AI อ่านแล้ว เก็บไว้ในเครื่องนี้ ครั้งต่อไป ไม่ต้องอ่านซ้ำ จึงเร็วขึ้น และประหยัดค่า AI"]}, {"id": 7, "date": "2026-11-16", "items": ["ลบผิด หรือเขียนทับผิด ดึงหน้า เมื่อไม่กี่นาทีก่อน หรือเมื่อวาน กลับมาได้", "อยู่ที่ ลิ้นชักหน้า แตะแถบ หน้านี้ ด้านล่าง แล้วกดปุ่ม รุ่นก่อนของหน้านี้ เลือกรุ่น ดูภาพหน้าก่อน แล้วกด คืนหน้าเป็นรุ่นนี้", "หน้าก่อนคืน ถูกเก็บไว้ด้วย จึงย้อนกลับได้ แอปเก็บรุ่นก่อน ไว้ในเครื่องนี้ 30 วัน"]}, {"id": 6, "date": "2026-11-16", "items": ["บัญชีคลาวด์ ส่งออกข้อมูลทั้งบัญชี เป็นไฟล์เดียวได้ ทั้งสมุด หน้า หมึก รูป วิดีโอ เลคเชอร์ที่แชร์ การบ้าน และงานที่นักเรียนส่ง", "อยู่ที่ เมนู แท็บตั้งค่า หัวข้อ ข้อมูลทั้งบัญชี กดปุ่ม ส่งออกทั้งบัญชี", "นำเข้าไฟล์นี้ ในบัญชีอื่น หรือเครื่องใหม่ได้ การนำเข้า เพิ่มเฉพาะส่วนที่ยังไม่มี ไม่ทับ และไม่ลบ ของที่มีอยู่"]}, {"id": 5, "date": "2026-11-15", "items": ["ลบสมุด หรือลบหน้าแล้ว ยังกู้คืนได้ ภายใน 30 วัน สิ่งที่ลบ ไปอยู่ในถังขยะ ก่อนถูกลบจริง", "เปิดถังขยะ ได้ที่ เมนู สมุดทั้งหมด ปุ่มถังขยะ ใต้รายการสมุด กดกู้คืน แล้วสมุดกลับไป ที่เดิม หน้ากลับไป ตำแหน่งเดิม ในสมุด", "ลบถาวร ทีละรายการ หรือลบทั้งหมด ในถังขยะได้ ครบ 30 วัน แล้วแอปลบให้เอง"]}, {"id": 4, "date": "2026-11-15", "items": ["สำรองสมุด ทั้งหมดเป็นไฟล์เดียว ได้ที่ เมนู แท็บตั้งค่า หัวข้อ สมุดในเครื่องนี้ ไฟล์เก็บสมุดทุกเล่ม รูป และวิดีโอ ในเครื่องนี้", "นำสมุดคืน จากไฟล์สำรอง ได้ที่เดียวกัน การนำคืน เพิ่มเฉพาะส่วน ที่ยังไม่มีในเครื่อง ไม่ทับ และไม่ลบ ของที่มีอยู่", "แอปขอให้เบราว์เซอร์ เก็บสมุดในเครื่อง ไว้ถาวร และเตือนให้สำรองสมุด ที่หน้ารายการสมุด เมื่อสมุดเปลี่ยนไป ตั้งแต่สำรองครั้งล่าสุด", "บน iPad และ iPhone ใน Safari แอปชวนให้ เพิ่มลงหน้าจอโฮม เพื่อไม่ให้ Safari ลบสมุด ที่ไม่ได้เปิดนาน ให้สำรองสมุดก่อน แล้วนำคืน ในแอปบนหน้าจอโฮม"]}, {"id": 3, "date": "2026-11-14", "items": ["สารบัญ ของสมุด แตะปุ่มหน้าในสมุด ที่มุมซ้ายบน แล้วเลือก สารบัญ จะเห็นหัวเรื่อง ของทุกหน้า แตะหัวเรื่อง เพื่อไปที่หน้านั้น ได้ทันที", "หัวเรื่อง มาจากข้อความที่พิมพ์ไว้ บนสุดของหน้า หรือบรรทัด ที่ขึ้นต้นด้วย ## ลายมือที่ยังไม่ได้แปลง เป็นตัวพิมพ์ ไม่ขึ้นในสารบัญ", "ที่คั่นหน้า แตะ ปักที่คั่นหน้านี้ ในหน้าสารบัญ แล้วตั้งชื่อเองได้ หน้าที่มีที่คั่น จะมีริบบิ้นสีแดง ที่ภาพหน้า", "ที่คั่นหน้า อยู่กับสมุด ของเราเท่านั้น ผู้เรียนในห้องสด ไม่เห็นที่คั่นหน้า ของครู"]}, {"id": 2, "date": "2026-11-14", "items": ["ค้นหาข้อความ ในทุกสมุดได้แล้ว พิมพ์คำในช่องค้นหาที่เมนู แอปจะค้นทั้งชื่อสมุด ข้อความที่พิมพ์ ลายมือที่แปลงเป็นตัวพิมพ์แล้ว หัวเรื่องของหน้า และข้อความในกล่องต่าง ๆ", "แตะผลการค้นหา เพื่อไปที่หน้านั้น กล่องที่มีคำนั้นจะเรืองแสงสักครู่ ให้เห็นตำแหน่ง", "พิมพ์คำไทย ติดกันหรือเว้นวรรค ก็ค้นเจอเหมือนกัน การค้นหาอ่านสมุดอย่างเดียว ไม่แก้ไขอะไรในสมุด"]}, {"id": 1, "date": "2026-11-13", "items": ["ดูเวอร์ชันของแอปได้ที่เมนู แท็บตั้งค่า หัวข้อเกี่ยวกับแอป", "เมื่อมีเวอร์ชันใหม่ระหว่างใช้งาน แอปจะไม่รีโหลดเอง รวมถึงจอผู้ชม เวอร์ชันใหม่จะมีผล เมื่อเปิดแอปครั้งถัดไป หรือเมื่อแตะแถบ มีเวอร์ชันใหม่", "หน้าที่เปิดค้างไว้ ใช้ส่วนต่าง ๆ ของแอป จากเวอร์ชันเดียวกับตัวเองเสมอ ไม่ปนกับเวอร์ชันใหม่", "เมื่อแอปทำงานผิดพลาด แอปจะส่งรายงาน ให้ผู้พัฒนา โดยส่งเฉพาะ ข้อความแจ้งข้อผิดพลาด ตำแหน่งในโค้ด รุ่นเครื่อง และเวอร์ชันของแอป ไม่ส่งเนื้อหาสมุด ชื่อ หรืออีเมล"]}];
+const VERSION = '20261117-7989a427';
+const NEWS = [{"id": 10, "date": "2026-11-17", "items": ["คอมที่ต่อจอที่สอง เลือก จอที่สอง ผู้ชมไม่เห็นแถบ ในเมนู นำเสนอ ครูใช้ได้ทุกคำสั่ง จอใหญ่เห็นแต่หน้ากระดาษ ไม่ต้องใช้อินเทอร์เน็ต", "ระหว่างเปิดจอผู้ชม ครูมีแถบเล็ก จอผู้ชม เลือกให้จอใหญ่เห็นทั้งหน้า พักจอ หรือปิด (ปุ่ม B บนคีย์บอร์ดหรือรีโมตก็พักจอได้)", "ต่อ iPad ออกทีวีด้วยสาย ใช้ ต่อสาย จอสะอาด ในเมนู นำเสนอ (ปุ่ม สอนและนำเสนอ)", "เริ่มแล้วจอเห็นแต่หน้ากระดาษ ไม่มีแถบหรือปุ่มใดขึ้นเลย ทั้งบน iPad และทีวี", "ก่อนเริ่ม เลือกปากกาให้แต่ละขอบจอ (สี ไฮไลต์ ยางลบ หรือเลเซอร์) ระหว่างนำเสนอ แตะขอบจอด้วยนิ้วเพื่อหยิบปากกาของขอบนั้น", "เลือกได้ว่าให้เห็นทั้งหน้า และเริ่มด้วยม่านบังครึ่งล่างที่ใช้นิ้วลากลงเพื่อเปิดทีละบรรทัด", "แตะค้างสามนิ้ว 1 วินาที เพื่อออก ใช้รีโมตนำเสนอเปลี่ยนหน้า ปุ่ม B พักจอ ปุ่ม Esc ออก", "เมนู นำเสนอ เหลือสามข้อ จอแสดงผลแบบนักเรียนบนอีกเครื่องและบนจอที่สองรวมเป็นข้อเดียว"]}, {"id": 9, "date": "2026-11-17", "items": ["แถบบนเหลือปุ่มน้อยลง ปุ่มที่ใช้นาน ๆ ครั้ง รวมอยู่ในสองกลุ่ม", "ปุ่ม ต่อยอดจากหน้า มี แปลงเป็นตัวพิมพ์ สร้างโจทย์ และ ชุดโจทย์", "ปุ่ม สอนและนำเสนอ มี ห้องสด นำเสนอ และ ห้องเรียนและโจทย์ (ฝั่งนักเรียนชื่อ ห้องเรียน มี สแกน QR และ เข้าห้องเรียน ด้วย)", "เลือกด้วยบ่วงแล้ว แถบเหนือส่วนที่เลือก แสดงคำสั่งที่ใช้บ่อยก่อน คำสั่งอื่นอยู่ที่ปุ่ม เพิ่มเติม", "หาคำสั่งไม่เจอ พิมพ์ชื่อในช่องค้นหาที่เมนู เช่น PDF หรือ สามมิติ แล้วแตะคำสั่งที่ขึ้นมา"]}, {"id": 8, "date": "2026-11-16", "items": ["สร้างโจทย์ด้วย AI จากกี่หน้าก็ได้ ทั้งเล่ม ตามบท หรือเป็นช่วงหน้า", "อยู่ที่ปุ่ม สร้างโจทย์ด้วย AI หัวข้อ หน้าที่ใช้สร้างโจทย์ แตะ ทั้งเล่ม หรือแตะชื่อบท หรือใส่ช่วงหน้า แล้วกด เลือกช่วงนี้", "หน้าที่ AI อ่านแล้ว เก็บไว้ในเครื่องนี้ ครั้งต่อไป ไม่ต้องอ่านซ้ำ จึงเร็วขึ้น และประหยัดค่า AI"]}, {"id": 7, "date": "2026-11-16", "items": ["ลบผิด หรือเขียนทับผิด ดึงหน้า เมื่อไม่กี่นาทีก่อน หรือเมื่อวาน กลับมาได้", "อยู่ที่ ลิ้นชักหน้า แตะแถบ หน้านี้ ด้านล่าง แล้วกดปุ่ม รุ่นก่อนของหน้านี้ เลือกรุ่น ดูภาพหน้าก่อน แล้วกด คืนหน้าเป็นรุ่นนี้", "หน้าก่อนคืน ถูกเก็บไว้ด้วย จึงย้อนกลับได้ แอปเก็บรุ่นก่อน ไว้ในเครื่องนี้ 30 วัน"]}, {"id": 6, "date": "2026-11-16", "items": ["บัญชีคลาวด์ ส่งออกข้อมูลทั้งบัญชี เป็นไฟล์เดียวได้ ทั้งสมุด หน้า หมึก รูป วิดีโอ เลคเชอร์ที่แชร์ การบ้าน และงานที่นักเรียนส่ง", "อยู่ที่ เมนู แท็บตั้งค่า หัวข้อ ข้อมูลทั้งบัญชี กดปุ่ม ส่งออกทั้งบัญชี", "นำเข้าไฟล์นี้ ในบัญชีอื่น หรือเครื่องใหม่ได้ การนำเข้า เพิ่มเฉพาะส่วนที่ยังไม่มี ไม่ทับ และไม่ลบ ของที่มีอยู่"]}, {"id": 5, "date": "2026-11-15", "items": ["ลบสมุด หรือลบหน้าแล้ว ยังกู้คืนได้ ภายใน 30 วัน สิ่งที่ลบ ไปอยู่ในถังขยะ ก่อนถูกลบจริง", "เปิดถังขยะ ได้ที่ เมนู สมุดทั้งหมด ปุ่มถังขยะ ใต้รายการสมุด กดกู้คืน แล้วสมุดกลับไป ที่เดิม หน้ากลับไป ตำแหน่งเดิม ในสมุด", "ลบถาวร ทีละรายการ หรือลบทั้งหมด ในถังขยะได้ ครบ 30 วัน แล้วแอปลบให้เอง"]}, {"id": 4, "date": "2026-11-15", "items": ["สำรองสมุด ทั้งหมดเป็นไฟล์เดียว ได้ที่ เมนู แท็บตั้งค่า หัวข้อ สมุดในเครื่องนี้ ไฟล์เก็บสมุดทุกเล่ม รูป และวิดีโอ ในเครื่องนี้", "นำสมุดคืน จากไฟล์สำรอง ได้ที่เดียวกัน การนำคืน เพิ่มเฉพาะส่วน ที่ยังไม่มีในเครื่อง ไม่ทับ และไม่ลบ ของที่มีอยู่", "แอปขอให้เบราว์เซอร์ เก็บสมุดในเครื่อง ไว้ถาวร และเตือนให้สำรองสมุด ที่หน้ารายการสมุด เมื่อสมุดเปลี่ยนไป ตั้งแต่สำรองครั้งล่าสุด", "บน iPad และ iPhone ใน Safari แอปชวนให้ เพิ่มลงหน้าจอโฮม เพื่อไม่ให้ Safari ลบสมุด ที่ไม่ได้เปิดนาน ให้สำรองสมุดก่อน แล้วนำคืน ในแอปบนหน้าจอโฮม"]}, {"id": 3, "date": "2026-11-14", "items": ["สารบัญ ของสมุด แตะปุ่มหน้าในสมุด ที่มุมซ้ายบน แล้วเลือก สารบัญ จะเห็นหัวเรื่อง ของทุกหน้า แตะหัวเรื่อง เพื่อไปที่หน้านั้น ได้ทันที", "หัวเรื่อง มาจากข้อความที่พิมพ์ไว้ บนสุดของหน้า หรือบรรทัด ที่ขึ้นต้นด้วย ## ลายมือที่ยังไม่ได้แปลง เป็นตัวพิมพ์ ไม่ขึ้นในสารบัญ", "ที่คั่นหน้า แตะ ปักที่คั่นหน้านี้ ในหน้าสารบัญ แล้วตั้งชื่อเองได้ หน้าที่มีที่คั่น จะมีริบบิ้นสีแดง ที่ภาพหน้า", "ที่คั่นหน้า อยู่กับสมุด ของเราเท่านั้น ผู้เรียนในห้องสด ไม่เห็นที่คั่นหน้า ของครู"]}, {"id": 2, "date": "2026-11-14", "items": ["ค้นหาข้อความ ในทุกสมุดได้แล้ว พิมพ์คำในช่องค้นหาที่เมนู แอปจะค้นทั้งชื่อสมุด ข้อความที่พิมพ์ ลายมือที่แปลงเป็นตัวพิมพ์แล้ว หัวเรื่องของหน้า และข้อความในกล่องต่าง ๆ", "แตะผลการค้นหา เพื่อไปที่หน้านั้น กล่องที่มีคำนั้นจะเรืองแสงสักครู่ ให้เห็นตำแหน่ง", "พิมพ์คำไทย ติดกันหรือเว้นวรรค ก็ค้นเจอเหมือนกัน การค้นหาอ่านสมุดอย่างเดียว ไม่แก้ไขอะไรในสมุด"]}, {"id": 1, "date": "2026-11-13", "items": ["ดูเวอร์ชันของแอปได้ที่เมนู แท็บตั้งค่า หัวข้อเกี่ยวกับแอป", "เมื่อมีเวอร์ชันใหม่ระหว่างใช้งาน แอปจะไม่รีโหลดเอง รวมถึงจอผู้ชม เวอร์ชันใหม่จะมีผล เมื่อเปิดแอปครั้งถัดไป หรือเมื่อแตะแถบ มีเวอร์ชันใหม่", "หน้าที่เปิดค้างไว้ ใช้ส่วนต่าง ๆ ของแอป จากเวอร์ชันเดียวกับตัวเองเสมอ ไม่ปนกับเวอร์ชันใหม่", "เมื่อแอปทำงานผิดพลาด แอปจะส่งรายงาน ให้ผู้พัฒนา โดยส่งเฉพาะ ข้อความแจ้งข้อผิดพลาด ตำแหน่งในโค้ด รุ่นเครื่อง และเวอร์ชันของแอป ไม่ส่งเนื้อหาสมุด ชื่อ หรืออีเมล"]}];
 const TH_MON = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
 function thDay(iso) { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || ''); return m ? (+m[3]) + ' ' + TH_MON[+m[2] - 1] + ' ' + (+m[1] + 543) : ''; }
 function renderVersion() { const el = $('#verNote'); if (el) el.innerHTML = 'เวอร์ชัน <span class="nowrap">' + esc(VERSION.startsWith('__') ? 'ในเครื่อง (ยังไม่ได้ประกอบ)' : VERSION) + '</span>'; }
@@ -22284,9 +22301,13 @@ function drawPresentLive() {
   }
 }
 function followView() {
-  if (!PV.view) return;
-  const vw = vp.clientWidth, vh = vp.clientHeight, v = PV.view;
-  if (v.x0 != null) {
+  if (!PV.view && !PV.whole) return;
+  const vw = vp.clientWidth, vh = vp.clientHeight, v = PV.view || {};
+  if (PV.whole) {
+    /* the whole page, whatever part the teacher has zoomed into (GoodNotes: Mirror Full Page) */
+    const k = Math.min((vw - 16) / W, (vh - 16) / H);
+    PV.to = { z: k / S.base, tx: (vw - W * k) / 2, ty: (vh - H * k) / 2 };
+  } else if (v.x0 != null) {
     /* show exactly the teacher's rectangle, scaled to fit this screen and centred */
     const k = Math.min(vw / (v.x1 - v.x0), vh / (v.y1 - v.y0));
     PV.to = { z: k / S.base, tx: vw / 2 - (v.x0 + v.x1) / 2 * k, ty: vh / 2 - (v.y0 + v.y1) / 2 * k };
@@ -22355,8 +22376,10 @@ function setupRoom(room) {
   room.onPeers((ch) => {
     S.watchers = ch.peers.filter((p) => !p.sameTab && p.presence && p.presence.role === 'present').length;
     S.peersAny = ch.peers.filter((p) => !p.sameTab).length; /* any other screen of this account shows the laser too */
-    if (ch.joined.some((p) => p.presence && p.presence.role === 'present') || ch.updated.some((p) => p.presence && p.presence.role === 'present')) { publishLive(); setTimeout(emitView, 300); }
+    if (ch.joined.some((p) => p.presence && p.presence.role === 'present') || ch.updated.some((p) => p.presence && p.presence.role === 'present')) { publishLive(); setTimeout(emitView, 300); setTimeout(audSend, 320); }
+    audSync();
   }, () => {});
+  room.on('aud', (m) => { if (S.present && !m.sameTab && m.data) audGot(m.data); }, () => {});
   room.on('page', (m) => {
     if (!S.present || m.sameTab || !m.data || typeof m.data.pid !== 'string') return;
     $('#presentWait').hidden = true;
@@ -22402,28 +22425,96 @@ async function openAudienceWindow() {
       if (other) feat = 'popup,left=' + other.availLeft + ',top=' + other.availTop + ',width=' + other.availWidth + ',height=' + other.availHeight;
     }
   } catch (e) { /* permission refused: open a normal window */ }
-  const w = window.open(url, 'burin-present', feat);
+  const w = window.open(url, 'burin-present', feat); AUD.win = w;
   if (!w) { toast('เบราว์เซอร์กันหน้าต่างใหม่ไว้ อนุญาตป๊อปอัปสำหรับเว็บนี้ แล้วลองอีกครั้ง', 4000); return; }
   try { w.focus(); } catch (e) { /* fine */ }
   toast(feat.includes('left=') ? 'เปิดจอผู้ชมบนจอที่สองแล้ว แตะปุ่มเต็มจอบนจอนั้นครั้งเดียว' : 'ลากหน้าต่างใหม่ไปไว้บนจอโปรเจกเตอร์ แล้วแตะปุ่มเต็มจอ', 4000);
 }
+/* the second screen (task 2.6): the teacher keeps the whole app with its bars, the TV or projector shows only the page,
+   as GoodNotes does. This needs the device to drive the other screen itself:
+   - an installed BURIN (iPad, Android, Windows, Mac) puts window.BurinShell = { platform, openAudience(url), closeAudience() }
+     and shows url (this page with #present) on the other display; the audience view it opens gets BurinShell.audience = true
+     (no way-out button on the TV: the teacher closes it from the device). It may fire 'burin-displays' on window
+     (detail: { count }) when a display comes or goes.
+   - in a browser on a computer, a window is opened on the second screen (openAudienceWindow).
+   - Safari on an iPad, and phones, can only mirror the screen: no such choice there (ต่อสาย จอสะอาด instead).
+   The audience view follows this one through the room of the device (no internet needed) and hides the answers */
+function shellAud() { const s = window.BurinShell; return s && typeof s.openAudience === 'function' ? s : null; }
+function audienceWay() {
+  if (shellAud()) return 'shell';
+  const ua = navigator.userAgent || '', mobile = /iPad|iPhone|iPod|Android/i.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  return mobile ? null : 'window';
+}
+async function openAudience() {
+  const s = shellAud();
+  if (!s) { openAudienceWindow(); return; }
+  let ok = false; try { ok = (await s.openAudience(location.origin + location.pathname + '#present')) !== false; } catch (e) { ok = false; }
+  toast(ok ? 'จอที่สองเห็นแต่หน้ากระดาษแล้ว เครื่องนี้ใช้ได้ตามปกติ' : 'ยังไม่พบจอที่สอง ต่อสายหรือเลือกจอแล้วลองอีกครั้ง', 3200);
+}
+if (window.BurinShell && window.BurinShell.audience) document.body.classList.add('shellaud');
+/* while an audience screen of this device is open, the teacher has its few controls on a small bar at the top of the page
+   (as GoodNotes has its presentation controls): the whole page or the part being shown, a pause that blacks the
+   audience screen out, and closing it. The audience screen gets them through the room ('aud') */
+const AUD = { whole: store_ls.get('tp-aud-whole') === '1', blank: false, win: null };
+function audSend(extra) { if (!S.room || S.present || !S.watchers) return; S.room.emit('aud', Object.assign({ whole: AUD.whole, blank: AUD.blank }, extra || {})).catch(() => {}); }
+function audSync() {
+  let p = document.getElementById('audPill');
+  const on = flagOn('audience') && !S.present && !S.show && S.watchers > 0;
+  if (!on) { if (p) p.hidden = true; if (!S.watchers) AUD.blank = false; return; }
+  if (!p) {
+    p = document.createElement('div'); p.id = 'audPill'; p.className = 'livepill audpill no-ink'; p.setAttribute('role', 'toolbar'); p.setAttribute('aria-label', 'จอผู้ชม');
+    p.innerHTML = '<span class="audlbl">จอผู้ชม</span><button type="button" id="audWhole">ทั้งหน้า</button><button type="button" id="audBlank">พักจอ</button><button type="button" id="audClose">ปิด</button>';
+    vp.appendChild(p);
+    $('#audWhole').onclick = () => { AUD.whole = !AUD.whole; store_ls.set('tp-aud-whole', AUD.whole ? '1' : '0'); audSync(); audSend(); };
+    $('#audBlank').onclick = () => { AUD.blank = !AUD.blank; audSync(); audSend(); };
+    $('#audClose').onclick = audClose;
+  }
+  p.hidden = false;
+  $('#audWhole').setAttribute('aria-pressed', AUD.whole ? 'true' : 'false');
+  $('#audBlank').setAttribute('aria-pressed', AUD.blank ? 'true' : 'false');
+  $('#audBlank').textContent = AUD.blank ? 'กลับมาแสดง' : 'พักจอ';
+  const lp = $('#livePill'); p.style.top = lp && !lp.hidden ? '58px' : '';
+}
+function audClose() {
+  AUD.blank = false; audSend({ close: true });
+  const sh = shellAud(); if (sh && typeof sh.closeAudience === 'function') { try { sh.closeAudience(); } catch (e) { /* fine */ } }
+  try { if (AUD.win && !AUD.win.closed) AUD.win.close(); } catch (e) { /* fine */ }
+  AUD.win = null; toast('ปิดจอผู้ชมแล้ว', 1600);
+}
+/* on the audience screen */
+function audGot(d) {
+  if (d.close) { if (!(window.BurinShell && window.BurinShell.audience)) { exitPresent(); try { window.close(); } catch (e) { /* fine */ } } return; }
+  if (PV.whole !== !!d.whole) { PV.whole = !!d.whole; followView(); }
+  let bl = document.getElementById('audBlackout');
+  if (d.blank && !bl) { bl = document.createElement('div'); bl.id = 'audBlackout'; bl.className = 'no-ink'; vp.appendChild(bl); }
+  else if (!d.blank && bl) bl.remove();
+}
+/* B or full stop on the teacher's keyboard (or a presenter clicker) pauses the audience screen, as in slide programs */
+document.addEventListener('keydown', (e) => {
+  if (!S.watchers || S.present || S.clean || editing || e.ctrlKey || e.metaKey || e.altKey || !flagOn('audience')) return;
+  if (e.target && e.target.closest && e.target.closest('input,select,textarea,[contenteditable="true"]')) return;
+  if (e.key === 'b' || e.key === 'B' || e.key === '.' || e.code === 'KeyB') { e.preventDefault(); AUD.blank = !AUD.blank; audSync(); audSend(); }
+});
 /* audience screen from the main bar: open it in a new window (drag that window to the TV or share it), or turn this window into it */
 $('#bShowX').onclick = () => { $('#showSheet').hidden = true; };
 $('#bShowCopy').onclick = async () => { try { await navigator.clipboard.writeText(showLink(LIVE.code)); toast('คัดลอกลิงก์จอแสดงผลแล้ว', 1600); } catch (e) { toast(showLink(LIVE.code), 5000); } };
-$('#bShowWin').onclick = () => showShare(true);
+$('#bShowWin').onclick = () => { if (flagOn('audience') && audienceWay()) { $('#showSheet').hidden = true; openAudience(); } else showShare(true); };
+window.addEventListener('burin-displays', (e) => { const n = e && e.detail ? +e.detail.count || 0 : 0; if (n > 0 && !S.present && shellAud() && flagOn('audience')) toast('พบจอที่สอง แตะ นำเสนอ แล้วเลือก จอที่สอง ผู้ชมไม่เห็นแถบ', 4000); });
 $('#bViewer').onclick = (e) => {
-  const ic1 = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="4" width="13" height="10" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.6"/><rect x="9" y="9" width="12.5" height="10" rx="1.5" fill="var(--surface-2)" stroke="currentColor" stroke-width="1.6"/></svg>';
   const ic2 = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="4" width="19" height="13" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M8 20.5h8 M12 17v3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
   const ic3 = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6z" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="12" r="2.8" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>';
+  const ic4 = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="4" width="19" height="13" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M8 20.5h8 M12 17v3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M7 12.5c1.5-2.5 3-2.5 4 0s2.5 2.5 4 0" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>';
   const ic3b = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="4" width="19" height="13" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M7 9h10 M7 12.5h6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
-  popMenu(e.currentTarget, 'นำเสนอ', [
-    ['เห็นทุกอย่างเหมือนจอนี้', () => { setFocus(true); }, 'ต่อสายหรือสะท้อนจอจากเครื่องนี้ จอใหญ่เห็นหน้าจริงของเครื่องนี้ทั้งหมด หน้ากระดาษเต็มจอ เขียนต่อได้', ic2],
-    ['จอแสดงผลแบบนักเรียนบนอีกเครื่อง', () => { showShare(false); }, 'เปิดลิงก์หรือสแกนคิวอาร์บนคอมพิวเตอร์ ทีวี หรือแชร์ในโปรแกรมประชุม จอนั้นไม่มีแถบเครื่องมือและเฉลย ตามหน้าที่เครื่องนี้เขียน', ic3b],
-    ['จอแสดงผลแบบนักเรียนบนจอที่สอง', () => { showShare(true); }, 'เหมาะกับคอมพิวเตอร์ที่ต่อสองจอ เปิดหน้าต่างใหม่แบบนักเรียน แล้วลากไปไว้บนจอที่สอง จอแรกใช้เขียนแบบครูตามปกติ', ic1]
-  ]);
-  const m = $('#tabMenu'), n = document.createElement('p'); n.className = 'mnote';
-  n.textContent = 'จอแสดงผลแบบนักเรียนใช้ห้องเรียนสด ต้องเข้าระบบคลาวด์ ถ้ายังไม่ได้เปิดห้อง ระบบจะเปิดให้เอง';
-  m.insertBefore(n, m.children[1]); menuFit(m, e.currentTarget.getBoundingClientRect());
+  const ic1 = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="4" width="13" height="10" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.6"/><rect x="9" y="9" width="12.5" height="10" rx="1.5" fill="var(--surface-2)" stroke="currentColor" stroke-width="1.6"/></svg>';
+  popMenu(e.currentTarget, 'นำเสนอ', (flagOn('audience') && audienceWay() ? [
+    ['จอที่สอง ผู้ชมไม่เห็นแถบ', () => { openAudience(); }, 'เครื่องนี้ใช้ได้ทุกคำสั่ง จอใหญ่เห็นแต่หน้ากระดาษ ไม่ต้องใช้อินเทอร์เน็ต', ic1]
+  ] : []).concat([
+    ['ต่อสาย เห็นเหมือนจอนี้', () => { setFocus(true); }, 'จอใหญ่เห็นทั้งหน้าและแถบเครื่องมือ ใช้ได้ทุกคำสั่ง', ic2],
+  ]).concat(flagOn('clean') && audienceWay() !== 'shell' ? [ /* an installed app shows the audience its own screen: the clean mirror is not needed there */
+    ['ต่อสาย จอสะอาด', () => { need('clean').then(() => cleanStart(), () => {}); }, 'จอใหญ่เห็นแต่หน้ากระดาษ เลือกปากกาก่อนเริ่ม', ic4]
+  ] : []).concat([
+    ['จอแสดงผลแบบนักเรียน', () => { showShare(false); }, 'อีกเครื่องเปิดลิงก์หรือสแกนคิวอาร์ เห็นหน้าแบบนักเรียน ไม่มีแถบและเฉลย ต้องเข้าระบบคลาวด์', ic3b]
+  ]));
 };
 window.addEventListener('resize', debounce(() => { if (S.present || S.show) presentFit(); }, 160));
 document.addEventListener('keydown', (e) => { if (S.present && e.key === 'Escape') exitPresent(); });
@@ -22507,6 +22598,7 @@ $('#tgScribble').onclick = () => { S.scribble = !S.scribble; store_ls.set('tp-sc
 
 /* full screen: hide the bars; ask the browser for real full screen when it allows */
 function setFocus(on) {
+  if (!on && S.clean && cleanEnd) cleanEnd();
   S.focus = on;
   document.body.classList.toggle('focus', on);
   $('#bExitFull').hidden = !on;
