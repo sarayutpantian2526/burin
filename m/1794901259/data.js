@@ -17,17 +17,21 @@ async function dataSelection() {
   const refs = S.sel.strokes.slice(), box = S.sel.box.slice();
   const texts = S.sel.items.map(findItem).filter((it) => it && (!it.type || it.type === 'text') && it.md).map((it) => it.md).join('\n').slice(0, 3000);
   if (!refs.length && !texts) return;
-  if (!needAI('read')) return;
+  /* the same ink read as data before (task 8.16) is shown again at once; a graph needs its picture, so a reading made
+     for other work is not used here */
+  const m = refs.length && !texts ? await inkGet('data', refs) : null, kept = m && typeof m.own === 'string' && m.own ? m.own : '';
+  if (!kept && !needAI('read')) return;
   openAI();
   const B = busyCard('อ่านเป็นข้อมูล');
   try {
-    const img = refs.length ? await inkBlob(refs) : null;
-    const res = await AI.run('read', 'This is handwriting from a science notebook: either a TABLE of measured values or a GRAPH plotted by hand on axes. Read it exactly; do not correct, round or invent any value.\n'
+    const img = refs.length && !kept ? await inkBlob(refs) : null;
+    const res = kept ? { text: kept } : await AI.run('read', 'This is handwriting from a science notebook: either a TABLE of measured values or a GRAPH plotted by hand on axes. Read it exactly; do not correct, round or invent any value.\n'
       + 'If it is a table, answer:\n@@TABLE\nthen one row per line, cells separated by a tab, the first row the column headings with units in brackets as written, e.g. "t (s)\tx (m)". Numbers exactly as written (keep the decimals).\n'
       + 'If it is a graph, answer:\n@@GRAPH\n@@X name (unit) of the horizontal axis\n@@Y name (unit) of the vertical axis\n@@PTS\nthen each plotted point as "x<tab>y" in the units of the axes, read from the scale marked on the axes as accurately as possible.\n'
       + 'If a straight line was drawn through the points, also give @@LINE x1 y1 x2 y2 : two points on that drawn line, far apart, in the units of the axes.\nNo other words.' + (texts ? '\nTyped text in the selection:\n' + texts : ''),
       { images: img ? [img.blob] : [], maxTokens: 2500, cache: false, signal: B.ctl.signal, noCtx: true });
     const t = String(res.text || '');
+    if (!kept && /@@(TABLE|GRAPH)/.test(t)) inkPut(m, { data: t });
     let head = [], rows = [], kind = /@@GRAPH/.test(t) ? 'graph' : 'table', line = null, xn = 'x', yn = 'y';
     if (kind === 'graph') {
       xn = ((t.match(/@@X\s*(.+)/) || [])[1] || 'x').trim(); yn = ((t.match(/@@Y\s*(.+)/) || [])[1] || 'y').trim();
@@ -201,15 +205,20 @@ async function unitCheck() {
   if (!S.sel) return;
   const refs = S.sel.strokes.slice(), box = S.sel.box.slice();
   const texts = S.sel.items.map(findItem).filter((it) => it && (!it.type || it.type === 'text') && it.md).map((it) => it.md).join('\n').slice(0, 3000);
-  if (!refs.length && !texts) return; if (!needAI('read')) return;
+  if (!refs.length && !texts) return;
+  /* handwriting read before (task 8.16): the lines read for this check are used again at once; another reading of
+     the same ink goes to the AI as text, with no picture */
+  const m = refs.length ? await inkGet('unit', refs) : null, kept = !texts && m && typeof m.own === 'string' && m.own ? m.own : '', rd = !kept && m && m.text ? m.text : '';
+  if (!kept && !needAI('read')) return;
   openAI(); const B = busyCard('ตรวจหน่วยและเลขนัยสำคัญ');
   try {
     await loadLib('math');
-    const img = refs.length ? await inkBlob(refs) : null;
-    const res = await AI.run('read', 'This is a worked calculation in a science notebook. Read every line that computes a result, exactly as written (numbers with all their digits, units as written). Do not correct anything.\n'
+    const img = refs.length && !kept && !rd ? await inkBlob(refs) : null;
+    const res = kept ? { text: kept } : await AI.run('read', 'This is a worked calculation in a science notebook. Read every line that computes a result, exactly as written (numbers with all their digits, units as written). Do not correct anything.\n'
       + 'For each such line answer one line:\n@@STEP <the expression with its units in math.js syntax, each given quantity with its unit, e.g. (2.0 kg) * (9.8 m/s^2)> | <the result the writer wrote, number and unit, e.g. 19.6 N> | <the line as written, short>\n'
-      + 'Units in math.js names: m, cm, mm, km, s, min, h, kg, g, N, J, W, Pa, kPa, V, A, ohm, C, K, degC, mol, L, mL, Hz, rad, deg. Powers with ^. If a value has no unit, write it bare. No other words.' + (texts ? '\nTyped text in the selection:\n' + texts : ''),
+      + 'Units in math.js names: m, cm, mm, km, s, min, h, kg, g, N, J, W, Pa, kPa, V, A, ohm, C, K, degC, mol, L, mL, Hz, rad, deg. Powers with ^. If a value has no unit, write it bare. No other words.' + (texts ? '\nTyped text in the selection:\n' + texts : '') + (rd ? '\nThe handwriting in the selection, as read before:\n' + rd.slice(0, 3000) : ''),
       { images: img ? [img.blob] : [], maxTokens: 1500, cache: false, signal: B.ctl.signal, noCtx: true });
+    if (!kept && !texts && /@@STEP/.test(String(res.text || ''))) inkPut(m, { unit: String(res.text) });
     const steps = String(res.text || '').split('\n').filter((l) => /^@@STEP/.test(l.trim())).map((l) => l.trim().replace(/^@@STEP\s*/, '').split('|').map((x) => x.trim()));
     if (!steps.length) throw { msg: 'ไม่พบบรรทัดคำนวณที่อ่านได้ ลองวงเฉพาะบรรทัดคำนวณ' };
     const M = window.math, out = [];
