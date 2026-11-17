@@ -1,7 +1,7 @@
 /* BURIN offline cache: the app and its libraries keep working without internet.
    Source: burin-pro app/sw.js. build.py adds the parts of this release to SHELL, tools/deploy.py sets the cache number. */
-const CACHE = 'burin-v272';
-const SHELL = ['./', './index.html', './config.js', './vendor/supabase.js', './manifest.webmanifest', './icon-192.png', './icon-512.png', './icon-180.png', './icon-maskable-512.png', './favicon-64.png', './fonts/burin-hand.woff2', './m/1794871205/scene.js', './m/1794871205/cas.js', './m/1794871205/sketch.js', './m/1794871205/stats.js', './m/1794871205/video.js', './m/1794871205/data.js', './m/1794871205/measure.js', './m/1794871205/imgmeas.js', './m/1794871205/cite.js', './m/1794871205/work.js', './m/1794871205/search.js', './m/1794871205/toc.js', './m/1794871205/keep.js', './m/1794871205/trash.js', './m/1794871205/history.js', './m/1794871205/export.js', './m/1794871205/aipages.js'];
+const CACHE = 'burin-v273';
+const SHELL = ['./', './index.html', './config.js', './vendor/supabase.js', './manifest.webmanifest', './icon-192.png', './icon-512.png', './icon-180.png', './icon-maskable-512.png', './favicon-64.png', './fonts/burin-hand.woff2', './m/1794874466/scene.js', './m/1794874466/cas.js', './m/1794874466/sketch.js', './m/1794874466/stats.js', './m/1794874466/video.js', './m/1794874466/data.js', './m/1794874466/measure.js', './m/1794874466/imgmeas.js', './m/1794874466/cite.js', './m/1794874466/work.js', './m/1794874466/search.js', './m/1794874466/toc.js', './m/1794874466/keep.js', './m/1794874466/trash.js', './m/1794874466/history.js', './m/1794874466/export.js', './m/1794874466/aipages.js', './m/1794874466/cmds.js'];
 /* parts of the app loaded on first use live in m/<build>/, one folder per release, so a page left open keeps
    getting the parts of its own release after a new one goes up. Older pages ask for m/<name>.js?v=<build>;
    those are kept under their plain name so they also work offline */
