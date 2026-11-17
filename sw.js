@@ -1,7 +1,7 @@
 /* BURIN offline cache: the app and its libraries keep working without internet.
    Source: burin-pro app/sw.js. build.py adds the parts of this release to SHELL, tools/deploy.py sets the cache number. */
-const CACHE = 'burin-v274';
-const SHELL = ['./', './index.html', './config.js', './vendor/supabase.js', './manifest.webmanifest', './icon-192.png', './icon-512.png', './icon-180.png', './icon-maskable-512.png', './favicon-64.png', './fonts/burin-hand.woff2', './m/1794891443/scene.js', './m/1794891443/cas.js', './m/1794891443/sketch.js', './m/1794891443/stats.js', './m/1794891443/video.js', './m/1794891443/data.js', './m/1794891443/measure.js', './m/1794891443/imgmeas.js', './m/1794891443/cite.js', './m/1794891443/work.js', './m/1794891443/search.js', './m/1794891443/toc.js', './m/1794891443/keep.js', './m/1794891443/trash.js', './m/1794891443/history.js', './m/1794891443/export.js', './m/1794891443/aipages.js', './m/1794891443/cmds.js', './m/1794891443/clean.js'];
+const CACHE = 'burin-v275';
+const SHELL = ['./', './index.html', './config.js', './vendor/supabase.js', './manifest.webmanifest', './icon-192.png', './icon-512.png', './icon-180.png', './icon-maskable-512.png', './favicon-64.png', './fonts/burin-hand.woff2', './m/1794897732/scene.js', './m/1794897732/cas.js', './m/1794897732/sketch.js', './m/1794897732/stats.js', './m/1794897732/video.js', './m/1794897732/data.js', './m/1794897732/measure.js', './m/1794897732/imgmeas.js', './m/1794897732/cite.js', './m/1794897732/work.js', './m/1794897732/search.js', './m/1794897732/toc.js', './m/1794897732/keep.js', './m/1794897732/trash.js', './m/1794897732/history.js', './m/1794897732/export.js', './m/1794897732/aipages.js', './m/1794897732/cmds.js', './m/1794897732/clean.js', './m/1794897732/ar.js'];
 /* parts of the app loaded on first use live in m/<build>/, one folder per release, so a page left open keeps
    getting the parts of its own release after a new one goes up. Older pages ask for m/<name>.js?v=<build>;
    those are kept under their plain name so they also work offline */
@@ -11,6 +11,8 @@ self.addEventListener('fetch', (e) => {
   const r = e.request; if (r.method !== 'GET') return;
   const u = new URL(r.url);
   const lib = /(cdn\.jsdelivr\.net|cdnjs\.cloudflare\.com|fonts\.googleapis\.com|fonts\.gstatic\.com)$/.test(u.hostname);
+  /* a 3D file the app built on this device (task 9.0, m/ar.js): it has an ordinary address only here */
+  if (u.origin === location.origin && /\/ar-tmp\/[\w.-]+$/.test(u.pathname)) { e.respondWith(caches.open('burin-ar').then((c) => c.match(u.origin + u.pathname)).then((m) => m || new Response('', { status: 404 }))); return; }
   if (u.origin === location.origin) {
     /* app files: network first so updates arrive, cache when offline */
     const fresh = r.mode === 'navigate' || /\.(html|js|webmanifest)$/.test(u.pathname) ? fetch(u.href, { cache: 'no-cache', credentials: 'same-origin' }) : fetch(r);
