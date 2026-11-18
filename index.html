@@ -179,6 +179,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .pill[data-s="saving"] i, .pill[data-s="offline"] i { background: var(--warn); }
 .pill[data-s="local"] i { background: var(--muted); }
 .pill[data-s="error"] i { background: var(--danger); }
+.pill[data-s="full"] i { background: var(--danger); }
 .live-dot { width: 9px; height: 9px; border-radius: 999px; background: #F2584B; }
 
 /* stage */
@@ -838,6 +839,12 @@ body.tv .convbar { bottom: 112px; }
 .mtopic { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 8px; flex-wrap: wrap; }
 #mAutoOut h3, #mLocal h3 { margin-top: 14px; }
 .note.small { font-size: 12px; }
+.acap { margin: 8px 0 2px; min-height: 65px; }
+#aStep { margin-top: 10px; }
+#aStep > * + * { margin-top: 10px; }
+.acdel h3 { margin-top: 18px; }
+.acdel .row2, .acdel .note { margin-top: 8px; }
+.acap[hidden] { display: none; }
 .diag { display: flex; flex-direction: column; gap: 6px; font-size: 14px; }
 .diag div { padding: 8px 10px; border-radius: 10px; background: var(--surface-2); }
 .diag b { margin-right: 6px; }
@@ -866,6 +873,10 @@ body.tv .convbar { bottom: 112px; }
 #calc code { font-size: 12px; background: var(--surface-2); padding: 1px 5px; border-radius: 6px; }
 .updbar { position: absolute; left: 50%; top: 12px; transform: translateX(-50%); z-index: 9; min-height: 40px; padding: 0 16px; border-radius: 999px; border: 0; background: var(--accent); color: #FFFFFF; font-size: 14px; font-weight: 600; box-shadow: var(--shadow); cursor: pointer; }
 body.present .updbar { display: none !important; }
+.labar { position: absolute; left: 50%; bottom: 72px; transform: translateX(-50%); z-index: 9; display: flex; align-items: center; flex-wrap: wrap; justify-content: center; gap: 8px; width: max-content; max-width: calc(100% - 24px); box-sizing: border-box; padding: 8px 10px 8px 16px; border-radius: 18px; background: var(--surface); color: var(--fg); border: 1px solid var(--line); box-shadow: var(--shadow); font-size: 14px; line-height: 1.5; }
+.labar span { flex: 1 1 220px; min-width: 0; }
+.labar .btn { min-height: 44px; white-space: nowrap; }
+body.present .labar, body.showscr .labar { display: none !important; }
 /* keeping the notebooks of this device (task 2.2): a note at the top of the notebook list, and the section in Settings */
 .keepcard { margin: 0 0 12px; padding: 12px 14px; border-radius: 14px; background: var(--accent-soft); color: var(--fg); font-size: 14px; line-height: 1.45; }
 .keepcard .kt { display: flex; flex-direction: column; gap: 4px; }
@@ -2250,6 +2261,7 @@ body.role-student .scnpill .sbtns button[data-s="back"], body.role-student .scnp
       </div>
 
       <button class="updbar no-ink" id="updBar" hidden>มีเวอร์ชันใหม่ แตะเพื่ออัปเดต</button>
+      <div class="labar no-ink" id="laBar" role="status" hidden><span id="laMsg"></span><button class="btn solid" id="laGo" type="button"></button><button class="btn" id="laX" type="button">ปิดข้อความ</button></div>
       <button class="pexit no-ink" id="presentExit" hidden>ออกจากจอผู้ชม</button>
       <div class="pwait no-ink" id="presentWait" hidden><b>หน้าต่างนี้เป็นจอผู้ชมแล้ว</b><br>เปิดสมุดแล้วเขียนบนอีกเครื่องที่ใช้บัญชีเดียวกัน หน้านั้นจะขึ้นที่นี่<br><small>ถ้าใช้เครื่องนี้เครื่องเดียวต่อจอใหญ่ ให้ใช้แบบเต็มจอแทน จะเขียนต่อได้</small><span class="row2"><button type="button" class="btn" id="pwFull">ขยายเต็มจอ</button><button type="button" class="btn" id="pwFocus">ใช้แบบเต็มจอ เขียนต่อได้</button><button type="button" class="btn solid" id="pwExit">ออกจากจอผู้ชม</button></span></div>
       <button class="exitfull no-ink" id="bExitFull" hidden aria-label="ออกจากเต็มหน้าจอ"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7.5 3v4.5H3 M17 7.5h-4.5V3 M12.5 17v-4.5H17 M3 12.5h4.5V17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span>แตะอีกครั้งเพื่อออกจากเต็มจอ</span></button>
@@ -2483,9 +2495,15 @@ body.role-student .scnpill .sbtns button[data-s="back"], body.role-student .scnp
   <div class="panel" role="dialog" aria-label="เข้าสู่ระบบ">
     <div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><h2>เข้าสู่ระบบ Burin</h2><button class="btn" id="bAuthClose">ใช้ในเครื่องนี้ไปก่อน</button></div>
     <div class="note">เข้าระบบด้วยบัญชีเดียวกันทุกเครื่อง แล้วสมุดจะซิงก์กันทันที</div>
+    <div id="aMain">
     <label class="field"><span>อีเมล</span><input id="aEmail" type="email" autocomplete="username" inputmode="email" spellcheck="false" autocapitalize="off"></label>
+    <div id="aPassRow">
     <label class="field"><span>รหัสผ่าน อย่างน้อย 8 ตัว</span><input id="aPass" type="password" autocomplete="current-password"></label>
-    <div class="row2"><button class="btn solid" id="bSignIn">เข้าสู่ระบบ</button><button class="btn" id="bSignUp">สร้างบัญชีใหม่</button></div>
+    <div class="row2"><button class="btn solid" id="bSignIn">เข้าสู่ระบบ</button><button class="btn" id="bSignUp">สร้างบัญชีใหม่</button><button class="btn" id="bForgot" type="button" hidden>ลืมรหัสผ่าน</button></div>
+    </div>
+    </div>
+    <div id="aStep" hidden></div>
+    <div id="aCap" class="acap" hidden></div>
     <div id="aMsg"></div>
     <button class="btn" id="bAuthBack" type="button">กลับไปหน้าเริ่มต้น (สแกน QR หรือใส่รหัสห้อง)</button>
   </div>
@@ -3217,20 +3235,26 @@ async function makeCloudStore(sb, user) {
   };
   const subs = new Set(); let notifyT = 0;
   const notify = () => { if (notifyT) return; notifyT = setTimeout(() => { notifyT = 0; subs.forEach((f) => { try { f(); } catch (e) { console.error(e); } }); }, 0); };
-  let flushing = false, retryT = 0, offline = false, rtStatus = 'CONNECTING';
+  let flushing = false, retryT = 0, offline = false, full = false, rtStatus = 'CONNECTING';
   const pend = () => Object.keys(pending).length;
-  const status = () => setSync(offline ? 'offline' : pend() ? 'saving' : 'saved');
+  const status = () => setSync(offline ? 'offline' : full ? 'full' : pend() ? 'saving' : 'saved');
   async function flush() {
     if (flushing) return; flushing = true; clearTimeout(retryT);
     try {
       const snap = Object.assign({}, pending);
       const keys = Object.keys(snap);
-      const sets = keys.filter((k) => snap[k].op === 'set' && data[k] != null);
+      let sets = keys.filter((k) => snap[k].op === 'set' && data[k] != null);
       const dels = keys.filter((k) => !sets.includes(k));
+      /* an account that has used all its space (database version 2) may still write these: they go first, so live
+         rooms, devices, settings and the bin keep working while the rest waits here */
+      if (full) sets = sets.filter((k) => QUOTA_FREE.test(k)).concat(sets.filter((k) => !QUOTA_FREE.test(k)));
+      let left = false; const wasFull = full;
       for (let i = 0; i < sets.length; i += 20) {
-        const chunk = sets.slice(i, i + 20);
+        let chunk = sets.slice(i, i + 20);
+        if (full && chunk.some((k) => QUOTA_FREE.test(k)) && chunk.some((k) => !QUOTA_FREE.test(k))) { chunk = chunk.filter((k) => QUOTA_FREE.test(k)); i -= 20 - chunk.length; }
         const rows = chunk.map((k) => ({ owner: me, path: k, parent: parent(k), data: data[k], updated_at: new Date(stamp[k] || now()).toISOString() }));
         const { error } = await sb.from('docs').upsert(rows, { onConflict: 'owner,path' });
+        if (error && quotaErr(error)) { full = true; left = true; break; }
         if (error) throw error;
         for (const k of chunk) if (pending[k] && pending[k].n === snap[k].n) delete pending[k];
       }
@@ -3240,12 +3264,14 @@ async function makeCloudStore(sb, user) {
         for (const k of dels) if (pending[k] && pending[k].n === snap[k].n) delete pending[k];
       }
       offline = false; savePending();
+      if (left) { quotaTell(); retryT = setTimeout(flush, wasFull ? 60000 : 100); } else full = false;
+      CLOUD.full = full;
     } catch (e) {
       offline = true; console.warn('cloud sync', e);
       retryT = setTimeout(flush, 6000);
     } finally {
       flushing = false; status();
-      if (!offline && pend()) setTimeout(flush, 60);
+      if (!offline && !full && pend()) setTimeout(flush, 60);
     }
   }
   const flushLater = debounce(flush, 300);
@@ -3319,6 +3345,22 @@ async function makeCloudStore(sb, user) {
     flush
   };
 }
+/* ----- the space of an account is full (database version 2, task 1.3): what is written stays on this device and goes
+   up by itself once there is room; the people are told plainly, at most once in ten minutes ----- */
+const QUOTA_FREE = /^(live|devices|settings|trash)\//;
+const quotaErr = (e) => !!e && (/BURIN_QUOTA/.test(String(e.message || e)) || e.hint === 'quota');
+const QUOTA_MSG = 'พื้นที่ของบัญชีเต็มแล้ว ลบสมุด รูป หรือวิดีโอที่ไม่ใช้ แล้วลบถาวรในถังขยะ จากนั้นลองอีกครั้ง';
+let quotaToldAt = 0;
+function quotaTell() {
+  CLOUD.full = true;
+  if (Date.now() - quotaToldAt < 10 * 60e3) return; quotaToldAt = Date.now();
+  toast('พื้นที่ของบัญชีเต็มแล้ว งานที่เขียนยังเก็บในเครื่องนี้ ไม่หาย แต่ยังไม่ขึ้นคลาวด์ ลบสมุด รูป หรือวิดีโอที่ไม่ใช้ แล้วลบถาวรในถังขยะ ระบบจะส่งขึ้นให้เอง', 9000);
+}
+/* a file the storage service refused: on version 2 the reason can be the space of the account */
+function quotaFile(sb, e) {
+  if (DBV.v < 2 || !/row-level security|unauthorized|403/i.test(String((e && (e.message || e.statusCode)) || e))) return;
+  Promise.resolve(sb.rpc('quota_ok_mine')).then((r) => { if (r && !r.error && r.data === false) { CLOUD.lastFileErr = 'พื้นที่ของบัญชีเต็ม'; quotaTell(); } }).catch(() => {});
+}
 /* files are kept on this device first, so a picture shows on the page at once;
    the copy for other devices goes up to Supabase now, or later from a retry queue if the network or storage fails */
 function makeCloudAssets(sb, user) {
@@ -3335,7 +3377,7 @@ function makeCloudAssets(sb, user) {
       const left = [];
       for (const it of readQ()) {
         try { const b = await IDB.get('blobs', it.id); if (!b) continue; await push(it.id, b, it.type); }
-        catch (e) { CLOUD.lastFileErr = String((e && e.message) || e); left.push(it); }
+        catch (e) { CLOUD.lastFileErr = String((e && e.message) || e); left.push(it); quotaFile(sb, e); }
       }
       store_ls.set(QK, JSON.stringify(left));
     } finally { busy = false; }
@@ -3352,7 +3394,7 @@ function makeCloudAssets(sb, user) {
       catch (e) {
         const m = String((e && e.message) || e);
         if (/size|large|exceed/i.test(m)) { blobUrls.delete(id); throw { code: 'too_large', message: m }; }
-        CLOUD.lastFileErr = m;
+        CLOUD.lastFileErr = m; quotaFile(sb, e);
         const q = readQ(); q.push({ id, type }); store_ls.set(QK, JSON.stringify(q));
         return { id, queued: true, message: m };
       }
@@ -3879,7 +3921,7 @@ function toast(msg, ms) {
 function setSync(s) {
   if (s === 'saved' && S.store && S.store.kind === 'cloud' && S.store.pending()) s = 'saving';
   const el = $('#sync'); el.dataset.s = s;
-  $('#syncT').textContent = { saved: 'ซิงก์แล้ว', saving: 'กำลังบันทึก', local: 'บันทึกในเครื่องนี้', error: 'ซิงก์ไม่สำเร็จ', offline: 'ออฟไลน์ จะซิงก์เมื่อต่อเน็ต' }[s] || s;
+  $('#syncT').textContent = { saved: 'ซิงก์แล้ว', saving: 'กำลังบันทึก', local: 'บันทึกในเครื่องนี้', error: 'ซิงก์ไม่สำเร็จ', full: 'พื้นที่เต็ม เก็บในเครื่องไว้ก่อน', offline: 'ออฟไลน์ จะซิงก์เมื่อต่อเน็ต' }[s] || s;
 }
 
 /* ---------- geometry ---------- */
@@ -11265,7 +11307,7 @@ function researchTemplate() {
 /* parts that are not needed to open a notebook and write are loaded the first time they are used (moving models,
    the equation solver, drawing from a reference, statistics), so the app opens fast and stays fast however much is added.
    Each part is kept for offline use by the service worker */
-const MODS = { scene: 'm/scene.js', cas: 'm/cas.js', sketch: 'm/sketch.js', stats: 'm/stats.js', video: 'm/video.js', data: 'm/data.js', measure: 'm/measure.js', imgmeas: 'm/imgmeas.js', cite: 'm/cite.js', work: 'm/work.js', search: 'm/search.js', toc: 'm/toc.js', keep: 'm/keep.js', trash: 'm/trash.js', export: 'm/export.js', history: 'm/history.js', aipages: 'm/aipages.js', cmds: 'm/cmds.js', clean: 'm/clean.js', ar: 'm/ar.js', typed: 'm/typed.js' }, MODP = {}, MODOK = {}, MODEV = {};
+const MODS = { scene: 'm/scene.js', cas: 'm/cas.js', sketch: 'm/sketch.js', stats: 'm/stats.js', video: 'm/video.js', data: 'm/data.js', measure: 'm/measure.js', imgmeas: 'm/imgmeas.js', cite: 'm/cite.js', work: 'm/work.js', search: 'm/search.js', toc: 'm/toc.js', keep: 'm/keep.js', trash: 'm/trash.js', export: 'm/export.js', history: 'm/history.js', aipages: 'm/aipages.js', cmds: 'm/cmds.js', clean: 'm/clean.js', ar: 'm/ar.js', typed: 'm/typed.js', account: 'm/account.js' }, MODP = {}, MODOK = {}, MODEV = {};
 /* switches to turn a part of the app off without putting a new release up: flags.json next to index.html,
    for example {"off": ["video"]}. Read once when the app opens; when it cannot be read, everything stays on */
 const FLAGS = { off: {}, told: {} };
@@ -11294,12 +11336,12 @@ function need(name) {
   }).catch((e) => { delete MODP[name]; throw e; }));
 }
 let SCENE_TPL, SCN, LIFE, renderScenePicker, scClean, scRender, restoreInk, openMotionPick, insertScene, buildScene, buildLife, sceneDomainFor, lifeBox, animKick, scReset;
-let findShow, findRun, findGo, tocShow, tocHeads, tocMark, keepBoot, keepRender, keepSave, keepLoad, keepBanner, trashShow, trashPurge, trashRestore, trashDrop, trashList, expRender, expSave, expLoad, histNote, histOpen, histPurge, histRestore, histVersions, apRender, apSource, apWanted, apReading, ikGet, ikPut, ikPage, ikPageKeep, ikIndex, ikTexts, cmdShow, cmdList, cmdFind, cmdRun, cleanStart, cleanEnd, cleanFit, arOpen, arBuild, tyGraph, tyTable, tySteps, tyTidy, tyAdvice;
+let findShow, findRun, findGo, tocShow, tocHeads, tocMark, keepBoot, keepRender, keepSave, keepLoad, keepBanner, trashShow, trashPurge, trashRestore, trashDrop, trashList, expRender, expSave, expLoad, histNote, histOpen, histPurge, histRestore, histVersions, apRender, apSource, apWanted, apReading, ikGet, ikPut, ikPage, ikPageKeep, ikIndex, ikTexts, cmdShow, cmdList, cmdFind, cmdRun, cleanStart, cleanEnd, cleanFit, arOpen, arBuild, tyGraph, tyTable, tySteps, tyTidy, tyAdvice, acStep, acSay, acVerify, acForgot, acNewPw, acDelSection;
 let texToCas, casVars, casWithUnits, casRun, casRowTex, casReady, solveSelection, openBgCut, openSketch, ST, openStats, openVideoLab, dataSelection, poolSection, poolShow, poolGot, poolEnd, openMeasure, openImgMeasure, unitCheck, openCite, captionSel, captionRenumber, hwHubOpen, hwStudentOpen, hwAssignOpen, hwBoard, hwDetail;
 const MOD_EXPORTS = {
   scene: ['SCENE_TPL', 'SCN', 'LIFE', 'renderScenePicker', 'scClean', 'scRender', 'restoreInk', 'openMotionPick', 'insertScene', 'buildScene', 'buildLife', 'sceneDomainFor', 'lifeBox', 'animKick', 'scReset'],
   cas: ['texToCas', 'casVars', 'casWithUnits', 'casRun', 'casRowTex', 'casReady', 'solveSelection'],
-  sketch: ['openBgCut', 'openSketch'], stats: ['ST', 'openStats'], video: ['openVideoLab'], data: ['dataSelection', 'poolSection', 'poolShow', 'poolGot', 'poolEnd', 'unitCheck'], measure: ['openMeasure'], imgmeas: ['openImgMeasure'], cite: ['openCite', 'captionSel', 'captionRenumber'], work: ['hwHubOpen', 'hwStudentOpen', 'hwAssignOpen', 'hwBoard', 'hwDetail'], search: ['findShow', 'findRun', 'findGo'], toc: ['tocShow', 'tocHeads', 'tocMark'], keep: ['keepBoot', 'keepRender', 'keepSave', 'keepLoad', 'keepBanner'], trash: ['trashShow', 'trashPurge', 'trashRestore', 'trashDrop', 'trashList'], export: ['expRender', 'expSave', 'expLoad'], history: ['histNote', 'histOpen', 'histPurge', 'histRestore', 'histVersions'], aipages: ['apRender', 'apSource', 'apWanted', 'apReading', 'ikGet', 'ikPut', 'ikPage', 'ikPageKeep', 'ikIndex', 'ikTexts'], cmds: ['cmdShow', 'cmdList', 'cmdFind', 'cmdRun'], clean: ['cleanStart', 'cleanEnd', 'cleanFit'], ar: ['arOpen', 'arBuild'], typed: ['tyGraph', 'tyTable', 'tySteps', 'tyTidy', 'tyAdvice']
+  sketch: ['openBgCut', 'openSketch'], stats: ['ST', 'openStats'], video: ['openVideoLab'], data: ['dataSelection', 'poolSection', 'poolShow', 'poolGot', 'poolEnd', 'unitCheck'], measure: ['openMeasure'], imgmeas: ['openImgMeasure'], cite: ['openCite', 'captionSel', 'captionRenumber'], work: ['hwHubOpen', 'hwStudentOpen', 'hwAssignOpen', 'hwBoard', 'hwDetail'], search: ['findShow', 'findRun', 'findGo'], toc: ['tocShow', 'tocHeads', 'tocMark'], keep: ['keepBoot', 'keepRender', 'keepSave', 'keepLoad', 'keepBanner'], trash: ['trashShow', 'trashPurge', 'trashRestore', 'trashDrop', 'trashList'], export: ['expRender', 'expSave', 'expLoad'], history: ['histNote', 'histOpen', 'histPurge', 'histRestore', 'histVersions'], aipages: ['apRender', 'apSource', 'apWanted', 'apReading', 'ikGet', 'ikPut', 'ikPage', 'ikPageKeep', 'ikIndex', 'ikTexts'], cmds: ['cmdShow', 'cmdList', 'cmdFind', 'cmdRun'], clean: ['cleanStart', 'cleanEnd', 'cleanFit'], ar: ['arOpen', 'arBuild'], typed: ['tyGraph', 'tyTable', 'tySteps', 'tyTidy', 'tyAdvice'], account: ['acStep', 'acSay', 'acVerify', 'acForgot', 'acNewPw', 'acDelSection']
 };
 function modSet(name, x) {
   if (name === 'scene') { SCENE_TPL = x.SCENE_TPL; SCN = x.SCN; LIFE = x.LIFE; renderScenePicker = x.renderScenePicker; scClean = x.scClean; scRender = x.scRender; restoreInk = x.restoreInk; openMotionPick = x.openMotionPick; insertScene = x.insertScene; buildScene = x.buildScene; buildLife = x.buildLife; sceneDomainFor = x.sceneDomainFor; lifeBox = x.lifeBox; animKick = x.animKick; scReset = x.scReset; }
@@ -11318,6 +11360,7 @@ function modSet(name, x) {
   else if (name === 'cmds') { cmdShow = x.cmdShow; cmdList = x.cmdList; cmdFind = x.cmdFind; cmdRun = x.cmdRun; }
   else if (name === 'clean') { cleanStart = x.cleanStart; cleanEnd = x.cleanEnd; cleanFit = x.cleanFit; }
   else if (name === 'ar') { arOpen = x.arOpen; arBuild = x.arBuild; }
+  else if (name === 'account') { acStep = x.acStep; acSay = x.acSay; acVerify = x.acVerify; acForgot = x.acForgot; acNewPw = x.acNewPw; acDelSection = x.acDelSection; }
   else if (name === 'typed') { tyGraph = x.tyGraph; tyTable = x.tyTable; tySteps = x.tySteps; tyTidy = x.tyTidy; tyAdvice = x.tyAdvice; }
   else if (name === 'aipages') { apRender = x.apRender; apSource = x.apSource; apWanted = x.apWanted; apReading = x.apReading; ikGet = x.ikGet; ikPut = x.ikPut; ikPage = x.ikPage; ikPageKeep = x.ikPageKeep; ikIndex = x.ikIndex; ikTexts = x.ikTexts; }
   else if (name === 'history') { histNote = x.histNote; histOpen = x.histOpen; histPurge = x.histPurge; histRestore = x.histRestore; histVersions = x.histVersions; }
@@ -18213,6 +18256,7 @@ const LIVE_CONTENT = new Set(['page', 'strokes', 'ink', 'laser', 'sadd', 'sdel',
 const liveOffNb = () => LIVE.role === 'teacher' && !!LIVE.nbId && S.nid !== LIVE.nbId;
 function liveSend(ev, data) {
   if (!LIVE.ch || !LIVE.ready) return;
+  if (ev !== 'end' && LIVE.role === 'teacher' && laAway()) return;
   if (LIVE_CONTENT.has(ev) && liveOffNb()) return;
   const ch = LIVE.ch, teacher = LIVE.role === 'teacher';
   const mine = !teacher && (ev === 'ans' || ev === 'join') ? RK.mine : null, key = teacher ? (RK.code === LIVE.code ? RK.priv : null) : mine && mine.priv;
@@ -18305,6 +18349,7 @@ async function liveOpen() {
   LIVE.ch = ch; liveRender(); $('#bLive').classList.add('on');
   /* the room stays open after the app reloads or updates, until the teacher closes it */
   store_ls.set('tp-live-on', '1'); store_ls.set('tp-live-cls', LIVE.clsId || '');
+  laOpened();
 }
 /* homework given from this notebook is listed for the students in its room */
 async function liveSendHw(reload) {
@@ -18320,12 +18365,97 @@ async function liveSendRoster(p) {
   if (!LIVE.rosterMsg || LIVE.rosterMsg.at !== c.at) LIVE.rosterMsg = Object.assign(await rosterHashed(c), { at: c.at });
   liveSend('roster', LIVE.rosterMsg);
 }
-function liveClose() {
-  if (LIVE.ch) { liveSend('end', {}); try { CLOUD.client.removeChannel(LIVE.ch); } catch (e) { /* closed */ } }
+function liveClose(o) {
+  if (LIVE.ch) { if (!(o && o.quiet)) liveSend('end', {}); try { CLOUD.client.removeChannel(LIVE.ch); } catch (e) { /* closed */ } }
   clearInterval(V2.digT); V2.sent.clear(); V2.full = null;
   store_ls.del('tp-live-on'); store_ls.del('tp-live-cls'); store_ls.del('tp-live-nb'); LIVE.seen = null; LIVE.nbId = null; LIVE.hw = null;
   LIVE.ch = null; LIVE.ready = false; LIVE.role = null; LIVE.peers = []; LIVE.clsId = null; LIVE.set = null; LIVE.pool = null; LIVE.ans = {}; LIVE.revealed = false;
   $('#bLive').classList.remove('on'); $('#bLiveN').textContent = ''; liveRender();
+}
+/* ----- a live room nobody uses closes itself (switch: liveauto) -----
+   1. back in the app after more than an hour away (the iPad locked, another app, the app closed): the room does not
+      come back by itself and nothing is sent to the learners; a bar offers to open the same room again
+   2. no learner and no room display for 30 minutes while the teacher does nothing at all: the room closes, with a bar
+      one minute before that keeps it open. A teacher who is teaching keeps the room even when every learner's iPad locks
+   3. closing by itself loses nothing: the data and the practice set gathered from the learners stay in the panel, and
+      the learners are not told the room closed while another device of the teacher is still in it
+   4. homework does not depend on the room: hand-ins go on until the time the teacher set */
+const LA = { act: 0, busy: 0, opened: 0, seen: 0, warned: false, last: null, T: null, savedAt: 0 };
+const LA_AWAY = 3600000, LA_IDLE = 1800000, LA_WARN = 60000;
+const laOn = () => flagOn('liveauto');
+const laRoom = () => LIVE.role === 'teacher' && !!LIVE.ch;
+function laAway() {
+  if (!laOn() || !laRoom() || !LA.seen) return false;
+  if (now() - LA.seen <= LA_AWAY) return false;
+  laClose('away', LA.seen); return true;
+}
+function laOpened() {
+  /* what was kept from a room that closed by itself belongs to that room only */
+  if (LA.last && (LA.last.nb !== LIVE.nbId || (LA.last.cls || null) !== (LIVE.clsId || null))) { LIVE.set = null; LIVE.ans = {}; LIVE.revealed = false; LIVE.pool = null; }
+  const t = now(); LA.act = LA.busy = LA.opened = LA.seen = t; LA.warned = false; LA.last = null; laBar(null);
+  laSave(true);
+  if (!LA.T) LA.T = setInterval(laTick, 15000);
+}
+function laSave(force) { const t = now(); if (force || t - LA.savedAt > 60000) { LA.savedAt = t; store_ls.set('tp-live-at', String(t)); } }
+/* homework of this room still taking work (no time set, or the time not passed) */
+function laHwOpen() { const t = now(); return (LIVE.hw || []).filter((a) => a && (!a.due || Date.parse(a.due) > t)).length; }
+function laOthers() {
+  try { const st = LIVE.ch.presenceState(); return Object.keys(st).filter((k) => k.indexOf('teacher-') === 0 && k !== 'teacher-' + TAB).length; } catch (e) { return 0; }
+}
+function laTick() {
+  if (!laOn() || !laRoom() || document.hidden) return;
+  if (laAway()) return;
+  const t = now(); LA.seen = t; laSave();
+  if ((LIVE.peers || []).length || LIVE.displays) LA.busy = t;
+  const quiet = t - Math.max(LA.act, LA.busy, LA.opened);
+  if (quiet >= LA_IDLE) { laClose('idle', t - quiet); return; }
+  if (LA.warned && quiet < LA_IDLE - LA_WARN) { LA.warned = false; laBar(null); }
+  if (quiet >= LA_IDLE - LA_WARN && !LA.warned) {
+    LA.warned = true;
+    laBar('ไม่มีผู้เรียนในห้อง ' + LIVE.code + ' ห้องจะปิดเองในอีก 1\u00a0นาที', 'เปิดห้องต่อ', () => { LA.act = now(); LA.warned = false; laBar(null); });
+  }
+}
+function laClose(why, since) {
+  if (!laRoom()) return;
+  const keep = { set: LIVE.set, ans: LIVE.ans, revealed: LIVE.revealed, pool: LIVE.pool }, hw = laHwOpen();
+  const last = { code: LIVE.code, cls: LIVE.clsId, nb: LIVE.nbId, at: since || now(), why };
+  liveClose({ quiet: laOthers() > 0 });
+  Object.assign(LIVE, keep); LIVE.code = last.code; LA.last = last; clearInterval(LA.T); LA.T = null;
+  laClosedBar(last, hw);
+  liveRender();
+}
+function laClosedBar(last, hw) {
+  const hm = new Date(last.at).toLocaleTimeString(LOC, { hour: '2-digit', minute: '2-digit' });
+  laBar('ห้อง\u00a0' + last.code + ' ปิดแล้ว เพราะไม่ได้ใช้ตั้งแต่ ' + hm + '\u00a0น.' + (hw ? ' การบ้าน ' + hw + '\u00a0งานยังรับงานตามกำหนด' : ''), 'เปิดห้องเดิมอีกครั้ง', laReopen);
+}
+function laReopen() {
+  const l = LA.last; laBar(null); if (!l) return;
+  LIVE.clsId = l.cls || null; LIVE.nbId = l.nb || null; LIVE.code = l.code;
+  liveOpen().then(() => toast('เปิดห้อง\u00a0' + LIVE.code + ' อีกครั้งแล้ว ผู้เรียนใช้รหัสเดิมได้', 2600)).catch(() => {});
+}
+function laBar(msg, act, f) {
+  const b = $('#laBar'); if (!b) return;
+  if (!msg) { b.hidden = true; return; }
+  $('#laMsg').textContent = msg; const go = $('#laGo'); go.textContent = act || ''; go.hidden = !act; go.onclick = () => { laBar(null); if (f) f(); };
+  b.hidden = false;
+}
+$('#laX').onclick = () => laBar(null);
+/* what the teacher does with the app (writing, turning pages, any touch or key) */
+for (const ev of ['pointerdown', 'keydown', 'wheel']) document.addEventListener(ev, () => { if (LA.opened) LA.act = now(); }, { capture: true, passive: true });
+document.addEventListener('visibilitychange', () => {
+  if (!laOn() || !laRoom()) return;
+  if (document.hidden) { if (now() - LA.seen <= LA_AWAY) { LA.seen = now(); laSave(true); } return; }
+  if (!laAway()) { LA.seen = now(); LA.act = now(); laSave(true); }
+});
+/* the app opened again: the room comes back only when it was in use within the hour */
+function laBoot() {
+  if (!laOn()) return true;
+  const at = +store_ls.get('tp-live-at') || 0;
+  if (!at || now() - at <= LA_AWAY) return true;
+  LA.last = { code: store_ls.get('tp-class'), cls: store_ls.get('tp-live-cls') || null, nb: store_ls.get('tp-live-nb') || null, at, why: 'away' };
+  store_ls.del('tp-live-on');
+  setTimeout(() => laClosedBar(LA.last, 0), 900);
+  return false;
 }
 function liveSig() { return S.pid + '|' + S.mine.map((x) => x.id + ':' + (x.p[0] | 0) + ',' + (x.p[1] | 0)).join(';'); }
 async function liveSendPageNow(full) {
@@ -18390,6 +18520,11 @@ function liveRender() {
     const cf = exEl('label', 'field', '<span>ห้องเรียน (ให้ผู้เรียนยืนยันตัวด้วยรหัสหรือเลขที่ และเก็บคะแนนแบบฝึกเข้าห้องนี้)</span>'); box.appendChild(cf);
     const fillCls = () => cf.appendChild(classSelect('liveCls', true)); if (CLS.loaded) fillCls(); else clsLoad().then(fillCls);
     const b = exEl('button', 'btn solid', 'เปิดห้องเรียนสด'); b.onclick = () => { LIVE.clsId = ($('#liveCls') && $('#liveCls').value) || null; LIVE.code = null; LIVE.nbId = S.nid; liveOpen(); }; box.appendChild(b);
+    if (LA.last && (LIVE.pool || LIVE.set)) {
+      box.appendChild(exEl('h3', '', 'ผลที่เก็บจากผู้เรียนก่อนห้องปิด'));
+      if (LIVE.pool) { const pb = exEl('div', 'poolbox', ''); box.appendChild(pb); if (MODOK.data) poolSection(pb); else need('data').then(() => liveRender()).catch(() => {}); }
+      if (LIVE.set) { const r4 = exEl('div', 'row2'); box.appendChild(exEl('div', 'note small', esc(LIVE.set.title) + ' ส่งคำตอบแล้ว ' + Object.keys(LIVE.ans || {}).length + ' คน คำตอบบันทึกไว้ในผลแบบฝึกแล้ว')); const an = exEl('button', 'btn', 'วิเคราะห์ข้อสอบชุดนี้'); an.onclick = () => { EX.anSet = LIVE.set.id; EX.tab = 'analysis'; EX.run = null; openExam(); }; r4.appendChild(an); box.appendChild(r4); }
+    }
     if (S.nb && S.nb.rooms && S.nb.rooms['-']) box.appendChild(exEl('div', 'note small', 'สมุดนี้ใช้รหัสห้อง <b>' + esc(S.nb.rooms['-']) + '</b> ประจำ ผู้เรียนใช้รหัสเดิมเข้าได้ทุกครั้ง' + (Object.keys(S.nb.rooms).length > 1 ? ' (ถ้าเลือกห้องเรียน แต่ละห้องมีรหัสของตัวเอง)' : '')));
   } else {
     const link = classLink(LIVE.code);
@@ -18400,7 +18535,7 @@ function liveRender() {
     const big = exEl('button', 'btn', 'วาง QR ลงหน้ากระดาษให้ทั้งห้องเห็น'); big.onclick = liveQRToPage; row.appendChild(big);
     const rs = exEl('button', 'btn', 'ส่งหน้านี้อีกครั้ง'); rs.onclick = () => liveSendPageNow(true); row.appendChild(rs);
     const nc = exEl('button', 'btn', 'เปลี่ยนรหัสห้อง'); nc.title = 'ใช้รหัสใหม่สำหรับ' + liveWhose() + ' ผู้เรียนที่ใช้รหัสเดิมจะเข้าไม่ได้'; nc.onclick = () => { const cls = LIVE.clsId, nid = LIVE.nbId; liveClose(); LIVE.clsId = cls; LIVE.nbId = nid; LIVE.code = liveRoomCode(nid, cls, true); liveOpen(); toast('เปลี่ยนรหัสห้องแล้ว', 1800); }; row.appendChild(nc);
-    const cl = exEl('button', 'btn', 'ปิดห้อง'); cl.onclick = () => { liveClose(); store_ls.set('tp-class', ''); LIVE.code = null; }; row.appendChild(cl);
+    const cl = exEl('button', 'btn', 'ปิดห้อง'); cl.onclick = () => { const hw = laHwOpen(); liveClose(); store_ls.set('tp-class', ''); LIVE.code = null; if (hw && flagOn('liveauto')) toast('ปิดห้องแล้ว การบ้าน ' + hw + '\u00a0งานยังรับงานตามกำหนด', 3600); }; row.appendChild(cl);
     box.appendChild(row);
     const lc = LIVE.clsId && CLS.list.find((x) => x.id === LIVE.clsId);
     box.appendChild(exEl('h3', '', 'ผู้เรียนในห้อง ' + n + ' คน' + (lc ? ' จาก ' + (lc.roster || []).length + ' คน ' + esc(classLabel(lc)) : '')));
@@ -18480,7 +18615,7 @@ async function shareLecture(out, nbIn) {
     drawQR(out.querySelector('.qr'), link, 150);
   } catch (e) {
     const msg = String((e && (e.message || e.code)) || e);
-    out.innerHTML = '<div class="note err">' + (/shares|relation|schema cache|42P01|PGRST205/i.test(msg) ? 'ยังไม่มีตารางสำหรับแชร์ เปิด Supabase เมนู SQL Editor แล้วรันส่วนที่ 5 ของไฟล์ setup.sql (ตาราง shares) ครั้งเดียว' : 'แชร์ไม่สำเร็จ ' + esc(msg)) + '</div>';
+    out.innerHTML = '<div class="note err">' + (quotaErr(e) ? QUOTA_MSG : /shares|relation|schema cache|42P01|PGRST205/i.test(msg) ? 'ยังไม่มีตารางสำหรับแชร์ เปิด Supabase เมนู SQL Editor แล้วรันส่วนที่ 5 ของไฟล์ setup.sql (ตาราง shares) ครั้งเดียว' : 'แชร์ไม่สำเร็จ ' + esc(msg)) + '</div>';
   }
 }
 function openLive() { closeSheets(); $('#liveSheet').hidden = false; if (!EX.loaded) exLoad().then(liveRender); liveRender(); }
@@ -18628,7 +18763,12 @@ async function studentJoin(code) {
   rkOnTeacher(ch, 'roster', (m) => studentRoster(m.payload));
   rkOnTeacher(ch, 'rename', (m) => { const d = m.payload; if (!d || d.sid !== LIVE.sid || typeof d.name !== 'string' || LIVE.stu) return; LIVE.name = d.name.slice(0, 60); store_ls.set('tp-sname', LIVE.name); try { ch.track({ role: 'student', name: LIVE.name, v: 2 }); } catch (e) { /* offline */ } toast('ผู้สอนตั้งชื่อของคุณในห้องนี้เป็น ' + LIVE.name, 3000); });
   rkOnTeacher(ch, 'hw', (m) => { const L = (m.payload && Array.isArray(m.payload.list)) ? m.payload.list.filter((a) => a && typeof a.id === 'string' && /^[a-z0-9]{6,20}$/.test(a.id)).slice(0, 12) : []; for (const a of L) if (typeof a.cls !== 'string' || !/^c[a-z0-9]{3,30}$/i.test(a.cls)) a.cls = null; LIVE.hwList = L; const b = $('#lpHw'); b.hidden = !L.length; b.textContent = 'การบ้าน ' + L.length; hwKeep(L); });
-  rkOnTeacher(ch, 'end', () => { liveStudentPill('ผู้สอนปิดห้องแล้ว สมุดยังอยู่ในเครื่องนี้'); });
+  rkOnTeacher(ch, 'end', () => {
+    /* homework does not close with the room: tell how much can still be handed in, and where */
+    let n = 0; if (flagOn('liveauto')) { try { const sent = JSON.parse(store_ls.get('tp-sent') || '[]'), t = now(); n = (LIVE.hwList || []).filter((a) => !sent.includes(a.id) && (!a.due || Date.parse(a.due) > t)).length; } catch (e) { n = 0; } }
+    liveStudentPill(n ? 'ผู้สอนปิดห้องแล้ว การบ้าน ' + n + '\u00a0งานยังส่งได้ถึงเวลาที่กำหนด' : 'ผู้สอนปิดห้องแล้ว สมุดยังอยู่ในเครื่องนี้');
+    if (n) laBar('ผู้สอนปิดห้องแล้ว การบ้าน ' + n + '\u00a0งานยังส่งได้ถึงเวลาที่กำหนด', 'ไปที่งานของฉัน', () => { location.hash = 'mywork'; openMyWork(); });
+  });
   /* is the teacher in the room? if not yet, wait and join by itself the moment the teacher opens it */
   LIVE.gotPage = false;
   const teacherHere = () => { try { const st = ch.presenceState(); return Object.keys(st).some((k) => k.startsWith('teacher-') || (st[k] || []).some((m) => m.role === 'teacher')); } catch (e) { return false; } };
@@ -21283,7 +21423,7 @@ function classSelect(id, withNone) {
 }
 
 const hwLink = (id) => location.origin + location.pathname + '#hw=' + id;
-function hwSqlHint(e) { const m = String((e && (e.message || e.code)) || e); return /assignments|submissions|relation|schema cache|42P01|PGRST205|bucket/i.test(m) ? 'ยังไม่มีตารางสำหรับการบ้าน เปิด Supabase เมนู SQL Editor แล้วรันส่วนที่ 6 ของไฟล์ setup.sql (งานมอบหมายและการส่งงาน) ครั้งเดียว' : 'ไม่สำเร็จ ' + m; }
+function hwSqlHint(e) { const m = String((e && (e.message || e.code)) || e); if (quotaErr(e)) return QUOTA_MSG; return /assignments|submissions|relation|schema cache|42P01|PGRST205|bucket/i.test(m) ? 'ยังไม่มีตารางสำหรับการบ้าน เปิด Supabase เมนู SQL Editor แล้วรันส่วนที่ 6 ของไฟล์ setup.sql (งานมอบหมายและการส่งงาน) ครั้งเดียว' : 'ไม่สำเร็จ ' + m; }
 /* ----- teacher: create (the work part) ----- */
 function openAssign(set) { return need('work').then(() => hwAssignOpen(set), () => toast('โหลดส่วนนี้ไม่สำเร็จ ตรวจอินเทอร์เน็ตแล้วลองใหม่', 3000)); }
 /* each question is "choose an answer" or "show the working"; older work without this reads it from its settings */
@@ -21719,7 +21859,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1794960738';
+const BUILD = '1794971599';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
@@ -21745,8 +21885,8 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden) chec
 setInterval(checkUpdate, 30 * 60 * 1000); setTimeout(checkUpdate, 8000);
 
 /* ---------- version and what is new ---------- */
-const VERSION = '20261118-5a6e94df';
-const NEWS = [{"id": 13, "date": "2026-11-17", "items": ["ข้อความที่พิมพ์ไม่ต้องรอ AI สมการที่พิมพ์ เช่น y = 2x + 1 สร้างกราฟได้ทันที ตารางที่พิมพ์เป็นข้อมูลได้ทันที และตรวจหน่วยของบรรทัดคำนวณที่พิมพ์ได้ทันที ใช้ได้แม้ไม่มีอินเทอร์เน็ต", "วาดใหม่ จัดเส้นตรง สี่เหลี่ยม วงกลม ในภาพร่างให้เรียบร้อยทันทีโดยไม่ใช้ AI ตัวอักษรยังเป็นลายมือเดิม ถ้าต้องการให้แก้ตามเนื้อหา กด ให้ AI วาดใหม่ตามเนื้อหา", "หลังทำแบบฝึก บทที่ยังอ่อนบอกชนิดข้อที่พลาด และความเข้าใจที่ควรแก้จากตัวเลือกที่ตอบ"]}, {"id": 12, "date": "2026-11-17", "items": ["ลายมือที่ AI อ่านแล้วไม่ต้องอ่านซ้ำ แปลงเป็นตัวพิมพ์ แก้สมการ สร้างรูป ตรวจหน่วย และสร้างโจทย์ จากลายมือเดิมใช้คำที่อ่านไว้ เร็วขึ้นและไม่ส่งภาพซ้ำ ถ้าอ่านผิด สั่งงานเดิมอีกครั้ง AI จะอ่านใหม่", "ค้นหาในทุกสมุดพบลายมือที่ AI เคยอ่านแล้วด้วย"]}, {"id": 11, "date": "2026-11-17", "items": ["ทดลองวางวัตถุสามมิติบนโต๊ะจริง (AR) ได้ที่ ปุ่ม สมุดทั้งหมด แท็บ ภาษา การเขียน และจอ หัวข้อ ลองดูในห้องจริง ใช้ได้บน iPad และ iPhone แอปสร้างไฟล์ในเครื่องเอง ไม่ใช้ AI"]}, {"id": 10, "date": "2026-11-17", "items": ["คอมที่ต่อจอที่สอง เลือก จอที่สอง ผู้ชมไม่เห็นแถบ ในเมนู นำเสนอ ครูใช้ได้ทุกคำสั่ง จอใหญ่เห็นแต่หน้ากระดาษ ไม่ต้องใช้อินเทอร์เน็ต", "ระหว่างเปิดจอผู้ชม ครูมีแถบเล็ก จอผู้ชม เลือกให้จอใหญ่เห็นทั้งหน้า พักจอ หรือปิด (ปุ่ม B บนคีย์บอร์ดหรือรีโมตก็พักจอได้)", "ต่อ iPad ออกทีวีด้วยสาย ใช้ ต่อสาย จอสะอาด ในเมนู นำเสนอ (ปุ่ม สอนและนำเสนอ)", "เริ่มแล้วจอเห็นแต่หน้ากระดาษ ไม่มีแถบหรือปุ่มใดขึ้นเลย ทั้งบน iPad และทีวี", "ก่อนเริ่ม เลือกปากกาให้แต่ละขอบจอ (สี ไฮไลต์ ยางลบ หรือเลเซอร์) ระหว่างนำเสนอ แตะขอบจอด้วยนิ้วเพื่อหยิบปากกาของขอบนั้น", "เลือกได้ว่าให้เห็นทั้งหน้า และเริ่มด้วยม่านบังครึ่งล่างที่ใช้นิ้วลากลงเพื่อเปิดทีละบรรทัด", "แตะค้างสามนิ้ว 1 วินาที เพื่อออก ใช้รีโมตนำเสนอเปลี่ยนหน้า ปุ่ม B พักจอ ปุ่ม Esc ออก", "เมนู นำเสนอ เหลือสามข้อ จอแสดงผลแบบนักเรียนบนอีกเครื่องและบนจอที่สองรวมเป็นข้อเดียว"]}, {"id": 9, "date": "2026-11-17", "items": ["แถบบนเหลือปุ่มน้อยลง ปุ่มที่ใช้นาน ๆ ครั้ง รวมอยู่ในสองกลุ่ม", "ปุ่ม ต่อยอดจากหน้า มี แปลงเป็นตัวพิมพ์ สร้างโจทย์ และ ชุดโจทย์", "ปุ่ม สอนและนำเสนอ มี ห้องสด นำเสนอ และ ห้องเรียนและโจทย์ (ฝั่งนักเรียนชื่อ ห้องเรียน มี สแกน QR และ เข้าห้องเรียน ด้วย)", "เลือกด้วยบ่วงแล้ว แถบเหนือส่วนที่เลือก แสดงคำสั่งที่ใช้บ่อยก่อน คำสั่งอื่นอยู่ที่ปุ่ม เพิ่มเติม", "หาคำสั่งไม่เจอ พิมพ์ชื่อในช่องค้นหาที่เมนู เช่น PDF หรือ สามมิติ แล้วแตะคำสั่งที่ขึ้นมา"]}, {"id": 8, "date": "2026-11-16", "items": ["สร้างโจทย์ด้วย AI จากกี่หน้าก็ได้ ทั้งเล่ม ตามบท หรือเป็นช่วงหน้า", "อยู่ที่ปุ่ม สร้างโจทย์ด้วย AI หัวข้อ หน้าที่ใช้สร้างโจทย์ แตะ ทั้งเล่ม หรือแตะชื่อบท หรือใส่ช่วงหน้า แล้วกด เลือกช่วงนี้", "หน้าที่ AI อ่านแล้ว เก็บไว้ในเครื่องนี้ ครั้งต่อไป ไม่ต้องอ่านซ้ำ จึงเร็วขึ้น และประหยัดค่า AI"]}, {"id": 7, "date": "2026-11-16", "items": ["ลบผิด หรือเขียนทับผิด ดึงหน้า เมื่อไม่กี่นาทีก่อน หรือเมื่อวาน กลับมาได้", "อยู่ที่ ลิ้นชักหน้า แตะแถบ หน้านี้ ด้านล่าง แล้วกดปุ่ม รุ่นก่อนของหน้านี้ เลือกรุ่น ดูภาพหน้าก่อน แล้วกด คืนหน้าเป็นรุ่นนี้", "หน้าก่อนคืน ถูกเก็บไว้ด้วย จึงย้อนกลับได้ แอปเก็บรุ่นก่อน ไว้ในเครื่องนี้ 30 วัน"]}, {"id": 6, "date": "2026-11-16", "items": ["บัญชีคลาวด์ ส่งออกข้อมูลทั้งบัญชี เป็นไฟล์เดียวได้ ทั้งสมุด หน้า หมึก รูป วิดีโอ เลคเชอร์ที่แชร์ การบ้าน และงานที่นักเรียนส่ง", "อยู่ที่ เมนู แท็บตั้งค่า หัวข้อ ข้อมูลทั้งบัญชี กดปุ่ม ส่งออกทั้งบัญชี", "นำเข้าไฟล์นี้ ในบัญชีอื่น หรือเครื่องใหม่ได้ การนำเข้า เพิ่มเฉพาะส่วนที่ยังไม่มี ไม่ทับ และไม่ลบ ของที่มีอยู่"]}, {"id": 5, "date": "2026-11-15", "items": ["ลบสมุด หรือลบหน้าแล้ว ยังกู้คืนได้ ภายใน 30 วัน สิ่งที่ลบ ไปอยู่ในถังขยะ ก่อนถูกลบจริง", "เปิดถังขยะ ได้ที่ เมนู สมุดทั้งหมด ปุ่มถังขยะ ใต้รายการสมุด กดกู้คืน แล้วสมุดกลับไป ที่เดิม หน้ากลับไป ตำแหน่งเดิม ในสมุด", "ลบถาวร ทีละรายการ หรือลบทั้งหมด ในถังขยะได้ ครบ 30 วัน แล้วแอปลบให้เอง"]}, {"id": 4, "date": "2026-11-15", "items": ["สำรองสมุด ทั้งหมดเป็นไฟล์เดียว ได้ที่ เมนู แท็บตั้งค่า หัวข้อ สมุดในเครื่องนี้ ไฟล์เก็บสมุดทุกเล่ม รูป และวิดีโอ ในเครื่องนี้", "นำสมุดคืน จากไฟล์สำรอง ได้ที่เดียวกัน การนำคืน เพิ่มเฉพาะส่วน ที่ยังไม่มีในเครื่อง ไม่ทับ และไม่ลบ ของที่มีอยู่", "แอปขอให้เบราว์เซอร์ เก็บสมุดในเครื่อง ไว้ถาวร และเตือนให้สำรองสมุด ที่หน้ารายการสมุด เมื่อสมุดเปลี่ยนไป ตั้งแต่สำรองครั้งล่าสุด", "บน iPad และ iPhone ใน Safari แอปชวนให้ เพิ่มลงหน้าจอโฮม เพื่อไม่ให้ Safari ลบสมุด ที่ไม่ได้เปิดนาน ให้สำรองสมุดก่อน แล้วนำคืน ในแอปบนหน้าจอโฮม"]}, {"id": 3, "date": "2026-11-14", "items": ["สารบัญ ของสมุด แตะปุ่มหน้าในสมุด ที่มุมซ้ายบน แล้วเลือก สารบัญ จะเห็นหัวเรื่อง ของทุกหน้า แตะหัวเรื่อง เพื่อไปที่หน้านั้น ได้ทันที", "หัวเรื่อง มาจากข้อความที่พิมพ์ไว้ บนสุดของหน้า หรือบรรทัด ที่ขึ้นต้นด้วย ## ลายมือที่ยังไม่ได้แปลง เป็นตัวพิมพ์ ไม่ขึ้นในสารบัญ", "ที่คั่นหน้า แตะ ปักที่คั่นหน้านี้ ในหน้าสารบัญ แล้วตั้งชื่อเองได้ หน้าที่มีที่คั่น จะมีริบบิ้นสีแดง ที่ภาพหน้า", "ที่คั่นหน้า อยู่กับสมุด ของเราเท่านั้น ผู้เรียนในห้องสด ไม่เห็นที่คั่นหน้า ของครู"]}, {"id": 2, "date": "2026-11-14", "items": ["ค้นหาข้อความ ในทุกสมุดได้แล้ว พิมพ์คำในช่องค้นหาที่เมนู แอปจะค้นทั้งชื่อสมุด ข้อความที่พิมพ์ ลายมือที่แปลงเป็นตัวพิมพ์แล้ว หัวเรื่องของหน้า และข้อความในกล่องต่าง ๆ", "แตะผลการค้นหา เพื่อไปที่หน้านั้น กล่องที่มีคำนั้นจะเรืองแสงสักครู่ ให้เห็นตำแหน่ง", "พิมพ์คำไทย ติดกันหรือเว้นวรรค ก็ค้นเจอเหมือนกัน การค้นหาอ่านสมุดอย่างเดียว ไม่แก้ไขอะไรในสมุด"]}, {"id": 1, "date": "2026-11-13", "items": ["ดูเวอร์ชันของแอปได้ที่เมนู แท็บตั้งค่า หัวข้อเกี่ยวกับแอป", "เมื่อมีเวอร์ชันใหม่ระหว่างใช้งาน แอปจะไม่รีโหลดเอง รวมถึงจอผู้ชม เวอร์ชันใหม่จะมีผล เมื่อเปิดแอปครั้งถัดไป หรือเมื่อแตะแถบ มีเวอร์ชันใหม่", "หน้าที่เปิดค้างไว้ ใช้ส่วนต่าง ๆ ของแอป จากเวอร์ชันเดียวกับตัวเองเสมอ ไม่ปนกับเวอร์ชันใหม่", "เมื่อแอปทำงานผิดพลาด แอปจะส่งรายงาน ให้ผู้พัฒนา โดยส่งเฉพาะ ข้อความแจ้งข้อผิดพลาด ตำแหน่งในโค้ด รุ่นเครื่อง และเวอร์ชันของแอป ไม่ส่งเนื้อหาสมุด ชื่อ หรืออีเมล"]}];
+const VERSION = '20261118-7c7c9906';
+const NEWS = [{"id": 15, "date": "2026-11-18", "items": ["ลืมรหัสผ่าน ตั้งรหัสใหม่ได้จากหน้าเข้าสู่ระบบ กด ลืมรหัสผ่าน แล้วทำตามอีเมลที่ได้รับ", "สมัครบัญชีใหม่แล้วยืนยันอีเมลได้ในแอป และกดส่งอีเมลยืนยันอีกครั้งได้"]}, {"id": 14, "date": "2026-11-18", "items": ["ห้องเรียนสดที่ลืมปิดปิดเอง เมื่อกลับมาที่แอปหลังห่างไปเกิน 1 ชั่วโมง ห้องไม่เปิดต่อเองและไม่ส่งสิ่งที่เขียนให้ผู้เรียน แตะ เปิดห้องเดิมอีกครั้ง ได้รหัสเดิม", "ห้องที่ไม่มีผู้เรียนและครูไม่ได้ใช้แอปนาน 30 นาทีปิดเอง มีแถบบอกก่อน 1 นาที ครูที่กำลังสอนห้องไม่ปิด แม้ผู้เรียนล็อกจอ", "ปิดห้องแล้วผู้เรียนยังส่งการบ้านได้ถึงเวลาที่กำหนด และเห็นปุ่มไปที่งานของฉัน"]}, {"id": 13, "date": "2026-11-17", "items": ["ข้อความที่พิมพ์ไม่ต้องรอ AI สมการที่พิมพ์ เช่น y = 2x + 1 สร้างกราฟได้ทันที ตารางที่พิมพ์เป็นข้อมูลได้ทันที และตรวจหน่วยของบรรทัดคำนวณที่พิมพ์ได้ทันที ใช้ได้แม้ไม่มีอินเทอร์เน็ต", "วาดใหม่ จัดเส้นตรง สี่เหลี่ยม วงกลม ในภาพร่างให้เรียบร้อยทันทีโดยไม่ใช้ AI ตัวอักษรยังเป็นลายมือเดิม ถ้าต้องการให้แก้ตามเนื้อหา กด ให้ AI วาดใหม่ตามเนื้อหา", "หลังทำแบบฝึก บทที่ยังอ่อนบอกชนิดข้อที่พลาด และความเข้าใจที่ควรแก้จากตัวเลือกที่ตอบ"]}, {"id": 12, "date": "2026-11-17", "items": ["ลายมือที่ AI อ่านแล้วไม่ต้องอ่านซ้ำ แปลงเป็นตัวพิมพ์ แก้สมการ สร้างรูป ตรวจหน่วย และสร้างโจทย์ จากลายมือเดิมใช้คำที่อ่านไว้ เร็วขึ้นและไม่ส่งภาพซ้ำ ถ้าอ่านผิด สั่งงานเดิมอีกครั้ง AI จะอ่านใหม่", "ค้นหาในทุกสมุดพบลายมือที่ AI เคยอ่านแล้วด้วย"]}, {"id": 11, "date": "2026-11-17", "items": ["ทดลองวางวัตถุสามมิติบนโต๊ะจริง (AR) ได้ที่ ปุ่ม สมุดทั้งหมด แท็บ ภาษา การเขียน และจอ หัวข้อ ลองดูในห้องจริง ใช้ได้บน iPad และ iPhone แอปสร้างไฟล์ในเครื่องเอง ไม่ใช้ AI"]}, {"id": 10, "date": "2026-11-17", "items": ["คอมที่ต่อจอที่สอง เลือก จอที่สอง ผู้ชมไม่เห็นแถบ ในเมนู นำเสนอ ครูใช้ได้ทุกคำสั่ง จอใหญ่เห็นแต่หน้ากระดาษ ไม่ต้องใช้อินเทอร์เน็ต", "ระหว่างเปิดจอผู้ชม ครูมีแถบเล็ก จอผู้ชม เลือกให้จอใหญ่เห็นทั้งหน้า พักจอ หรือปิด (ปุ่ม B บนคีย์บอร์ดหรือรีโมตก็พักจอได้)", "ต่อ iPad ออกทีวีด้วยสาย ใช้ ต่อสาย จอสะอาด ในเมนู นำเสนอ (ปุ่ม สอนและนำเสนอ)", "เริ่มแล้วจอเห็นแต่หน้ากระดาษ ไม่มีแถบหรือปุ่มใดขึ้นเลย ทั้งบน iPad และทีวี", "ก่อนเริ่ม เลือกปากกาให้แต่ละขอบจอ (สี ไฮไลต์ ยางลบ หรือเลเซอร์) ระหว่างนำเสนอ แตะขอบจอด้วยนิ้วเพื่อหยิบปากกาของขอบนั้น", "เลือกได้ว่าให้เห็นทั้งหน้า และเริ่มด้วยม่านบังครึ่งล่างที่ใช้นิ้วลากลงเพื่อเปิดทีละบรรทัด", "แตะค้างสามนิ้ว 1 วินาที เพื่อออก ใช้รีโมตนำเสนอเปลี่ยนหน้า ปุ่ม B พักจอ ปุ่ม Esc ออก", "เมนู นำเสนอ เหลือสามข้อ จอแสดงผลแบบนักเรียนบนอีกเครื่องและบนจอที่สองรวมเป็นข้อเดียว"]}, {"id": 9, "date": "2026-11-17", "items": ["แถบบนเหลือปุ่มน้อยลง ปุ่มที่ใช้นาน ๆ ครั้ง รวมอยู่ในสองกลุ่ม", "ปุ่ม ต่อยอดจากหน้า มี แปลงเป็นตัวพิมพ์ สร้างโจทย์ และ ชุดโจทย์", "ปุ่ม สอนและนำเสนอ มี ห้องสด นำเสนอ และ ห้องเรียนและโจทย์ (ฝั่งนักเรียนชื่อ ห้องเรียน มี สแกน QR และ เข้าห้องเรียน ด้วย)", "เลือกด้วยบ่วงแล้ว แถบเหนือส่วนที่เลือก แสดงคำสั่งที่ใช้บ่อยก่อน คำสั่งอื่นอยู่ที่ปุ่ม เพิ่มเติม", "หาคำสั่งไม่เจอ พิมพ์ชื่อในช่องค้นหาที่เมนู เช่น PDF หรือ สามมิติ แล้วแตะคำสั่งที่ขึ้นมา"]}, {"id": 8, "date": "2026-11-16", "items": ["สร้างโจทย์ด้วย AI จากกี่หน้าก็ได้ ทั้งเล่ม ตามบท หรือเป็นช่วงหน้า", "อยู่ที่ปุ่ม สร้างโจทย์ด้วย AI หัวข้อ หน้าที่ใช้สร้างโจทย์ แตะ ทั้งเล่ม หรือแตะชื่อบท หรือใส่ช่วงหน้า แล้วกด เลือกช่วงนี้", "หน้าที่ AI อ่านแล้ว เก็บไว้ในเครื่องนี้ ครั้งต่อไป ไม่ต้องอ่านซ้ำ จึงเร็วขึ้น และประหยัดค่า AI"]}, {"id": 7, "date": "2026-11-16", "items": ["ลบผิด หรือเขียนทับผิด ดึงหน้า เมื่อไม่กี่นาทีก่อน หรือเมื่อวาน กลับมาได้", "อยู่ที่ ลิ้นชักหน้า แตะแถบ หน้านี้ ด้านล่าง แล้วกดปุ่ม รุ่นก่อนของหน้านี้ เลือกรุ่น ดูภาพหน้าก่อน แล้วกด คืนหน้าเป็นรุ่นนี้", "หน้าก่อนคืน ถูกเก็บไว้ด้วย จึงย้อนกลับได้ แอปเก็บรุ่นก่อน ไว้ในเครื่องนี้ 30 วัน"]}, {"id": 6, "date": "2026-11-16", "items": ["บัญชีคลาวด์ ส่งออกข้อมูลทั้งบัญชี เป็นไฟล์เดียวได้ ทั้งสมุด หน้า หมึก รูป วิดีโอ เลคเชอร์ที่แชร์ การบ้าน และงานที่นักเรียนส่ง", "อยู่ที่ เมนู แท็บตั้งค่า หัวข้อ ข้อมูลทั้งบัญชี กดปุ่ม ส่งออกทั้งบัญชี", "นำเข้าไฟล์นี้ ในบัญชีอื่น หรือเครื่องใหม่ได้ การนำเข้า เพิ่มเฉพาะส่วนที่ยังไม่มี ไม่ทับ และไม่ลบ ของที่มีอยู่"]}, {"id": 5, "date": "2026-11-15", "items": ["ลบสมุด หรือลบหน้าแล้ว ยังกู้คืนได้ ภายใน 30 วัน สิ่งที่ลบ ไปอยู่ในถังขยะ ก่อนถูกลบจริง", "เปิดถังขยะ ได้ที่ เมนู สมุดทั้งหมด ปุ่มถังขยะ ใต้รายการสมุด กดกู้คืน แล้วสมุดกลับไป ที่เดิม หน้ากลับไป ตำแหน่งเดิม ในสมุด", "ลบถาวร ทีละรายการ หรือลบทั้งหมด ในถังขยะได้ ครบ 30 วัน แล้วแอปลบให้เอง"]}, {"id": 4, "date": "2026-11-15", "items": ["สำรองสมุด ทั้งหมดเป็นไฟล์เดียว ได้ที่ เมนู แท็บตั้งค่า หัวข้อ สมุดในเครื่องนี้ ไฟล์เก็บสมุดทุกเล่ม รูป และวิดีโอ ในเครื่องนี้", "นำสมุดคืน จากไฟล์สำรอง ได้ที่เดียวกัน การนำคืน เพิ่มเฉพาะส่วน ที่ยังไม่มีในเครื่อง ไม่ทับ และไม่ลบ ของที่มีอยู่", "แอปขอให้เบราว์เซอร์ เก็บสมุดในเครื่อง ไว้ถาวร และเตือนให้สำรองสมุด ที่หน้ารายการสมุด เมื่อสมุดเปลี่ยนไป ตั้งแต่สำรองครั้งล่าสุด", "บน iPad และ iPhone ใน Safari แอปชวนให้ เพิ่มลงหน้าจอโฮม เพื่อไม่ให้ Safari ลบสมุด ที่ไม่ได้เปิดนาน ให้สำรองสมุดก่อน แล้วนำคืน ในแอปบนหน้าจอโฮม"]}, {"id": 3, "date": "2026-11-14", "items": ["สารบัญ ของสมุด แตะปุ่มหน้าในสมุด ที่มุมซ้ายบน แล้วเลือก สารบัญ จะเห็นหัวเรื่อง ของทุกหน้า แตะหัวเรื่อง เพื่อไปที่หน้านั้น ได้ทันที", "หัวเรื่อง มาจากข้อความที่พิมพ์ไว้ บนสุดของหน้า หรือบรรทัด ที่ขึ้นต้นด้วย ## ลายมือที่ยังไม่ได้แปลง เป็นตัวพิมพ์ ไม่ขึ้นในสารบัญ", "ที่คั่นหน้า แตะ ปักที่คั่นหน้านี้ ในหน้าสารบัญ แล้วตั้งชื่อเองได้ หน้าที่มีที่คั่น จะมีริบบิ้นสีแดง ที่ภาพหน้า", "ที่คั่นหน้า อยู่กับสมุด ของเราเท่านั้น ผู้เรียนในห้องสด ไม่เห็นที่คั่นหน้า ของครู"]}, {"id": 2, "date": "2026-11-14", "items": ["ค้นหาข้อความ ในทุกสมุดได้แล้ว พิมพ์คำในช่องค้นหาที่เมนู แอปจะค้นทั้งชื่อสมุด ข้อความที่พิมพ์ ลายมือที่แปลงเป็นตัวพิมพ์แล้ว หัวเรื่องของหน้า และข้อความในกล่องต่าง ๆ", "แตะผลการค้นหา เพื่อไปที่หน้านั้น กล่องที่มีคำนั้นจะเรืองแสงสักครู่ ให้เห็นตำแหน่ง", "พิมพ์คำไทย ติดกันหรือเว้นวรรค ก็ค้นเจอเหมือนกัน การค้นหาอ่านสมุดอย่างเดียว ไม่แก้ไขอะไรในสมุด"]}, {"id": 1, "date": "2026-11-13", "items": ["ดูเวอร์ชันของแอปได้ที่เมนู แท็บตั้งค่า หัวข้อเกี่ยวกับแอป", "เมื่อมีเวอร์ชันใหม่ระหว่างใช้งาน แอปจะไม่รีโหลดเอง รวมถึงจอผู้ชม เวอร์ชันใหม่จะมีผล เมื่อเปิดแอปครั้งถัดไป หรือเมื่อแตะแถบ มีเวอร์ชันใหม่", "หน้าที่เปิดค้างไว้ ใช้ส่วนต่าง ๆ ของแอป จากเวอร์ชันเดียวกับตัวเองเสมอ ไม่ปนกับเวอร์ชันใหม่", "เมื่อแอปทำงานผิดพลาด แอปจะส่งรายงาน ให้ผู้พัฒนา โดยส่งเฉพาะ ข้อความแจ้งข้อผิดพลาด ตำแหน่งในโค้ด รุ่นเครื่อง และเวอร์ชันของแอป ไม่ส่งเนื้อหาสมุด ชื่อ หรืออีเมล"]}];
 const TH_MON = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
 function thDay(iso) { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || ''); return m ? (+m[3]) + ' ' + TH_MON[+m[2] - 1] + ' ' + (+m[1] + 543) : ''; }
 function renderVersion() { const el = $('#verNote'); if (el) el.innerHTML = 'เวอร์ชัน <span class="nowrap">' + esc(VERSION.startsWith('__') ? 'ในเครื่อง (ยังไม่ได้ประกอบ)' : VERSION) + '</span>'; }
@@ -21862,11 +22002,56 @@ window.addEventListener('error', (e) => { if (e && e.message) errReport(e.messag
 window.addEventListener('unhandledrejection', (e) => { const r = e && e.reason; if (!r || r.off) return; errReport((r && r.message) || String(r), errWhere(r && r.stack)); });
 
 /* ---------- cloud account UI ---------- */
-function openAuth() { closeSheets(); $('#aMsg').innerHTML = ''; $('#authSheet').hidden = false; setTimeout(() => $('#aEmail').focus({ preventScroll: true }), 50); }
+function openAuth() {
+  closeSheets(); $('#aMsg').innerHTML = ''; $('#authSheet').hidden = false;
+  if (typeof acStep === 'function' && !$('#aStep').hidden) acStep('');
+  acReady().then((ok) => { $('#bForgot').hidden = !ok; });
+  capShow();
+  setTimeout(() => $('#aEmail').focus({ preventScroll: true }), 50);
+}
+/* the steps of an account for everyone (task 1.3, the part m/account.js): the code that confirms the e-mail, a new
+   password, deleting the account. "account" in flags.json turns them off and the form is as before */
+function acReady() { return flagsReady().then(() => (flagOn('account') ? need('account').then(() => true, () => false) : false)); }
+/* ----- Cloudflare Turnstile against bots on sign-up, sign-in and the e-mails, when config.js of the site names a site
+   key (turnstileKey) and the app uses that site's own project; Supabase checks the answer (Authentication, Attack
+   Protection). A project set up by hand on this device has no key: nothing is shown ----- */
+const CAP = { id: null, token: '', p: null };
+function capKey() {
+  const b = window.BURIN_CONFIG || {}, k = String(b.turnstileKey || '').trim(), own = String(b.supabaseUrl || '').replace(/\/+$/, '');
+  return k && own && CLOUD.cfg.url.replace(/\/+$/, '') === own ? k : '';
+}
+function capShow() {
+  const box = $('#aCap'), k = capKey(); box.hidden = !k;
+  if (!k) return Promise.resolve(false);
+  if (!CAP.p) CAP.p = (window.turnstile ? Promise.resolve() : loadScript('https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit')).then(() => {
+    CAP.id = window.turnstile.render(box, { sitekey: k, language: 'th', theme: 'auto', callback: (t) => { CAP.token = t; }, 'expired-callback': () => { CAP.token = ''; }, 'error-callback': () => { CAP.token = ''; } });
+    return true;
+  }).catch(() => { CAP.p = null; return false; });
+  return CAP.p;
+}
+/* the answer for one request (each answer is used once): undefined when the site needs none */
+async function capToken() {
+  if (!capKey()) return undefined;
+  if (!(await capShow()) || CAP.id == null) throw new Error('BURIN_CAPLOAD');
+  for (let i = 0; i < 40 && !CAP.token; i++) await new Promise((r) => setTimeout(r, 200));
+  if (!CAP.token) throw new Error('BURIN_CAPWAIT');
+  const t = CAP.token; CAP.token = '';
+  try { window.turnstile.reset(CAP.id); } catch (e) { /* a new answer comes by itself */ }
+  return t;
+}
 function authErr(e) {
-  const m = String((e && e.message) || e || '');
+  const m = String((e && e.message) || e || ''), code = String((e && e.code) || '');
+  if (/BURIN_CAPLOAD/.test(m)) return 'โหลดตัวตรวจกันบอตของ Cloudflare ไม่ได้ ตรวจอินเทอร์เน็ตแล้วลองใหม่';
+  if (/BURIN_CAPWAIT/.test(m)) return 'รอให้ตัวตรวจกันบอตด้านบนผ่านก่อน แล้วกดอีกครั้ง';
+  if (/captcha/i.test(m + code)) return 'ตรวจกันบอตไม่ผ่าน รอสักครู่แล้วกดอีกครั้ง';
   if (/invalid login/i.test(m)) return 'อีเมลหรือรหัสผ่านไม่ถูกต้อง';
   if (/not confirmed/i.test(m)) return 'ยังไม่ได้ยืนยันอีเมล เปิดอีเมลจาก Supabase แล้วกดลิงก์ยืนยันก่อน';
+  if (/BURIN_SIGNUP|saving new user|invit/i.test(m)) return 'ตอนนี้สมัครได้เฉพาะอีเมลที่ได้รับเชิญ ติดต่อผู้ดูแลระบบเพื่อขอคำเชิญ';
+  if (/rate.?limit|too many|over_.*_limit|security purposes|after \d+ seconds/i.test(m + ' ' + code)) return 'ขอบ่อยเกินไป รอประมาณหนึ่งนาทีแล้วลองใหม่';
+  if (/otp|token.*(expired|invalid)|(expired|invalid).*token/i.test(m + ' ' + code)) return 'รหัสไม่ถูกต้องหรือหมดอายุแล้ว ตรวจรหัสล่าสุดในอีเมล หรือกดส่งรหัสอีกครั้ง';
+  if (/same_password|different from the old/i.test(m + ' ' + code)) return 'รหัสผ่านใหม่ต้องไม่ซ้ำกับรหัสเดิม';
+  if (/weak|pwned|leaked|compromised/i.test(m + ' ' + code)) return 'รหัสผ่านนี้คาดเดาง่ายหรือเคยรั่วไหล เลือกรหัสอื่นที่ยาวขึ้น';
+  if (/session.*missing|not authenticated|jwt/i.test(m)) return 'การยืนยันหมดเวลาแล้ว เริ่มใหม่อีกครั้ง';
   if (/already registered|already exists/i.test(m)) return 'อีเมลนี้มีบัญชีแล้ว กดเข้าสู่ระบบได้เลย';
   if (/signups? not allowed|disabled/i.test(m)) return 'ระบบปิดการสมัครใหม่ไว้ ใช้บัญชีที่มีอยู่แล้วเข้าสู่ระบบ';
   if (/password/i.test(m)) return 'รหัสผ่านต้องยาวอย่างน้อย 8 ตัว';
@@ -21879,22 +22064,36 @@ async function doAuth(signup) {
   if (!/^\S+@\S+\.\S+$/.test(email)) { say('ใส่อีเมลให้ถูกต้อง', 'err'); return; }
   if (password.length < 8) { say('รหัสผ่านต้องยาวอย่างน้อย 8 ตัว', 'err'); return; }
   say(signup ? 'กำลังสร้างบัญชี' : 'กำลังเข้าสู่ระบบ');
+  const btns = [$('#bSignIn'), $('#bSignUp')]; btns.forEach((b) => { b.disabled = true; });
+  /* the answer of the bot check goes with each request to the site's own project (none for a project of one's own) */
+  const opt = (o, cap) => { if (cap) o.captchaToken = cap; return o; };
+  const up = async (sb) => sb.auth.signUp({ email, password, options: opt({ emailRedirectTo: location.origin + location.pathname }, await capToken()) });
   try {
     const sb = await cloudClient();
-    let r = signup ? await sb.auth.signUp({ email, password, options: { emailRedirectTo: location.origin + location.pathname } }) : await sb.auth.signInWithPassword({ email, password });
+    let r = signup ? await up(sb) : await sb.auth.signInWithPassword({ email, password, options: opt({}, await capToken()) });
     if (r.error && !signup && migOn() && /invalid login/i.test(String(r.error.message || ''))) {
       /* not on the new server yet: the same email and password on the old server move the account across */
       say('กำลังตรวจบัญชีกับเซิร์ฟเวอร์เดิม');
       const old = await migOldClient(), o = await old.auth.signInWithPassword({ email, password });
       if (o.error) throw r.error;
-      r = await sb.auth.signUp({ email, password, options: { emailRedirectTo: location.origin + location.pathname } });
-      if (!r.error && !(r.data && r.data.session)) { say('ย้ายบัญชีแล้ว เปิดอีเมลยืนยันจาก Supabase แล้วกดลิงก์ จากนั้นกลับมากดเข้าสู่ระบบอีกครั้ง สมุดทั้งหมดจะย้ายตามมาเอง', 'ok'); return; }
+      r = await up(sb);
+      if (!r.error && !(r.data && r.data.session)) {
+        if (await acReady()) { acVerify(email); acSay('ย้ายบัญชีแล้ว ระบบส่งรหัสยืนยันไปที่ ' + email + ' ใส่รหัสด้านบน แล้วสมุดทั้งหมดจะย้ายตามมาเอง', 'ok'); return; }
+        say('ย้ายบัญชีแล้ว เปิดอีเมลยืนยันจาก Supabase แล้วกดลิงก์ จากนั้นกลับมากดเข้าสู่ระบบอีกครั้ง สมุดทั้งหมดจะย้ายตามมาเอง', 'ok'); return;
+      }
     }
     if (r.error) throw r.error;
-    if (signup && !(r.data && r.data.session)) { say('สร้างบัญชีแล้ว เปิดอีเมลจาก Supabase แล้วกดลิงก์ยืนยัน จากนั้นกลับมากดเข้าสู่ระบบ', 'ok'); return; }
+    if (signup && !(r.data && r.data.session)) {
+      if (await acReady()) { acVerify(email); return; }
+      say('สร้างบัญชีแล้ว เปิดอีเมลจาก Supabase แล้วกดลิงก์ยืนยัน จากนั้นกลับมากดเข้าสู่ระบบ', 'ok'); return;
+    }
     say('เข้าสู่ระบบแล้ว กำลังโหลดสมุดจากคลาวด์', 'ok');
     setTimeout(() => location.reload(), 400);
-  } catch (e) { say(authErr(e), 'err'); }
+  } catch (e) {
+    /* an address not confirmed yet: the code from the e-mail, here */
+    if (!signup && /not confirmed/i.test(String((e && e.message) || e)) && await acReady()) { acVerify(email, true); return; }
+    say(authErr(e), 'err');
+  } finally { btns.forEach((b) => { b.disabled = false; }); }
 }
 async function runDiag() {
   const out = $('#cloudDiag'), sb = CLOUD.client, me = CLOUD.user && CLOUD.user.id;
@@ -22062,6 +22261,8 @@ function openAcct() {
   if (on) { const out = document.createElement('button'); out.type = 'button'; out.className = 'btn'; out.textContent = 'ออกจากระบบเครื่องนี้'; out.onclick = () => acctSwitch(null); row.appendChild(out); }
   box.appendChild(row);
   if (on) box.appendChild(exEl('div', 'note small', 'ก่อนสลับ ระบบบันทึกงานขึ้นคลาวด์ให้ก่อน งานของบัญชีเดิมไม่ปนกับบัญชีใหม่ และคีย์ AI ของบัญชีเดิมไม่ติดไปกับบัญชีใหม่'));
+  /* deleting the account (task 1.3): on a database that can (version 2), asked twice */
+  if (on && !S.student && !S.present && !S.show) { const dz = exEl('div', 'acdel'); dz.hidden = true; box.appendChild(dz); acReady().then((ok) => { if (ok && dz.isConnected) acDelSection(dz); }); }
   $('#acctSheet').hidden = false;
 }
 $('#bAcct').onclick = acctPop;
@@ -22099,6 +22300,7 @@ $('#cSave').onclick = () => {
 };
 $('#bSignIn').onclick = () => doAuth(false);
 $('#bSignUp').onclick = () => doAuth(true);
+$('#bForgot').onclick = () => { acReady().then((ok) => { if (ok) acForgot(); }); };
 $('#bAuthClose').onclick = () => { $('#authSheet').hidden = true; };
 $('#bAuthBack').onclick = openStart;
 $('#stScan').onclick = startScan;
@@ -23096,6 +23298,8 @@ async function boot() {
   const C = window.claude && typeof window.claude.use === 'function' ? window.claude : null;
   renderAIAvail(C ? 'checking' : 'none');
   const hs = (location.hash || '').replace('#', ''), mS = hs.match(/^show=([A-Z2-9]{6})$/i), mC = hs.match(/^class=([A-Z2-9]{6})$/i), mL = hs.match(/^lecture=([a-z0-9]{6,20})$/i), mH = hs.match(/^hw=([a-z0-9]{6,20})$/i), mW = hs === 'mywork', mT = hs.match(/^term=([a-z0-9]{4,30})$/i);
+  /* the link of a new-password e-mail, opened in this browser: signed in by it, then asked for the new password */
+  const recov = /(^|&)type=recovery(&|$)/.test(hs);
   S.student = !!(mC || mL || mH || mT || mS); S.show = !!mS;
   if (S.show) { document.body.classList.add('present', 'showscr'); const w = $('#presentWait'); w.innerHTML = '<b>จอแสดงผลของห้อง ' + mS[1].toUpperCase() + '</b><br>กำลังเชื่อมต่อ หน้าที่ผู้สอนเปิดจะขึ้นที่นี่เอง'; w.hidden = false; }
   const db = C && !S.student ? await C.use('db').catch(() => null) : null;
@@ -23137,8 +23341,11 @@ async function boot() {
   if (!S.student) { watchLiveDoc(); aiCloudWatch(); devSeen(); }
   curricLoadCustom();
   if (S.store && S.store.kind === 'cloud') Promise.resolve(S.store.get('settings/curric-x')).then((d) => { if (d && d.m) { let m = {}; try { m = JSON.parse(store_ls.get('tp-curric-x') || '{}'); } catch (e) { m = {}; } store_ls.set('tp-curric-x', JSON.stringify(Object.assign(m, d.m))); curricLoadCustom(); } }).catch(() => {});
-  if (!S.student && CLOUD.state === 'on' && store_ls.get('tp-live-on') === '1' && store_ls.get('tp-class') && S.role !== 'student') { LIVE.clsId = store_ls.get('tp-live-cls') || null; LIVE.nbId = store_ls.get('tp-live-nb') || null; LIVE.code = store_ls.get('tp-class'); setTimeout(() => { liveOpen().then(() => toast('ห้องเรียนสด ' + LIVE.code + ' ยังเปิดอยู่ ผู้เรียนเชื่อมต่อได้ตามเดิม', 3000)).catch(() => {}); }, 800); }
+  if (!S.student && CLOUD.state === 'on' && store_ls.get('tp-live-on') === '1' && store_ls.get('tp-class') && S.role !== 'student' && laBoot()) { LIVE.clsId = store_ls.get('tp-live-cls') || null; LIVE.nbId = store_ls.get('tp-live-nb') || null; LIVE.code = store_ls.get('tp-class'); setTimeout(() => { liveOpen().then(() => toast('ห้องเรียนสด ' + LIVE.code + ' ยังเปิดอยู่ ผู้เรียนเชื่อมต่อได้ตามเดิม', 3000)).catch(() => {}); }, 800); }
   renderAcct();
+  /* after the question of teacher or student on a new device (asked a moment after opening), not on top of it */
+  if (recov && CLOUD.state === 'on' && !S.student) { const ask = (n) => { if (!$('#roleSheet').hidden || (n < 8 && !store_ls.get('tp-role'))) { setTimeout(() => ask(n + 1), 400); return; } acReady().then((ok) => { if (ok) acNewPw(); }); }; setTimeout(() => ask(0), 400); }
+  if (store_ls.get('tp-acct-gone')) { store_ls.del('tp-acct-gone'); setTimeout(() => toast('ลบบัญชีและข้อมูลทั้งหมดของบัญชีออกจากคลาวด์แล้ว', 5000), 600); }
   if (store_ls.get('tp-auth-next') != null && CLOUD.state === 'signedout') { const em = store_ls.get('tp-auth-next'); store_ls.del('tp-auth-next'); setTimeout(() => { openAuth(); if (em) { $('#aEmail').value = em; setTimeout(() => $('#aPass').focus({ preventScroll: true }), 80); } }, 300); }
   if (mC && CLOUD.ready()) studentJoin(mC[1].toUpperCase());
   if (mS && CLOUD.ready()) showStart(mS[1].toUpperCase());

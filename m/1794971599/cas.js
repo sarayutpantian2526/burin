@@ -182,6 +182,14 @@ async function solveSelection() {
   const texts = S.sel.items.map(findItem).filter((it) => it && (!it.type || it.type === 'text')).map((it) => it.md || '');
   let src = '';
   if (texts.length) { const m = texts.join('\n').match(/\$\$?([^$]+)\$\$?/g); src = m ? m.map((x) => x.replace(/\$/g, '')).join('\n') : texts.join('\n'); }
+  let m = null;
+  if (!src && refs.length) {
+    /* handwriting read before (task 8.16): its equations are solved at once, with no AI and no picture sent */
+    m = await inkGet('solve', refs);
+    if (m && m.own) src = m.own;
+    else if (m && m.text && inkMath(m.text).eqs.length) src = inkMath(m.text).eqs.join('\n');
+    else if (m && m.eq) src = m.eq;
+  }
   if (!src && refs.length) {
     if (!needAI('read')) return;
     const img = await inkBlob(refs); if (!img) return;
@@ -189,6 +197,7 @@ async function solveSelection() {
     try {
       const r = await AI.run('read', 'The image is handwritten math from a teacher\'s notebook: one equation, several equations (a system), or an expression to work out (derivative, integral, limit, factor and so on). Transcribe it exactly as written, do not solve it. Reply with LaTeX only, one equation per line, no $ signs and no words.', { images: [img.blob], maxTokens: 400 });
       src = String(r.text || '').replace(/```[a-z]*|```/g, '').trim();
+      if (src) inkPut(m, { solve: src });
     } catch (e) { P.body.innerHTML = '<div class="note err">อ่านลายมือไม่สำเร็จ ' + esc(aiErr(e)) + '</div>'; return; }
   }
   if (!src) { toast('เลือกสมการที่เขียนหรือพิมพ์ไว้ก่อน', 2200); return; }
