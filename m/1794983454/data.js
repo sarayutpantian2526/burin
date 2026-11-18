@@ -17,17 +17,26 @@ async function dataSelection() {
   const refs = S.sel.strokes.slice(), box = S.sel.box.slice();
   const texts = S.sel.items.map(findItem).filter((it) => it && (!it.type || it.type === 'text') && it.md).map((it) => it.md).join('\n').slice(0, 3000);
   if (!refs.length && !texts) return;
-  if (!needAI('read')) return;
+  /* a typed table (Markdown, commas, tabs or spaces) is read here, offline, with no AI (task 8.15) */
+  if (texts && !refs.length && await tyReady()) {
+    const T = tyTable(texts);
+    if (T) { openAI(); dsCard(aiCard(''), { kind: 'table', head: T.head, rows: T.rows, line: null, box }); return; }
+  }
+  /* the same ink read as data before (task 8.16) is shown again at once; a graph needs its picture, so a reading made
+     for other work is not used here */
+  const m = refs.length && !texts ? await inkGet('data', refs) : null, kept = m && typeof m.own === 'string' && m.own ? m.own : '';
+  if (!kept && !needAIInk('read', refs.length)) return;
   openAI();
   const B = busyCard('อ่านเป็นข้อมูล');
   try {
-    const img = refs.length ? await inkBlob(refs) : null;
-    const res = await AI.run('read', 'This is handwriting from a science notebook: either a TABLE of measured values or a GRAPH plotted by hand on axes. Read it exactly; do not correct, round or invent any value.\n'
+    const img = refs.length && !kept ? await inkBlob(refs) : null;
+    const res = kept ? { text: kept } : await AI.run('read', 'This is handwriting from a science notebook: either a TABLE of measured values or a GRAPH plotted by hand on axes. Read it exactly; do not correct, round or invent any value.\n'
       + 'If it is a table, answer:\n@@TABLE\nthen one row per line, cells separated by a tab, the first row the column headings with units in brackets as written, e.g. "t (s)\tx (m)". Numbers exactly as written (keep the decimals).\n'
       + 'If it is a graph, answer:\n@@GRAPH\n@@X name (unit) of the horizontal axis\n@@Y name (unit) of the vertical axis\n@@PTS\nthen each plotted point as "x<tab>y" in the units of the axes, read from the scale marked on the axes as accurately as possible.\n'
       + 'If a straight line was drawn through the points, also give @@LINE x1 y1 x2 y2 : two points on that drawn line, far apart, in the units of the axes.\nNo other words.' + (texts ? '\nTyped text in the selection:\n' + texts : ''),
       { images: img ? [img.blob] : [], maxTokens: 2500, cache: false, signal: B.ctl.signal, noCtx: true });
     const t = String(res.text || '');
+    if (!kept && /@@(TABLE|GRAPH)/.test(t)) inkPut(m, { data: t });
     let head = [], rows = [], kind = /@@GRAPH/.test(t) ? 'graph' : 'table', line = null, xn = 'x', yn = 'y';
     if (kind === 'graph') {
       xn = ((t.match(/@@X\s*(.+)/) || [])[1] || 'x').trim(); yn = ((t.match(/@@Y\s*(.+)/) || [])[1] || 'y').trim();
@@ -201,17 +210,33 @@ async function unitCheck() {
   if (!S.sel) return;
   const refs = S.sel.strokes.slice(), box = S.sel.box.slice();
   const texts = S.sel.items.map(findItem).filter((it) => it && (!it.type || it.type === 'text') && it.md).map((it) => it.md).join('\n').slice(0, 3000);
-  if (!refs.length && !texts) return; if (!needAI('read')) return;
+  if (!refs.length && !texts) return;
+  /* typed calculation lines are read here, offline, with no AI (task 8.15); lines the app cannot read go to the AI as
+     before, or are left out when no AI is set up */
+  if (texts && !refs.length && await tyReady()) {
+    let L = null; try { await loadLib('math'); L = tySteps(texts); } catch (e) { L = null; }
+    if (L && L.steps.length && (!L.miss || !AI.ready('read'))) { openAI(); ucShow(aiCard(''), L.steps, box, L.miss); return; }
+  }
+  /* handwriting read before (task 8.16): the lines read for this check are used again at once; another reading of
+     the same ink goes to the AI as text, with no picture */
+  const m = refs.length ? await inkGet('unit', refs) : null, kept = !texts && m && typeof m.own === 'string' && m.own ? m.own : '', rd = !kept && m && m.text ? m.text : '';
+  if (!kept && !needAIInk('read', refs.length)) return;
   openAI(); const B = busyCard('ตรวจหน่วยและเลขนัยสำคัญ');
   try {
     await loadLib('math');
-    const img = refs.length ? await inkBlob(refs) : null;
-    const res = await AI.run('read', 'This is a worked calculation in a science notebook. Read every line that computes a result, exactly as written (numbers with all their digits, units as written). Do not correct anything.\n'
+    const img = refs.length && !kept && !rd ? await inkBlob(refs) : null;
+    const res = kept ? { text: kept } : await AI.run('read', 'This is a worked calculation in a science notebook. Read every line that computes a result, exactly as written (numbers with all their digits, units as written). Do not correct anything.\n'
       + 'For each such line answer one line:\n@@STEP <the expression with its units in math.js syntax, each given quantity with its unit, e.g. (2.0 kg) * (9.8 m/s^2)> | <the result the writer wrote, number and unit, e.g. 19.6 N> | <the line as written, short>\n'
-      + 'Units in math.js names: m, cm, mm, km, s, min, h, kg, g, N, J, W, Pa, kPa, V, A, ohm, C, K, degC, mol, L, mL, Hz, rad, deg. Powers with ^. If a value has no unit, write it bare. No other words.' + (texts ? '\nTyped text in the selection:\n' + texts : ''),
+      + 'Units in math.js names: m, cm, mm, km, s, min, h, kg, g, N, J, W, Pa, kPa, V, A, ohm, C, K, degC, mol, L, mL, Hz, rad, deg. Powers with ^. If a value has no unit, write it bare. No other words.' + (texts ? '\nTyped text in the selection:\n' + texts : '') + (rd ? '\nThe handwriting in the selection, as read before:\n' + rd.slice(0, 3000) : ''),
       { images: img ? [img.blob] : [], maxTokens: 1500, cache: false, signal: B.ctl.signal, noCtx: true });
+    if (!kept && !texts && /@@STEP/.test(String(res.text || ''))) inkPut(m, { unit: String(res.text) });
     const steps = String(res.text || '').split('\n').filter((l) => /^@@STEP/.test(l.trim())).map((l) => l.trim().replace(/^@@STEP\s*/, '').split('|').map((x) => x.trim()));
     if (!steps.length) throw { msg: 'ไม่พบบรรทัดคำนวณที่อ่านได้ ลองวงเฉพาะบรรทัดคำนวณ' };
+    ucShow(B.d, steps, box, 0);
+  } catch (e) { B.d.innerHTML = '<span class="k">ตรวจหน่วยและเลขนัยสำคัญ</span><div class="note err">' + esc(e && e.msg ? e.msg : aiErr(e)) + '</div>'; }
+}
+/* the check itself: units, values and significant figures of each step, worked out here */
+function ucShow(d, steps, box, miss) {
     const M = window.math, out = [];
     for (const [expr, wrote, line] of steps.slice(0, 12)) {
       const r = { line: line || expr, expr, wrote, ok: true, msg: [] };
@@ -238,11 +263,11 @@ async function unitCheck() {
       out.push(r);
     }
     const okAll = out.every((r) => r.ok && !r.msg.length);
-    B.d.innerHTML = '<span class="k">ตรวจหน่วยและเลขนัยสำคัญ</span>' + (okAll ? '<div class="note">ทุกบรรทัดหน่วยสอดคล้อง ค่าถูก และเลขนัยสำคัญเหมาะสม</div>' : '')
+    d.innerHTML = '<span class="k">ตรวจหน่วยและเลขนัยสำคัญ</span>' + (okAll ? '<div class="note">ทุกบรรทัดหน่วยสอดคล้อง ค่าถูก และเลขนัยสำคัญเหมาะสม</div>' : '')
       + '<div class="dsres">' + out.map((r, i) => '<span><i>' + (i + 1) + ')</i> ' + esc(r.line) + ' <b>' + (r.ok && !r.msg.length ? 'ถูกต้อง' : esc(r.msg.join('; ') || 'ถูกต้อง')) + '</b></span>').join('') + '</div>'
       + '<div class="note small">เลขนัยสำคัญตรวจตามกฎการคูณและหาร นับเฉพาะค่าที่วัดซึ่งมีหน่วย ตัวเลขที่ไม่มีหน่วย เช่น 1/2 หรือ 2 นับเป็นค่าที่แน่นอน ส่วนการบวกลบให้ดูตำแหน่งทศนิยมเอง</div>'
+      + (miss ? '<div class="note small">มี ' + miss + ' บรรทัดที่แอปอ่านเป็นนิพจน์ไม่ได้ จึงไม่ได้ตรวจ ตั้งค่า AI เพื่อให้ช่วยอ่านบรรทัดเหล่านั้น</div>' : '')
       + '<div class="row"><button class="btn" data-a="put">วางผลตรวจบนหน้า</button></div>';
-    B.d.querySelector('[data-a="put"]').onclick = () => { const md = '**ตรวจหน่วยและเลขนัยสำคัญ**\n\n' + out.map((r, i) => (i + 1) + ') ' + r.line + ' : ' + (r.ok && !r.msg.length ? 'ถูกต้อง' : r.msg.join('; '))).join('\n\n'); proofPut(md, box, out.length * 2 + 2); toast('วางผลตรวจแล้ว', 1400); };
-  } catch (e) { B.d.innerHTML = '<span class="k">ตรวจหน่วยและเลขนัยสำคัญ</span><div class="note err">' + esc(e && e.msg ? e.msg : aiErr(e)) + '</div>'; }
+    d.querySelector('[data-a="put"]').onclick = () => { const md = '**ตรวจหน่วยและเลขนัยสำคัญ**\n\n' + out.map((r, i) => (i + 1) + ') ' + r.line + ' : ' + (r.ok && !r.msg.length ? 'ถูกต้อง' : r.msg.join('; '))).join('\n\n'); proofPut(md, box, out.length * 2 + 2); toast('วางผลตรวจแล้ว', 1400); };
 }
 
