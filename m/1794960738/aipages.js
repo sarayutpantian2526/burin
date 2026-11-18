@@ -76,12 +76,14 @@ async function apStrokes(pid) {
 }
 /* the typed text of a page goes to the AI as text, never by picture */
 function apTyped(pg) { return ((pg && pg.items) || []).filter((it) => it && !it.teacher && (!it.type || it.type === 'text') && it.md).map((it) => it.md).join('\n'); }
+/* one line of ink, as it counts for a key: a line added, moved or rubbed out gives another key */
+function apSig(x) { const p = x.p || [], n = p.length; return (x.id || '') + ',' + n + ',' + p[0] + ',' + p[1] + ',' + p[n - 2] + ',' + p[n - 1] + ',' + (x.c || '') + ';'; }
 /* a key for what a picture of the page holds: its lines and its page pictures (an imported PDF). The same page gives
    the same key on any later day; a line added, moved or rubbed out gives another */
 async function apInfo(pid) {
   const pg = apDoc(pid), st = await apStrokes(pid), bgs = ((pg && pg.items) || []).filter(isBgItem);
   let s = '';
-  for (const x of st) { const p = x.p || [], n = p.length; s += (x.id || '') + ',' + n + ',' + p[0] + ',' + p[1] + ',' + p[n - 2] + ',' + p[n - 1] + ',' + (x.c || '') + ';'; }
+  for (const x of st) s += apSig(x);
   for (const it of bgs) s += '#' + it.asset + ',' + Math.round(it.x || 0) + ',' + Math.round(it.y || 0) + ',' + Math.round(it.w || 0);
   return { pid, pg, n: st.length, bg: bgs.length, h: st.length || bgs.length ? apHash(s) : '', typed: apTyped(pg) };
 }
@@ -342,4 +344,75 @@ function apRanges(ns) {
 }
 /* for the search (later) and the tests: the kept reading of a page, when it is still what the page holds */
 async function apReading(pid) { const m = await apMem(), f = await apInfo(pid), r = m.get('p' + pid); return f.h && r && r.h === f.h ? r.t : ''; }
+
+/* ---------- handwriting read once, used by every task (task 8.16, switched off with "inkcache" in flags.json, or with
+   "aipages"). What the AI read from some lines of ink picked on a page is kept with the readings of the pages, keyed
+   by those lines as they are now (in any order): the same lines picked again for any work (turn into type, an
+   equation, solve, balance, a graph, check the units, questions) are not sent as a picture again. A line added, moved
+   or rubbed out gives another key, so a changed piece of writing is read again. One record per piece of ink holds
+   each kind of reading made from it:
+     text   what is written, as plain text with the maths in $...$ ('' when the AI saw a drawing, not writing)
+     panel  the reading of the turn-into-type card { text, latex, confidence, note }
+     eq     the LaTeX of the equations, one a line ('' for a drawing)
+     solve  the LaTeX given to the solver, chem  the chemical equations, unit  the lines of a worked calculation,
+     data   the table or the points of a graph as the AI wrote them
+   The same work asked again on the same ink in one session is read afresh (asking again is how a wrong reading is
+   put right), and that new reading is kept instead. Kept on this device only, like the readings of the pages ---------- */
+const IK = { done: new Set() };
+/* the key of the lines picked (refs on the page open now); null when none is found */
+function ikKey(refs) {
+  const st = (refs || []).map(findStroke).filter((x) => x && x.k !== 'h' && Array.isArray(x.p));
+  if (!st.length) return null;
+  return { h: apHash(st.map(apSig).sort().join('')), ids: st.map((x) => x.id), pid: S.pid };
+}
+/* what was read from these lines before: own (this kind of work), text and eq (readings other work can start from) */
+async function ikGet(kind, refs) {
+  const key = ikKey(refs); if (!key) return null;
+  const again = IK.done.has(kind + '|' + key.h); IK.done.add(kind + '|' + key.h);
+  const m = await apMem(), r = m.get('i' + key.h), rr = (r && r.r) || {};
+  if (again) return { key, again: true };
+  return { key, own: rr[kind], text: typeof rr.text === 'string' ? rr.text : (rr.panel && rr.panel.text) || undefined, eq: rr.eq };
+}
+/* keep what the AI read (several kinds at once, so one record is written once) */
+async function ikPut(key, vals) {
+  if (!key || !vals) return;
+  const m = await apMem(), old = m.get('i' + key.h), r = Object.assign({}, old && old.r);
+  for (const k in vals) if (vals[k] !== undefined) r[k] = vals[k];
+  await apPut('i' + key.h, { h: key.h, at: now(), pid: key.pid, ids: key.ids.slice(0, 800), r });
+}
+/* the reading of a whole page (task 8.10) when it is still what the page holds, '' otherwise */
+async function ikPage(pid) { AP.lk = null; return apReading(pid); }
+/* a page read by other work (the question maker, the slides): kept like a page read by the AI pages, when the
+   picture sent was the whole page as the AI pages would send it (with its page pictures) */
+async function ikPageKeep(pid, t, withBg) {
+  AP.lk = null; const f = await apInfo(pid);
+  if (!f.h || (f.bg && !withBg) || !String(t || '').trim()) return;
+  await apPut('p' + pid, { h: f.h, t: String(t).trim().slice(0, AP_PAGE), at: now() });
+}
+/* for the search: the pages that have a reading of any kind (cheap: from the readings in memory) */
+async function ikIndex() {
+  const m = await apMem(), ix = new Map(); AP.lk = null;
+  for (const [k, v] of m) {
+    let pid = '';
+    if (k[0] === 'p') pid = k.slice(1); else if (k[0] === 'i' && v && v.pid) pid = v.pid; else continue;
+    const a = ix.get(pid); if (a) a.push(k); else ix.set(pid, [k]);
+  }
+  return ix;
+}
+/* the words of the readings of a page that still match its ink (a reading of lines since changed or turned into
+   type is left out) */
+async function ikTexts(pid, keys) {
+  const m = await apMem(), out = [];
+  let st = null;
+  for (const k of keys || []) {
+    const v = m.get(k); if (!v) continue;
+    if (k[0] === 'p') { const t = await apReading(pid); if (t) out.push(t); continue; }
+    if (!st) { st = new Map(); for (const x of await apStrokes(pid)) if (x && x.id) st.set(x.id, x); }
+    const xs = (v.ids || []).map((id) => st.get(id));
+    if (!xs.length || xs.some((x) => !x) || apHash(xs.map(apSig).sort().join('')) !== v.h) continue;
+    const r = v.r || {}, t = r.text || (r.panel && r.panel.text) || (r.eq ? r.eq.split('\n').map((l) => '$' + l + '$').join('\n') : '');
+    if (t) out.push(t);
+  }
+  return out;
+}
 

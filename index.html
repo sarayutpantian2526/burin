@@ -3093,6 +3093,46 @@ async function cloudClient() {
   CLOUD.client = window.supabase.createClient(CLOUD.cfg.url.replace(/\/+$/, ''), CLOUD.cfg.key, { auth: { persistSession: true, autoRefreshToken: true, storageKey: skey }, realtime: { params: { eventsPerSecond: 40 } } });
   return CLOUD.client;
 }
+/* ----- which version of setup.sql the cloud project runs. Version 2 keeps shared lectures and room keys behind
+   functions (share_get, room_key, room_claim) and lets only the account itself on its room- and docs- channels, which
+   the app then joins as private channels. A project without burin_version() is version 1: everything as before.
+   The answer is remembered per project, so the devices of one account pick the same kind of channel even when the
+   question cannot be asked; a question that gets no answer (offline, slow) is asked again next time. ----- */
+const DBV = { v: 0, q: null, ch: 0 };
+const dbvKey = () => 'tp-dbv-' + String(CLOUD.cfg.url || '').replace(/\/+$/, '');
+const dbvGone = (r) => !!(r && r.error && (r.error.code === 'PGRST202' || r.status === 404 || /could not find the function/i.test(r.error.message || '')));
+function dbVersion(sb, wait) {
+  if (DBV.v) { if (!DBV.ch) DBV.ch = DBV.v; return Promise.resolve(DBV.v); }
+  if (!DBV.q) DBV.q = (async () => {
+    let v = 0;
+    try {
+      const r = await Promise.race([Promise.resolve(sb.rpc('burin_version')), new Promise((res) => setTimeout(() => res(null), 8000))]);
+      if (r && !r.error && isFinite(+r.data) && +r.data >= 1) v = Math.floor(+r.data);
+      else if (dbvGone(r)) v = 1;
+    } catch (e) { v = 0; }
+    if (v) { DBV.v = v; store_ls.set(dbvKey(), String(v)); } else DBV.q = null;
+    return v;
+  })();
+  /* the answer, or after `wait` ms the version remembered for this project (1 when none): the question goes on by itself */
+  return Promise.race([DBV.q, new Promise((r) => setTimeout(() => r(0), wait || 5000))]).then((v) => {
+    const use = v || +store_ls.get(dbvKey()) || 1;
+    if (!DBV.ch) DBV.ch = use;
+    return use;
+  });
+}
+/* the channels of this account (room-, docs-) are private on version 2; one choice for the whole session */
+const dbvPrivate = () => (DBV.ch || DBV.v || +store_ls.get(dbvKey()) || 1) >= 2;
+async function dbvAuth(sb) { try { if (sb.realtime && sb.realtime.setAuth) await sb.realtime.setAuth(); } catch (e) { /* the client sets it on connect */ } }
+/* a shared lecture: share_get on version 2, the table on version 1; when the first way finds nothing the other is
+   tried once, so a remembered version that is out of date never hides a lecture */
+async function shareRead(sb, id) {
+  const viaFn = async () => { const r = await sb.rpc('share_get', { p_id: id }); return { data: (Array.isArray(r.data) ? r.data[0] : r.data) || null, error: r.error && !dbvGone(r) ? r.error : null }; };
+  const viaTable = async () => { const r = await sb.from('shares').select('title,data').eq('id', id).maybeSingle(); return { data: r.data || null, error: r.error || null }; };
+  const two = (await dbVersion(sb)) >= 2, a = await (two ? viaFn() : viaTable()).catch((e) => ({ data: null, error: e }));
+  if (a.data) return a;
+  const b = await (two ? viaTable() : viaFn()).catch((e) => ({ data: null, error: e }));
+  return b.data ? b : a;
+}
 /* ----- moving to a new cloud project (another region): the old project stays untouched and is only read.
    config.js names the new project, and the old one under "previous". A person signs in once with their usual
    email and password: when the new project does not know them yet, the password is checked against the old project,
@@ -3236,7 +3276,11 @@ async function makeCloudStore(sb, user) {
     const { data: r, error } = await sb.from('docs').select('path,data,updated_at').eq('owner', me).eq('path', k).maybeSingle();
     if (!error && r && !pending[k]) { cacheSet(k, r.data); notify(); }
   }
-  sb.channel('docs-' + me)
+  /* version 2 of the database lets only this account on its docs- channel, as a private channel */
+  await dbVersion(sb, store_ls.get(dbvKey()) ? 1500 : 5000);
+  const priv = dbvPrivate();
+  if (priv) await dbvAuth(sb);
+  sb.channel('docs-' + me, priv ? { config: { private: true } } : undefined)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'docs', filter: 'owner=eq.' + me }, (p) => {
       if (p.eventType === 'DELETE') {
         const k = p.old && p.old.path; if (!k || pending[k]) return;
@@ -3324,7 +3368,7 @@ async function getAssetBlob(id) {
   return null;
 }
 function makeCloudRoom(sb, user) {
-  const ch = sb.channel('room-' + user.id, { config: { broadcast: { self: false }, presence: { key: TAB } } });
+  const ch = sb.channel('room-' + user.id, { config: Object.assign({ broadcast: { self: false }, presence: { key: TAB } }, dbvPrivate() ? { private: true } : {}) });
   const topics = {}, peerCbs = [];
   let pres = null, ready = false, prev = {};
   for (const t of ['view', 'ink', 'laser', 'page', 'aud']) ch.on('broadcast', { event: t }, (m) => (topics[t] || []).forEach((f) => f({ data: m.payload, sameTab: false })));
@@ -17988,10 +18032,12 @@ async function rkCheck(key, ev, p) {
 async function rkTeacher(code) {
   if (!rkOn() || CLOUD.state !== 'on') return false;
   if (RK.code === code && RK.priv) return true;
-  const sb = CLOUD.client, slot = 'settings/roomkey-' + code;
+  const sb = CLOUD.client, slot = 'settings/roomkey-' + code, two = (await dbVersion(sb)) >= 2;
   const { data: row, error: e0 } = await sb.from('shares').select('owner,data').eq('id', 'room-' + code).maybeSingle();
   if (e0) return false;
   if (row && row.owner !== CLOUD.user.id) return 'taken';
+  /* version 2 shows only this account's own rows: a room someone else has shows up through room_key */
+  if (two && !row) { const r = await sb.rpc('room_key', { p_code: code }); if (r.error) return false; if (r.data) return 'taken'; }
   let k = await Promise.resolve(S.store.get(slot)).catch(() => null), priv = null;
   if (k && k.d && rkPubOk(k)) { try { priv = await crypto.subtle.importKey('jwk', { kty: 'EC', crv: 'P-256', x: k.x, y: k.y, d: k.d, ext: true }, RK_ALG, false, ['sign']); } catch (e) { priv = null; } }
   if (!priv) {
@@ -18000,8 +18046,15 @@ async function rkTeacher(code) {
     await Promise.resolve(S.store.set(slot, k)).catch(() => {});
   }
   if (!row || !row.data || row.data.x !== k.x || row.data.y !== k.y) {
-    const { error } = await sb.from('shares').upsert({ id: 'room-' + code, owner: CLOUD.user.id, title: 'room ' + code, data: { kty: 'EC', crv: 'P-256', x: k.x, y: k.y } });
-    if (error) return 'taken';
+    if (two) {
+      const { data: got, error } = await sb.rpc('room_claim', { p_code: code, p_pub: { kty: 'EC', crv: 'P-256', x: k.x, y: k.y } });
+      if (error) return false;
+      if (got === 'taken') return 'taken';
+      if (got !== 'ok') return false;
+    } else {
+      const { error } = await sb.from('shares').upsert({ id: 'room-' + code, owner: CLOUD.user.id, title: 'room ' + code, data: { kty: 'EC', crv: 'P-256', x: k.x, y: k.y } });
+      if (error) return 'taken';
+    }
   }
   RK.priv = priv; RK.code = code;
   RK.spub = (await Promise.resolve(S.store.get('settings/roompubs-' + code)).catch(() => null)) || { sid: {}, stu: {} };
@@ -18027,8 +18080,12 @@ async function rkLoadTeacher(code, force) {
   RK.tload = now();
   try {
     const sb = await cloudClient();
-    const { data } = await sb.from('shares').select('data').eq('id', 'room-' + code).maybeSingle();
-    const k = data && data.data;
+    /* version 2: room_key gives only the public half; version 1: the table as before. the other way once when the first finds nothing */
+    const viaFn = async () => { const r = await sb.rpc('room_key', { p_code: code }); return r && !r.error ? r.data : null; };
+    const viaTable = async () => { const r = await sb.from('shares').select('data').eq('id', 'room-' + code).maybeSingle(); return r && r.data ? r.data.data : null; };
+    const two = (await dbVersion(sb)) >= 2;
+    let k = await (two ? viaFn() : viaTable()).catch(() => null);
+    if (!rkPubOk(k)) k = await (two ? viaTable() : viaFn()).catch(() => null);
     if (rkPubOk(k) && k.x !== RK.tx) { RK.tpub = await rkImportPub(k); RK.tx = k.x; }
   } catch (e) { /* keep what we have */ }
   return RK.tpub;
@@ -18854,7 +18911,7 @@ function renderStudentQuiz() {
 async function openLecture(id) {
   let sb; try { sb = await cloudClient(); } catch (e) { toast('เชื่อมต่อไม่ได้', 3000); return; }
   $('#loadMsg').textContent = 'กำลังรับเลคเชอร์';
-  const { data, error } = await sb.from('shares').select('title,data').eq('id', id).maybeSingle();
+  const { data, error } = await shareRead(sb, id);
   if (error || !data) { toast('ไม่พบเลคเชอร์นี้ หรือผู้สอนยังไม่ได้แชร์', 4000); return; }
   const D = data.data || {}, nid = await studentNotebook('lecture-' + id, 'เลคเชอร์ ' + (D.title || data.title || ''), D.level);
   let i = 0;
@@ -21662,7 +21719,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1794932270';
+const BUILD = '1794960738';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
@@ -21688,7 +21745,7 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden) chec
 setInterval(checkUpdate, 30 * 60 * 1000); setTimeout(checkUpdate, 8000);
 
 /* ---------- version and what is new ---------- */
-const VERSION = '20261117-4a96689f';
+const VERSION = '20261118-5a6e94df';
 const NEWS = [{"id": 13, "date": "2026-11-17", "items": ["ข้อความที่พิมพ์ไม่ต้องรอ AI สมการที่พิมพ์ เช่น y = 2x + 1 สร้างกราฟได้ทันที ตารางที่พิมพ์เป็นข้อมูลได้ทันที และตรวจหน่วยของบรรทัดคำนวณที่พิมพ์ได้ทันที ใช้ได้แม้ไม่มีอินเทอร์เน็ต", "วาดใหม่ จัดเส้นตรง สี่เหลี่ยม วงกลม ในภาพร่างให้เรียบร้อยทันทีโดยไม่ใช้ AI ตัวอักษรยังเป็นลายมือเดิม ถ้าต้องการให้แก้ตามเนื้อหา กด ให้ AI วาดใหม่ตามเนื้อหา", "หลังทำแบบฝึก บทที่ยังอ่อนบอกชนิดข้อที่พลาด และความเข้าใจที่ควรแก้จากตัวเลือกที่ตอบ"]}, {"id": 12, "date": "2026-11-17", "items": ["ลายมือที่ AI อ่านแล้วไม่ต้องอ่านซ้ำ แปลงเป็นตัวพิมพ์ แก้สมการ สร้างรูป ตรวจหน่วย และสร้างโจทย์ จากลายมือเดิมใช้คำที่อ่านไว้ เร็วขึ้นและไม่ส่งภาพซ้ำ ถ้าอ่านผิด สั่งงานเดิมอีกครั้ง AI จะอ่านใหม่", "ค้นหาในทุกสมุดพบลายมือที่ AI เคยอ่านแล้วด้วย"]}, {"id": 11, "date": "2026-11-17", "items": ["ทดลองวางวัตถุสามมิติบนโต๊ะจริง (AR) ได้ที่ ปุ่ม สมุดทั้งหมด แท็บ ภาษา การเขียน และจอ หัวข้อ ลองดูในห้องจริง ใช้ได้บน iPad และ iPhone แอปสร้างไฟล์ในเครื่องเอง ไม่ใช้ AI"]}, {"id": 10, "date": "2026-11-17", "items": ["คอมที่ต่อจอที่สอง เลือก จอที่สอง ผู้ชมไม่เห็นแถบ ในเมนู นำเสนอ ครูใช้ได้ทุกคำสั่ง จอใหญ่เห็นแต่หน้ากระดาษ ไม่ต้องใช้อินเทอร์เน็ต", "ระหว่างเปิดจอผู้ชม ครูมีแถบเล็ก จอผู้ชม เลือกให้จอใหญ่เห็นทั้งหน้า พักจอ หรือปิด (ปุ่ม B บนคีย์บอร์ดหรือรีโมตก็พักจอได้)", "ต่อ iPad ออกทีวีด้วยสาย ใช้ ต่อสาย จอสะอาด ในเมนู นำเสนอ (ปุ่ม สอนและนำเสนอ)", "เริ่มแล้วจอเห็นแต่หน้ากระดาษ ไม่มีแถบหรือปุ่มใดขึ้นเลย ทั้งบน iPad และทีวี", "ก่อนเริ่ม เลือกปากกาให้แต่ละขอบจอ (สี ไฮไลต์ ยางลบ หรือเลเซอร์) ระหว่างนำเสนอ แตะขอบจอด้วยนิ้วเพื่อหยิบปากกาของขอบนั้น", "เลือกได้ว่าให้เห็นทั้งหน้า และเริ่มด้วยม่านบังครึ่งล่างที่ใช้นิ้วลากลงเพื่อเปิดทีละบรรทัด", "แตะค้างสามนิ้ว 1 วินาที เพื่อออก ใช้รีโมตนำเสนอเปลี่ยนหน้า ปุ่ม B พักจอ ปุ่ม Esc ออก", "เมนู นำเสนอ เหลือสามข้อ จอแสดงผลแบบนักเรียนบนอีกเครื่องและบนจอที่สองรวมเป็นข้อเดียว"]}, {"id": 9, "date": "2026-11-17", "items": ["แถบบนเหลือปุ่มน้อยลง ปุ่มที่ใช้นาน ๆ ครั้ง รวมอยู่ในสองกลุ่ม", "ปุ่ม ต่อยอดจากหน้า มี แปลงเป็นตัวพิมพ์ สร้างโจทย์ และ ชุดโจทย์", "ปุ่ม สอนและนำเสนอ มี ห้องสด นำเสนอ และ ห้องเรียนและโจทย์ (ฝั่งนักเรียนชื่อ ห้องเรียน มี สแกน QR และ เข้าห้องเรียน ด้วย)", "เลือกด้วยบ่วงแล้ว แถบเหนือส่วนที่เลือก แสดงคำสั่งที่ใช้บ่อยก่อน คำสั่งอื่นอยู่ที่ปุ่ม เพิ่มเติม", "หาคำสั่งไม่เจอ พิมพ์ชื่อในช่องค้นหาที่เมนู เช่น PDF หรือ สามมิติ แล้วแตะคำสั่งที่ขึ้นมา"]}, {"id": 8, "date": "2026-11-16", "items": ["สร้างโจทย์ด้วย AI จากกี่หน้าก็ได้ ทั้งเล่ม ตามบท หรือเป็นช่วงหน้า", "อยู่ที่ปุ่ม สร้างโจทย์ด้วย AI หัวข้อ หน้าที่ใช้สร้างโจทย์ แตะ ทั้งเล่ม หรือแตะชื่อบท หรือใส่ช่วงหน้า แล้วกด เลือกช่วงนี้", "หน้าที่ AI อ่านแล้ว เก็บไว้ในเครื่องนี้ ครั้งต่อไป ไม่ต้องอ่านซ้ำ จึงเร็วขึ้น และประหยัดค่า AI"]}, {"id": 7, "date": "2026-11-16", "items": ["ลบผิด หรือเขียนทับผิด ดึงหน้า เมื่อไม่กี่นาทีก่อน หรือเมื่อวาน กลับมาได้", "อยู่ที่ ลิ้นชักหน้า แตะแถบ หน้านี้ ด้านล่าง แล้วกดปุ่ม รุ่นก่อนของหน้านี้ เลือกรุ่น ดูภาพหน้าก่อน แล้วกด คืนหน้าเป็นรุ่นนี้", "หน้าก่อนคืน ถูกเก็บไว้ด้วย จึงย้อนกลับได้ แอปเก็บรุ่นก่อน ไว้ในเครื่องนี้ 30 วัน"]}, {"id": 6, "date": "2026-11-16", "items": ["บัญชีคลาวด์ ส่งออกข้อมูลทั้งบัญชี เป็นไฟล์เดียวได้ ทั้งสมุด หน้า หมึก รูป วิดีโอ เลคเชอร์ที่แชร์ การบ้าน และงานที่นักเรียนส่ง", "อยู่ที่ เมนู แท็บตั้งค่า หัวข้อ ข้อมูลทั้งบัญชี กดปุ่ม ส่งออกทั้งบัญชี", "นำเข้าไฟล์นี้ ในบัญชีอื่น หรือเครื่องใหม่ได้ การนำเข้า เพิ่มเฉพาะส่วนที่ยังไม่มี ไม่ทับ และไม่ลบ ของที่มีอยู่"]}, {"id": 5, "date": "2026-11-15", "items": ["ลบสมุด หรือลบหน้าแล้ว ยังกู้คืนได้ ภายใน 30 วัน สิ่งที่ลบ ไปอยู่ในถังขยะ ก่อนถูกลบจริง", "เปิดถังขยะ ได้ที่ เมนู สมุดทั้งหมด ปุ่มถังขยะ ใต้รายการสมุด กดกู้คืน แล้วสมุดกลับไป ที่เดิม หน้ากลับไป ตำแหน่งเดิม ในสมุด", "ลบถาวร ทีละรายการ หรือลบทั้งหมด ในถังขยะได้ ครบ 30 วัน แล้วแอปลบให้เอง"]}, {"id": 4, "date": "2026-11-15", "items": ["สำรองสมุด ทั้งหมดเป็นไฟล์เดียว ได้ที่ เมนู แท็บตั้งค่า หัวข้อ สมุดในเครื่องนี้ ไฟล์เก็บสมุดทุกเล่ม รูป และวิดีโอ ในเครื่องนี้", "นำสมุดคืน จากไฟล์สำรอง ได้ที่เดียวกัน การนำคืน เพิ่มเฉพาะส่วน ที่ยังไม่มีในเครื่อง ไม่ทับ และไม่ลบ ของที่มีอยู่", "แอปขอให้เบราว์เซอร์ เก็บสมุดในเครื่อง ไว้ถาวร และเตือนให้สำรองสมุด ที่หน้ารายการสมุด เมื่อสมุดเปลี่ยนไป ตั้งแต่สำรองครั้งล่าสุด", "บน iPad และ iPhone ใน Safari แอปชวนให้ เพิ่มลงหน้าจอโฮม เพื่อไม่ให้ Safari ลบสมุด ที่ไม่ได้เปิดนาน ให้สำรองสมุดก่อน แล้วนำคืน ในแอปบนหน้าจอโฮม"]}, {"id": 3, "date": "2026-11-14", "items": ["สารบัญ ของสมุด แตะปุ่มหน้าในสมุด ที่มุมซ้ายบน แล้วเลือก สารบัญ จะเห็นหัวเรื่อง ของทุกหน้า แตะหัวเรื่อง เพื่อไปที่หน้านั้น ได้ทันที", "หัวเรื่อง มาจากข้อความที่พิมพ์ไว้ บนสุดของหน้า หรือบรรทัด ที่ขึ้นต้นด้วย ## ลายมือที่ยังไม่ได้แปลง เป็นตัวพิมพ์ ไม่ขึ้นในสารบัญ", "ที่คั่นหน้า แตะ ปักที่คั่นหน้านี้ ในหน้าสารบัญ แล้วตั้งชื่อเองได้ หน้าที่มีที่คั่น จะมีริบบิ้นสีแดง ที่ภาพหน้า", "ที่คั่นหน้า อยู่กับสมุด ของเราเท่านั้น ผู้เรียนในห้องสด ไม่เห็นที่คั่นหน้า ของครู"]}, {"id": 2, "date": "2026-11-14", "items": ["ค้นหาข้อความ ในทุกสมุดได้แล้ว พิมพ์คำในช่องค้นหาที่เมนู แอปจะค้นทั้งชื่อสมุด ข้อความที่พิมพ์ ลายมือที่แปลงเป็นตัวพิมพ์แล้ว หัวเรื่องของหน้า และข้อความในกล่องต่าง ๆ", "แตะผลการค้นหา เพื่อไปที่หน้านั้น กล่องที่มีคำนั้นจะเรืองแสงสักครู่ ให้เห็นตำแหน่ง", "พิมพ์คำไทย ติดกันหรือเว้นวรรค ก็ค้นเจอเหมือนกัน การค้นหาอ่านสมุดอย่างเดียว ไม่แก้ไขอะไรในสมุด"]}, {"id": 1, "date": "2026-11-13", "items": ["ดูเวอร์ชันของแอปได้ที่เมนู แท็บตั้งค่า หัวข้อเกี่ยวกับแอป", "เมื่อมีเวอร์ชันใหม่ระหว่างใช้งาน แอปจะไม่รีโหลดเอง รวมถึงจอผู้ชม เวอร์ชันใหม่จะมีผล เมื่อเปิดแอปครั้งถัดไป หรือเมื่อแตะแถบ มีเวอร์ชันใหม่", "หน้าที่เปิดค้างไว้ ใช้ส่วนต่าง ๆ ของแอป จากเวอร์ชันเดียวกับตัวเองเสมอ ไม่ปนกับเวอร์ชันใหม่", "เมื่อแอปทำงานผิดพลาด แอปจะส่งรายงาน ให้ผู้พัฒนา โดยส่งเฉพาะ ข้อความแจ้งข้อผิดพลาด ตำแหน่งในโค้ด รุ่นเครื่อง และเวอร์ชันของแอป ไม่ส่งเนื้อหาสมุด ชื่อ หรืออีเมล"]}];
 const TH_MON = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
 function thDay(iso) { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || ''); return m ? (+m[3]) + ' ' + TH_MON[+m[2] - 1] + ' ' + (+m[1] + 543) : ''; }
@@ -23050,6 +23107,7 @@ async function boot() {
       const user = data && data.session && data.session.user;
       if (user) {
         CLOUD.user = user; CLOUD.state = 'on'; acctRemember(user.email);
+        dbVersion(sb); /* asked now, so the answer is there by the time the notebooks load (makeCloudStore) */
         if (migOn() && store_ls.get('tp-migrated-' + user.id) !== '1') {
           const say = (t) => { $('#loadMsg').textContent = t; };
           try { const r = await migRun(sb, user, say); if (r && !r.skipped && !r.needLogin && !r.otherAccount) setTimeout(() => toast('ย้ายข้อมูลจากเซิร์ฟเวอร์เดิมครบแล้ว สมุด ' + r.docs + ' รายการ ไฟล์ ' + r.files + ' ไฟล์' + (r.skip ? ' (ข้าม ' + r.skip + ' รายการที่ย้ายไม่ได้)' : ''), 6000), 1500); }
