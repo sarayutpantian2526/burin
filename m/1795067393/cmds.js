@@ -8,7 +8,7 @@
 const CMD_WORDS = {
   bExport: 'pdf ไฟล์ พิมพ์ แบ่งปัน ส่ง export print share',
   bLive: 'สด ถ่ายทอด ห้องสด live class',
-  bViewer: 'จอใหญ่ โปรเจกเตอร์ ทีวี จอที่สอง present projector',
+  bViewer: 'จอใหญ่ โปรเจกเตอร์ ทีวี จอที่สอง จอสะอาด ต่อสาย สายออกจอ hdmi present projector clean',
   bExam: 'คะแนน การบ้าน แบบฝึก สอบ ข้อสอบ คลัง grades homework exam',
   bConvert: 'ลายมือ ตัวอักษร ocr handwriting',
   bAI: 'ai โจทย์ แบบฝึกหัด quiz',
