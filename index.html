@@ -21902,7 +21902,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1795067393';
+const BUILD = '1795097160';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
@@ -21928,7 +21928,7 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden) chec
 setInterval(checkUpdate, 30 * 60 * 1000); setTimeout(checkUpdate, 8000);
 
 /* ---------- version and what is new ---------- */
-const VERSION = '20261119-23800424';
+const VERSION = '20261119-cfdbc60c';
 const NEWS = [{"id": 18, "date": "2026-11-19", "items": ["เขียนตอนขยายหน้าจอ เส้นไม่หดตรงมุมเมื่อยกปากกาแล้ว ตัวอักษรอยู่ตรงที่เขียนเหมือนตอนกำลังเขียน", "ขยายหน้าจอแล้วพักปากกาครู่หนึ่งขณะเขียน ตัวอักษรไม่ถูกเปลี่ยนเป็นรูปทรงอีก วาดค้างไว้ให้เป็นรูปทรงยังใช้ได้กับรูปที่ใหญ่กว่าลายมือบนหน้า", "ห้องเรียนสดที่ครูเปิด PDF แอปของนักเรียนไม่ปิดเองเพราะหน่วยความจำเต็มอีก"]}, {"id": 17, "date": "2026-11-18", "items": ["มอบหมายการบ้าน กดปุ่มแล้วขึ้น กำลังมอบหมาย และ มอบหมายแล้ว กดซ้ำไม่ได้ จึงไม่มีการบ้านซ้ำ ลิงก์กับ QR เลื่อนขึ้นมาให้เห็นทันที"]}, {"id": 16, "date": "2026-11-18", "items": ["ตั้งค่าคลาวด์ใหม่ ที่เมนู แท็บ บัญชี ซิงก์ และ AI ใช้คลาวด์ BURIN ได้ทันทีโดยไม่ต้องตั้งค่า", "ใช้ Supabase ของตัวเองได้ในหัวข้อ ขั้นสูง และสลับกลับมาคลาวด์ BURIN ได้ทุกเมื่อ สมุดทั้งสองที่ไม่หาย"]}, {"id": 15, "date": "2026-11-18", "items": ["ลืมรหัสผ่าน ตั้งรหัสใหม่ได้จากหน้าเข้าสู่ระบบ กด ลืมรหัสผ่าน แล้วทำตามอีเมลที่ได้รับ", "สมัครบัญชีใหม่แล้วยืนยันอีเมลได้ในแอป และกดส่งอีเมลยืนยันอีกครั้งได้"]}, {"id": 14, "date": "2026-11-18", "items": ["ห้องเรียนสดที่ลืมปิดปิดเอง เมื่อกลับมาที่แอปหลังห่างไปเกิน 1 ชั่วโมง ห้องไม่เปิดต่อเองและไม่ส่งสิ่งที่เขียนให้ผู้เรียน แตะ เปิดห้องเดิมอีกครั้ง ได้รหัสเดิม", "ห้องที่ไม่มีผู้เรียนและครูไม่ได้ใช้แอปนาน 30 นาทีปิดเอง มีแถบบอกก่อน 1 นาที ครูที่กำลังสอนห้องไม่ปิด แม้ผู้เรียนล็อกจอ", "ปิดห้องแล้วผู้เรียนยังส่งการบ้านได้ถึงเวลาที่กำหนด และเห็นปุ่มไปที่งานของฉัน"]}, {"id": 13, "date": "2026-11-17", "items": ["ข้อความที่พิมพ์ไม่ต้องรอ AI สมการที่พิมพ์ เช่น y = 2x + 1 สร้างกราฟได้ทันที ตารางที่พิมพ์เป็นข้อมูลได้ทันที และตรวจหน่วยของบรรทัดคำนวณที่พิมพ์ได้ทันที ใช้ได้แม้ไม่มีอินเทอร์เน็ต", "วาดใหม่ จัดเส้นตรง สี่เหลี่ยม วงกลม ในภาพร่างให้เรียบร้อยทันทีโดยไม่ใช้ AI ตัวอักษรยังเป็นลายมือเดิม ถ้าต้องการให้แก้ตามเนื้อหา กด ให้ AI วาดใหม่ตามเนื้อหา", "หลังทำแบบฝึก บทที่ยังอ่อนบอกชนิดข้อที่พลาด และความเข้าใจที่ควรแก้จากตัวเลือกที่ตอบ"]}, {"id": 12, "date": "2026-11-17", "items": ["ลายมือที่ AI อ่านแล้วไม่ต้องอ่านซ้ำ แปลงเป็นตัวพิมพ์ แก้สมการ สร้างรูป ตรวจหน่วย และสร้างโจทย์ จากลายมือเดิมใช้คำที่อ่านไว้ เร็วขึ้นและไม่ส่งภาพซ้ำ ถ้าอ่านผิด สั่งงานเดิมอีกครั้ง AI จะอ่านใหม่", "ค้นหาในทุกสมุดพบลายมือที่ AI เคยอ่านแล้วด้วย"]}, {"id": 11, "date": "2026-11-17", "items": ["ทดลองวางวัตถุสามมิติบนโต๊ะจริง (AR) ได้ที่ ปุ่ม สมุดทั้งหมด แท็บ ภาษา การเขียน และจอ หัวข้อ ลองดูในห้องจริง ใช้ได้บน iPad และ iPhone แอปสร้างไฟล์ในเครื่องเอง ไม่ใช้ AI"]}, {"id": 10, "date": "2026-11-17", "items": ["คอมที่ต่อจอที่สอง เลือก จอที่สอง ผู้ชมไม่เห็นแถบ ในเมนู นำเสนอ ครูใช้ได้ทุกคำสั่ง จอใหญ่เห็นแต่หน้ากระดาษ ไม่ต้องใช้อินเทอร์เน็ต", "ระหว่างเปิดจอผู้ชม ครูมีแถบเล็ก จอผู้ชม เลือกให้จอใหญ่เห็นทั้งหน้า พักจอ หรือปิด (ปุ่ม B บนคีย์บอร์ดหรือรีโมตก็พักจอได้)", "ต่อ iPad ออกทีวีด้วยสาย ใช้ ต่อสาย จอสะอาด ในเมนู นำเสนอ (ปุ่ม สอนและนำเสนอ)", "เริ่มแล้วจอเห็นแต่หน้ากระดาษ ไม่มีแถบหรือปุ่มใดขึ้นเลย ทั้งบน iPad และทีวี", "ก่อนเริ่ม เลือกปากกาให้แต่ละขอบจอ (สี ไฮไลต์ ยางลบ หรือเลเซอร์) ระหว่างนำเสนอ แตะขอบจอด้วยนิ้วเพื่อหยิบปากกาของขอบนั้น", "เลือกได้ว่าให้เห็นทั้งหน้า และเริ่มด้วยม่านบังครึ่งล่างที่ใช้นิ้วลากลงเพื่อเปิดทีละบรรทัด", "แตะค้างสามนิ้ว 1 วินาที เพื่อออก ใช้รีโมตนำเสนอเปลี่ยนหน้า ปุ่ม B พักจอ ปุ่ม Esc ออก", "เมนู นำเสนอ เหลือสามข้อ จอแสดงผลแบบนักเรียนบนอีกเครื่องและบนจอที่สองรวมเป็นข้อเดียว"]}, {"id": 9, "date": "2026-11-17", "items": ["แถบบนเหลือปุ่มน้อยลง ปุ่มที่ใช้นาน ๆ ครั้ง รวมอยู่ในสองกลุ่ม", "ปุ่ม ต่อยอดจากหน้า มี แปลงเป็นตัวพิมพ์ สร้างโจทย์ และ ชุดโจทย์", "ปุ่ม สอนและนำเสนอ มี ห้องสด นำเสนอ และ ห้องเรียนและโจทย์ (ฝั่งนักเรียนชื่อ ห้องเรียน มี สแกน QR และ เข้าห้องเรียน ด้วย)", "เลือกด้วยบ่วงแล้ว แถบเหนือส่วนที่เลือก แสดงคำสั่งที่ใช้บ่อยก่อน คำสั่งอื่นอยู่ที่ปุ่ม เพิ่มเติม", "หาคำสั่งไม่เจอ พิมพ์ชื่อในช่องค้นหาที่เมนู เช่น PDF หรือ สามมิติ แล้วแตะคำสั่งที่ขึ้นมา"]}, {"id": 8, "date": "2026-11-16", "items": ["สร้างโจทย์ด้วย AI จากกี่หน้าก็ได้ ทั้งเล่ม ตามบท หรือเป็นช่วงหน้า", "อยู่ที่ปุ่ม สร้างโจทย์ด้วย AI หัวข้อ หน้าที่ใช้สร้างโจทย์ แตะ ทั้งเล่ม หรือแตะชื่อบท หรือใส่ช่วงหน้า แล้วกด เลือกช่วงนี้", "หน้าที่ AI อ่านแล้ว เก็บไว้ในเครื่องนี้ ครั้งต่อไป ไม่ต้องอ่านซ้ำ จึงเร็วขึ้น และประหยัดค่า AI"]}, {"id": 7, "date": "2026-11-16", "items": ["ลบผิด หรือเขียนทับผิด ดึงหน้า เมื่อไม่กี่นาทีก่อน หรือเมื่อวาน กลับมาได้", "อยู่ที่ ลิ้นชักหน้า แตะแถบ หน้านี้ ด้านล่าง แล้วกดปุ่ม รุ่นก่อนของหน้านี้ เลือกรุ่น ดูภาพหน้าก่อน แล้วกด คืนหน้าเป็นรุ่นนี้", "หน้าก่อนคืน ถูกเก็บไว้ด้วย จึงย้อนกลับได้ แอปเก็บรุ่นก่อน ไว้ในเครื่องนี้ 30 วัน"]}, {"id": 6, "date": "2026-11-16", "items": ["บัญชีคลาวด์ ส่งออกข้อมูลทั้งบัญชี เป็นไฟล์เดียวได้ ทั้งสมุด หน้า หมึก รูป วิดีโอ เลคเชอร์ที่แชร์ การบ้าน และงานที่นักเรียนส่ง", "อยู่ที่ เมนู แท็บตั้งค่า หัวข้อ ข้อมูลทั้งบัญชี กดปุ่ม ส่งออกทั้งบัญชี", "นำเข้าไฟล์นี้ ในบัญชีอื่น หรือเครื่องใหม่ได้ การนำเข้า เพิ่มเฉพาะส่วนที่ยังไม่มี ไม่ทับ และไม่ลบ ของที่มีอยู่"]}, {"id": 5, "date": "2026-11-15", "items": ["ลบสมุด หรือลบหน้าแล้ว ยังกู้คืนได้ ภายใน 30 วัน สิ่งที่ลบ ไปอยู่ในถังขยะ ก่อนถูกลบจริง", "เปิดถังขยะ ได้ที่ เมนู สมุดทั้งหมด ปุ่มถังขยะ ใต้รายการสมุด กดกู้คืน แล้วสมุดกลับไป ที่เดิม หน้ากลับไป ตำแหน่งเดิม ในสมุด", "ลบถาวร ทีละรายการ หรือลบทั้งหมด ในถังขยะได้ ครบ 30 วัน แล้วแอปลบให้เอง"]}, {"id": 4, "date": "2026-11-15", "items": ["สำรองสมุด ทั้งหมดเป็นไฟล์เดียว ได้ที่ เมนู แท็บตั้งค่า หัวข้อ สมุดในเครื่องนี้ ไฟล์เก็บสมุดทุกเล่ม รูป และวิดีโอ ในเครื่องนี้", "นำสมุดคืน จากไฟล์สำรอง ได้ที่เดียวกัน การนำคืน เพิ่มเฉพาะส่วน ที่ยังไม่มีในเครื่อง ไม่ทับ และไม่ลบ ของที่มีอยู่", "แอปขอให้เบราว์เซอร์ เก็บสมุดในเครื่อง ไว้ถาวร และเตือนให้สำรองสมุด ที่หน้ารายการสมุด เมื่อสมุดเปลี่ยนไป ตั้งแต่สำรองครั้งล่าสุด", "บน iPad และ iPhone ใน Safari แอปชวนให้ เพิ่มลงหน้าจอโฮม เพื่อไม่ให้ Safari ลบสมุด ที่ไม่ได้เปิดนาน ให้สำรองสมุดก่อน แล้วนำคืน ในแอปบนหน้าจอโฮม"]}, {"id": 3, "date": "2026-11-14", "items": ["สารบัญ ของสมุด แตะปุ่มหน้าในสมุด ที่มุมซ้ายบน แล้วเลือก สารบัญ จะเห็นหัวเรื่อง ของทุกหน้า แตะหัวเรื่อง เพื่อไปที่หน้านั้น ได้ทันที", "หัวเรื่อง มาจากข้อความที่พิมพ์ไว้ บนสุดของหน้า หรือบรรทัด ที่ขึ้นต้นด้วย ## ลายมือที่ยังไม่ได้แปลง เป็นตัวพิมพ์ ไม่ขึ้นในสารบัญ", "ที่คั่นหน้า แตะ ปักที่คั่นหน้านี้ ในหน้าสารบัญ แล้วตั้งชื่อเองได้ หน้าที่มีที่คั่น จะมีริบบิ้นสีแดง ที่ภาพหน้า", "ที่คั่นหน้า อยู่กับสมุด ของเราเท่านั้น ผู้เรียนในห้องสด ไม่เห็นที่คั่นหน้า ของครู"]}, {"id": 2, "date": "2026-11-14", "items": ["ค้นหาข้อความ ในทุกสมุดได้แล้ว พิมพ์คำในช่องค้นหาที่เมนู แอปจะค้นทั้งชื่อสมุด ข้อความที่พิมพ์ ลายมือที่แปลงเป็นตัวพิมพ์แล้ว หัวเรื่องของหน้า และข้อความในกล่องต่าง ๆ", "แตะผลการค้นหา เพื่อไปที่หน้านั้น กล่องที่มีคำนั้นจะเรืองแสงสักครู่ ให้เห็นตำแหน่ง", "พิมพ์คำไทย ติดกันหรือเว้นวรรค ก็ค้นเจอเหมือนกัน การค้นหาอ่านสมุดอย่างเดียว ไม่แก้ไขอะไรในสมุด"]}, {"id": 1, "date": "2026-11-13", "items": ["ดูเวอร์ชันของแอปได้ที่เมนู แท็บตั้งค่า หัวข้อเกี่ยวกับแอป", "เมื่อมีเวอร์ชันใหม่ระหว่างใช้งาน แอปจะไม่รีโหลดเอง รวมถึงจอผู้ชม เวอร์ชันใหม่จะมีผล เมื่อเปิดแอปครั้งถัดไป หรือเมื่อแตะแถบ มีเวอร์ชันใหม่", "หน้าที่เปิดค้างไว้ ใช้ส่วนต่าง ๆ ของแอป จากเวอร์ชันเดียวกับตัวเองเสมอ ไม่ปนกับเวอร์ชันใหม่", "เมื่อแอปทำงานผิดพลาด แอปจะส่งรายงาน ให้ผู้พัฒนา โดยส่งเฉพาะ ข้อความแจ้งข้อผิดพลาด ตำแหน่งในโค้ด รุ่นเครื่อง และเวอร์ชันของแอป ไม่ส่งเนื้อหาสมุด ชื่อ หรืออีเมล"]}];
 const TH_MON = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
 function thDay(iso) { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || ''); return m ? (+m[3]) + ' ' + TH_MON[+m[2] - 1] + ' ' + (+m[1] + 543) : ''; }
@@ -22043,6 +22043,68 @@ function errWhere(stack, file, line, col) {
 }
 window.addEventListener('error', (e) => { if (e && e.message) errReport(e.message, errWhere(e.error && e.error.stack, e.filename, e.lineno, e.colno)); });
 window.addEventListener('unhandledrejection', (e) => { const r = e && e.reason; if (!r || r.off) return; errReport((r && r.message) || String(r), errWhere(r && r.stack)); });
+
+/* ---------- unclean exits (19 Nov 2026) ----------
+   A home-screen app on the iPad closes outright when the system ends the page (mostly when memory runs out), and no
+   error is ever reported. While a window is on screen it notes every 5 seconds what it is doing, in localStorage
+   tp-alive (one entry per window): only the kind of screen and counts (page number, strokes, pictures, minutes).
+   Going to the background or closing normally marks the note. The next open that finds a note of a window that was
+   on screen and stopped without that mark sends "unclean exit" with the note through errReport (same limits, same
+   table). Never notebook content, names, codes or ids. Turned off with "exitlog" in flags.json (or "errors") */
+const EXIT = { on: false, pg: null, pgAt: 0, opens: 0, t0: Date.now() };
+function exitRead() { try { const m = JSON.parse(store_ls.get('tp-alive') || '{}'); return m && typeof m === 'object' && !Array.isArray(m) ? m : {}; } catch (e) { return {}; } }
+function exitNote() {
+  const now = Date.now(), page = S.page || {}, items = page.items || [], pages = (S.nb && S.nb.pages) || [];
+  if (S.pid !== EXIT.pg) { EXIT.pg = S.pid; EXIT.pgAt = now; if (S.pid) EXIT.opens++; }
+  let oth = 0, tch = 0; for (const k in S.others || {}) { const n = (S.others[k] || []).length || 0; if (k === 'teacher') tch += n; else oth += n; }
+  const kind = (t) => items.filter((it) => it && it.type === t).length, hs = (location.hash || '').replace('#', '').split('=')[0];
+  const where = !S.store ? 'loading' : S.show ? 'roomscreen' : S.present ? 'audience' : LIVE.role === 'student' ? 'live-student' : LIVE.role === 'teacher' ? 'live-teacher'
+    : /^(class|lecture|hw|term|mywork)$/.test(hs) ? hs : isStudentSide() ? 'student' : 'own';
+  let mem = 0; try { mem = performance.memory ? Math.round(performance.memory.usedJSHeapSize / 1048576) : 0; } catch (e) { mem = 0; }
+  let home = false; try { home = navigator.standalone === true || matchMedia('(display-mode: standalone)').matches; } catch (e) { home = false; }
+  const s = ['w=' + where, 'p=' + (pages.indexOf(S.pid) + 1) + '/' + pages.length + (String(S.pid || '').charAt(0) === 'T' ? 'T' : ''), 'ink=' + (S.mine || []).length, 'oth=' + oth, 'tch=' + tch,
+    'it=' + items.length, 'img=' + kind('img'), 'pdf=' + items.filter((it) => it && it.pdf).length, 'vid=' + kind('video'), LIVE.role === 'teacher' ? 'peers=' + (LIVE.peers || []).length : '',
+    'up=' + Math.round((now - EXIT.t0) / 6e4) + 'm', 'opens=' + EXIT.opens, 'onpg=' + Math.round((now - (EXIT.pgAt || now)) / 6e4) + 'm', mem ? 'mem=' + mem + 'MB' : '', home ? 'home' : 'browser'];
+  return { t: now, v: VERSION.slice(0, 40), s: s.filter(Boolean).join(' ') };
+}
+function exitBeat(away) {
+  if (!EXIT.on) return;
+  try {
+    const m = exitRead(), r = exitNote(); if (away || document.hidden) r.h = 1;
+    m[TAB] = r;
+    const ks = Object.keys(m); if (ks.length > 8) ks.sort((a, b) => ((m[a] && m[a].t) || 0) - ((m[b] && m[b].t) || 0)).slice(0, ks.length - 8).forEach((k) => { delete m[k]; });
+    store_ls.set('tp-alive', JSON.stringify(m));
+  } catch (e) { /* noting must never break the app */ }
+}
+/* a window still open elsewhere keeps its note fresh; a note on screen that stopped more than 12 seconds ago is an exit
+   that was not clean. When a fresh one is there (reopened right after), look again a little later */
+function exitCheck(n) {
+  if (!EXIT.on) return null;
+  const m = exitRead(), now = Date.now(), gone = {}; let last = null, fresh = false;
+  for (const k in m) {
+    if (k === TAB) continue;
+    const r = m[k];
+    if (!r || typeof r !== 'object' || !(r.t > 0)) gone[k] = 1; else if (!r.h && now - r.t > 12000) { if (!last || r.t > last.t) last = r; gone[k] = r.t; } else if (!r.h) fresh = true; else if (now - r.t > 7 * 864e5) gone[k] = r.t;
+  }
+  /* removed from what is stored now, unless that window wrote again meanwhile */
+  if (Object.keys(gone).length) { const cur = exitRead(); for (const k in gone) if (!cur[k] || gone[k] === 1 || cur[k].t === gone[k]) delete cur[k]; store_ls.set('tp-alive', JSON.stringify(cur)); }
+  if (last) {
+    const g = Math.max(0, now - last.t), gap = g < 12e4 ? Math.round(g / 1000) + 's' : g < 72e5 ? Math.round(g / 6e4) + 'm' : Math.round(g / 36e5) + 'h';
+    const v = String(last.v || '').replace(/[^\w.-]/g, '').slice(0, 40);
+    errReport('unclean exit', String(last.s || '').replace(/[^\w.=\/ -]/g, '').slice(0, 220) + ' gap=' + gap + (v && v !== VERSION ? ' was=' + v : ''));
+  }
+  if (fresh && (n || 0) < 3) setTimeout(() => exitCheck((n || 0) + 1), 15000);
+  return last;
+}
+flagsReady().then(() => {
+  EXIT.on = flagOn('exitlog') && flagOn('errors');
+  if (!EXIT.on) { store_ls.del('tp-alive'); return; }
+  exitBeat(); setInterval(() => exitBeat(), 5000);
+  setTimeout(() => exitCheck(0), 4000);
+});
+document.addEventListener('visibilitychange', () => exitBeat(document.hidden));
+window.addEventListener('pagehide', () => exitBeat(true));
+window.addEventListener('pageshow', (e) => { if (e && e.persisted) exitBeat(false); });
 
 /* ---------- cloud account UI ---------- */
 function openAuth() {
