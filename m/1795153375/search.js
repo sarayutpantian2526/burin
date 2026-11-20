@@ -115,6 +115,17 @@ async function findDoc(path) {
   if (S.store && typeof S.store.peek === 'function') return S.store.peek(path);
   return S.store ? S.store.get(path) : null;
 }
+/* handwriting the AI has read (task 8.16): the pages with a reading kept on this device (by m/aipages.js), so their
+   handwriting is found too; null when there is none or that part is off */
+async function findInk() {
+  try {
+    if (typeof inkOn !== 'function' || !inkOn()) return null;
+    await flagsReady(); if (!inkOn()) return null;
+    await need('aipages');
+    const ix = await ikIndex();
+    return ix.size ? ix : null;
+  } catch (e) { return null; }
+}
 /* search the notebooks given, a few pages each frame; onHit gets each page found, onDone the totals.
    Starting another search stops this one */
 async function findRun(q, nbs, onHit, onDone, alive) {
@@ -122,6 +133,7 @@ async function findRun(q, nbs, onHit, onDone, alive) {
   let pages = 0, hits = 0, t0 = performance.now(), slice = 0; /* slice: the longest the search held the page at once */
   const stopped = () => gen !== FIND.gen || (alive && !alive());
   if (!T.all) { onDone({ pages, hits, slice }); return; }
+  const ink = await findInk(); if (stopped()) return; t0 = performance.now();
   for (const nb of nbs) {
     const list = (nb && nb.pages) || [];
     for (let k = 0; k < list.length; k++) {
@@ -132,11 +144,18 @@ async function findRun(q, nbs, onHit, onDone, alive) {
       let doc = null; try { doc = await findDoc('pages/' + pid); } catch (e) { doc = null; }
       pages++;
       if (!doc) continue;
-      const pp = findPageParts(doc), m = findMatch(pp, T);
+      let pp = findPageParts(doc);
+      if (ink && ink.has(pid)) {
+        /* what the AI read from the handwriting, while that handwriting is still on the page */
+        let tx = []; try { tx = await ikTexts(pid, ink.get(pid)); } catch (e) { tx = []; }
+        if (stopped()) return;
+        if (tx.length) pp = { head: pp.head, from: pp.from, parts: pp.parts.concat(tx.map((t) => { const p = { item: '', text: findPlain(t), ink: true }; p.c = findNorm(p.text).replace(/\s+/g, ''); return p; })) };
+      }
+      const m = findMatch(pp, T);
       if (!m) continue;
       hits++;
       /* the heading is not repeated when what was found is in the heading's own box */
-      onHit({ nb, pid, n: k + 1, head: m.part === pp.from ? '' : pp.head, item: m.item, html: findExcerpt(m), count: m.count || 1 });
+      onHit({ nb, pid, n: k + 1, head: m.part === pp.from ? '' : pp.head, item: m.item, html: findExcerpt(m), count: m.count || 1, ink: !!m.part.ink });
       if (hits >= FIND.max) { onDone({ pages, hits, more: true, slice }); return; }
     }
   }
@@ -159,12 +178,13 @@ function findShow(q, box) {
     b.innerHTML = '<span class="findpg"><span></span><span class="nbname"></span></span><span class="findtx nbname">' + r.html + '</span>';
     b.querySelector('.findpg > span').textContent = 'หน้า ' + r.n;
     if (r.head) b.querySelector('.findpg > .nbname').textContent = ' ' + r.head;
+    if (r.ink) { const k = document.createElement('small'); k.className = 'findink'; k.textContent = 'ลายมือ'; b.querySelector('.findpg').appendChild(k); }
     b.onclick = () => findGo(r.nb.id, r.pid, r.item);
     g.appendChild(b);
   }, (d) => {
     if (!box.isConnected) return;
     /* each sentence whole (the list of labels for other languages has them word for word) */
-    st.textContent = d.hits ? 'พบ ' + d.hits + ' หน้า' : 'ไม่พบข้อความนี้ในหน้าสมุด ลายมือที่ยังไม่ได้แปลงเป็นตัวพิมพ์ค้นไม่ได้';
+    st.textContent = d.hits ? 'พบ ' + d.hits + ' หน้า' : (typeof inkOn === 'function' && inkOn() ? 'ไม่พบข้อความนี้ในหน้าสมุด ลายมือที่ยังไม่ได้แปลงเป็นตัวพิมพ์และ AI ยังไม่เคยอ่านค้นไม่ได้' : 'ไม่พบข้อความนี้ในหน้าสมุด ลายมือที่ยังไม่ได้แปลงเป็นตัวพิมพ์ค้นไม่ได้');
     if (d.more) { const m2 = document.createElement('span'); m2.className = 'findmore'; m2.textContent = 'แสดงเฉพาะ 120 หน้าแรก พิมพ์คำให้ยาวขึ้นเพื่อให้ตรงกว่านี้'; st.appendChild(document.createTextNode(' ')); st.appendChild(m2); }
   }, () => box.isConnected);
 }

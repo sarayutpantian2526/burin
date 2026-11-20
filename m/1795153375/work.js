@@ -423,14 +423,18 @@ function hwAssignOpen(set) {
   const OPTS = [['instant', 'ให้เห็นคะแนนและเฉลยข้อเลือกตอบทันทีหลังส่ง'], ['files', 'ให้แนบงานทั้งชุดได้ด้วย เช่น รูปกระดาษคำตอบ'], ['paper', 'มีผู้เรียนทำใส่กระดาษ ครูจะบันทึกให้เอง']];
   const oc = exChips(b, OPTS, (v) => !!opt[v], (v) => { opt[v] = !opt[v]; oc.querySelectorAll('.chip').forEach((c, i) => c.setAttribute('aria-pressed', opt[OPTS[i][0]] ? 'true' : 'false')); });
   b.appendChild(exEl('div', 'note small', 'เฉลยทันทีเหมาะกับแบบฝึก ไม่เหมาะกับการสอบ ข้อแสดงวิธีทำไม่เปิดเฉลยให้เห็น เพื่อไม่ให้ลอกเฉลยไปเขียนวิธีทำ'));
-  const go = exEl('button', 'btn solid', 'มอบหมายงาน ' + set.qs.length + ' ข้อ'); go.onclick = () => hwAssignCreate(dueIn); b.appendChild(go);
+  const go = exEl('button', 'btn solid', 'มอบหมายงาน ' + set.qs.length + ' ข้อ'); go.onclick = () => hwAssignCreate(dueIn, go); b.appendChild(go);
   const out = exEl('div', ''); out.id = 'hwOut'; b.appendChild(out);
   typeset(b);
 }
-async function hwAssignCreate(dueIn) {
+async function hwAssignCreate(dueIn, go) {
   const set = HW.set, o = HW.opt, qm = HW.qm, out = $('#hwOut');
+  if (go && go.disabled) return; /* one press, one piece of work: a second press while the first is on its way does nothing */
   const t = Date.parse(dueIn.value);
   if (!isFinite(t) || t <= now()) { out.innerHTML = '<div class="note err">ตั้งกำหนดส่งเป็นเวลาในอนาคตก่อน ระบบใช้เวลานี้ปิดรับงานเอง</div>'; dueIn.focus(); return; }
+  const label = go ? go.textContent : '', btn = (txt, off, busy) => { if (!go) return; go.textContent = txt; go.disabled = off; if (busy) go.setAttribute('aria-busy', 'true'); else go.removeAttribute('aria-busy'); };
+  btn('กำลังมอบหมาย', true, true); out.innerHTML = '';
+  let sent = false;
   const id = Array.from({ length: 9 }, () => CODE_ABC[Math.floor(Math.random() * CODE_ABC.length)]).join('').toLowerCase();
   const due = new Date(t).toISOString();
   const qs = set.qs.map((q) => { const x = { id: q.id, t: q.t, ch: q.ch, q: q.q, c: q.c, d: q.d, fig: q.fig }; if (o.instant && qm[q.id] === 'mc') { x.a = q.a || 0; x.e = q.e || ''; } return x; });
@@ -438,10 +442,11 @@ async function hwAssignCreate(dueIn) {
   const data = { ver: 2, title: $('#hwTitle').value.trim() || set.title, setId: set.id, qs, qm: Object.assign({}, qm), online: true, files: !!o.files, instant: !!o.instant, paper: !!o.paper, work: anyWork, wt: anyWork ? o.wt : 0, ext: {}, teacher: (S.nb && S.nb.title) || '' };
   const cls = CLS.list.find((c) => c.id === ($('#hwCls') && $('#hwCls').value));
   if (S.nid && S.nb) data.nb = { id: S.nid, title: S.nb.title || '', room: liveRoomCode(S.nid, cls ? cls.id : null) };
-  if (cls) { data.clsId = cls.id; data.cls = await rosterHashed(cls); }
   try {
+    if (cls) { data.clsId = cls.id; data.cls = await rosterHashed(cls); }
     const { error } = await CLOUD.client.from('assignments').insert({ id, owner: CLOUD.user.id, title: data.title, data, due, open: true });
     if (error) throw error;
+    sent = true; btn('มอบหมายแล้ว', true, false);
     HW.list = null;
     { const k = {}, m = {}; for (const q of set.qs) { if (q.c && q.c.length >= 2) k[q.id] = q.a || 0; const mm = [q.ans, q.e].filter(Boolean).join('\n'); if (mm) m[q.id] = mm.slice(0, 1500); } HW.keys[id] = k; HW.model[id] = m; Promise.resolve(S.store.set('hwkey/' + id, { k, m, at: now() })).catch(() => {}); } /* the keys and model answers stay with the teacher, not in the work learners can read */
     if (LIVE.role === 'teacher' && data.nb && data.nb.id === LIVE.nbId) setTimeout(() => liveSendHw(true), 500);
@@ -451,7 +456,13 @@ async function hwAssignCreate(dueIn) {
     const cp = exEl('button', 'btn', 'คัดลอกลิงก์'); cp.onclick = () => navigator.clipboard && navigator.clipboard.writeText(hwLink(id)).then(() => toast('คัดลอกแล้ว', 1200)).catch(() => {}); out.appendChild(cp);
     const see = exEl('button', 'btn', 'ดูว่าใครส่งแล้ว'); see.onclick = () => { $('#hwSheet').hidden = true; EX.tab = 'hw'; HW.cur = id; HWX.view = 'one'; openExam(); }; out.appendChild(see);
     drawQR($('#hwQR'), hwLink(id), 160);
-  } catch (e) { out.innerHTML = '<div class="note err">' + esc(hwSqlHint(e)) + '</div>'; }
+    try { out.scrollIntoView({ block: 'nearest' }); } catch (e) { /* older browsers: the link is still below the button */ }
+  } catch (e) {
+    /* the work is already in the cloud when only a later step failed: the button stays off so it is not made twice */
+    out.innerHTML = '<div class="note err">' + esc(hwSqlHint(e)) + (sent ? ' งานนี้มอบหมายแล้ว ดูได้ในแท็บการบ้าน' : '') + '</div>';
+    if (!sent) btn(label, false, false);
+    try { out.scrollIntoView({ block: 'nearest' }); } catch (e2) { /* as above */ }
+  }
 }
 
 /* ---------- teacher: all the work set, and who has handed in ---------- */
