@@ -17,10 +17,15 @@ async function dataSelection() {
   const refs = S.sel.strokes.slice(), box = S.sel.box.slice();
   const texts = S.sel.items.map(findItem).filter((it) => it && (!it.type || it.type === 'text') && it.md).map((it) => it.md).join('\n').slice(0, 3000);
   if (!refs.length && !texts) return;
+  /* a typed table (Markdown, commas, tabs or spaces) is read here, offline, with no AI (task 8.15) */
+  if (texts && !refs.length && await tyReady()) {
+    const T = tyTable(texts);
+    if (T) { openAI(); dsCard(aiCard(''), { kind: 'table', head: T.head, rows: T.rows, line: null, box }); return; }
+  }
   /* the same ink read as data before (task 8.16) is shown again at once; a graph needs its picture, so a reading made
      for other work is not used here */
   const m = refs.length && !texts ? await inkGet('data', refs) : null, kept = m && typeof m.own === 'string' && m.own ? m.own : '';
-  if (!kept && !needAI('read')) return;
+  if (!kept && !needAIInk('read', refs.length)) return;
   openAI();
   const B = busyCard('อ่านเป็นข้อมูล');
   try {
@@ -206,10 +211,16 @@ async function unitCheck() {
   const refs = S.sel.strokes.slice(), box = S.sel.box.slice();
   const texts = S.sel.items.map(findItem).filter((it) => it && (!it.type || it.type === 'text') && it.md).map((it) => it.md).join('\n').slice(0, 3000);
   if (!refs.length && !texts) return;
+  /* typed calculation lines are read here, offline, with no AI (task 8.15); lines the app cannot read go to the AI as
+     before, or are left out when no AI is set up */
+  if (texts && !refs.length && await tyReady()) {
+    let L = null; try { await loadLib('math'); L = tySteps(texts); } catch (e) { L = null; }
+    if (L && L.steps.length && (!L.miss || !AI.ready('read'))) { openAI(); ucShow(aiCard(''), L.steps, box, L.miss); return; }
+  }
   /* handwriting read before (task 8.16): the lines read for this check are used again at once; another reading of
      the same ink goes to the AI as text, with no picture */
   const m = refs.length ? await inkGet('unit', refs) : null, kept = !texts && m && typeof m.own === 'string' && m.own ? m.own : '', rd = !kept && m && m.text ? m.text : '';
-  if (!kept && !needAI('read')) return;
+  if (!kept && !needAIInk('read', refs.length)) return;
   openAI(); const B = busyCard('ตรวจหน่วยและเลขนัยสำคัญ');
   try {
     await loadLib('math');
@@ -221,6 +232,11 @@ async function unitCheck() {
     if (!kept && !texts && /@@STEP/.test(String(res.text || ''))) inkPut(m, { unit: String(res.text) });
     const steps = String(res.text || '').split('\n').filter((l) => /^@@STEP/.test(l.trim())).map((l) => l.trim().replace(/^@@STEP\s*/, '').split('|').map((x) => x.trim()));
     if (!steps.length) throw { msg: 'ไม่พบบรรทัดคำนวณที่อ่านได้ ลองวงเฉพาะบรรทัดคำนวณ' };
+    ucShow(B.d, steps, box, 0);
+  } catch (e) { B.d.innerHTML = '<span class="k">ตรวจหน่วยและเลขนัยสำคัญ</span><div class="note err">' + esc(e && e.msg ? e.msg : aiErr(e)) + '</div>'; }
+}
+/* the check itself: units, values and significant figures of each step, worked out here */
+function ucShow(d, steps, box, miss) {
     const M = window.math, out = [];
     for (const [expr, wrote, line] of steps.slice(0, 12)) {
       const r = { line: line || expr, expr, wrote, ok: true, msg: [] };
@@ -247,11 +263,11 @@ async function unitCheck() {
       out.push(r);
     }
     const okAll = out.every((r) => r.ok && !r.msg.length);
-    B.d.innerHTML = '<span class="k">ตรวจหน่วยและเลขนัยสำคัญ</span>' + (okAll ? '<div class="note">ทุกบรรทัดหน่วยสอดคล้อง ค่าถูก และเลขนัยสำคัญเหมาะสม</div>' : '')
+    d.innerHTML = '<span class="k">ตรวจหน่วยและเลขนัยสำคัญ</span>' + (okAll ? '<div class="note">ทุกบรรทัดหน่วยสอดคล้อง ค่าถูก และเลขนัยสำคัญเหมาะสม</div>' : '')
       + '<div class="dsres">' + out.map((r, i) => '<span><i>' + (i + 1) + ')</i> ' + esc(r.line) + ' <b>' + (r.ok && !r.msg.length ? 'ถูกต้อง' : esc(r.msg.join('; ') || 'ถูกต้อง')) + '</b></span>').join('') + '</div>'
       + '<div class="note small">เลขนัยสำคัญตรวจตามกฎการคูณและหาร นับเฉพาะค่าที่วัดซึ่งมีหน่วย ตัวเลขที่ไม่มีหน่วย เช่น 1/2 หรือ 2 นับเป็นค่าที่แน่นอน ส่วนการบวกลบให้ดูตำแหน่งทศนิยมเอง</div>'
+      + (miss ? '<div class="note small">มี ' + miss + ' บรรทัดที่แอปอ่านเป็นนิพจน์ไม่ได้ จึงไม่ได้ตรวจ ตั้งค่า AI เพื่อให้ช่วยอ่านบรรทัดเหล่านั้น</div>' : '')
       + '<div class="row"><button class="btn" data-a="put">วางผลตรวจบนหน้า</button></div>';
-    B.d.querySelector('[data-a="put"]').onclick = () => { const md = '**ตรวจหน่วยและเลขนัยสำคัญ**\n\n' + out.map((r, i) => (i + 1) + ') ' + r.line + ' : ' + (r.ok && !r.msg.length ? 'ถูกต้อง' : r.msg.join('; '))).join('\n\n'); proofPut(md, box, out.length * 2 + 2); toast('วางผลตรวจแล้ว', 1400); };
-  } catch (e) { B.d.innerHTML = '<span class="k">ตรวจหน่วยและเลขนัยสำคัญ</span><div class="note err">' + esc(e && e.msg ? e.msg : aiErr(e)) + '</div>'; }
+    d.querySelector('[data-a="put"]').onclick = () => { const md = '**ตรวจหน่วยและเลขนัยสำคัญ**\n\n' + out.map((r, i) => (i + 1) + ') ' + r.line + ' : ' + (r.ok && !r.msg.length ? 'ถูกต้อง' : r.msg.join('; '))).join('\n\n'); proofPut(md, box, out.length * 2 + 2); toast('วางผลตรวจแล้ว', 1400); };
 }
 
