@@ -239,7 +239,7 @@ body.present .lockban { display: none; }
 .ctref { font-size: 14px; line-height: 1.5; margin-bottom: 6px; }
 .ctpick { display: block; width: 100%; text-align: left; white-space: normal; margin: 4px 0; font-size: 13px; height: auto; padding: 8px 10px; }
 .item.modwait { background: repeating-linear-gradient(135deg, rgba(127,127,127,0.06) 0 12px, transparent 12px 24px); border-radius: 8px; }
-#page.exact > #cInk, #page.exact > #cLive, #page.exact > #cRemote { inset: 0 auto auto 0; width: var(--cw); height: var(--ch); }
+#page.exact > #cInk, #page.exact > #cLive, #page.exact > #cRemote, #page.exact > #cTop:not(.sharp) { inset: 0 auto auto 0; width: var(--cw); height: var(--ch); }
 #page.px1 > #cInk, #page.px1 > #cRemote, #page.pxs > #cSharp { image-rendering: pixelated; }
 #page > #cSharp[hidden] { display: none; }
 #items, #itemsBg, #itemsUnder { position: absolute; left: 0; top: 0; width: 1000px; height: 1414px; transform-origin: 0 0; pointer-events: none; }
@@ -262,6 +262,12 @@ body.present .lockban { display: none; }
 @keyframes pshade { 0% { opacity: 0; } 60% { opacity: 1; } 100% { opacity: 1; } }
 #items.editable .item { pointer-events: auto; cursor: text; }
 #sel { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
+/* writing on a box (owner 22 พ.ย. 2569, switch "boxink"): lines that belong to a box are drawn above the boxes on #cTop, and the line being written shows above them too */
+#page > #cTop { pointer-events: none; z-index: 1; }
+#page > #cTop.sharp { inset: auto; }
+#page > #cTop[hidden] { display: none; }
+body.boxink #page > #cLive { pointer-events: none; z-index: 1; }
+body.boxink #sel { z-index: 2; }
 
 .item { position: absolute; box-sizing: border-box; font-family: var(--doc); font-size: 24px; line-height: 1.6; color: #14181F; padding: 6px 10px; border-radius: 6px; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
 /* a scroll bar for the whole notebook, on computers only (mouse or trackpad): drag it to any page instead of scrolling the wheel page after page */
@@ -2065,6 +2071,13 @@ body.present .item .tsize, body.role-student .item .tsize { display: none; }
 .solvep .spsteps { font-size: 15px; line-height: 1.7; }
 /* a graph sits on the paper itself: no card, no border, the page shows through; its title and edit button stay small and quiet */
 .item.graph.gplain { background: transparent; border: 0; box-shadow: none; padding: 2px 4px 4px; }
+/* a frame for any box, or none (owner 22 พ.ย. 2569, switch "frames"): it.fr 1 or 0, missing is the usual look of that kind of box.
+   A text box, picture or drawing keeps a clear inside, so writing under it still shows */
+.item.fron { border: 1px solid #D6DCE4; border-radius: 12px; box-shadow: 0 2px 8px rgba(20, 26, 34, 0.08); }
+.item.fron.live, .item.graph.gplain.fron { background: #FFFFFF; border: 1px solid #D6DCE4; box-shadow: 0 2px 8px rgba(20, 26, 34, 0.08); padding: 8px 12px 12px; }
+.item.fron.media, .item.fron.svg { padding: 6px; }
+.item.froff, .item.graph.froff { background: transparent !important; border-color: transparent !important; box-shadow: none !important; }
+.item.froff .simcv { border-color: transparent; }
 .item.graph.gplain .gh { font-size: 13px; font-weight: 600; color: #5A6474; margin-bottom: 0; }
 .item.graph.gplain .gh button { min-height: 28px; padding: 0 10px; font-size: 12px; background: rgba(255,255,255,0.7); border-color: rgba(0,0,0,0.1); opacity: 0.55; }
 .item.graph.gplain .gh button:hover, .item.graph.gplain.sel .gh button { opacity: 1; }
@@ -2078,9 +2091,21 @@ body.present .item .tsize, body.role-student .item .tsize { display: none; }
 .item.sim.bare .scncv { background: transparent; border: 0; }
 /* a model without its box: only the drawing on the paper, and a small handle for its controls */
 .item.sim.clean { background: transparent !important; border-color: transparent !important; box-shadow: none !important; padding: 0 !important; }
+/* an animal out on the paper: only the animal itself (its canvas, clipped round it) and its buttons take a touch */
+.item.sim.clean.onpage { pointer-events: none; }
+.item.sim.clean.onpage > * { pointer-events: auto; }
 .item.sim.clean .scncv { background: transparent; border: 0; border-radius: 0; }
 .item.sim.orbmark .scncv { aspect-ratio: 1 / 1; }
 .item.sim.animark .scncv { aspect-ratio: 4 / 3; }
+/* an animal is seen whole all the time: .anbox keeps the place of the box, the canvas lies over it with room round it (anRender) */
+.item.sim.animark .anbox { width: 100%; aspect-ratio: 4 / 3; border-radius: 8px; background: #FFFFFF; }
+.item.sim.animark.clean .anbox { background: transparent; border-radius: 0; }
+.item.sim.animark .scncv.anover { position: absolute; height: auto !important; aspect-ratio: auto; max-width: none; border: 0; border-radius: 0; background: transparent; }
+@supports not (aspect-ratio: 1 / 1) { .item.sim.animark .anbox { height: 0; padding-top: 75%; } }
+.item.sim.clean.onpage > .anbox { pointer-events: none; }
+/* the box's own handles and buttons stay above the canvas that lies over it */
+.item.sim.animark > .tsize, .item.sim.animark > .tgrab, .item.sim.animark > .edx, .item.sim.animark > .cleandot, .item.sim.animark > .scnpill { z-index: 3; }
+.item.sim.animark > .gh { position: relative; z-index: 2; }
 /* an animal in its box (task 9.10): the words and buttons shrink with the box (--ak from its width), so a narrower box is a smaller box, not a taller one; the graph chip has nothing to show for an animal */
 .item.sim.animark .scntog { display: none; }
 .item.sim.animark:not(.clean) { padding: calc(8px * var(--ak, 1)) calc(12px * var(--ak, 1)) calc(12px * var(--ak, 1)); border-radius: calc(12px * var(--ak, 1)); }
@@ -2209,6 +2234,7 @@ body.role-student .scnpill .sbtns button[data-s="back"], body.role-student .scnp
           <canvas id="cRemote" width="1" height="1" aria-hidden="true"></canvas>
           <canvas id="cLive" aria-hidden="true"></canvas>
           <div id="items"></div>
+          <canvas id="cTop" aria-hidden="true" width="1" height="1" hidden></canvas>
           <svg id="sel" viewBox="0 0 1000 1414" preserveAspectRatio="none" aria-hidden="true"></svg>
         </div>
         <div class="fpeek" id="peekNext" hidden aria-hidden="true"></div>
@@ -2317,7 +2343,7 @@ body.role-student .scnpill .sbtns button[data-s="back"], body.role-student .scnp
 
       <div class="selbar no-ink" id="selbar" role="toolbar" aria-label="ส่วนที่เลือก" hidden>
         <span class="count" id="selCount"></span>
-        <span class="sg" id="sgInk"><button class="main" id="sRead"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M3 15c2-3 3-7 4.5-7s.5 5 2 5 2-6 3.5-6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M13 4.5h6 M16 4.5v8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span>เป็นตัวพิมพ์</span></button><button id="sEq"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M3.5 8h6 M3.5 12.5h6 M13 6.5l5 7 M18 6.5l-5 7" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg><span>เป็นสมการ</span></button><button id="sHand"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M3 16c2.5-1 3.5-9 6-9 1.6 0 .4 6 2.4 6 1.8 0 2.4-4 4.1-4 1.2 0 1 3 2.5 3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M3 19h16" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg><span>ลายมือสวย</span></button><button id="sTidy"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M4 17l4-1 9-9-3-3-9 9z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M15.5 13.5l1 2 2 1-2 1-1 2-1-2-2-1 2-1z" fill="currentColor"/></svg><span>วาดใหม่</span></button><button id="sJoin"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M3 6h16 M3 11h10 M3 16h7 M14 13.5l3 2.5-3 2.5 M10 16h7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span>ต่อบรรทัด</span></button><button id="sOrig" hidden title="เปลี่ยนกลับเป็นลายมือเดิม"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M4 15c2-4 4-7 6-7s1 6 3 6 3-4 5-6 M6 6L3.5 8.5 6 11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span>ลายมือเดิม</span></button></span><span class="sg" id="sgCalc"><button id="sImMeas" hidden title="วัดความยาว มุม พื้นที่ และนับบนรูปนี้"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M3 15L15 3l4 4L7 19z M6 12l2 2 M9 9l2 2 M12 6l2 2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg><span>วัดบนรูป</span></button><button id="sData" hidden title="อ่านตารางหรือกราฟที่เขียนด้วยมือเป็นข้อมูล หาเส้นตรงที่ดีที่สุด"><svg viewBox="0 0 22 22" aria-hidden="true"><rect x="3" y="4" width="16" height="14" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M3 9h16 M3 13.5h16 M9 4v14 M14 4v14" stroke="currentColor" stroke-width="1.3"/></svg><span>เป็นข้อมูล</span></button><button class="main" id="sAns" hidden title="ผลการคำนวณ แตะเพื่อเขียนต่อท้าย"><span id="sAnsT"></span></button><button id="sSolve" title="แก้สมการ ระบบสมการ อนุพันธ์ อินทิเกรต ลิมิต แยกตัวประกอบ"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M4 8h6 M4 12h6 M13 6l5 6 M18 6l-5 6 M13 16h5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span>แก้สมการ</span></button><button id="sUnit" hidden title="ตรวจหน่วย ค่าที่คำนวณ และเลขนัยสำคัญของบรรทัดคำนวณ"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M3 6h7 M3 11h7 M3 16h5 M13 12l3 3 5-7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span>ตรวจหน่วย</span></button><button id="sBal" hidden title="ดุลสมการเคมี นับอะตอมและประจุสองข้าง"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M11 3v15 M6 18h10 M3.5 7h15 M11 4.5L11 4.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M3.5 7L1.5 12h4z M18.5 7l-2 5h4z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg><span>ดุลสมการ</span></button><button id="sProof" hidden><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M3 18h16 M3 18L15 5 M8 18a5 5 0 0 0-1.4-3.5 M10 4.5h8 M14 8.5h4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span>พิสูจน์</span></button></span><span class="sg" id="sgMake"><button id="sCap" hidden title="ใส่คำบรรยายพร้อมเลขรูปหรือเลขตารางที่เรียงตามหน้าให้เอง"><svg viewBox="0 0 22 22" aria-hidden="true"><rect x="3" y="3" width="16" height="11" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M4 18h14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><span>คำบรรยาย</span></button><button class="main" id="sQuiz"><svg viewBox="0 0 22 22" aria-hidden="true"><rect x="3.5" y="3" width="15" height="16" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M7 8h8 M7 11.5h8 M7 15h5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span>สร้างโจทย์</span></button><button id="sGraph" title="สร้างรูปจากสมการ: เวกเตอร์ 2 และ 3 มิติ กราฟ เส้นโค้งพาราเมตริกและเชิงขั้ว โครงสร้างโมเลกุล หรือแผนภาพ"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M4 3.5v14h14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M5.5 14c3-1 4-8 7-8s3 4 5 4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span>สร้างรูป</span></button><button id="sAnim"><svg viewBox="0 0 22 22" aria-hidden="true"><circle cx="7" cy="14" r="3.2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M11 14h7 M15.5 11.5L18 14l-2.5 2.5 M7 10.5V4 M4.5 6.5L7 4l2.5 2.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span>ขยับได้</span></button><button id="sTrace" title="ให้สมุดวาดตามรูปนี้ทีละเส้น"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M4 17c3-1 4-6 7-7s4 3 7 1 M15 4l3 3-8 8-4 1 1-4z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span>วาดตาม</span></button><button id="sCut" title="ตัดพื้นหลังของรูป"><svg viewBox="0 0 22 22" aria-hidden="true"><circle cx="6" cy="6" r="2.6" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="6" cy="16" r="2.6" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M8.2 7.4L18 15 M8.2 14.6L18 7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span>ตัดพื้นหลัง</span></button><button id="sMedia"><svg viewBox="0 0 22 22" aria-hidden="true"><rect x="3" y="4.5" width="16" height="13" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M3.5 15l4.5-4.5 3.5 3.5 2-2 5 4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg><span>หาสื่อ</span></button><button id="sGen"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M11 3l1.8 4.6 4.7 1.9-4.7 1.9L11 16l-1.8-4.6L4.5 9.5l4.7-1.9z" fill="currentColor"/></svg><span>สร้างโจทย์</span></button></span><span class="sg" id="sgOrder"><button id="sFront"><svg viewBox="0 0 22 22" aria-hidden="true"><rect x="7" y="7" width="11" height="11" rx="2" fill="currentColor"/><rect x="3.5" y="3.5" width="11" height="11" rx="2" fill="none" stroke="currentColor" stroke-width="1.5" stroke-dasharray="2.5 2"/></svg><span>ขึ้นหน้าสุด</span></button><button id="sBack"><svg viewBox="0 0 22 22" aria-hidden="true"><rect x="3.5" y="3.5" width="11" height="11" rx="2" fill="currentColor"/><rect x="7" y="7" width="11" height="11" rx="2" fill="var(--chrome)" stroke="currentColor" stroke-width="1.5"/></svg><span>ไปหลังสุด</span></button></span><span class="sg" id="sgEnd"><button id="sKey"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M2.5 11s3-6 8.5-6 8.5 6 8.5 6-3 6-8.5 6-8.5-6-8.5-6z" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="11" cy="11" r="2.6" fill="currentColor"/></svg><span>เฉลย</span></button><button id="sMore" type="button" hidden aria-expanded="false" title="คำสั่งอื่นที่ใช้กับส่วนนี้ได้"><svg viewBox="0 0 22 22" aria-hidden="true"><circle cx="5" cy="11" r="1.8" fill="currentColor"/><circle cx="11" cy="11" r="1.8" fill="currentColor"/><circle cx="17" cy="11" r="1.8" fill="currentColor"/></svg><span>เพิ่มเติม</span></button><button id="sDup"><svg viewBox="0 0 22 22" aria-hidden="true"><rect x="7" y="7" width="11" height="11" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M4 14V5a1 1 0 0 1 1-1h9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span>ทำสำเนา</span></button><button id="sDel" class="danger"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M5 6.5h12 M9 6.5V4.5h4v2 M6.5 6.5l.8 11h7.4l.8-11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span>ลบ</span></button><button id="sClose"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M5 11.5l4 4 8-9" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg><span>เสร็จ</span></button></span>
+        <span class="sg" id="sgInk"><button class="main" id="sRead"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M3 15c2-3 3-7 4.5-7s.5 5 2 5 2-6 3.5-6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M13 4.5h6 M16 4.5v8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span>เป็นตัวพิมพ์</span></button><button id="sEq"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M3.5 8h6 M3.5 12.5h6 M13 6.5l5 7 M18 6.5l-5 7" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg><span>เป็นสมการ</span></button><button id="sHand"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M3 16c2.5-1 3.5-9 6-9 1.6 0 .4 6 2.4 6 1.8 0 2.4-4 4.1-4 1.2 0 1 3 2.5 3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M3 19h16" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg><span>ลายมือสวย</span></button><button id="sTidy"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M4 17l4-1 9-9-3-3-9 9z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M15.5 13.5l1 2 2 1-2 1-1 2-1-2-2-1 2-1z" fill="currentColor"/></svg><span>วาดใหม่</span></button><button id="sJoin"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M3 6h16 M3 11h10 M3 16h7 M14 13.5l3 2.5-3 2.5 M10 16h7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span>ต่อบรรทัด</span></button><button id="sOrig" hidden title="เปลี่ยนกลับเป็นลายมือเดิม"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M4 15c2-4 4-7 6-7s1 6 3 6 3-4 5-6 M6 6L3.5 8.5 6 11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span>ลายมือเดิม</span></button></span><span class="sg" id="sgCalc"><button id="sImMeas" hidden title="วัดความยาว มุม พื้นที่ และนับบนรูปนี้"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M3 15L15 3l4 4L7 19z M6 12l2 2 M9 9l2 2 M12 6l2 2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg><span>วัดบนรูป</span></button><button id="sData" hidden title="อ่านตารางหรือกราฟที่เขียนด้วยมือเป็นข้อมูล หาเส้นตรงที่ดีที่สุด"><svg viewBox="0 0 22 22" aria-hidden="true"><rect x="3" y="4" width="16" height="14" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M3 9h16 M3 13.5h16 M9 4v14 M14 4v14" stroke="currentColor" stroke-width="1.3"/></svg><span>เป็นข้อมูล</span></button><button class="main" id="sAns" hidden title="ผลการคำนวณ แตะเพื่อเขียนต่อท้าย"><span id="sAnsT"></span></button><button id="sSolve" title="แก้สมการ ระบบสมการ อนุพันธ์ อินทิเกรต ลิมิต แยกตัวประกอบ"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M4 8h6 M4 12h6 M13 6l5 6 M18 6l-5 6 M13 16h5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span>แก้สมการ</span></button><button id="sUnit" hidden title="ตรวจหน่วย ค่าที่คำนวณ และเลขนัยสำคัญของบรรทัดคำนวณ"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M3 6h7 M3 11h7 M3 16h5 M13 12l3 3 5-7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span>ตรวจหน่วย</span></button><button id="sBal" hidden title="ดุลสมการเคมี นับอะตอมและประจุสองข้าง"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M11 3v15 M6 18h10 M3.5 7h15 M11 4.5L11 4.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M3.5 7L1.5 12h4z M18.5 7l-2 5h4z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg><span>ดุลสมการ</span></button><button id="sProof" hidden><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M3 18h16 M3 18L15 5 M8 18a5 5 0 0 0-1.4-3.5 M10 4.5h8 M14 8.5h4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span>พิสูจน์</span></button></span><span class="sg" id="sgMake"><button id="sCap" hidden title="ใส่คำบรรยายพร้อมเลขรูปหรือเลขตารางที่เรียงตามหน้าให้เอง"><svg viewBox="0 0 22 22" aria-hidden="true"><rect x="3" y="3" width="16" height="11" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M4 18h14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><span>คำบรรยาย</span></button><button class="main" id="sQuiz"><svg viewBox="0 0 22 22" aria-hidden="true"><rect x="3.5" y="3" width="15" height="16" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M7 8h8 M7 11.5h8 M7 15h5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span>สร้างโจทย์</span></button><button id="sGraph" title="สร้างรูปจากสมการ: เวกเตอร์ 2 และ 3 มิติ กราฟ เส้นโค้งพาราเมตริกและเชิงขั้ว โครงสร้างโมเลกุล หรือแผนภาพ"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M4 3.5v14h14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M5.5 14c3-1 4-8 7-8s3 4 5 4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span>สร้างรูป</span></button><button id="sAnim"><svg viewBox="0 0 22 22" aria-hidden="true"><circle cx="7" cy="14" r="3.2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M11 14h7 M15.5 11.5L18 14l-2.5 2.5 M7 10.5V4 M4.5 6.5L7 4l2.5 2.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span>ขยับได้</span></button><button id="sTrace" title="ให้สมุดวาดตามรูปนี้ทีละเส้น"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M4 17c3-1 4-6 7-7s4 3 7 1 M15 4l3 3-8 8-4 1 1-4z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span>วาดตาม</span></button><button id="sCut" title="ตัดพื้นหลังของรูป"><svg viewBox="0 0 22 22" aria-hidden="true"><circle cx="6" cy="6" r="2.6" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="6" cy="16" r="2.6" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M8.2 7.4L18 15 M8.2 14.6L18 7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span>ตัดพื้นหลัง</span></button><button id="sMedia"><svg viewBox="0 0 22 22" aria-hidden="true"><rect x="3" y="4.5" width="16" height="13" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M3.5 15l4.5-4.5 3.5 3.5 2-2 5 4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg><span>หาสื่อ</span></button><button id="sGen"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M11 3l1.8 4.6 4.7 1.9-4.7 1.9L11 16l-1.8-4.6L4.5 9.5l4.7-1.9z" fill="currentColor"/></svg><span>สร้างโจทย์</span></button></span><span class="sg" id="sgOrder"><button id="sFront"><svg viewBox="0 0 22 22" aria-hidden="true"><rect x="7" y="7" width="11" height="11" rx="2" fill="currentColor"/><rect x="3.5" y="3.5" width="11" height="11" rx="2" fill="none" stroke="currentColor" stroke-width="1.5" stroke-dasharray="2.5 2"/></svg><span>ขึ้นหน้าสุด</span></button><button id="sBack"><svg viewBox="0 0 22 22" aria-hidden="true"><rect x="3.5" y="3.5" width="11" height="11" rx="2" fill="currentColor"/><rect x="7" y="7" width="11" height="11" rx="2" fill="var(--chrome)" stroke="currentColor" stroke-width="1.5"/></svg><span>ไปหลังสุด</span></button><button id="sFrame" hidden><svg viewBox="0 0 22 22" aria-hidden="true"><rect x="3.5" y="4.5" width="15" height="13" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M7 9h8 M7 13h5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span>แสดงกรอบ</span></button></span><span class="sg" id="sgEnd"><button id="sKey"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M2.5 11s3-6 8.5-6 8.5 6 8.5 6-3 6-8.5 6-8.5-6-8.5-6z" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="11" cy="11" r="2.6" fill="currentColor"/></svg><span>เฉลย</span></button><button id="sMore" type="button" hidden aria-expanded="false" title="คำสั่งอื่นที่ใช้กับส่วนนี้ได้"><svg viewBox="0 0 22 22" aria-hidden="true"><circle cx="5" cy="11" r="1.8" fill="currentColor"/><circle cx="11" cy="11" r="1.8" fill="currentColor"/><circle cx="17" cy="11" r="1.8" fill="currentColor"/></svg><span>เพิ่มเติม</span></button><button id="sDup"><svg viewBox="0 0 22 22" aria-hidden="true"><rect x="7" y="7" width="11" height="11" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M4 14V5a1 1 0 0 1 1-1h9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span>ทำสำเนา</span></button><button id="sDel" class="danger"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M5 6.5h12 M9 6.5V4.5h4v2 M6.5 6.5l.8 11h7.4l.8-11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span>ลบ</span></button><button id="sClose"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M5 11.5l4 4 8-9" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg><span>เสร็จ</span></button></span>
         <button id="sBig" hidden>ขยาย</button><button id="sSmall" hidden>ย่อ</button>
       </div>
       <div class="convbar no-ink" id="convbar" hidden>
@@ -3974,7 +4000,7 @@ function imgUnderSync() {
   for (const [id, m] of have) if (!seen.has(id)) m.remove();
 }
 function itemElOf(id) { return itemsEl.querySelector('[data-id="' + id + '"]') || itemsBgEl.querySelector('[data-id="' + id + '"]'); }
-const cBg = $('#cBg'), cInk = $('#cInk'), cLive = $('#cLive'), cRemote = $('#cRemote'), itemsEl = $('#items'), selEl = $('#sel');
+const cBg = $('#cBg'), cInk = $('#cInk'), cLive = $('#cLive'), cRemote = $('#cRemote'), itemsEl = $('#items'), selEl = $('#sel'), cTop = $('#cTop');
 
 /* ---------- toast & sync ---------- */
 let toastT = null;
@@ -4054,16 +4080,17 @@ async function peekBuild(pid, lo) {
   /* the neighbouring page's lines are drawn a few at a time, so scrolling on never stutters while it is made */
   const bgs = ((page && page.items) || []).filter((it) => isUnderItem(it) && !(it.teacher && isStudentSide()));
   /* a page with a page picture (an imported PDF): paper, then the picture, then the ink on a see-through canvas */
-  let ink = null, bgLay = null;
+  let ink = null, bgLay = null; const [under, top] = inkSplitItems(page && page.items, strokes);
   if (bgs.length) {
-    ink = document.createElement('canvas'); ink.width = Math.round(pw * k); ink.height = Math.round(ph * k); const ci = ink.getContext('2d'); ci.setTransform(k, 0, 0, k, 0, 0); await drawIntoSliced(ci, strokes);
+    ink = document.createElement('canvas'); ink.width = Math.round(pw * k); ink.height = Math.round(ph * k); const ci = ink.getContext('2d'); ci.setTransform(k, 0, 0, k, 0, 0); await drawIntoSliced(ci, under);
     bgLay = document.createElement('div'); bgLay.className = 'fitems'; bgLay.style.width = pw + 'px'; bgLay.style.height = ph + 'px'; bgLay.style.transform = 'scale(' + S.base + ')';
     for (const it of bgs) { try { bgLay.appendChild(buildItemEl(it, true)); } catch (e) { /* skip */ } }
-  } else await drawIntoSliced(c, strokes);
+  } else await drawIntoSliced(c, under);
   const lay = document.createElement('div'); lay.className = 'fitems'; lay.style.width = pw + 'px'; lay.style.height = ph + 'px'; lay.style.transform = 'scale(' + S.base + ')';
   for (const it of (page && page.items) || []) { if ((it.teacher && isStudentSide()) || isUnderItem(it)) continue; try { lay.appendChild(buildItemEl(it, true)); } catch (e) { /* skip */ } }
   const lb = document.createElement('div'); lb.className = 'plabel'; lb.textContent = 'หน้า ' + ((S.nb.pages || []).indexOf(pid) + 1);
-  const out = { sig, dims: [pw, ph], nodes: bgs.length ? [cv, bgLay, ink, lay, lb] : [cv, lay, lb], lay, typeset: false, split: !!bgs.length };
+  const tc = inkTopCanvas(top, pw, ph, k, 'pointer-events:none'); /* lines written on boxes, above the boxes */
+  const out = { sig, dims: [pw, ph], nodes: (bgs.length ? [cv, bgLay, ink, lay] : [cv, lay]).concat(tc ? [tc] : [], [lb]), lay, typeset: false, split: !!bgs.length };
   peekPut(pid, out);
   return out;
 }
@@ -4426,7 +4453,7 @@ function drawSharp() {
      slide on an iPad in landscape), as sharp as text and lines in GoodNotes */
   const pdfNeed = vecs.some((it) => { const im = itemsBgEl.querySelector('[data-id="' + it.id + '"] img'); return im && im.naturalWidth && (it.w || 1000) * S.base * S.zoom * dpr > im.naturalWidth * 1.1; });
   const need = W * S.base * S.zoom * dpr > W * (S.res || 1) * 1.15 || pdfNeed;
-  if (!need || !S.page) { if (!cSharp.hidden) { cSharp.hidden = true; cSharp.width = cSharp.height = 1; } if (!penBusy()) liveFit(false); return; }
+  if (!need || !S.page) { if (!cSharp.hidden) { cSharp.hidden = true; cSharp.width = cSharp.height = 1; if (cTop && cTop.classList.contains('sharp')) topDraw(); } if (!penBusy()) liveFit(false); return; }
   const pr = pageEl.getBoundingClientRect(), vr = vp.getBoundingClientRect();
   const sn = (v, f) => f(v * dpr) / dpr, x0 = sn(Math.max(pr.left, vr.left), Math.ceil), y0 = sn(Math.max(pr.top, vr.top), Math.ceil), x1 = sn(Math.min(pr.right, vr.right), Math.floor), y1 = sn(Math.min(pr.bottom, vr.bottom), Math.floor);
   if (x1 - x0 < 4 || y1 - y0 < 4) { cSharp.hidden = true; return; }
@@ -4449,9 +4476,9 @@ function drawSharp() {
   for (const it of ((S.page && S.page.items) || []).filter(isUnderItem)) { const im = underImgEl(it); if (im && im.complete && im.naturalWidth) { try { c.drawImage(im, it.x, it.y, it.w || 600, (it.w || 600) * (it.ar || 1.414)); } catch (e) { /* skip */ } } }
   const ox = -(x0 - pr.left) * dq, oy = -(y0 - pr.top) * dq, vkey = [S.pid, bw, bh, k.toFixed(4), Math.round(ox), Math.round(oy)].join('|');
   if (vecs.length) { if (PDFV.last && PDFV.last.key === vkey) { c.save(); c.setTransform(1, 0, 0, 1, 0, 0); c.drawImage(PDFV.last.cv, 0, 0); c.restore(); } else pdfVecLater(vecs, vkey, bw, bh, k, ox, oy); }
-  drawInto(c, allStrokes(), S.sel && !S.sel.quiet ? new Set(S.sel.strokes.map((r) => r.id)) : null);
+  drawInto(c, inkSplit(allStrokes())[0], selGlow());
   sharpText(c, x0, y0, x1, y1, dq, pr);
-  cSharp.hidden = false; S.sharpZoom = S.zoom; S.sharpExact = Math.abs(dq - dpr) < 1e-6 && (window.devicePixelRatio || 1) === dpr; pxSync();
+  cSharp.hidden = false; if (cTop && !cTop.hidden) topDraw(); S.sharpZoom = S.zoom; S.sharpExact = Math.abs(dq - dpr) < 1e-6 && (window.devicePixelRatio || 1) === dpr; pxSync();
   /* the live canvas follows the same visible region (not while a pen is down: resizing would wipe the stroke) */
   if (!penBusy()) liveFit(true, (x0 - pr.left) / (pr.width / W), (y0 - pr.top) / (pr.height / H), (x1 - x0) / (pr.width / W), (y1 - y0) / (pr.height / H), k, (x0 - pr.left) / sc, (y0 - pr.top) / sc, (x1 - x0) / sc, (y1 - y0) / sc);
 }
@@ -4841,8 +4868,69 @@ function layerSame(a, b) { if (a.length !== b.length) return false; for (let i =
 function inkSig() { let a = 0, b = 0, n = 0; for (const r of allStrokes()) { const p = r.s.p; n++; a = (a * 31 + p.length + (p[0] | 0)) % 2147483647; b = (b * 17 + (p[1] | 0) + (p[p.length - 2] | 0) + (r.s.c ? r.s.c.length : 0)) % 2147483647; } return n + ':' + a + ':' + b + ':' + S.pid; }
 /* a page full of handwriting is drawn a slice at a time (about 8 ms of each frame) when it opens, so turning pages and
    scrolling never freeze while the lines are painted; the picture is exactly what drawInk makes */
+/* writing on a box (owner 22 พ.ย. 2569, switch "boxink"): a line begun with the pen on a graph, model, video or other live
+   box keeps the box's id (s.on). While that box is on the page the line is drawn above the boxes (#cTop), and it moves,
+   resizes, is copied and is deleted with the box (it rides in the selection, S.sel.ride). Without its box it is ordinary ink */
+function boxInkOn() { return typeof flagOn !== 'function' || flagOn('boxink'); }
+function topIds() { const set = new Map(); if (!boxInkOn()) return set; for (const d of itemsEl.children) if (d.dataset && d.dataset.id) set.set(d.dataset.id, d.classList.contains('live')); return set; }
+/* lines of a box go above it; a highlighter line on a text box, picture or drawing stays under it, so the words keep their colour */
+function inkSplit(list) { const ids = topIds(); if (!ids.size) return [list, []]; const a = [], b = []; for (const r of list) (r.s.on && ids.has(r.s.on) && (r.s.k !== 'h' || ids.get(r.s.on)) ? b : a).push(r); return [a, b]; }
+/* the box a line begun here belongs to: the topmost box under the point (a text box only where its words are) */
+function boxUnder(x, y) {
+  if (!boxInkOn()) return null; const its = visibleItems();
+  for (let i = its.length - 1; i >= 0; i--) {
+    const it = its[i]; if (isBgItem(it) || it.type === 'life' || (it.spec && (it.spec.bare || (it.spec.clean && flagOn('pennear')))) || !itemsEl.querySelector('[data-id="' + it.id + '"]')) continue; /* a frameless picture (an animal out on the paper): a line next to it is ink on the page (owner 22 พ.ย. 2569) */
+    const b = !it.type || it.type === 'text' ? tightItemBox(it) : itemBox(it);
+    if (x >= b[0] && x <= b[2] && y >= b[1] && y <= b[3]) return it;
+  }
+  return null;
+}
+/* the lines picked by the user (not those that only ride along with a picked box) */
+function selInk(sel) { sel = sel || S.sel; if (!sel) return []; return sel.ride ? sel.strokes.filter((r) => !sel.ride.has(r.id)) : sel.strokes; }
+function selGlow() { if (!S.sel || S.sel.quiet) return null; const ride = S.sel.ride; return new Set(S.sel.strokes.filter((r) => !(ride && ride.has(r.id))).map((r) => r.id)); }
+/* a box that came or went (deleted, another page, undo) moves its lines between the two layers */
+const TOPSIG = { v: '' };
+function topDraw() {
+  if (!cTop) return;
+  const top = inkSplit(allStrokes())[1];
+  TOPSIG.v = [...topIds().keys()].join();
+  if (!top.length) { if (!cTop.hidden) { cTop.hidden = true; cTop.width = cTop.height = 1; cTop.style.cssText = ''; cTop.classList.remove('sharp'); } return; }
+  cTop.hidden = false; let c;
+  if (cSharp && !cSharp.hidden && S.sharpXf && S.sharpXf.pid === S.pid) {
+    /* zoomed in: the same sharp, screen-sized region as the sharp ink layer */
+    cTop.classList.add('sharp'); cTop.style.cssText = cSharp.style.cssText;
+    if (cTop.width !== cSharp.width || cTop.height !== cSharp.height) { cTop.width = cSharp.width; cTop.height = cSharp.height; }
+    c = cTop.getContext('2d'); c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, cTop.width, cTop.height);
+    c.setTransform(S.sharpXf.k, 0, 0, S.sharpXf.k, S.sharpXf.ox, S.sharpXf.oy);
+  } else {
+    cTop.classList.remove('sharp'); cTop.style.cssText = '';
+    if (cTop.width !== cInk.width || cTop.height !== cInk.height) { cTop.width = cInk.width; cTop.height = cInk.height; }
+    c = cTop.getContext('2d'); c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, cTop.width, cTop.height); c.setTransform(S.res, 0, 0, S.res, 0, 0);
+  }
+  drawInto(c, top, selGlow());
+}
+/* the same split for a page drawn somewhere else (the file sent out, the page above or below, history, homework pictures) */
+const LIVE_TYPES = ['graph', 'video', 'sim', 'lab', 'scene', 'life'];
+function inkSplitItems(items, list) {
+  if (!boxInkOn()) return [list, []];
+  const m = new Map(); for (const it of items || []) if (!isUnderItem(it)) m.set(it.id, LIVE_TYPES.includes(it.type) || !!it.vec3);
+  if (!m.size) return [list, []];
+  const a = [], b = []; for (const r of list) (r.s.on && m.has(r.s.on) && (r.s.k !== 'h' || m.get(r.s.on)) ? b : a).push(r); return [a, b];
+}
+function inkTopCanvas(list, pw, ph, k, css) {
+  if (!list || !list.length) return null;
+  const cv = document.createElement('canvas'); cv.width = Math.max(1, Math.round(pw * k)); cv.height = Math.max(1, Math.round(ph * k));
+  cv.style.cssText = css != null ? css : 'position:absolute;left:0;top:0;width:' + pw + 'px;height:' + ph + 'px;pointer-events:none';
+  const c = cv.getContext('2d'), keep = [W, H]; c.setTransform(k, 0, 0, k, 0, 0); try { W = pw; H = ph; drawInto(c, list, null); } finally { [W, H] = keep; }
+  return cv;
+}
+function topSync() { if (!cTop || !boxInkOn()) return; if ([...topIds().keys()].join() !== TOPSIG.v && allStrokes().some((r) => r.s.on)) drawInk(); }
+/* the lines of these boxes, to carry along when the boxes are picked */
+function boxRide(ids) { if (!boxInkOn() || !ids.length) return []; const set = new Set(ids); return allStrokes().filter((r) => r.layer !== 'teacher' && r.s.on && set.has(r.s.on)).map((r) => ({ layer: r.layer, id: r.s.id })); }
+function selAddRide(sel) { const extra = boxRide(sel.items).filter((r) => !sel.strokes.some((q) => q.id === r.id)); if (!extra.length) return; sel.ride = new Set(extra.map((r) => r.id)); sel.strokes = sel.strokes.concat(extra); }
 function drawInkSoon() {
-  const list = allStrokes();
+  topDraw();
+  const list = inkSplit(allStrokes())[0];
   if (list.length < 40 || S.sel) { drawInk(); return; }
   const gen = ++S.inkGen, c0 = cInk.getContext('2d'), sig = inkSig();
   c0.setTransform(1, 0, 0, 1, 0, 0); c0.clearRect(0, 0, cInk.width, cInk.height);
@@ -4875,9 +4963,10 @@ function drawInk() {
   const c = cInk.getContext('2d');
   c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, cInk.width, cInk.height);
   c.setTransform(S.res, 0, 0, S.res, 0, 0);
-  drawInto(c, allStrokes(), S.sel && !S.sel.quiet ? new Set(S.sel.strokes.map((r) => r.id)) : null);
+  drawInto(c, inkSplit(allStrokes())[0], selGlow());
   S.inkSigDrawn = inkSig();
   if (cSharp && (!cSharp.hidden || S.zoom > 1.2)) drawSharp();
+  topDraw();
 }
 const drawInkLater = debounce(() => drawInk(), 1500);
 /* the live canvas (the stroke being written, the laser, shape previews) covers the whole page at normal size; zoomed in, it covers
@@ -4934,6 +5023,7 @@ function renderItems() {
   svgFitLater();
   sharpTextOff(); renderItems0(); markPicked(); imgUnderSync(); lockBanSync(); if (typeof cSharp !== 'undefined' && cSharp && !cSharp.hidden) sharpLater();
   edgeCheckLater();
+  topSync();
 }
 /* words in a drawn diagram stay inside their boxes: a label wider than its box is set smaller (and nudged in), so nothing
    spills over the frame; done once per picture and kept, so the exported page and other devices show the same */
@@ -5039,6 +5129,7 @@ function buildItemEl(it, forExport) {
   const media = it.type === 'img' || it.type === 'video';
   d.className = (isExItem(it) ? 'exq ' : '') + 'item' + (it.diary ? ' diary' : '') + (it.type === 'graph' ? ' gplain' : '') + (it.lock ? ' locked' : '') + (it.teacher ? ' teacher' : '') + (it.type === 'svg' ? ' svg' : '') + (media ? ' media' : '')
     + (it.type === 'graph' || it.type === 'sim' || it.type === 'lab' || it.type === 'scene' ? ' graph' : '') + (it.type === 'sim' || it.type === 'scene' ? ' sim' : '') + ((it.type === 'graph' || it.type === 'video' || it.type === 'sim' || it.type === 'lab' || it.type === 'scene') && !forExport ? ' live no-ink' : '');
+  if (it.fr != null && frameOn()) d.classList.add(it.fr ? 'fron' : 'froff');
   d.style.left = it.x + 'px'; d.style.top = it.y + 'px'; d.style.width = (it.w || 600) + 'px';
   if (it.fs) d.style.fontSize = clamp(+it.fs || 24, 12, 80) + 'px';
   d.dataset.id = it.id;
@@ -5969,6 +6060,37 @@ function pr(e) {
 setInterval(() => { const a = Math.round(PRS.flat ? 50 : PRS.avg); if (String(a) !== store_ls.get('tp-pravg')) { store_ls.set('tp-pravg', String(a)); if (typeof renderWidths === 'function') renderWidths(); } }, 20000);
 
 vp.addEventListener('pointerdown', onDown);
+/* the pen writes on a graph, model, video or any live box with its frame (the finger still turns, drags and plays it); its buttons,
+   sliders, title bar and handles keep working with the pen */
+itemsEl.addEventListener('pointerdown', (e) => {
+  if (e.pointerType !== 'pen' || S.show || S.present) return;
+  if (!(S.tool === 'pen' || S.tool === 'hl' || S.tool === 'eraser')) return;
+  const d = e.target.closest && e.target.closest('.item.live'); if (!d || d.classList.contains('editing') || !d.dataset.id) return;
+  if (e.target.closest('button,input,select,textarea,video,a,label,.tgrab,.tsize,.x,.gsl,.scntog,.scnpill,.cleanpill,.cleandot,.scnhandle,.vbar,.gh,.qkey')) return;
+  if (S.sel && S.sel.items.includes(d.dataset.id)) return; /* a picked box: the pen moves it, as before */
+  if (d.classList.contains('clean') || (d.classList.contains('vecfig') && !d.classList.contains('fron'))) {
+    /* a 3D picture without a frame (an animal, an orbital): the pen turns it only on the picture itself (task 9.9); next to
+       it, where its box is empty, the pen writes on the page (owner 22 พ.ย. 2569, switch "pennear") */
+    if (!flagOn('pennear') || penOnPicture(d, e)) return;
+    e.stopPropagation(); e.__pageInk = 1; onDown(e); return;
+  }
+  if (!boxInkOn()) return;
+  e.stopPropagation(); e.__boxInk = d.dataset.id; onDown(e);
+}, true);
+/* is the pen on the drawing of a frameless picture (not on the empty part of its box): a few pixels round the point */
+function penOnPicture(d, e) {
+  const t = e.target;
+  if (d.classList.contains('vecfig')) {
+    /* a figure of thin arrows: anywhere inside the part where it is drawn turns it (its arrows alone are too thin to hit) */
+    const sv = d.querySelector('svg'); if (!sv) return true;
+    try { const g = [...sv.querySelectorAll('path,line,circle,ellipse,polygon,polyline,text')]; let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9; for (const el of g) { const r = el.getBoundingClientRect(); if (!r.width && !r.height) continue; x0 = Math.min(x0, r.left); y0 = Math.min(y0, r.top); x1 = Math.max(x1, r.right); y1 = Math.max(y1, r.bottom); } return x1 < x0 || (e.clientX >= x0 - 4 && e.clientX <= x1 + 4 && e.clientY >= y0 - 4 && e.clientY <= y1 + 4); } catch (err) { return true; }
+  }
+  const cv = d.querySelector('canvas.scncv'); if (!cv || !cv.width) return true;
+  const rc = cv.getBoundingClientRect(); if (e.clientX < rc.left || e.clientX > rc.right || e.clientY < rc.top || e.clientY > rc.bottom) return false;
+  const kx = cv.width / (rc.width || 1), ky = cv.height / (rc.height || 1), R = 3, x0 = Math.max(0, Math.floor((e.clientX - rc.left - R) * kx)), y0 = Math.max(0, Math.floor((e.clientY - rc.top - R) * ky));
+  const w = Math.max(1, Math.min(cv.width - x0, Math.ceil(2 * R * kx))), h = Math.max(1, Math.min(cv.height - y0, Math.ceil(2 * R * ky)));
+  try { const px = cv.getContext('2d').getImageData(x0, y0, w, h).data; for (let i = 3; i < px.length; i += 4) if (px[i] > 40) return true; return false; } catch (err) { return true; }
+}
 vp.addEventListener('pointermove', onMove);
 vp.addEventListener('pointerup', onUp);
 vp.addEventListener('pointercancel', onUp);
@@ -6032,7 +6154,7 @@ function onDown(e) {
       return;
     }
   }
-  if (e.target.closest('.no-ink') && !(S.tool === 'lasso' && e.target.closest('.item.live') && !e.target.closest('input,button,video')) && !(e.pointerType === 'touch' && e.target.closest('.item.live') && !e.target.closest('input,button,select,textarea,video,.gsl,.scntog'))) return;
+  if (!e.__boxInk && !e.__pageInk && e.target.closest('.no-ink') && !(S.tool === 'lasso' && e.target.closest('.item.live') && !e.target.closest('input,button,video')) && !(e.pointerType === 'touch' && e.target.closest('.item.live') && !e.target.closest('input,button,select,textarea,video,.gsl,.scntog'))) return;
   if (S.present) { e.preventDefault(); presentTap(); return; }
   closePops();
   if (editing && !e.target.closest('.item')) { commitEdit(); }
@@ -6041,6 +6163,8 @@ function onDown(e) {
   e.preventDefault();
   const t = now();
   const pt = { id: e.pointerId, type: e.pointerType, sx: e.clientX, sy: e.clientY, lx: e.clientX, ly: e.clientY, t0: t, moved: 0, mode: 'none', cw: Math.max(e.width || 0, e.height || 0) };
+  if (e.__boxInk) pt.box = e.__boxInk;
+  if (e.__pageInk) pt.page = 1; /* next to a frameless picture: ink on the page, not a line of that box */
   P.set(e.pointerId, pt);
   if (e.pointerType === 'pen') {
     S.lastPen = t; S.penDown++;
@@ -6114,6 +6238,7 @@ function beginTool(pt, e) {
     pt.stroke = { id: 's' + uid(), k: hl ? 'h' : 'p', c: hl ? (okHex(S.hlColor) ? S.hlColor : HL) : S.color, w: hl ? 26 : curW(), p: [] };
     if (!hl && S.tip && S.tip !== 'ball') { pt.stroke.t = S.tip; if (S.opacity < 1) pt.stroke.o = S.opacity; }
     pt.live = null;
+    if (!pt.box && !pt.page) { const hb = boxUnder(x, y); if (hb) pt.box = hb.id; }
     addPoint(pt, x, y, pr(e));
     armHold(pt, x, y);
     /* press and hold on a picture, graph or text box (without moving) to pick it up;
@@ -6132,7 +6257,7 @@ function beginTool(pt, e) {
     eraseAt(x, y, pt.r, pt); drawCursor(x, y, pt.r);
   } else if (S.tool === 'lasso') {
     if (S.sel && nearHandle(S.sel.box, x, y) >= 0) { startScale(pt, nearHandle(S.sel.box, x, y)); }
-    else if (S.sel && inBox(S.sel.box, x, y)) { pt.mode = 'move'; pt.last = [x, y]; pt.dx = 0; pt.dy = 0; if (!S.sel.strokes.length && S.sel.items.length === 1 && itemsAt(x, y).length > 1) pt.cyc = [x, y]; }
+    else if (S.sel && inBox(S.sel.box, x, y)) { pt.mode = 'move'; pt.last = [x, y]; pt.dx = 0; pt.dy = 0; if (!selInk().length && S.sel.items.length === 1 && itemsAt(x, y).length > 1) pt.cyc = [x, y]; }
     else {
       const hit = itemAt(x, y), sh = hit ? null : strokeAt(x, y);
       /* starting on a box (a question, a reply, a picture) still draws a lasso: the box is picked only by a tap, or by
@@ -6254,9 +6379,11 @@ function onUp(e) {
   if (pt.mode === 'draw') {
     if (S.watchers || S.peersAny || liveOn()) emitInkDone(pt);
     /* a snapped shape keeps all its points: thinned to its corners, the smooth pen would round them off */
+    if (pt.box && findItem(pt.box)) pt.stroke.on = pt.box;
     if (!pt.snapped) inkSimplify(pt.stroke); S.mine.push(pt.stroke); clearLive();
     /* only the finished line is added to the page picture: redrawing the whole page after every stroke was the main delay */
-    if (pt.stroke.k === 'h' || S.sel) drawInk(); else { const c = cInk.getContext('2d'); c.setTransform(S.res, 0, 0, S.res, 0, 0); drawStroke(c, pt.stroke); S.inkSigDrawn = inkSig(); if (typeof refreshCurThumb === 'function') refreshCurThumb(); sharpAdd([pt.stroke]); }
+    if (pt.stroke.on && inkSplit([{ s: pt.stroke }])[1].length) { topDraw(); S.inkSigDrawn = inkSig(); if (typeof refreshCurThumb === 'function') refreshCurThumb(); }
+    else if (pt.stroke.k === 'h' || S.sel) drawInk(); else { const c = cInk.getContext('2d'); c.setTransform(S.res, 0, 0, S.res, 0, 0); drawStroke(c, pt.stroke); S.inkSigDrawn = inkSig(); if (typeof refreshCurThumb === 'function') refreshCurThumb(); sharpAdd([pt.stroke]); }
     pushUndo({ t: 'add', stroke: pt.stroke }); saveMine(); diaryStroke(pt.stroke); S.lastInk = now();
     if (S.convMode && S.autoConv && pt.stroke.k !== 'h') { S.autoQueue.add(pt.stroke.id); autoConvert(); }
   } else if (pt.mode === 'erase' && pt.snap && Object.keys(pt.snap).length) {
@@ -6962,7 +7089,7 @@ function selectStrokes(refs) {
 /* resize a lasso selection from its corner handle, or with the buttons */
 function handleR() { return clamp(14 / (S.base * S.zoom), 8, 30); }
 const CORNERS = [[0, 1], [2, 1], [2, 3], [0, 3]];
-function textOnlySel() { return S.sel && !S.sel.strokes.length && S.sel.items.length && S.sel.items.every((id) => { const it = findItem(id); return it && (!it.type || it.type === 'text'); }); }
+function textOnlySel() { return S.sel && !selInk().length && S.sel.items.length && S.sel.items.every((id) => { const it = findItem(id); return it && (!it.type || it.type === 'text'); }); }
 function nearHandle(b, x, y) {
   if (!b) return -1;
   if (textOnlySel() && Math.abs(x - b[2]) < handleR() * 1.6 && Math.abs(y - (b[1] + b[3]) / 2) < handleR() * 2.4) return 4;
@@ -6990,7 +7117,10 @@ function doScale(pt, x, y) {
       const it = findItem(id); if (!it) continue;
       it.w = Math.round(clamp(o.w + dx, 80, W - it.x - 4));
       const d = itemsEl.querySelector('[data-id="' + id + '"]'); if (d) { d.style.width = it.w + 'px'; anFitBox(d, it.w); }
+      const f = it.w / (o.w || 1), X = o.x * 10, Y = o.y * 10;
+      for (const q of pt.orig) { const st = findStroke(q.r); if (!st || st.on !== id) continue; for (let i = 0; i < q.p.length; i += 3) { st.p[i] = Math.round(X + (q.p[i] - X) * f); st.p[i + 1] = Math.round(Y + (q.p[i + 1] - Y) * f); } boxCache.delete(st); }
     }
+    if (pt.orig.length) drawInk();
     S.sel.box = [pt.box0[0], pt.box0[1], Math.max(pt.box0[0] + 60, pt.box0[2] + dx), pt.box0[3]];
     S.sel.box = [S.sel.box[0], S.sel.box[1], S.sel.box[2], Math.max(...S.sel.items.map((id) => { const it = findItem(id); return it ? itemBox(it)[3] : 0; }))];
     drawSelBox(); return;
@@ -7103,7 +7233,7 @@ function finishLasso(poly) {
   const items = [];
   for (const it of visibleItems()) { if (it.lock || it.by === 'teacher' || (it.spec && it.spec.bare) || it.type === 'life') continue; const b = itemBox(it); if (!inPoly(poly, (b[0] + b[2]) / 2, (b[1] + b[3]) / 2)) continue; if (isExItem(it) && strokes.length && ![[b[0], b[1]], [b[2], b[1]], [b[0], b[3]], [b[2], b[3]]].every(([x, y]) => inPoly(poly, x, y))) continue; items.push(it.id); } /* circling a drawing in the space between questions picks up the drawing, not the question beside it */
   if (!strokes.length && !items.length) { selEl.innerHTML = ''; toast('ไม่พบลายมือในบริเวณที่วง', 1600); return; }
-  S.sel = { strokes, items, box: null };
+  S.sel = { strokes, items, box: null }; selAddRide(S.sel);
   S.sel.box = selBox(S.sel);
   drawInk(); drawSelBox(); showSelbar();
   if (S.pendingConvert && strokes.length) { S.pendingConvert = false; readSelection(); }
@@ -7132,8 +7262,27 @@ function restackSel(toFront) {
   S.sel = keep; S.sel.box = selBox(S.sel); drawSelBox(); showSelbar();
   toast(toFront ? 'นำขึ้นหน้าสุดแล้ว' : 'ส่งไปหลังสุดแล้ว', 1400);
 }
+/* a frame for any box, or none (owner 22 พ.ย. 2569, switch "frames"): a model that can stand on the paper by itself (3D,
+   animals, orbitals) uses its own clean look; every other box keeps it.fr only when it differs from the usual look */
+function frameOn() { return typeof flagOn !== 'function' || flagOn('frames'); }
+const FRAMED = ['sim', 'scene', 'lab'];
+function frameClean(it) { const sp = it.type === 'scene' && it.spec; return !!(sp && sp.dim === 3 && (sp.domain === 'math' || sp.animal || sp.mark === 'orb')); }
+function frameHas(it) { if (frameClean(it)) return !it.spec.clean; if (it.fr != null) return !!it.fr; return FRAMED.includes(it.type); }
+function frameItems() { return ((S.sel && S.sel.items) || []).map(findItem).filter((it) => it && !it.lock && !(isStudentSide() && it.by === 'teacher') && it.type !== 'life' && !(it.spec && it.spec.bare)); }
+function frameToggle() {
+  const its = frameItems(); if (!its.length || !S.page) return;
+  const on = !its.every(frameHas), ids = new Set(its.map((it) => it.id));
+  const before = clone(S.page.items || []), items = clone(before);
+  for (const x of items) {
+    if (!ids.has(x.id)) continue;
+    if (frameClean(x)) { x.spec.clean = !on; if (!on) x.spec.pen = x.spec.pen !== false; delete x.fr; }
+    else if (on === FRAMED.includes(x.type)) delete x.fr; else x.fr = on ? 1 : 0;
+  }
+  const keep = clone(S.sel); setItems(items, before); S.sel = keep; S.sel.box = selBox(S.sel); drawSelBox(); showSelbar();
+  toast(on ? 'แสดงกรอบแล้ว' : 'เอากรอบออกแล้ว', 1400);
+}
 function selectItem(it) {
-  S.sel = { strokes: [], items: [it.id], box: null };
+  S.sel = { strokes: [], items: [it.id], box: null }; selAddRide(S.sel);
   S.sel.box = selBox(S.sel); drawInk(); drawSelBox(); showSelbar();
 }
 function selBox(sel) {
@@ -7185,7 +7334,7 @@ function moveRefs(refs, dx, dy, touched) {
 function showSelbar() {
   if (S.sel && S.sel.quiet) { $('#selbar').hidden = true; return; }
   if (S.sel && pageLock()) { /* on a locked record page what was there at locking stays as it is */ const a = S.sel.strokes.length + S.sel.items.length; S.sel.strokes = S.sel.strokes.filter((r) => !isLockedRef(r.id)); S.sel.items = S.sel.items.filter((id) => !isLockedRef(id)); if (S.sel.strokes.length + S.sel.items.length < a) toast('หน้านี้ล็อกเป็นบันทึกถาวรแล้ว แก้หรือย้ายของเดิมไม่ได้ เขียนเพิ่มได้', 2600); if (!S.sel.strokes.length && !S.sel.items.length) { clearSel(); return; } S.sel.box = selBox(S.sel); drawSelBox(); }
-  const n = S.sel.strokes.length, m = S.sel.items.length;
+  const n = S.sel.strokes.length - (S.sel.ride ? S.sel.ride.size : 0), m = S.sel.items.length;
   $('#selCount').textContent = 'เลือก ' + (n ? n + ' เส้น' : '') + (n && m ? ' ' : '') + (m ? m + ' กล่อง' : '');
   $('#selbar').hidden = false;
   $('#sRead').hidden = !n; $('#sTidy').hidden = !n; $('#sEq').hidden = !n;
@@ -7214,6 +7363,7 @@ function showSelbar() {
   $('#sJoin').hidden = !(textSel && !n);
   $('#sMedia').hidden = !(n || textSel);
   $('#sFront').hidden = $('#sBack').hidden = !(m && (S.page.items || []).length > 1);
+  { const fi = frameOn() ? frameItems() : []; $('#sFrame').hidden = !fi.length; if (fi.length) { const has = fi.every(frameHas); $('#sFrame').querySelector('span').textContent = has ? 'ไม่มีกรอบ' : 'แสดงกรอบ'; $('#sFrame').title = has ? 'เอากรอบของกล่องออก' : 'ใส่กรอบให้กล่อง'; } }
   $('#sBig').hidden = $('#sSmall').hidden = true;
   $('#sGen').hidden = !n;
   if (S.sel !== SG.sel) { SG.sel = S.sel; SG.open = null; }
@@ -7241,14 +7391,14 @@ const SEL_GRP = [
   ['sgbConv', 'แปลง', ['sRead', 'sEq', 'sData', 'sQuiz', 'sHand', 'sOrig'], '<path d="M3 5h7v7H3z M12 10h7v7h-7z M14 5.5h2.5a2 2 0 0 1 2 2V8 M8 16.5H5.5a2 2 0 0 1-2-2V14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>'],
   ['sgbSee', 'เห็นภาพ', ['sGraph', 'sAnim', 'sTrace', 'sMedia'], '<path d="M2.5 11s3-6 8.5-6 8.5 6 8.5 6-3 6-8.5 6-8.5-6-8.5-6z" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="11" cy="11" r="2.8" fill="none" stroke="currentColor" stroke-width="1.6"/>'],
   ['sgbCheck', 'ตรวจและแก้', ['sSolve', 'sUnit', 'sBal', 'sProof', 'sImMeas'], '<circle cx="11" cy="11" r="7.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M7.5 11.2l2.4 2.4 4.6-5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>'],
-  ['sgbArr', 'จัดวาง', ['sTidy', 'sJoin', 'sCut', 'sCap', 'sFront', 'sBack'], '<rect x="3" y="4" width="16" height="4" rx="1.2" fill="none" stroke="currentColor" stroke-width="1.6"/><rect x="3" y="10.5" width="10" height="4" rx="1.2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M3 18h13" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>']
+  ['sgbArr', 'จัดวาง', ['sTidy', 'sJoin', 'sCut', 'sCap', 'sFrame', 'sFront', 'sBack'], '<rect x="3" y="4" width="16" height="4" rx="1.2" fill="none" stroke="currentColor" stroke-width="1.6"/><rect x="3" y="10.5" width="10" height="4" rx="1.2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M3 18h13" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>']
 ];
 const SEL_FRONT = 3;
 const SG = { marks: {}, open: null };
 /* the commands used most with what is selected, best first: handwriting, a typed line with mathematics, a table, plain
    typed text, one picture, one other box; the subject of the notebook decides the checking command */
 function selFrontIds() {
-  const sel = S.sel || { strokes: [], items: [] }, n = sel.strokes.length, its = sel.items.map(findItem).filter(Boolean);
+  const sel = S.sel || { strokes: [], items: [] }, n = sel.strokes.length - (sel.ride ? sel.ride.size : 0), its = sel.items.map(findItem).filter(Boolean);
   const subj = (S.nb && S.nb.subject) || 'phys', chk = subj === 'chem' || subj === 'sci' ? 'sBal' : subj === 'math' ? 'sProof' : 'sUnit';
   const isText = (it) => !it.type || it.type === 'text';
   if (n) return its.length ? ['sRead', 'sQuiz', 'sGraph'] : ['sRead', subj === 'chem' ? 'sBal' : 'sSolve', 'sQuiz'];
@@ -7259,7 +7409,7 @@ function selFrontIds() {
     return ['sQuiz', 'sHand', 'sJoin'];
   }
   if (its.length === 1 && its[0].type === 'img') return ['sImMeas', 'sCut', 'sCap'];
-  if (its.length === 1) return ['sCap', 'sAnim'];
+  if (its.length === 1) return ['sCap', 'sFrame', 'sAnim'];
   return ['sQuiz', 'sGraph', 'sFront'];
 }
 function sgPark(b) { if (!SG.marks[b.id]) { const mk = document.createComment(b.id); b.before(mk); SG.marks[b.id] = mk; } }
@@ -7330,15 +7480,15 @@ function placeSelbar() {
 function dupSel() {
   if (!S.sel || !S.page) return;
   const off = 30, ix = off * 10;
-  const newStrokes = [];
-  for (const r of S.sel.strokes) { const st = findStroke(r); if (!st) continue; const c = clone(st); c.id = 's' + uid(); for (let i = 0; i < c.p.length; i += 3) { c.p[i] += ix; c.p[i + 1] += ix; } S.mine.push(c); newStrokes.push({ layer: DEV, id: c.id }); }
+  const newStrokes = [], idMap = {};
   const before = clone(S.page.items || []), newItems = [];
-  const copies = before.filter((it) => S.sel.items.includes(it.id)).map((it) => { const c = clone(it); c.id = 'i' + uid(); c.by = DEV; c.x = (c.x || 0) + off; c.y = (c.y || 0) + off; newItems.push(c.id); return c; });
+  const copies = before.filter((it) => S.sel.items.includes(it.id)).map((it) => { const c = clone(it); c.id = 'i' + uid(); idMap[it.id] = c.id; c.by = DEV; c.x = (c.x || 0) + off; c.y = (c.y || 0) + off; newItems.push(c.id); return c; });
+  for (const r of S.sel.strokes) { const st = findStroke(r); if (!st) continue; const c = clone(st); c.id = 's' + uid(); if (c.on) { if (idMap[c.on]) c.on = idMap[c.on]; else delete c.on; } for (let i = 0; i < c.p.length; i += 3) { c.p[i] += ix; c.p[i + 1] += ix; } S.mine.push(c); newStrokes.push({ layer: DEV, id: c.id }); }
   const ops = [];
   if (newStrokes.length) { for (const r of newStrokes) { const st = findStroke(r); if (st) ops.push({ t: 'add', stroke: clone(st) }); } saveMine(); drawInk(); }
   if (copies.length) { const after = before.concat(copies); S.page = Object.assign({}, S.page, { items: after }); savePage(); renderItems(); ops.push({ t: 'items', before, after: clone(after) }); }
   if (ops.length) pushUndo({ t: 'combo', ops });
-  S.sel = { strokes: newStrokes, items: newItems, box: null }; S.sel.box = selBox(S.sel); drawInk(); drawSelBox(); showSelbar();
+  S.sel = { strokes: newStrokes, items: newItems, box: null }; { const rd = new Set(newStrokes.filter((r) => (findStroke(r) || {}).on).map((r) => r.id)); if (rd.size) S.sel.ride = rd; } S.sel.box = selBox(S.sel); drawInk(); drawSelBox(); showSelbar();
   toast('ทำสำเนาแล้ว ลากไปวางที่ต้องการ', 1600);
 }
 function clearSel() { S.sel = null; drawSelBox(); $('#selbar').hidden = true; drawInk(); }
@@ -7362,7 +7512,11 @@ function deleteSel() {
     if (i >= 0) { removed.push({ layer: r.layer, stroke: arr[i] }); arr.splice(i, 1); touched.add(r.layer); }
   }
   if (removed.length) { pushUndo({ t: 'erase', removed }); saveLayers(touched); }
-  if (S.sel.items.length) { const before = clone(S.page.items || []); setItems(before.filter((t) => !S.sel.items.includes(t.id)), before); }
+  if (S.sel.items.length) {
+    const before = clone(S.page.items || []), n0 = S.undo.length; setItems(before.filter((t) => !S.sel.items.includes(t.id)), before);
+    /* a box deleted with the lines written on it comes back with them in one undo */
+    if (removed.length && S.undo.length === n0 + 1 && n0 > 0 && S.undo[n0 - 1].t === 'erase' && S.undo[n0].t === 'items') { const it = S.undo.pop(), er = S.undo.pop(); pushUndo({ t: 'combo', ops: [er, it] }); }
+  }
   clearSel();
 }
 
@@ -8146,7 +8300,7 @@ S.handDefault = HAND_IDS.includes(store_ls.get('tp-hand')) ? store_ls.get('tp-ha
 function inkOf(strokes) { const n = {}; for (const s of strokes) if (okHex(s.c) && s.k !== 'h') n[s.c] = (n[s.c] || 0) + 1; const top = Object.entries(n).sort((a, b) => b[1] - a[1])[0]; return top ? top[0] : null; }
 function openHand() {
   if (!S.sel) return;
-  const n = S.sel.strokes.length, texts = S.sel.items.map(findItem).filter((it) => it && (!it.type || it.type === 'text'));
+  const n = selInk().length, texts = S.sel.items.map(findItem).filter((it) => it && (!it.type || it.type === 'text'));
   const sample = texts.length ? String(texts[0].md || '').replace(/\$[^$]*\$/g, '').split('\n')[0].slice(0, 28) || 'แรงทำให้วัตถุเปลี่ยนสภาพการเคลื่อนที่' : 'แรงทำให้วัตถุเปลี่ยนสภาพการเคลื่อนที่';
   let pick = (texts[0] && texts[0].hand) || S.handDefault || 'pen';
   $('#handNote').textContent = n ? 'AI อ่านลายมือที่เลือก แล้วเขียนใหม่ด้วยแบบตัวเขียนที่สวยและอ่านง่าย สีเดิมตามหมึก แก้ข้อความ ย่อขยาย และยืดกล่องได้เหมือนตัวพิมพ์' : 'เปลี่ยนแบบตัวอักษรของข้อความที่เลือก ไม่ต้องใช้ AI';
@@ -9412,7 +9566,8 @@ async function exportPdf() {
       const bgs = ((page && page.items) || []).filter(isUnderItem), ci = bgs.length ? document.createElement('canvas') : null;
       W = pw; H = ph; c.fillStyle = '#FFFFFF'; c.fillRect(0, 0, W, H); { const pk = (page && page.paper) || 'grid'; paper(c, expLines() || pk === 'board' || pk === 'art' ? pk : 'blank'); }
       /* a page picture (imported PDF) goes between the paper and the writing, so the writing on it is in the file */
-      if (ci) { ci.width = cv.width; ci.height = cv.height; ci.style.cssText = cv.style.cssText; const x2 = ci.getContext('2d'); x2.setTransform(1.6, 0, 0, 1.6, 0, 0); drawInto(x2, strokes, null); } else drawInto(c, strokes, null);
+      const [under, top] = inkSplitItems(page && page.items, strokes);
+      if (ci) { ci.width = cv.width; ci.height = cv.height; ci.style.cssText = cv.style.cssText; const x2 = ci.getContext('2d'); x2.setTransform(1.6, 0, 0, 1.6, 0, 0); drawInto(x2, under, null); } else drawInto(c, under, null);
       [W, H] = keep; /* without lines the page keeps its colour (a chalkboard stays dark), only the grid, dots or rules go */
       pg.appendChild(cv);
       if (ci) { const bl = document.createElement('div'); bl.style.cssText = 'position:absolute;left:0;top:0;width:' + pw + 'px;height:' + ph + 'px'; for (const it of bgs) bl.appendChild(buildItemEl(it, true)); for (const im of bl.querySelectorAll('img')) { if (!im.complete) await new Promise((r) => { im.onload = r; im.onerror = r; setTimeout(r, 6000); }); } pg.appendChild(bl); pg.appendChild(ci); }
@@ -9420,6 +9575,7 @@ async function exportPdf() {
       for (const it of ((page && page.items) || [])) if (!isUnderItem(it)) its.appendChild(buildItemEl(it, true));
       for (const im of its.querySelectorAll('img')) { if (!im.complete) await new Promise((r) => { im.onload = r; im.onerror = r; setTimeout(r, 6000); }); }
       pg.appendChild(its);
+      { const tc = inkTopCanvas(top, pw, ph, 1.6); if (tc) pg.appendChild(tc); } /* lines written on boxes, above the boxes */
       host.appendChild(pg);
       await typeset(its);
       if (document.fonts && document.fonts.ready) await document.fonts.ready;
@@ -11017,12 +11173,12 @@ async function autoMedia() {
   if (webBlocked()) { out.innerHTML = '<div class="note warn">ขณะเปิดใน claude.ai หน้านี้ดึงสื่อจากเว็บไม่ได้ ใช้ได้เมื่อเปิดแอปจากเว็บของคุณเอง</div>'; return; }
   const my = ++MD.busy;
   /* typed text naming a curriculum topic (and no handwriting picked): its search words come from the app's table */
-  const loc0 = !(S.sel && S.sel.strokes.length) ? mdTopic(pageText()) : null;
+  const loc0 = !(S.sel && selInk().length) ? mdTopic(pageText()) : null;
   if (loc0) waitLine(out, 'กำลังหาสื่อของหัวข้อ ' + loc0.th);
   else waitCard(out, 'AI กำลังอ่านหน้าที่เขียนและจัดชุดสื่อ', ['อ่านเนื้อหาบนหน้า', 'เลือกสื่อที่ตรงกับเนื้อหา'], { cancel: false }); head.textContent = '';
   let topic = '', q = { img: [], gif: [], video: [] };
   const typed = pageText();
-  const sel = S.sel && S.sel.strokes.length ? S.sel.strokes : null;
+  const sel = S.sel && selInk().length ? selInk() : null;
   if (loc0) { topic = loc0.th; q = { img: [loc0.en], gif: [loc0.en], video: [loc0.en] }; }
   if (!loc0 && AI.ready('read')) {
     try {
@@ -11630,6 +11786,8 @@ const FLAGS = { off: {}, told: {} };
 FLAGS.ready = (location.protocol === 'file:' || (window.claude && window.claude.use) ? Promise.resolve() : fetch('flags.json', { cache: 'no-store' }).then((r) => (r.ok ? r.json() : null)).then((j) => { if (j && Array.isArray(j.off)) j.off.forEach((n) => { if (typeof n === 'string') FLAGS.off[n] = true; }); }).catch(() => { /* no switches: everything on */ }));
 function flagOn(name) { return !FLAGS.off[name]; }
 function flagsReady() { return Promise.race([FLAGS.ready, new Promise((r) => setTimeout(r, 2500))]); }
+/* writing on a box: the line being written shows above the boxes (off with "boxink" in flags.json) */
+flagsReady().then(() => { document.body.classList.toggle('boxink', flagOn('boxink')); if (!flagOn('boxink')) drawInk(); }).catch(() => {});
 /* each release keeps its parts in m/<build>/, so a page left open (in the middle of a class) keeps getting the
    parts of its own release after a new one goes up; a copy that was not built (no number) uses m/<name>.js */
 function modUrl(name) { let v = ''; try { v = BUILD; } catch (e) { v = ''; } return /^\d+$/.test(v) ? MODS[name].replace(/^m\//, 'm/' + v + '/') : MODS[name] + '?v=' + (v || Date.now()); }
@@ -11680,17 +11838,17 @@ function need(name) {
     modSet(name, ex); MODEV[name] = ex.__ev; MODOK[name] = true;
   }).catch((e) => { delete MODP[name]; throw e; }));
 }
-let qnFigure, qnParse, fgFigure, mlParse, mlSmiles, AN_LIST, anDraw, anTick, anTap, anSpec, anThumb;
-let SCENE_TPL, SCN, LIFE, renderScenePicker, scClean, scRender, restoreInk, openMotionPick, insertScene, buildScene, buildLife, sceneDomainFor, lifeBox, animKick, scReset, orb3Mark;
+let qnFigure, qnParse, fgFigure, mlParse, mlSmiles, AN_LIST, anDraw, anTick, anTap, anSpec, anThumb, anPage, anVis;
+let SCENE_TPL, SCN, LIFE, renderScenePicker, scClean, scRender, restoreInk, openMotionPick, insertScene, buildScene, buildLife, sceneDomainFor, lifeBox, animKick, scReset, orb3Mark, ipActors;
 let findShow, findRun, findGo, tocShow, tocHeads, tocMark, keepBoot, keepRender, keepSave, keepLoad, keepBanner, trashShow, trashPurge, trashRestore, trashDrop, trashList, expRender, expSave, expLoad, histNote, histOpen, histPurge, histRestore, histVersions, apRender, apSource, apWanted, apReading, ikGet, ikPut, ikPage, ikPageKeep, ikIndex, ikTexts, cmdShow, cmdList, cmdFind, cmdRun, cleanStart, cleanEnd, cleanFit, arOpen, arBuild, tyGraph, tyTable, tySteps, tyTidy, tyAdvice, acStep, acSay, acVerify, acForgot, acNewPw, acDelSection, csRender, csUsage, csSwitch;
 let texToCas, casVars, casWithUnits, casRun, casRowTex, casReady, solveSelection, openBgCut, openSketch, ST, openStats, openVideoLab, dataSelection, poolSection, poolShow, poolGot, poolEnd, openMeasure, openImgMeasure, unitCheck, openCite, captionSel, captionRenumber, hwHubOpen, hwStudentOpen, hwAssignOpen, hwBoard, hwDetail;
 const MOD_EXPORTS = {
-  scene: ['SCENE_TPL', 'SCN', 'LIFE', 'renderScenePicker', 'scClean', 'scRender', 'restoreInk', 'openMotionPick', 'insertScene', 'buildScene', 'buildLife', 'sceneDomainFor', 'lifeBox', 'animKick', 'scReset', 'orb3Mark'],
+  scene: ['SCENE_TPL', 'SCN', 'LIFE', 'renderScenePicker', 'scClean', 'scRender', 'restoreInk', 'openMotionPick', 'insertScene', 'buildScene', 'buildLife', 'sceneDomainFor', 'lifeBox', 'animKick', 'scReset', 'orb3Mark', 'ipActors'],
   cas: ['texToCas', 'casVars', 'casWithUnits', 'casRun', 'casRowTex', 'casReady', 'solveSelection'],
-  sketch: ['openBgCut', 'openSketch'], stats: ['ST', 'openStats'], video: ['openVideoLab'], data: ['dataSelection', 'poolSection', 'poolShow', 'poolGot', 'poolEnd', 'unitCheck'], measure: ['openMeasure'], imgmeas: ['openImgMeasure'], cite: ['openCite', 'captionSel', 'captionRenumber'], work: ['hwHubOpen', 'hwStudentOpen', 'hwAssignOpen', 'hwBoard', 'hwDetail'], search: ['findShow', 'findRun', 'findGo'], toc: ['tocShow', 'tocHeads', 'tocMark'], keep: ['keepBoot', 'keepRender', 'keepSave', 'keepLoad', 'keepBanner'], trash: ['trashShow', 'trashPurge', 'trashRestore', 'trashDrop', 'trashList'], export: ['expRender', 'expSave', 'expLoad'], history: ['histNote', 'histOpen', 'histPurge', 'histRestore', 'histVersions'], aipages: ['apRender', 'apSource', 'apWanted', 'apReading', 'ikGet', 'ikPut', 'ikPage', 'ikPageKeep', 'ikIndex', 'ikTexts'], cmds: ['cmdShow', 'cmdList', 'cmdFind', 'cmdRun'], clean: ['cleanStart', 'cleanEnd', 'cleanFit'], ar: ['arOpen', 'arBuild'], typed: ['tyGraph', 'tyTable', 'tySteps', 'tyTidy', 'tyAdvice'], quantum: ['qnFigure', 'qnParse'], figs: ['fgFigure'], mols: ['mlParse', 'mlSmiles'], animals: ['AN_LIST', 'anDraw', 'anTick', 'anTap', 'anSpec', 'anThumb'], account: ['acStep', 'acSay', 'acVerify', 'acForgot', 'acNewPw', 'acDelSection'], cloudset: ['csRender', 'csUsage', 'csSwitch']
+  sketch: ['openBgCut', 'openSketch'], stats: ['ST', 'openStats'], video: ['openVideoLab'], data: ['dataSelection', 'poolSection', 'poolShow', 'poolGot', 'poolEnd', 'unitCheck'], measure: ['openMeasure'], imgmeas: ['openImgMeasure'], cite: ['openCite', 'captionSel', 'captionRenumber'], work: ['hwHubOpen', 'hwStudentOpen', 'hwAssignOpen', 'hwBoard', 'hwDetail'], search: ['findShow', 'findRun', 'findGo'], toc: ['tocShow', 'tocHeads', 'tocMark'], keep: ['keepBoot', 'keepRender', 'keepSave', 'keepLoad', 'keepBanner'], trash: ['trashShow', 'trashPurge', 'trashRestore', 'trashDrop', 'trashList'], export: ['expRender', 'expSave', 'expLoad'], history: ['histNote', 'histOpen', 'histPurge', 'histRestore', 'histVersions'], aipages: ['apRender', 'apSource', 'apWanted', 'apReading', 'ikGet', 'ikPut', 'ikPage', 'ikPageKeep', 'ikIndex', 'ikTexts'], cmds: ['cmdShow', 'cmdList', 'cmdFind', 'cmdRun'], clean: ['cleanStart', 'cleanEnd', 'cleanFit'], ar: ['arOpen', 'arBuild'], typed: ['tyGraph', 'tyTable', 'tySteps', 'tyTidy', 'tyAdvice'], quantum: ['qnFigure', 'qnParse'], figs: ['fgFigure'], mols: ['mlParse', 'mlSmiles'], animals: ['AN_LIST', 'anDraw', 'anTick', 'anTap', 'anSpec', 'anThumb', 'anPage', 'anVis'], account: ['acStep', 'acSay', 'acVerify', 'acForgot', 'acNewPw', 'acDelSection'], cloudset: ['csRender', 'csUsage', 'csSwitch']
 };
 function modSet(name, x) {
-  if (name === 'scene') { SCENE_TPL = x.SCENE_TPL; SCN = x.SCN; LIFE = x.LIFE; renderScenePicker = x.renderScenePicker; scClean = x.scClean; scRender = x.scRender; restoreInk = x.restoreInk; openMotionPick = x.openMotionPick; insertScene = x.insertScene; buildScene = x.buildScene; buildLife = x.buildLife; sceneDomainFor = x.sceneDomainFor; lifeBox = x.lifeBox; animKick = x.animKick; scReset = x.scReset; orb3Mark = x.orb3Mark; }
+  if (name === 'scene') { SCENE_TPL = x.SCENE_TPL; SCN = x.SCN; LIFE = x.LIFE; renderScenePicker = x.renderScenePicker; scClean = x.scClean; scRender = x.scRender; restoreInk = x.restoreInk; openMotionPick = x.openMotionPick; insertScene = x.insertScene; buildScene = x.buildScene; buildLife = x.buildLife; sceneDomainFor = x.sceneDomainFor; lifeBox = x.lifeBox; animKick = x.animKick; scReset = x.scReset; orb3Mark = x.orb3Mark; ipActors = x.ipActors; }
   else if (name === 'cas') { texToCas = x.texToCas; casVars = x.casVars; casWithUnits = x.casWithUnits; casRun = x.casRun; casRowTex = x.casRowTex; casReady = x.casReady; solveSelection = x.solveSelection; }
   else if (name === 'sketch') { openBgCut = x.openBgCut; openSketch = x.openSketch; }
   else if (name === 'stats') { ST = x.ST; openStats = x.openStats; }
@@ -11712,7 +11870,7 @@ function modSet(name, x) {
   else if (name === 'quantum') { qnFigure = x.qnFigure; qnParse = x.qnParse; }
   else if (name === 'figs') { fgFigure = x.fgFigure; }
   else if (name === 'mols') { mlParse = x.mlParse; mlSmiles = x.mlSmiles; }
-  else if (name === 'animals') { AN_LIST = x.AN_LIST; anDraw = x.anDraw; anTick = x.anTick; anTap = x.anTap; anSpec = x.anSpec; anThumb = x.anThumb; }
+  else if (name === 'animals') { AN_LIST = x.AN_LIST; anDraw = x.anDraw; anTick = x.anTick; anTap = x.anTap; anSpec = x.anSpec; anThumb = x.anThumb; anPage = x.anPage; anVis = x.anVis; }
   else if (name === 'aipages') { apRender = x.apRender; apSource = x.apSource; apWanted = x.apWanted; apReading = x.apReading; ikGet = x.ikGet; ikPut = x.ikPut; ikPage = x.ikPage; ikPageKeep = x.ikPageKeep; ikIndex = x.ikIndex; ikTexts = x.ikTexts; }
   else if (name === 'history') { histNote = x.histNote; histOpen = x.histOpen; histPurge = x.histPurge; histRestore = x.histRestore; histVersions = x.histVersions; }
   else if (name === 'keep') { keepBoot = x.keepBoot; keepRender = x.keepRender; keepSave = x.keepSave; keepLoad = x.keepLoad; keepBanner = x.keepBanner; }
@@ -19501,7 +19659,7 @@ function studentInk(d) {
     /* writing on a page this learner is not on (yet): the pieces are gathered and the finished line goes into that page */
     const O = LIVE.offInk || (LIVE.offInk = {}), q = O[d.id] || (O[d.id] = { p: [], gap: false, t: now() });
     if (d.whole || d.replace) q.p = d.p.slice(); else { if (isFinite(d.at) && +d.at !== q.p.length) q.gap = true; q.p.push(...d.p); }
-    if (d.done) { delete O[d.id]; if (!q.gap && q.p.length >= 3) { (LIVE.inkAt || (LIVE.inkAt = {}))[d.id] = now(); const st = { id: d.id, k: d.k === 'h' ? 'h' : 'p', c: okHex(d.c) ? d.c : '#14181F', w: clamp(+d.w || 3, 1, 40), p: q.p.map(Number) }; if (typeof d.t === 'string') st.t = d.t; if (isFinite(d.o)) st.o = +d.o; LIVE.sq = (LIVE.sq || Promise.resolve()).then(() => stuAdd({ tpid: String(d.pid), strokes: [st] })).catch(() => {}); } }
+    if (d.done) { delete O[d.id]; if (!q.gap && q.p.length >= 3) { (LIVE.inkAt || (LIVE.inkAt = {}))[d.id] = now(); const st = { id: d.id, k: d.k === 'h' ? 'h' : 'p', c: okHex(d.c) ? d.c : '#14181F', w: clamp(+d.w || 3, 1, 40), p: q.p.map(Number) }; if (typeof d.t === 'string') st.t = d.t; if (isFinite(d.o)) st.o = +d.o; if (typeof d.on === 'string' && d.on.length < 80) st.on = d.on; LIVE.sq = (LIVE.sq || Promise.resolve()).then(() => stuAdd({ tpid: String(d.pid), strokes: [st] })).catch(() => {}); } }
     for (const k in O) if (now() - O[k].t > 60000) delete O[k];
     return;
   }
@@ -22371,7 +22529,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1795315406';
+const BUILD = '1795388105';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
@@ -22397,8 +22555,8 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden) chec
 setInterval(checkUpdate, 30 * 60 * 1000); setTimeout(checkUpdate, 8000);
 
 /* ---------- version and what is new ---------- */
-const VERSION = '20261122-a48631ca';
-const NEWS = [{"id": 25, "date": "2026-11-21", "items": ["สัตว์ในหลักสูตร เป็นสามมิติแบบสีไม้ที่ใช้ชีวิตเองเป็นวง เช่น วัวเดินแล้วก้มกินหญ้า กบพองคอร้องแล้วกระโดด ผีเสื้อบินไปดูดน้ำหวาน งูดินมุดดิน แตะตัวสัตว์แล้วมันตอบสนองเหมือนตัวจริง เช่น วิ่งหนี บินหนี หดเข้าเปลือก พ่นหมึก ลากเพื่อหมุนดูรอบตัว", "เพิ่มสัตว์ที่ข้อสอบแข่งขันและสอบเข้าชอบถามอีก 20 ชนิด เช่น ฟองน้ำ ไฮดรา แมงกะพรุน พลานาเรีย ปลิง หมึกยักษ์ ดาวทะเล แมงมุม แมงป่อง ตะขาบ กิ้งกือ ฉลาม ม้าน้ำ โลมา ตุ่นปากเป็ด จิงโจ้ เพนกวิน งูเห่า ใต้ตัวสัตว์ทุกตัวมีบรรทัด จุดเด่น บอกลักษณะที่มักออกสอบ ค้นด้วยคำอย่าง ไม่ใช่แมลง หรือ ออกลูกเป็นไข่ ก็เจอ", "สัตว์ขยับลื่นขึ้น ใช้แรงเครื่องน้อยลงมาก", "เครื่องมือรูปทรงมีแท็บ สัตว์ เรียงตามกลุ่มสัตว์พร้อมภาพเล็กของแต่ละตัว และช่องค้นหา แตะสัตว์แล้วแตะหรือลากบนหน้าเพื่อวาง", "เพิ่มนกที่บินไม่ได้ (นกกระจอกเทศ นกอีมู นกคาสโซวารี นกกีวี) ตัวกินมด ตัวนิ่ม ตัวกินมดหนาม และสัตว์ที่พบบ่อยในสวนสัตว์ (ยีราฟ ม้าลาย สิงโต เสือโคร่ง หมี หมีแพนด้า ฮิปโปโปเตมัส แรด อูฐ กวาง ลิง อุรังอุตัง แมวน้ำ นกยูง นกฟลามิงโก นกแก้ว) รวมเป็น 87 ชนิด", "สัตว์เลี้ยงลูกด้วยน้ำนมและนกแยกเป็นกลุ่มย่อยตามที่เรียน เช่น ออกลูกเป็นไข่ มีกระเป๋าหน้าท้อง มีกีบ กินเนื้อ ไพรเมต นกที่บินไม่ได้", "เพิ่มอีก 16 ชนิด ได้แก่ ม้า หมู แพะ หนู จระเข้ กิ้งก่า วาฬ ปลาดุก ปลาตีน หนอนผีเสื้อ ลูกอ๊อด แมลงวัน ด้วงกว่าง ดอกไม้ทะเล เม่นทะเล นกฮูก", "หาสัตว์ด้วยชื่อไทยในแผ่นแบบจำลอง หมวดชีววิทยา ก็ได้ เลือกสีของสัตว์ได้ที่ปุ่มสามจุด"]}, {"id": 24, "date": "2026-11-21", "items": ["แถบคำสั่งหลังเลือกด้วยบ่วงบาศก์ ปุ่ม ขยับได้ เป็นปุ่มแรกทุกครั้งที่ใช้ได้ ตามด้วยคำสั่งที่ใช้บ่อยกับสิ่งที่เลือกสามปุ่มข้างหน้า ที่เหลืออยู่ในกลุ่ม แปลง เห็นภาพ ตรวจและแก้ จัดวาง แตะกลุ่มแล้วคำสั่งขึ้นในแถบเดิม บน iPad แถบเหลือแถวเดียว บนมือถือสองแถว", "ออร์บิทัล s p d และ sp³ ที่วาดด้วยเครื่องมือรูปทรง เป็นสามมิติแล้ว ลากเพื่อหมุนดูได้ทุกทิศ ใช้สองนิ้วย่อขยาย แตะสองครั้งกลับมุมเดิม", "รูปเวกเตอร์สามมิติ ย่อขยายด้วยสองนิ้วได้ และแตะสองครั้งกลับมุมเดิม", "วาดโครงสร้างเคมีแล้วต่อกันเอง แตะหรือลากจากปลายพันธะเดิมได้พันธะใหม่ที่ต่อกัน ไม่หยิบพันธะเดิมไปแล้ว พันธะที่เริ่มหรือจบใกล้อักษรอะตอมที่เขียนหรือพิมพ์ ต่อที่ขอบอักษรนั้น มุมพันธะเข้า 109.5 120 หรือ 180 องศาเมื่อลากใกล้ แตะกลางด้านของวงได้วงที่เชื่อมกัน ทั้งโมเลกุลย้ายไปด้วยกัน กด ไม่ต่อกัน ที่ขึ้นด้านล่างถ้าไม่ต้องการให้ต่อ", "ลายมือที่เคยแปลงเป็นตัวพิมพ์แล้ว สร้างรูปและตรวจหน่วยได้ทันที แอปคำนวณเองโดยไม่ต้องรอ AI ทั้งกราฟของฟังก์ชัน เวกเตอร์ และบรรทัดคำนวณ ใช้ได้แม้ยังไม่ได้เชื่อม AI", "เลือกสัญลักษณ์ธาตุ ไอออน หรือการเปลี่ยนระดับพลังงาน เช่น Fe3+ หรือ n = 3 ไป n = 2 แล้วกด สร้างรูป ได้การจัดเรียงอิเล็กตรอน กล่องออร์บิทัล เลขควอนตัม หรือแผนภาพระดับพลังงานพร้อมความยาวคลื่นทันที แอปคำนวณเองไม่ใช้ AI และตรวจการจัดเรียงที่เขียนได้", "แก้สมการแล้วกด แสดงวิธีทำ ได้ขั้นตอนทันทีโดยไม่ต้องรอ AI ทั้งสมการเชิงเส้น สมการกำลังสอง ระบบสมการสองและสามตัวแปร และอนุพันธ์กับปริพันธ์ของพหุนาม วางลงหน้าได้", "เลือกค่าที่ให้ของสามเหลี่ยม ตัวต้านทานที่ต่ออนุกรมหรือขนาน หรือแรงที่บอกขนาดและทิศ แล้วกด สร้างรูป ได้รูปตามมาตราส่วนพร้อมค่าที่คำนวณทันทีโดยไม่ใช้ AI", "เลือกชื่อสาร สูตร หรือสมการเคมี เช่น เอทานอล หรือ CH4 + 2O2 -> CO2 + 2H2O แล้วกด สร้างรูป ได้โครงสร้างโมเลกุลทันทีจากตารางสารในแอปโดยไม่ใช้ AI", "หน้าที่พิมพ์ชื่อหัวข้อในหลักสูตร กด หาสื่อ แล้วได้ภาพ GIF และวิดีโอของหัวข้อนั้นทันทีโดยไม่ต้องรอ AI", "พิมพ์โจทย์การเคลื่อนที่ เช่น ขว้างลูกบอล 20 m/s ทำมุม 30 องศา ในแผ่นแบบจำลอง ได้แบบจำลองที่ขยับได้ทันทีพร้อมเวลา ระยะ และจุดสูงสุดที่คำนวณแล้ว โดยไม่ใช้ AI", "ออร์บิทัลสามมิติแบบไม่มีกรอบ แตะปุ่มสามจุดแล้วเลือกคู่สีของสองเฟสได้ห้าแบบ และปุ่มย่อขยายจางหายเองเมื่อไม่ได้ใช้"]}, {"id": 20, "date": "2026-11-20", "items": ["ต่อสาย จอสะอาด แบบ ทั้งหน้า เห็นหน้าครบถึงขอบล่าง พอดีความสูงจอ และพื้นรอบหน้าเป็นสีดำ โปรเจกเตอร์จึงฉายแสงเฉพาะหน้ากระดาษ"]}, {"id": 19, "date": "2026-11-20", "items": ["ขยายหน้าจออยู่ มีปุ่ม หน้าใหม่ ข้างเลขหน้าที่มุมล่าง แตะครั้งเดียวได้หน้าใหม่ต่อจากหน้านี้ ขยายเท่าเดิม พร้อมเขียนที่มุมบนซ้าย"]}, {"id": 18, "date": "2026-11-19", "items": ["เขียนตอนขยายหน้าจอ เส้นไม่หดตรงมุมเมื่อยกปากกาแล้ว ตัวอักษรอยู่ตรงที่เขียนเหมือนตอนกำลังเขียน", "ขยายหน้าจอแล้วพักปากกาครู่หนึ่งขณะเขียน ตัวอักษรไม่ถูกเปลี่ยนเป็นรูปทรงอีก วาดค้างไว้ให้เป็นรูปทรงยังใช้ได้กับรูปที่ใหญ่กว่าลายมือบนหน้า", "ห้องเรียนสดที่ครูเปิด PDF แอปของนักเรียนไม่ปิดเองเพราะหน่วยความจำเต็มอีก"]}, {"id": 17, "date": "2026-11-18", "items": ["มอบหมายการบ้าน กดปุ่มแล้วขึ้น กำลังมอบหมาย และ มอบหมายแล้ว กดซ้ำไม่ได้ จึงไม่มีการบ้านซ้ำ ลิงก์กับ QR เลื่อนขึ้นมาให้เห็นทันที"]}, {"id": 16, "date": "2026-11-18", "items": ["ตั้งค่าคลาวด์ใหม่ ที่เมนู แท็บ บัญชี ซิงก์ และ AI ใช้คลาวด์ BURIN ได้ทันทีโดยไม่ต้องตั้งค่า", "ใช้ Supabase ของตัวเองได้ในหัวข้อ ขั้นสูง และสลับกลับมาคลาวด์ BURIN ได้ทุกเมื่อ สมุดทั้งสองที่ไม่หาย"]}, {"id": 15, "date": "2026-11-18", "items": ["ลืมรหัสผ่าน ตั้งรหัสใหม่ได้จากหน้าเข้าสู่ระบบ กด ลืมรหัสผ่าน แล้วทำตามอีเมลที่ได้รับ", "สมัครบัญชีใหม่แล้วยืนยันอีเมลได้ในแอป และกดส่งอีเมลยืนยันอีกครั้งได้"]}, {"id": 14, "date": "2026-11-18", "items": ["ห้องเรียนสดที่ลืมปิดปิดเอง เมื่อกลับมาที่แอปหลังห่างไปเกิน 1 ชั่วโมง ห้องไม่เปิดต่อเองและไม่ส่งสิ่งที่เขียนให้ผู้เรียน แตะ เปิดห้องเดิมอีกครั้ง ได้รหัสเดิม", "ห้องที่ไม่มีผู้เรียนและครูไม่ได้ใช้แอปนาน 30 นาทีปิดเอง มีแถบบอกก่อน 1 นาที ครูที่กำลังสอนห้องไม่ปิด แม้ผู้เรียนล็อกจอ", "ปิดห้องแล้วผู้เรียนยังส่งการบ้านได้ถึงเวลาที่กำหนด และเห็นปุ่มไปที่งานของฉัน"]}, {"id": 13, "date": "2026-11-17", "items": ["ข้อความที่พิมพ์ไม่ต้องรอ AI สมการที่พิมพ์ เช่น y = 2x + 1 สร้างกราฟได้ทันที ตารางที่พิมพ์เป็นข้อมูลได้ทันที และตรวจหน่วยของบรรทัดคำนวณที่พิมพ์ได้ทันที ใช้ได้แม้ไม่มีอินเทอร์เน็ต", "วาดใหม่ จัดเส้นตรง สี่เหลี่ยม วงกลม ในภาพร่างให้เรียบร้อยทันทีโดยไม่ใช้ AI ตัวอักษรยังเป็นลายมือเดิม ถ้าต้องการให้แก้ตามเนื้อหา กด ให้ AI วาดใหม่ตามเนื้อหา", "หลังทำแบบฝึก บทที่ยังอ่อนบอกชนิดข้อที่พลาด และความเข้าใจที่ควรแก้จากตัวเลือกที่ตอบ"]}, {"id": 12, "date": "2026-11-17", "items": ["ลายมือที่ AI อ่านแล้วไม่ต้องอ่านซ้ำ แปลงเป็นตัวพิมพ์ แก้สมการ สร้างรูป ตรวจหน่วย และสร้างโจทย์ จากลายมือเดิมใช้คำที่อ่านไว้ เร็วขึ้นและไม่ส่งภาพซ้ำ ถ้าอ่านผิด สั่งงานเดิมอีกครั้ง AI จะอ่านใหม่", "ค้นหาในทุกสมุดพบลายมือที่ AI เคยอ่านแล้วด้วย"]}, {"id": 11, "date": "2026-11-17", "items": ["ทดลองวางวัตถุสามมิติบนโต๊ะจริง (AR) ได้ที่ ปุ่ม สมุดทั้งหมด แท็บ ภาษา การเขียน และจอ หัวข้อ ลองดูในห้องจริง ใช้ได้บน iPad และ iPhone แอปสร้างไฟล์ในเครื่องเอง ไม่ใช้ AI"]}, {"id": 10, "date": "2026-11-17", "items": ["คอมที่ต่อจอที่สอง เลือก จอที่สอง ผู้ชมไม่เห็นแถบ ในเมนู นำเสนอ ครูใช้ได้ทุกคำสั่ง จอใหญ่เห็นแต่หน้ากระดาษ ไม่ต้องใช้อินเทอร์เน็ต", "ระหว่างเปิดจอผู้ชม ครูมีแถบเล็ก จอผู้ชม เลือกให้จอใหญ่เห็นทั้งหน้า พักจอ หรือปิด (ปุ่ม B บนคีย์บอร์ดหรือรีโมตก็พักจอได้)", "ต่อ iPad ออกทีวีด้วยสาย ใช้ ต่อสาย จอสะอาด ในเมนู นำเสนอ (ปุ่ม สอนและนำเสนอ)", "เริ่มแล้วจอเห็นแต่หน้ากระดาษ ไม่มีแถบหรือปุ่มใดขึ้นเลย ทั้งบน iPad และทีวี", "ก่อนเริ่ม เลือกปากกาให้แต่ละขอบจอ (สี ไฮไลต์ ยางลบ หรือเลเซอร์) ระหว่างนำเสนอ แตะขอบจอด้วยนิ้วเพื่อหยิบปากกาของขอบนั้น", "เลือกได้ว่าให้เห็นทั้งหน้า และเริ่มด้วยม่านบังครึ่งล่างที่ใช้นิ้วลากลงเพื่อเปิดทีละบรรทัด", "แตะค้างสามนิ้ว 1 วินาที เพื่อออก ใช้รีโมตนำเสนอเปลี่ยนหน้า ปุ่ม B พักจอ ปุ่ม Esc ออก", "เมนู นำเสนอ เหลือสามข้อ จอแสดงผลแบบนักเรียนบนอีกเครื่องและบนจอที่สองรวมเป็นข้อเดียว"]}, {"id": 9, "date": "2026-11-17", "items": ["แถบบนเหลือปุ่มน้อยลง ปุ่มที่ใช้นาน ๆ ครั้ง รวมอยู่ในสองกลุ่ม", "ปุ่ม ต่อยอดจากหน้า มี แปลงเป็นตัวพิมพ์ สร้างโจทย์ และ ชุดโจทย์", "ปุ่ม สอนและนำเสนอ มี ห้องสด นำเสนอ และ ห้องเรียนและโจทย์ (ฝั่งนักเรียนชื่อ ห้องเรียน มี สแกน QR และ เข้าห้องเรียน ด้วย)", "เลือกด้วยบ่วงแล้ว แถบเหนือส่วนที่เลือก แสดงคำสั่งที่ใช้บ่อยก่อน คำสั่งอื่นอยู่ที่ปุ่ม เพิ่มเติม", "หาคำสั่งไม่เจอ พิมพ์ชื่อในช่องค้นหาที่เมนู เช่น PDF หรือ สามมิติ แล้วแตะคำสั่งที่ขึ้นมา"]}, {"id": 8, "date": "2026-11-16", "items": ["สร้างโจทย์ด้วย AI จากกี่หน้าก็ได้ ทั้งเล่ม ตามบท หรือเป็นช่วงหน้า", "อยู่ที่ปุ่ม สร้างโจทย์ด้วย AI หัวข้อ หน้าที่ใช้สร้างโจทย์ แตะ ทั้งเล่ม หรือแตะชื่อบท หรือใส่ช่วงหน้า แล้วกด เลือกช่วงนี้", "หน้าที่ AI อ่านแล้ว เก็บไว้ในเครื่องนี้ ครั้งต่อไป ไม่ต้องอ่านซ้ำ จึงเร็วขึ้น และประหยัดค่า AI"]}, {"id": 7, "date": "2026-11-16", "items": ["ลบผิด หรือเขียนทับผิด ดึงหน้า เมื่อไม่กี่นาทีก่อน หรือเมื่อวาน กลับมาได้", "อยู่ที่ ลิ้นชักหน้า แตะแถบ หน้านี้ ด้านล่าง แล้วกดปุ่ม รุ่นก่อนของหน้านี้ เลือกรุ่น ดูภาพหน้าก่อน แล้วกด คืนหน้าเป็นรุ่นนี้", "หน้าก่อนคืน ถูกเก็บไว้ด้วย จึงย้อนกลับได้ แอปเก็บรุ่นก่อน ไว้ในเครื่องนี้ 30 วัน"]}, {"id": 6, "date": "2026-11-16", "items": ["บัญชีคลาวด์ ส่งออกข้อมูลทั้งบัญชี เป็นไฟล์เดียวได้ ทั้งสมุด หน้า หมึก รูป วิดีโอ เลคเชอร์ที่แชร์ การบ้าน และงานที่นักเรียนส่ง", "อยู่ที่ เมนู แท็บตั้งค่า หัวข้อ ข้อมูลทั้งบัญชี กดปุ่ม ส่งออกทั้งบัญชี", "นำเข้าไฟล์นี้ ในบัญชีอื่น หรือเครื่องใหม่ได้ การนำเข้า เพิ่มเฉพาะส่วนที่ยังไม่มี ไม่ทับ และไม่ลบ ของที่มีอยู่"]}, {"id": 5, "date": "2026-11-15", "items": ["ลบสมุด หรือลบหน้าแล้ว ยังกู้คืนได้ ภายใน 30 วัน สิ่งที่ลบ ไปอยู่ในถังขยะ ก่อนถูกลบจริง", "เปิดถังขยะ ได้ที่ เมนู สมุดทั้งหมด ปุ่มถังขยะ ใต้รายการสมุด กดกู้คืน แล้วสมุดกลับไป ที่เดิม หน้ากลับไป ตำแหน่งเดิม ในสมุด", "ลบถาวร ทีละรายการ หรือลบทั้งหมด ในถังขยะได้ ครบ 30 วัน แล้วแอปลบให้เอง"]}, {"id": 4, "date": "2026-11-15", "items": ["สำรองสมุด ทั้งหมดเป็นไฟล์เดียว ได้ที่ เมนู แท็บตั้งค่า หัวข้อ สมุดในเครื่องนี้ ไฟล์เก็บสมุดทุกเล่ม รูป และวิดีโอ ในเครื่องนี้", "นำสมุดคืน จากไฟล์สำรอง ได้ที่เดียวกัน การนำคืน เพิ่มเฉพาะส่วน ที่ยังไม่มีในเครื่อง ไม่ทับ และไม่ลบ ของที่มีอยู่", "แอปขอให้เบราว์เซอร์ เก็บสมุดในเครื่อง ไว้ถาวร และเตือนให้สำรองสมุด ที่หน้ารายการสมุด เมื่อสมุดเปลี่ยนไป ตั้งแต่สำรองครั้งล่าสุด", "บน iPad และ iPhone ใน Safari แอปชวนให้ เพิ่มลงหน้าจอโฮม เพื่อไม่ให้ Safari ลบสมุด ที่ไม่ได้เปิดนาน ให้สำรองสมุดก่อน แล้วนำคืน ในแอปบนหน้าจอโฮม"]}, {"id": 3, "date": "2026-11-14", "items": ["สารบัญ ของสมุด แตะปุ่มหน้าในสมุด ที่มุมซ้ายบน แล้วเลือก สารบัญ จะเห็นหัวเรื่อง ของทุกหน้า แตะหัวเรื่อง เพื่อไปที่หน้านั้น ได้ทันที", "หัวเรื่อง มาจากข้อความที่พิมพ์ไว้ บนสุดของหน้า หรือบรรทัด ที่ขึ้นต้นด้วย ## ลายมือที่ยังไม่ได้แปลง เป็นตัวพิมพ์ ไม่ขึ้นในสารบัญ", "ที่คั่นหน้า แตะ ปักที่คั่นหน้านี้ ในหน้าสารบัญ แล้วตั้งชื่อเองได้ หน้าที่มีที่คั่น จะมีริบบิ้นสีแดง ที่ภาพหน้า", "ที่คั่นหน้า อยู่กับสมุด ของเราเท่านั้น ผู้เรียนในห้องสด ไม่เห็นที่คั่นหน้า ของครู"]}, {"id": 2, "date": "2026-11-14", "items": ["ค้นหาข้อความ ในทุกสมุดได้แล้ว พิมพ์คำในช่องค้นหาที่เมนู แอปจะค้นทั้งชื่อสมุด ข้อความที่พิมพ์ ลายมือที่แปลงเป็นตัวพิมพ์แล้ว หัวเรื่องของหน้า และข้อความในกล่องต่าง ๆ", "แตะผลการค้นหา เพื่อไปที่หน้านั้น กล่องที่มีคำนั้นจะเรืองแสงสักครู่ ให้เห็นตำแหน่ง", "พิมพ์คำไทย ติดกันหรือเว้นวรรค ก็ค้นเจอเหมือนกัน การค้นหาอ่านสมุดอย่างเดียว ไม่แก้ไขอะไรในสมุด"]}, {"id": 1, "date": "2026-11-13", "items": ["ดูเวอร์ชันของแอปได้ที่เมนู แท็บตั้งค่า หัวข้อเกี่ยวกับแอป", "เมื่อมีเวอร์ชันใหม่ระหว่างใช้งาน แอปจะไม่รีโหลดเอง รวมถึงจอผู้ชม เวอร์ชันใหม่จะมีผล เมื่อเปิดแอปครั้งถัดไป หรือเมื่อแตะแถบ มีเวอร์ชันใหม่", "หน้าที่เปิดค้างไว้ ใช้ส่วนต่าง ๆ ของแอป จากเวอร์ชันเดียวกับตัวเองเสมอ ไม่ปนกับเวอร์ชันใหม่", "เมื่อแอปทำงานผิดพลาด แอปจะส่งรายงาน ให้ผู้พัฒนา โดยส่งเฉพาะ ข้อความแจ้งข้อผิดพลาด ตำแหน่งในโค้ด รุ่นเครื่อง และเวอร์ชันของแอป ไม่ส่งเนื้อหาสมุด ชื่อ หรืออีเมล"]}];
+const VERSION = '20261122-76f16d38';
+const NEWS = [{"id": 27, "date": "2026-11-22", "items": ["สัตว์แบบไม่มีกรอบออกมาเดินบนหน้ากระดาษได้ทั่วหน้า ยืนและเดินบนเส้นที่วาดหรือบนกล่อง ขึ้นลงเนินตามเส้น เจอด้านข้างของกล่อง รูป หรือเส้นชันแล้วหยุดและหันกลับ นกบินข้ามของเตี้ย ๆ ได้ สัตว์สองตัวเจอกันแล้วหยุดมองกันหรือตัวเล็กวิ่งหนี", "อยากให้สัตว์อยู่กับที่แบบเดิม แตะปุ่มสามจุดของสัตว์แล้วกด อยู่กับที่", "สัตว์เห็นเต็มตัวตลอด ส่วนที่เดินเลยกรอบออกไปไม่ขาดหาย นกที่บินหนีสูงและหมึกที่ปลาหมึกพ่นก็ไม่ขาด", "เขียนด้วยปากกาชิดสัตว์หรือรูปสามมิติที่ไม่มีกรอบได้เลย ปากกาหมุนรูปเฉพาะเมื่อแตะตรงตัวรูป", "สัตว์เจอกันแล้วทำตามธรรมชาติ ผู้ล่าย่องแล้ววิ่งไล่ เหยื่อหนีหรือหลบ จับได้ก็กินแล้วมีตัวใหม่เดินเข้ามา ช้างไล่สิงโต ฝูงเดินไปด้วยกัน ตัวที่หวงถิ่นขู่กัน อยู่คนละบรรทัดถ้ากระโดดถึงก็กระโดด ถ้าไม่ถึงก็แค่มอง และสัตว์ตอบสนองกับคน รถ และลูกบอลที่ขยับได้บนหน้าด้วย", "แต่ละชนิดมีท่าของตัวเอง เสือและแมวย่องแล้วกระโจนตะครุบ จระเข้และกบซุ่มนิ่งแล้วพุ่งงับ สุนัขเห่าก่อนวิ่งไล่ กวางยืนนิ่งมองก่อนกระโจนหนี ม้าลายเตะสู้ ฝูงควายวิ่งเข้าใส่ แพะชนหัวประลองกัน ตัวกินมดเดินไปเลียมด", "ยามว่างสัตว์แต่ละชนิดทำสิ่งที่ชอบกับของบนหน้า แมวกระโดดขึ้นไปนั่งบนกล่องข้อความ ลิงปีนสำรวจ สุนัขและหมูดมเส้นที่วาด หนูวิ่งไปหลบชิดขอบกล่อง จระเข้และเต่านอนอาบแดด ฝูงเดินไปรวมกัน สิงโตนอนพักรวมฝูง", "แต่ละชนิดทำหลายอย่างสลับกันไม่ซ้ำลำดับ นกบินไปเกาะที่อื่น ตกใจแล้วระแวงมองรอบตัวสักพัก ผู้ล่าไล่ไม่ทันก็หอบพัก กินอิ่มแล้วนอน"]}, {"id": 26, "date": "2026-11-22", "items": ["เขียนด้วยปากกาบนกล่องได้ทุกกล่อง ทั้งแบบจำลอง สัตว์ กราฟ วิดีโอ ข้อความ และรูป เส้นที่เขียนอยู่เหนือกล่องและติดไปกับกล่องเวลาย้าย ย่อขยาย ทำสำเนา หรือลบ นิ้วยังใช้หมุน ลาก และกดเล่นแบบเดิม", "ทุกกล่องใส่กรอบหรือเอากรอบออกได้ เลือกกล่องแล้วกด แสดงกรอบ หรือ ไม่มีกรอบ ในแถบที่ขึ้นมา"]}, {"id": 25, "date": "2026-11-21", "items": ["สัตว์ในหลักสูตร เป็นสามมิติแบบสีไม้ที่ใช้ชีวิตเองเป็นวง เช่น วัวเดินแล้วก้มกินหญ้า กบพองคอร้องแล้วกระโดด ผีเสื้อบินไปดูดน้ำหวาน งูดินมุดดิน แตะตัวสัตว์แล้วมันตอบสนองเหมือนตัวจริง เช่น วิ่งหนี บินหนี หดเข้าเปลือก พ่นหมึก ลากเพื่อหมุนดูรอบตัว", "เพิ่มสัตว์ที่ข้อสอบแข่งขันและสอบเข้าชอบถามอีก 20 ชนิด เช่น ฟองน้ำ ไฮดรา แมงกะพรุน พลานาเรีย ปลิง หมึกยักษ์ ดาวทะเล แมงมุม แมงป่อง ตะขาบ กิ้งกือ ฉลาม ม้าน้ำ โลมา ตุ่นปากเป็ด จิงโจ้ เพนกวิน งูเห่า ใต้ตัวสัตว์ทุกตัวมีบรรทัด จุดเด่น บอกลักษณะที่มักออกสอบ ค้นด้วยคำอย่าง ไม่ใช่แมลง หรือ ออกลูกเป็นไข่ ก็เจอ", "สัตว์ขยับลื่นขึ้น ใช้แรงเครื่องน้อยลงมาก", "เครื่องมือรูปทรงมีแท็บ สัตว์ เรียงตามกลุ่มสัตว์พร้อมภาพเล็กของแต่ละตัว และช่องค้นหา แตะสัตว์แล้วแตะหรือลากบนหน้าเพื่อวาง", "เพิ่มนกที่บินไม่ได้ (นกกระจอกเทศ นกอีมู นกคาสโซวารี นกกีวี) ตัวกินมด ตัวนิ่ม ตัวกินมดหนาม และสัตว์ที่พบบ่อยในสวนสัตว์ (ยีราฟ ม้าลาย สิงโต เสือโคร่ง หมี หมีแพนด้า ฮิปโปโปเตมัส แรด อูฐ กวาง ลิง อุรังอุตัง แมวน้ำ นกยูง นกฟลามิงโก นกแก้ว) รวมเป็น 87 ชนิด", "สัตว์เลี้ยงลูกด้วยน้ำนมและนกแยกเป็นกลุ่มย่อยตามที่เรียน เช่น ออกลูกเป็นไข่ มีกระเป๋าหน้าท้อง มีกีบ กินเนื้อ ไพรเมต นกที่บินไม่ได้", "เพิ่มอีก 16 ชนิด ได้แก่ ม้า หมู แพะ หนู จระเข้ กิ้งก่า วาฬ ปลาดุก ปลาตีน หนอนผีเสื้อ ลูกอ๊อด แมลงวัน ด้วงกว่าง ดอกไม้ทะเล เม่นทะเล นกฮูก", "หาสัตว์ด้วยชื่อไทยในแผ่นแบบจำลอง หมวดชีววิทยา ก็ได้ เลือกสีของสัตว์ได้ที่ปุ่มสามจุด"]}, {"id": 24, "date": "2026-11-21", "items": ["แถบคำสั่งหลังเลือกด้วยบ่วงบาศก์ ปุ่ม ขยับได้ เป็นปุ่มแรกทุกครั้งที่ใช้ได้ ตามด้วยคำสั่งที่ใช้บ่อยกับสิ่งที่เลือกสามปุ่มข้างหน้า ที่เหลืออยู่ในกลุ่ม แปลง เห็นภาพ ตรวจและแก้ จัดวาง แตะกลุ่มแล้วคำสั่งขึ้นในแถบเดิม บน iPad แถบเหลือแถวเดียว บนมือถือสองแถว", "ออร์บิทัล s p d และ sp³ ที่วาดด้วยเครื่องมือรูปทรง เป็นสามมิติแล้ว ลากเพื่อหมุนดูได้ทุกทิศ ใช้สองนิ้วย่อขยาย แตะสองครั้งกลับมุมเดิม", "รูปเวกเตอร์สามมิติ ย่อขยายด้วยสองนิ้วได้ และแตะสองครั้งกลับมุมเดิม", "วาดโครงสร้างเคมีแล้วต่อกันเอง แตะหรือลากจากปลายพันธะเดิมได้พันธะใหม่ที่ต่อกัน ไม่หยิบพันธะเดิมไปแล้ว พันธะที่เริ่มหรือจบใกล้อักษรอะตอมที่เขียนหรือพิมพ์ ต่อที่ขอบอักษรนั้น มุมพันธะเข้า 109.5 120 หรือ 180 องศาเมื่อลากใกล้ แตะกลางด้านของวงได้วงที่เชื่อมกัน ทั้งโมเลกุลย้ายไปด้วยกัน กด ไม่ต่อกัน ที่ขึ้นด้านล่างถ้าไม่ต้องการให้ต่อ", "ลายมือที่เคยแปลงเป็นตัวพิมพ์แล้ว สร้างรูปและตรวจหน่วยได้ทันที แอปคำนวณเองโดยไม่ต้องรอ AI ทั้งกราฟของฟังก์ชัน เวกเตอร์ และบรรทัดคำนวณ ใช้ได้แม้ยังไม่ได้เชื่อม AI", "เลือกสัญลักษณ์ธาตุ ไอออน หรือการเปลี่ยนระดับพลังงาน เช่น Fe3+ หรือ n = 3 ไป n = 2 แล้วกด สร้างรูป ได้การจัดเรียงอิเล็กตรอน กล่องออร์บิทัล เลขควอนตัม หรือแผนภาพระดับพลังงานพร้อมความยาวคลื่นทันที แอปคำนวณเองไม่ใช้ AI และตรวจการจัดเรียงที่เขียนได้", "แก้สมการแล้วกด แสดงวิธีทำ ได้ขั้นตอนทันทีโดยไม่ต้องรอ AI ทั้งสมการเชิงเส้น สมการกำลังสอง ระบบสมการสองและสามตัวแปร และอนุพันธ์กับปริพันธ์ของพหุนาม วางลงหน้าได้", "เลือกค่าที่ให้ของสามเหลี่ยม ตัวต้านทานที่ต่ออนุกรมหรือขนาน หรือแรงที่บอกขนาดและทิศ แล้วกด สร้างรูป ได้รูปตามมาตราส่วนพร้อมค่าที่คำนวณทันทีโดยไม่ใช้ AI", "เลือกชื่อสาร สูตร หรือสมการเคมี เช่น เอทานอล หรือ CH4 + 2O2 -> CO2 + 2H2O แล้วกด สร้างรูป ได้โครงสร้างโมเลกุลทันทีจากตารางสารในแอปโดยไม่ใช้ AI", "หน้าที่พิมพ์ชื่อหัวข้อในหลักสูตร กด หาสื่อ แล้วได้ภาพ GIF และวิดีโอของหัวข้อนั้นทันทีโดยไม่ต้องรอ AI", "พิมพ์โจทย์การเคลื่อนที่ เช่น ขว้างลูกบอล 20 m/s ทำมุม 30 องศา ในแผ่นแบบจำลอง ได้แบบจำลองที่ขยับได้ทันทีพร้อมเวลา ระยะ และจุดสูงสุดที่คำนวณแล้ว โดยไม่ใช้ AI", "ออร์บิทัลสามมิติแบบไม่มีกรอบ แตะปุ่มสามจุดแล้วเลือกคู่สีของสองเฟสได้ห้าแบบ และปุ่มย่อขยายจางหายเองเมื่อไม่ได้ใช้"]}, {"id": 20, "date": "2026-11-20", "items": ["ต่อสาย จอสะอาด แบบ ทั้งหน้า เห็นหน้าครบถึงขอบล่าง พอดีความสูงจอ และพื้นรอบหน้าเป็นสีดำ โปรเจกเตอร์จึงฉายแสงเฉพาะหน้ากระดาษ"]}, {"id": 19, "date": "2026-11-20", "items": ["ขยายหน้าจออยู่ มีปุ่ม หน้าใหม่ ข้างเลขหน้าที่มุมล่าง แตะครั้งเดียวได้หน้าใหม่ต่อจากหน้านี้ ขยายเท่าเดิม พร้อมเขียนที่มุมบนซ้าย"]}, {"id": 18, "date": "2026-11-19", "items": ["เขียนตอนขยายหน้าจอ เส้นไม่หดตรงมุมเมื่อยกปากกาแล้ว ตัวอักษรอยู่ตรงที่เขียนเหมือนตอนกำลังเขียน", "ขยายหน้าจอแล้วพักปากกาครู่หนึ่งขณะเขียน ตัวอักษรไม่ถูกเปลี่ยนเป็นรูปทรงอีก วาดค้างไว้ให้เป็นรูปทรงยังใช้ได้กับรูปที่ใหญ่กว่าลายมือบนหน้า", "ห้องเรียนสดที่ครูเปิด PDF แอปของนักเรียนไม่ปิดเองเพราะหน่วยความจำเต็มอีก"]}, {"id": 17, "date": "2026-11-18", "items": ["มอบหมายการบ้าน กดปุ่มแล้วขึ้น กำลังมอบหมาย และ มอบหมายแล้ว กดซ้ำไม่ได้ จึงไม่มีการบ้านซ้ำ ลิงก์กับ QR เลื่อนขึ้นมาให้เห็นทันที"]}, {"id": 16, "date": "2026-11-18", "items": ["ตั้งค่าคลาวด์ใหม่ ที่เมนู แท็บ บัญชี ซิงก์ และ AI ใช้คลาวด์ BURIN ได้ทันทีโดยไม่ต้องตั้งค่า", "ใช้ Supabase ของตัวเองได้ในหัวข้อ ขั้นสูง และสลับกลับมาคลาวด์ BURIN ได้ทุกเมื่อ สมุดทั้งสองที่ไม่หาย"]}, {"id": 15, "date": "2026-11-18", "items": ["ลืมรหัสผ่าน ตั้งรหัสใหม่ได้จากหน้าเข้าสู่ระบบ กด ลืมรหัสผ่าน แล้วทำตามอีเมลที่ได้รับ", "สมัครบัญชีใหม่แล้วยืนยันอีเมลได้ในแอป และกดส่งอีเมลยืนยันอีกครั้งได้"]}, {"id": 14, "date": "2026-11-18", "items": ["ห้องเรียนสดที่ลืมปิดปิดเอง เมื่อกลับมาที่แอปหลังห่างไปเกิน 1 ชั่วโมง ห้องไม่เปิดต่อเองและไม่ส่งสิ่งที่เขียนให้ผู้เรียน แตะ เปิดห้องเดิมอีกครั้ง ได้รหัสเดิม", "ห้องที่ไม่มีผู้เรียนและครูไม่ได้ใช้แอปนาน 30 นาทีปิดเอง มีแถบบอกก่อน 1 นาที ครูที่กำลังสอนห้องไม่ปิด แม้ผู้เรียนล็อกจอ", "ปิดห้องแล้วผู้เรียนยังส่งการบ้านได้ถึงเวลาที่กำหนด และเห็นปุ่มไปที่งานของฉัน"]}, {"id": 13, "date": "2026-11-17", "items": ["ข้อความที่พิมพ์ไม่ต้องรอ AI สมการที่พิมพ์ เช่น y = 2x + 1 สร้างกราฟได้ทันที ตารางที่พิมพ์เป็นข้อมูลได้ทันที และตรวจหน่วยของบรรทัดคำนวณที่พิมพ์ได้ทันที ใช้ได้แม้ไม่มีอินเทอร์เน็ต", "วาดใหม่ จัดเส้นตรง สี่เหลี่ยม วงกลม ในภาพร่างให้เรียบร้อยทันทีโดยไม่ใช้ AI ตัวอักษรยังเป็นลายมือเดิม ถ้าต้องการให้แก้ตามเนื้อหา กด ให้ AI วาดใหม่ตามเนื้อหา", "หลังทำแบบฝึก บทที่ยังอ่อนบอกชนิดข้อที่พลาด และความเข้าใจที่ควรแก้จากตัวเลือกที่ตอบ"]}, {"id": 12, "date": "2026-11-17", "items": ["ลายมือที่ AI อ่านแล้วไม่ต้องอ่านซ้ำ แปลงเป็นตัวพิมพ์ แก้สมการ สร้างรูป ตรวจหน่วย และสร้างโจทย์ จากลายมือเดิมใช้คำที่อ่านไว้ เร็วขึ้นและไม่ส่งภาพซ้ำ ถ้าอ่านผิด สั่งงานเดิมอีกครั้ง AI จะอ่านใหม่", "ค้นหาในทุกสมุดพบลายมือที่ AI เคยอ่านแล้วด้วย"]}, {"id": 11, "date": "2026-11-17", "items": ["ทดลองวางวัตถุสามมิติบนโต๊ะจริง (AR) ได้ที่ ปุ่ม สมุดทั้งหมด แท็บ ภาษา การเขียน และจอ หัวข้อ ลองดูในห้องจริง ใช้ได้บน iPad และ iPhone แอปสร้างไฟล์ในเครื่องเอง ไม่ใช้ AI"]}, {"id": 10, "date": "2026-11-17", "items": ["คอมที่ต่อจอที่สอง เลือก จอที่สอง ผู้ชมไม่เห็นแถบ ในเมนู นำเสนอ ครูใช้ได้ทุกคำสั่ง จอใหญ่เห็นแต่หน้ากระดาษ ไม่ต้องใช้อินเทอร์เน็ต", "ระหว่างเปิดจอผู้ชม ครูมีแถบเล็ก จอผู้ชม เลือกให้จอใหญ่เห็นทั้งหน้า พักจอ หรือปิด (ปุ่ม B บนคีย์บอร์ดหรือรีโมตก็พักจอได้)", "ต่อ iPad ออกทีวีด้วยสาย ใช้ ต่อสาย จอสะอาด ในเมนู นำเสนอ (ปุ่ม สอนและนำเสนอ)", "เริ่มแล้วจอเห็นแต่หน้ากระดาษ ไม่มีแถบหรือปุ่มใดขึ้นเลย ทั้งบน iPad และทีวี", "ก่อนเริ่ม เลือกปากกาให้แต่ละขอบจอ (สี ไฮไลต์ ยางลบ หรือเลเซอร์) ระหว่างนำเสนอ แตะขอบจอด้วยนิ้วเพื่อหยิบปากกาของขอบนั้น", "เลือกได้ว่าให้เห็นทั้งหน้า และเริ่มด้วยม่านบังครึ่งล่างที่ใช้นิ้วลากลงเพื่อเปิดทีละบรรทัด", "แตะค้างสามนิ้ว 1 วินาที เพื่อออก ใช้รีโมตนำเสนอเปลี่ยนหน้า ปุ่ม B พักจอ ปุ่ม Esc ออก", "เมนู นำเสนอ เหลือสามข้อ จอแสดงผลแบบนักเรียนบนอีกเครื่องและบนจอที่สองรวมเป็นข้อเดียว"]}, {"id": 9, "date": "2026-11-17", "items": ["แถบบนเหลือปุ่มน้อยลง ปุ่มที่ใช้นาน ๆ ครั้ง รวมอยู่ในสองกลุ่ม", "ปุ่ม ต่อยอดจากหน้า มี แปลงเป็นตัวพิมพ์ สร้างโจทย์ และ ชุดโจทย์", "ปุ่ม สอนและนำเสนอ มี ห้องสด นำเสนอ และ ห้องเรียนและโจทย์ (ฝั่งนักเรียนชื่อ ห้องเรียน มี สแกน QR และ เข้าห้องเรียน ด้วย)", "เลือกด้วยบ่วงแล้ว แถบเหนือส่วนที่เลือก แสดงคำสั่งที่ใช้บ่อยก่อน คำสั่งอื่นอยู่ที่ปุ่ม เพิ่มเติม", "หาคำสั่งไม่เจอ พิมพ์ชื่อในช่องค้นหาที่เมนู เช่น PDF หรือ สามมิติ แล้วแตะคำสั่งที่ขึ้นมา"]}, {"id": 8, "date": "2026-11-16", "items": ["สร้างโจทย์ด้วย AI จากกี่หน้าก็ได้ ทั้งเล่ม ตามบท หรือเป็นช่วงหน้า", "อยู่ที่ปุ่ม สร้างโจทย์ด้วย AI หัวข้อ หน้าที่ใช้สร้างโจทย์ แตะ ทั้งเล่ม หรือแตะชื่อบท หรือใส่ช่วงหน้า แล้วกด เลือกช่วงนี้", "หน้าที่ AI อ่านแล้ว เก็บไว้ในเครื่องนี้ ครั้งต่อไป ไม่ต้องอ่านซ้ำ จึงเร็วขึ้น และประหยัดค่า AI"]}, {"id": 7, "date": "2026-11-16", "items": ["ลบผิด หรือเขียนทับผิด ดึงหน้า เมื่อไม่กี่นาทีก่อน หรือเมื่อวาน กลับมาได้", "อยู่ที่ ลิ้นชักหน้า แตะแถบ หน้านี้ ด้านล่าง แล้วกดปุ่ม รุ่นก่อนของหน้านี้ เลือกรุ่น ดูภาพหน้าก่อน แล้วกด คืนหน้าเป็นรุ่นนี้", "หน้าก่อนคืน ถูกเก็บไว้ด้วย จึงย้อนกลับได้ แอปเก็บรุ่นก่อน ไว้ในเครื่องนี้ 30 วัน"]}, {"id": 6, "date": "2026-11-16", "items": ["บัญชีคลาวด์ ส่งออกข้อมูลทั้งบัญชี เป็นไฟล์เดียวได้ ทั้งสมุด หน้า หมึก รูป วิดีโอ เลคเชอร์ที่แชร์ การบ้าน และงานที่นักเรียนส่ง", "อยู่ที่ เมนู แท็บตั้งค่า หัวข้อ ข้อมูลทั้งบัญชี กดปุ่ม ส่งออกทั้งบัญชี", "นำเข้าไฟล์นี้ ในบัญชีอื่น หรือเครื่องใหม่ได้ การนำเข้า เพิ่มเฉพาะส่วนที่ยังไม่มี ไม่ทับ และไม่ลบ ของที่มีอยู่"]}, {"id": 5, "date": "2026-11-15", "items": ["ลบสมุด หรือลบหน้าแล้ว ยังกู้คืนได้ ภายใน 30 วัน สิ่งที่ลบ ไปอยู่ในถังขยะ ก่อนถูกลบจริง", "เปิดถังขยะ ได้ที่ เมนู สมุดทั้งหมด ปุ่มถังขยะ ใต้รายการสมุด กดกู้คืน แล้วสมุดกลับไป ที่เดิม หน้ากลับไป ตำแหน่งเดิม ในสมุด", "ลบถาวร ทีละรายการ หรือลบทั้งหมด ในถังขยะได้ ครบ 30 วัน แล้วแอปลบให้เอง"]}, {"id": 4, "date": "2026-11-15", "items": ["สำรองสมุด ทั้งหมดเป็นไฟล์เดียว ได้ที่ เมนู แท็บตั้งค่า หัวข้อ สมุดในเครื่องนี้ ไฟล์เก็บสมุดทุกเล่ม รูป และวิดีโอ ในเครื่องนี้", "นำสมุดคืน จากไฟล์สำรอง ได้ที่เดียวกัน การนำคืน เพิ่มเฉพาะส่วน ที่ยังไม่มีในเครื่อง ไม่ทับ และไม่ลบ ของที่มีอยู่", "แอปขอให้เบราว์เซอร์ เก็บสมุดในเครื่อง ไว้ถาวร และเตือนให้สำรองสมุด ที่หน้ารายการสมุด เมื่อสมุดเปลี่ยนไป ตั้งแต่สำรองครั้งล่าสุด", "บน iPad และ iPhone ใน Safari แอปชวนให้ เพิ่มลงหน้าจอโฮม เพื่อไม่ให้ Safari ลบสมุด ที่ไม่ได้เปิดนาน ให้สำรองสมุดก่อน แล้วนำคืน ในแอปบนหน้าจอโฮม"]}, {"id": 3, "date": "2026-11-14", "items": ["สารบัญ ของสมุด แตะปุ่มหน้าในสมุด ที่มุมซ้ายบน แล้วเลือก สารบัญ จะเห็นหัวเรื่อง ของทุกหน้า แตะหัวเรื่อง เพื่อไปที่หน้านั้น ได้ทันที", "หัวเรื่อง มาจากข้อความที่พิมพ์ไว้ บนสุดของหน้า หรือบรรทัด ที่ขึ้นต้นด้วย ## ลายมือที่ยังไม่ได้แปลง เป็นตัวพิมพ์ ไม่ขึ้นในสารบัญ", "ที่คั่นหน้า แตะ ปักที่คั่นหน้านี้ ในหน้าสารบัญ แล้วตั้งชื่อเองได้ หน้าที่มีที่คั่น จะมีริบบิ้นสีแดง ที่ภาพหน้า", "ที่คั่นหน้า อยู่กับสมุด ของเราเท่านั้น ผู้เรียนในห้องสด ไม่เห็นที่คั่นหน้า ของครู"]}, {"id": 2, "date": "2026-11-14", "items": ["ค้นหาข้อความ ในทุกสมุดได้แล้ว พิมพ์คำในช่องค้นหาที่เมนู แอปจะค้นทั้งชื่อสมุด ข้อความที่พิมพ์ ลายมือที่แปลงเป็นตัวพิมพ์แล้ว หัวเรื่องของหน้า และข้อความในกล่องต่าง ๆ", "แตะผลการค้นหา เพื่อไปที่หน้านั้น กล่องที่มีคำนั้นจะเรืองแสงสักครู่ ให้เห็นตำแหน่ง", "พิมพ์คำไทย ติดกันหรือเว้นวรรค ก็ค้นเจอเหมือนกัน การค้นหาอ่านสมุดอย่างเดียว ไม่แก้ไขอะไรในสมุด"]}, {"id": 1, "date": "2026-11-13", "items": ["ดูเวอร์ชันของแอปได้ที่เมนู แท็บตั้งค่า หัวข้อเกี่ยวกับแอป", "เมื่อมีเวอร์ชันใหม่ระหว่างใช้งาน แอปจะไม่รีโหลดเอง รวมถึงจอผู้ชม เวอร์ชันใหม่จะมีผล เมื่อเปิดแอปครั้งถัดไป หรือเมื่อแตะแถบ มีเวอร์ชันใหม่", "หน้าที่เปิดค้างไว้ ใช้ส่วนต่าง ๆ ของแอป จากเวอร์ชันเดียวกับตัวเองเสมอ ไม่ปนกับเวอร์ชันใหม่", "เมื่อแอปทำงานผิดพลาด แอปจะส่งรายงาน ให้ผู้พัฒนา โดยส่งเฉพาะ ข้อความแจ้งข้อผิดพลาด ตำแหน่งในโค้ด รุ่นเครื่อง และเวอร์ชันของแอป ไม่ส่งเนื้อหาสมุด ชื่อ หรืออีเมล"]}];
 const TH_MON = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
 function thDay(iso) { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || ''); return m ? (+m[3]) + ' ' + TH_MON[+m[2] - 1] + ' ' + (+m[1] + 543) : ''; }
 function renderVersion() { const el = $('#verNote'); if (el) el.innerHTML = 'เวอร์ชัน <span class="nowrap">' + esc(VERSION.startsWith('__') ? 'ในเครื่อง (ยังไม่ได้ประกอบ)' : VERSION) + '</span>'; }
@@ -23113,7 +23271,7 @@ function calcPlain(md) {
 }
 const selCalc = debounce(async () => {
   const b = $('#sAns'); b.hidden = true; delete b.dataset.v;
-  const it = S.sel && S.sel.items.length === 1 && !S.sel.strokes.length ? findItem(S.sel.items[0]) : null;
+  const it = S.sel && S.sel.items.length === 1 && !selInk().length ? findItem(S.sel.items[0]) : null;
   if (!it || (it.type && it.type !== 'text')) return;
   const e = calcPlain(it.md); if (!e) return;
   try {
@@ -23205,14 +23363,14 @@ function emitInkDelta(pt) {
   const from = pt.inkSent || 0, to = Math.min(s.p.length, from + 450);
   if (to <= from) return;
   pt.inkSent = to;
-  const msg = { pid: S.pid, id: s.id, c: s.c, w: s.w, k: s.k, t: s.t, o: s.o, ms: t - pt.inkStart, p: s.p.slice(from, to) };
+  const msg = { pid: S.pid, id: s.id, c: s.c, w: s.w, k: s.k, t: s.t, o: s.o, on: s.on, ms: t - pt.inkStart, p: s.p.slice(from, to) };
   if (S.room && (S.watchers || S.peersAny)) S.room.emit('ink', msg).catch(() => {});
   if (liveOn() && !liveCrowd()) liveSend('ink', liveInkWire(msg, from));
 }
 function emitInkDone(pt) {
   if (S.present || !((S.room && (S.watchers || S.peersAny)) || liveOn())) return;
   const s = pt.stroke, from = pt.snapped ? 0 : pt.inkSent || 0, t = now();
-  const msg = { pid: S.pid, id: s.id, c: s.c, w: s.w, k: s.k, t: s.t, o: s.o, ms: t - (pt.inkStart || t), p: s.p.slice(from, from + 1500), done: true };
+  const msg = { pid: S.pid, id: s.id, c: s.c, w: s.w, k: s.k, t: s.t, o: s.o, on: s.on, ms: t - (pt.inkStart || t), p: s.p.slice(from, from + 1500), done: true };
   if (pt.snapped) msg.replace = true; /* the watcher drops the freehand part it already drew and shows the clean shape */
   if (liveOn()) LIVE.streamed.add(s.id);
   if (S.room && (S.watchers || S.peersAny)) S.room.emit('ink', msg).catch(() => {});
@@ -23765,7 +23923,7 @@ function quietRun(fn) {
   };
 }
 $('#sAnim').onclick = withMod('scene', () => openMotionPick()); $('#sQuiz').onclick = openQuizMaker; $('#sEq').onclick = quietRun(eqSelection); $('#sRead').onclick = quietRun(readSelection); $('#sHand').onclick = openHand; $('#sTidy').onclick = quietRun(tidySelection); $('#sProof').onclick = quietRun(proofSelection); $('#sBal').onclick = quietRun(balanceSelection); $('#sCap').onclick = quietRun(withMod('cite', () => captionSel())); $('#sImMeas').onclick = withMod('imgmeas', () => { const id = S.sel && S.sel.items.find((x) => { const it = findItem(x); return it && it.type === 'img'; }); if (id) openImgMeasure(id); }); $('#sData').onclick = quietRun(withMod('data', () => dataSelection())); $('#sUnit').onclick = quietRun(withMod('data', () => unitCheck())); $('#sGen').onclick = quietRun(() => generate(true));
-$('#sFront').onclick = () => restackSel(true); $('#sBack').onclick = () => restackSel(false);
+$('#sFrame').onclick = () => frameToggle(); $('#sFront').onclick = () => restackSel(true); $('#sBack').onclick = () => restackSel(false);
 $('#sDup').onclick = dupSel; $('#sMore').onclick = selMore;
 $('#sKey').onclick = () => showPeek();
 $('#bTray').onclick = () => { if ($('#qtray').hidden) openTray(); else closeTray(); };
