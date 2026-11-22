@@ -17,6 +17,10 @@ const scTxt = (t, n) => String(t == null ? '' : t).replace(/[<>]/g, '').slice(0,
 const SC_PAL = ['#2F4BB8', '#C2571A', '#2E8B57', '#7B4FC9', '#D14D8B', '#0E9AA7', '#B8860B', '#5A6472'];
 
 /* clean anything that came from AI or another device before it runs */
+/* the pairs of colours for the two phases of an orbital (blue and orange first, as drawn until now) */
+/* the colours an animal can be drawn in (task 9.10): '' is as in nature, the others colour its body */
+const AN_COLS = [['', 'สีตามธรรมชาติ'], ['#8B5A2B', 'น้ำตาล'], ['#3A3A40', 'ดำ'], ['#ECE6D6', 'ขาว'], ['#5E9E3A', 'เขียว'], ['#2F4BB8', 'น้ำเงิน'], ['#C62828', 'แดง'], ['#F2B630', 'เหลือง']];
+const ORB_COLS = [['#2F4BB8', '#E39B2D', 'น้ำเงินกับส้ม'], ['#C62828', '#2E7D32', 'แดงกับเขียว'], ['#6A1B9A', '#F9A825', 'ม่วงกับเหลือง'], ['#00838F', '#D81B60', 'ฟ้ากับชมพู'], ['#37474F', '#90A4AE', 'เทาเข้มกับเทาอ่อน']];
 function scClean(sp) {
   sp = sp && typeof sp === 'object' ? sp : {};
   const dom = ['phys', 'chem', 'bio', 'math'].includes(sp.domain) ? sp.domain : 'phys';
@@ -567,7 +571,7 @@ function scTick(ts) {
     if (!r.playing) continue; const it = findItem(id); if (!it) { r.playing = false; continue; }
     if (!r.cv || !r.cv.isConnected) continue;
     any = true; if (offView(r.cv)) continue; const sp = it.spec;
-    if (sp.dim === 3) { sc3Tick(sp, r, dtw); scRender(it, r); continue; }
+    if (sp.dim === 3) { if (sc3Tick(sp, r, dtw) !== false) scRender(it, r); continue; }
     if (sp.domain === 'phys') { if (r.turning != null) { r.turning += dtw / 0.4; if (r.turning >= 0.5 && !r.turned) { ipTurn(it, r); r.turned = true; } if (r.turning >= 1) { r.turning = null; r.turned = false; } scRender(it, r); continue; } if (r.peek) { r.peek -= dtw; if (r.peek <= 0) { r.peek = 0; r.turning = 0; r.turned = false; } scRender(it, r); continue; } const sim = dtw * (sp.speed || 1) * (r.slow ? 0.25 : 1), n = Math.max(1, Math.ceil(sim / 0.004)); for (let i = 0; i < n; i++) phStep(sp, r.st, sim / n); for (const b of r.st.bodies) { b.trail.push([b.x, b.y]); if (b.trail.length > 400) b.trail.shift(); }
       const pick = sp.show.graph; if (pick !== 'none') { r.st.hist.push([r.st.t].concat(r.st.bodies.filter((b) => !b.fixed).map((b) => pick === 'x' ? b.x : pick === 'y' ? b.y : pick === 'vx' ? b.vx : pick === 'vy' ? b.vy : pick === 'grf' ? (b.F.N ? b.F.N[1] : 0) : Math.hypot(b.vx, b.vy)))); if (r.st.hist.length > 600) r.st.hist.shift(); }
       const [x0, y0, x1, y1] = phBounds(sp, r.st), far = sp.bare ? 0.3 : Math.max(x1 - x0, y1 - y0) * 3; const edge = sp.bare && it.rig && it.rig.edge;
@@ -583,7 +587,7 @@ function scTick(ts) {
 }
 function scRender(it, r) {
   const cv = r.cv; if (!cv) return; const sp = it.spec;
-  const w = cv.clientWidth || 520, h = cv.clientHeight || 320, dpr = Math.min(4, (window.devicePixelRatio || 1) * Math.max(1, (S.base || 1) * (S.zoom || 1)));
+  const w = cv.clientWidth || 520, h = cv.clientHeight || 320, dpr = Math.min(4, (window.devicePixelRatio || 1) * Math.max(1, (S.base || 1) * (S.zoom || 1)), sp.animal ? Math.sqrt(1.2e6 / Math.max(1, w * h)) : 4); /* an animal moves all the time: its canvas has at most 1.2 million pixels */
   if (cv.width !== Math.round(w * dpr) || cv.height !== Math.round(h * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); }
   let c = cv.getContext('2d');
   if (sp.bare) { const cap = Math.min(dpr, Math.sqrt(9e6 / Math.max(1, w * h))); if (cv.width !== Math.round(w * cap) || cv.height !== Math.round(h * cap)) { cv.width = Math.round(w * cap); cv.height = Math.round(h * cap); } c.setTransform(cap, 0, 0, cap, 0, 0); c.clearRect(0, 0, w, h); }
@@ -672,6 +676,8 @@ function buildScene(d, it, forExport) {
   /* a model of orbitals, surfaces or curves can sit on the paper without its box; the box comes back from its small handle */
   const frameSwap = (v) => { const before = clone(S.page.items || []), items = clone(before), x = items.find((t) => t.id === it.id); if (!x) return; x.spec.clean = v; if (v) x.spec.pen = x.spec.pen !== false; setItems(items, before); };
   if (!forExport && !sp.bare && sp.dim === 3 && sp.domain === 'math' && !sp.clean) { const sb0 = head.querySelector('.sbtns'); const nf = document.createElement('button'); nf.type = 'button'; nf.textContent = 'ไม่มีกรอบ'; nf.title = 'วางบนกระดาษแบบไม่มีกรอบ ลงสีแบบสีไม้ ยังหมุนได้'; nf.onclick = () => frameSwap(true); sb0.appendChild(nf); }
+  if (sp.mark === 'orb') d.classList.add('orbmark');
+  if (sp.animal) d.classList.add('animark'); /* an animal (task 9.10): a wide box, it walks about inside */ /* an orbital drawn with the pen tool: a square around its nucleus (task 9.9) */
   if (sp.clean && !forExport) {
     d.classList.add('clean');
     const hb = document.createElement('button'); hb.type = 'button'; hb.className = 'lifedot scnhandle cleandot no-ink'; hb.title = 'ปรับแบบจำลอง'; hb.setAttribute('aria-label', 'ปรับแบบจำลอง'); hb.setAttribute('aria-expanded', r.open ? 'true' : 'false');
@@ -680,10 +686,34 @@ function buildScene(d, it, forExport) {
     const pill = document.createElement('div'); pill.className = 'scnpill cleanpill no-ink'; pill.hidden = !r.open; pill.addEventListener('pointerdown', (e) => e.stopPropagation());
     hb.onclick = (e) => { e.stopPropagation(); r.open = !r.open; pill.hidden = !r.open; hb.setAttribute('aria-expanded', r.open ? 'true' : 'false'); };
     const sb2 = head.querySelector('.sbtns');
-    sb2.querySelectorAll('[data-s="play"],[data-s="reset"],[data-s="slow"]').forEach((x) => { if (!sp.t || !sp.t.speed) x.hidden = true; });
+    sb2.querySelectorAll('[data-s="play"],[data-s="reset"],[data-s="slow"]').forEach((x) => { if (!sp.animal && (!sp.t || !sp.t.speed)) x.hidden = true; });
     const pen = document.createElement('button'); pen.type = 'button'; pen.textContent = sp.pen ? 'สีเรียบ' : 'สีไม้'; pen.onclick = () => { const before = clone(S.page.items || []), items = clone(before), x = items.find((t) => t.id === it.id); if (!x) return; x.spec.pen = !x.spec.pen; setItems(items, before); };
     const fr = document.createElement('button'); fr.type = 'button'; fr.textContent = 'แสดงกรอบ'; fr.onclick = () => frameSwap(false);
     sb2.append(pen, fr);
+    /* orbitals: the colours of the two phases, chosen here (owner 21 พ.ย. 2569); one step of undo, like the other buttons */
+    if ((sp.items || []).some((x) => x.type === 'orbital')) {
+      const cr = document.createElement('div'); cr.className = 'orbcols'; cr.setAttribute('role', 'group'); cr.setAttribute('aria-label', 'สีของออร์บิทัล');
+      const cur = (sp.items.find((x) => x.type === 'orbital') || {}).color;
+      for (const [c1, c2, nm] of ORB_COLS) {
+        const b = document.createElement('button'); b.type = 'button'; b.title = nm; b.setAttribute('aria-label', 'สี' + nm); b.setAttribute('aria-pressed', cur === c1 ? 'true' : 'false');
+        b.innerHTML = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 2a8 8 0 0 0 0 16z" fill="' + c1 + '"/><path d="M10 2a8 8 0 0 1 0 16z" fill="' + c2 + '"/></svg>';
+        b.onclick = () => { const before = clone(S.page.items || []), items = clone(before), x = items.find((t) => t.id === it.id); if (!x) return; (x.spec.items || []).forEach((o) => { if (o.type === 'orbital') { o.color = c1; o.col2 = c2; } }); setItems(items, before); };
+        cr.appendChild(b);
+      }
+      sb2.appendChild(cr);
+    }
+    /* an animal (task 9.10): its colour as in nature, or one chosen here for the body; one step of undo */
+    if (sp.animal) {
+      const cr = document.createElement('div'); cr.className = 'orbcols ancols'; cr.setAttribute('role', 'group'); cr.setAttribute('aria-label', 'สีของสัตว์');
+      for (const [c1, nm] of AN_COLS) {
+        const b = document.createElement('button'); b.type = 'button'; b.title = nm; b.setAttribute('aria-label', nm); b.setAttribute('aria-pressed', (sp.col || '') === c1 ? 'true' : 'false');
+        b.innerHTML = c1 ? '<svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="8" fill="' + c1 + '" stroke="rgba(40,44,52,0.35)"/></svg>'
+          : '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 10V2a8 8 0 0 1 7.6 5.5z" fill="#A0663A"/><path d="M10 10l7.6-2.5A8 8 0 0 1 12.5 17.6z" fill="#5E9E3A"/><path d="M10 10l2.5 7.6A8 8 0 0 1 2.4 12.5z" fill="#F2B630"/><path d="M10 10L2.4 12.5A8 8 0 0 1 10 2z" fill="#4C4B52"/></svg>';
+        b.onclick = () => { const before = clone(S.page.items || []), items = clone(before), x = items.find((t) => t.id === it.id); if (!x) return; x.spec.col = c1; setItems(items, before); };
+        cr.appendChild(b);
+      }
+      sb2.appendChild(cr);
+    }
     [...d.children].filter((x) => x !== cv).forEach((x) => pill.appendChild(x));
     d.appendChild(hb); d.appendChild(pill);
   }
@@ -1618,7 +1648,11 @@ function renderScenePicker(box, dom, q) {
   const ai = document.createElement('div'); ai.className = 'scnai';
   ai.innerHTML = '<label class="field"><span>ไม่มีแบบที่ต้องการ อธิบายสิ่งที่อยากให้ขยับ แล้วให้ AI สร้าง</span><textarea rows="2" placeholder="เช่น กล่อง 2 kg ถูกดึงด้วยแรง 10 N ทำมุม 30 องศา บนพื้นที่มีแรงเสียดทาน 0.2"></textarea></label><button class="btn solid" type="button">สร้างแบบจำลอง</button><div class="note small">หรือวาดภาพบนหน้า วงรอบด้วยบ่วงเลือก แล้วกด "ขยับได้"</div>';
   ai.querySelector('button').onclick = async () => {
-    const t = ai.querySelector('textarea').value.trim(); if (!t) return; if (!needAI('gen')) return; if (typeof convNote === 'function') convNote('asked', t);
+    const t = ai.querySelector('textarea').value.trim(); if (!t) return;
+    /* task 8.19: a problem of a clear kind (free fall, projectile, incline, spring, pendulum) is built here with its numbers, no AI */
+    let loc = null; try { loc = typeof stScene === 'function' ? stScene(t) : null; } catch (e) { loc = null; }
+    if (loc) { $('#simSheet').hidden = true; insertScene(loc); toast('สร้างแบบจำลองจากตัวเลขในโจทย์แล้ว ' + (loc.note || ''), 4000); return; }
+    if (!needAI('gen')) return; if (typeof convNote === 'function') convNote('asked', t);
     const bt = ai.querySelector('button'); bt.disabled = true;
     const wt = document.createElement('div'); bt.after(wt); waitCard(wt, 'AI กำลังสร้างแบบจำลอง', ['อ่านคำอธิบาย', 'สร้างตามหลักวิชา'], { cancel: false });
     try { const spec = await sceneFromAI(t, null); $('#simSheet').hidden = true; insertScene(spec); } catch (e) { toast('สร้างไม่สำเร็จ ลองอธิบายให้ชัดขึ้น', 3000); }
@@ -1627,7 +1661,7 @@ function renderScenePicker(box, dom, q) {
   const doms = q ? SCENE_SUBJ.map((x) => x[0]) : [dom];
   let shown = 0;
   for (const d of doms) {
-    const list = (SCENE_TPL[d] || []).filter(([name, hint]) => !q || (name + ' ' + hint).toLowerCase().includes(q));
+    const list = (SCENE_TPL[d] || []).filter(([name, hint, , kw]) => !q || (name + ' ' + hint + ' ' + (kw || '')).toLowerCase().includes(q));
     if (q && list.length) { const h = document.createElement('h3'); h.textContent = (SCENE_SUBJ.find((x) => x[0] === d) || [0, ''])[1]; box.appendChild(h); }
     const grid = document.createElement('div'); grid.className = 'simgrid';
     for (const [name, hint, spec] of list) {
@@ -1651,6 +1685,127 @@ function renderScenePicker(box, dom, q) {
   box.appendChild(ai);
 }
 
+/* ---------- a typed problem with a clear form becomes a moving model with no AI (task 8.19 group 6). Built into the part
+   "scene" after scene.js, so it starts from the same ready-made models (SCENE_TPL). The kinds read here:
+     free fall (ตกอิสระ, ปล่อยจากที่สูง h, โยนขึ้น or ลง with a speed), a projectile (โพรเจกไทล์, ขว้าง, ยิง with a
+     speed and an angle, from the ground or from a height), a box on an incline (angle, μ, mass, length), a mass on a
+     spring (k, m, amplitude) and a simple pendulum (length, angle, mass)
+   The numbers of the problem go into the model, and what the laws give is worked out here for the note under it:
+   time of flight, range, highest point, speed at the ground, acceleration down the incline, period.
+   Anything else returns null and the AI makes the model as before. "scenetext" in flags.json turns it off (or
+   "localcalc") ---------- */
+function stOn() { return flagOn('scenetext') && flagOn('localcalc'); }
+const stR = (v) => { if (!isFinite(v)) return String(v); return Number(v.toPrecision(Math.abs(v) >= 100 ? 4 : 3)).toString(); };
+function stClean(t) {
+  return String(t || '').replace(/\$/g, ' ').replace(/\\text\{([^}]*)\}|\\mathrm\{([^}]*)\}/g, '$1$2').replace(/\^\s*\{?\\circ\}?|\\degree/g, '°').replace(/\\(?:theta|mu|,|;| )/g, (m) => (m === '\\theta' ? 'θ' : m === '\\mu' ? 'μ' : ' '))
+    .replace(/[{}]/g, '').replace(/[−–]/g, '-').replace(/[๐-๙]/g, (d) => '๐๑๒๓๔๕๖๗๘๙'.indexOf(d)).replace(/\s+/g, ' ').trim();
+}
+const ST_N = '(\\d+(?:\\.\\d+)?)';
+/* the number written with one of these units, or after one of these names */
+function stVal(t, units, names) {
+  if (names) for (const n of names) { const m = t.match(new RegExp('(?:^|[^A-Za-z])' + n + '\\s*(?:=|:|เท่ากับ|คือ)?\\s*' + ST_N)); if (m) return +m[1]; }
+  if (units) { const m = t.match(new RegExp(ST_N + '\\s*(?:' + units + ')(?![A-Za-z/])')); if (m) return +m[1]; }
+  return null;
+}
+const stSpeed = (t) => stVal(t, 'm/s|เมตร\\s*ต่อ\\s*วินาที|เมตร/วินาที', ['v_?0', 'u', 'v', 'อัตราเร็ว(?:ต้น)?', 'ความเร็ว(?:ต้น)?']);
+const stAngle = (t) => stVal(t, '°|องศา|deg', ['θ', 'มุม']);
+const stLen = (t, names) => stVal(t, null, names);
+const stMeters = (t) => { const m = t.match(new RegExp(ST_N + '\\s*(?:m|เมตร)(?![A-Za-z/])(?!\\s*ต่อ)')); return m ? +m[1] : null; };
+function stG(t) { const g = stVal(t, null, ['g']); return g && g > 0 && g < 50 ? g : 9.8; }
+function stMass(t) { const m = stVal(t, 'kg|กิโลกรัม', ['m']); return m && m > 0 ? m : null; }
+const stCopy = (name) => { for (const k in SCENE_TPL) { const x = (SCENE_TPL[k] || []).find((r) => r[0] === name); if (x) return JSON.parse(JSON.stringify(x[2])); } return null; };
+
+function stProjectile(t, g) {
+  const v = stSpeed(t); if (!v || v <= 0) return null;
+  const horiz = /แนวระดับ|แนวนอน|horizontal/i.test(t);
+  let ang = stAngle(t); if (ang == null) ang = horiz ? 0 : null; if (ang == null || ang < 0 || ang >= 90) return null;
+  const h0 = /สูง|หน้าผา|ตึก|height|cliff|tower/i.test(t) ? (stLen(t, ['h', 'ความสูง', 'สูง']) || stMeters(t) || 0) : 0;
+  const vx = v * Math.cos(ang * Math.PI / 180), vy = v * Math.sin(ang * Math.PI / 180);
+  const tf = (vy + Math.sqrt(vy * vy + 2 * g * h0)) / g, R = vx * tf, H = h0 + vy * vy / (2 * g);
+  const W = Math.max(R * 1.2 + 2, 6), Hh = Math.max(H * 1.35 + 1, 3), r = Math.max(0.12, W / 90);
+  const sp = stCopy('โพรเจกไทล์'); if (!sp) return null;
+  const x0 = h0 > 0 ? 0.08 * W : 0.04 * W;
+  sp.title = 'โพรเจกไทล์ v = ' + stR(v) + ' m/s มุม ' + stR(ang) + '°' + (h0 ? ' จากสูง ' + stR(h0) + ' m' : '');
+  sp.world = { w: W, h: Hh, g };
+  sp.bodies[0] = Object.assign(sp.bodies[0], { r, x: x0, y: h0 + r, vx, vy, e: 0 });
+  /* a rough ground, so the ball stops near where it lands and the range reads from the picture */
+  sp.surfaces = [{ x1: 0, y1: 0, x2: W, y2: 0, mu: 0.9, mus: 1 }].concat(h0 > 0 ? [{ x1: 0, y1: h0, x2: x0 + r * 1.5, y2: h0 }, { x1: x0 + r * 1.5, y1: h0, x2: x0 + r * 1.5, y2: 0 }] : []);
+  sp.params = [{ key: 'A.vx', label: 'ความเร็วต้นแนวราบ (m/s)', min: 0, max: Math.ceil(v * 2), step: 0.5 }, { key: 'A.vy', label: 'ความเร็วต้นแนวดิ่ง (m/s)', min: 0, max: Math.ceil(v * 2), step: 0.5 }, { key: 'g', label: 'g (m/s²)', min: 1, max: 20, step: 0.1 }];
+  sp.note = 'ลอยอยู่ ' + stR(tf) + ' s ตกไกล ' + stR(R) + ' m สูงสุด ' + stR(H) + ' m จากพื้น (คิดในเครื่อง ไม่คิดแรงต้านอากาศ)';
+  return sp;
+}
+function stFall(t, g) {
+  const h0 = stLen(t, ['h', 'ความสูง', 'สูง']) || stMeters(t); if (!h0 || h0 <= 0) return null;
+  const v = stSpeed(t) || 0, up = /ขึ้น|upward|\bup\b/i.test(t), vy = up ? v : -v;
+  const tf = (vy + Math.sqrt(vy * vy + 2 * g * h0)) / g, vEnd = Math.sqrt(vy * vy + 2 * g * h0), H = h0 + (vy > 0 ? vy * vy / (2 * g) : 0);
+  const sp = stCopy('โพรเจกไทล์'); if (!sp) return null;
+  const Hh = H * 1.25 + 1, W = Math.max(4, Hh * 0.6), r = Math.max(0.12, Hh / 60);
+  sp.title = (v ? (up ? 'โยนขึ้น ' : 'ขว้างลง ') + stR(v) + ' m/s ' : 'ปล่อยให้ตก ') + 'จากสูง ' + stR(h0) + ' m';
+  sp.world = { w: W, h: Hh, g };
+  sp.bodies[0] = Object.assign(sp.bodies[0], { r, x: W / 2, y: h0 + r, vx: 0, vy, e: 0 });
+  sp.surfaces = [{ x1: 0, y1: 0, x2: W, y2: 0 }];
+  sp.params = [{ key: 'A.vy', label: 'ความเร็วต้น (m/s) บวกคือขึ้น', min: -Math.ceil(v * 2 + 10), max: Math.ceil(v * 2 + 10), step: 0.5 }, { key: 'g', label: 'g (m/s²)', min: 1, max: 20, step: 0.1 }];
+  sp.show = Object.assign({}, sp.show, { v: true, graph: 'vy' });
+  sp.note = 'ถึงพื้นใน ' + stR(tf) + ' s ด้วยอัตราเร็ว ' + stR(vEnd) + ' m/s' + (vy > 0 ? ' ขึ้นได้สูงสุด ' + stR(H) + ' m จากพื้น' : '') + ' (คิดในเครื่อง ไม่คิดแรงต้านอากาศ)';
+  return sp;
+}
+function stIncline(t, g) {
+  const ang = stAngle(t); if (ang == null || ang <= 0 || ang >= 80) return null;
+  const mu = stVal(t, null, ['μ_?k', 'μ', 'mu', 'สัมประสิทธิ์ความเสียดทาน(?:จลน์)?']) || 0, mus = stVal(t, null, ['μ_?s']) || Math.max(mu, mu * 1.2);
+  const m = stMass(t) || 2, L = stLen(t, ['L', 'ยาว', 'ความยาว']) || 4, th = ang * Math.PI / 180;
+  const d = L * Math.cos(th), hgt = L * Math.sin(th), x1 = 0.5, y1 = 0.4 + hgt, x2 = x1 + d, y2 = 0.4, W = x2 + 1.6, Hh = y1 + 1;
+  const sp = stCopy('พื้นเอียงมีแรงเสียดทาน'); if (!sp) return null;
+  /* the box: a fifth of the way down, its centre half its height above the slope along the normal */
+  const bw = Math.min(0.8, L / 5), bh = bw * 0.6, s = 0.2 * L, px = x1 + s * Math.cos(th), py = y1 - s * Math.sin(th), nx = Math.sin(th), ny = Math.cos(th);
+  sp.title = 'กล่องบนพื้นเอียง ' + stR(ang) + '°';
+  sp.world = { w: W, h: Hh, g };
+  sp.bodies[0] = Object.assign(sp.bodies[0], { m, w: bw, h: bh, x: px + nx * bh / 2, y: py + ny * bh / 2 });
+  sp.surfaces = [{ x1, y1, x2, y2, mu, mus }, { x1: 0, y1: 0.4, x2: W, y2: 0.4, mu: 0.4 }, { x1: W - 0.05, y1: 0.4, x2: W - 0.05, y2: 1.6 }];
+  const slides = Math.tan(th) > mus, a = g * (Math.sin(th) - mu * Math.cos(th));
+  sp.note = slides ? 'กล่องไถลลงด้วยความเร่ง ' + stR(Math.max(0, a)) + ' m/s² (g sinθ − μg cosθ คิดในเครื่อง)' : 'กล่องไม่ไถล เพราะ tanθ = ' + stR(Math.tan(th)) + ' ไม่เกิน μs = ' + stR(mus) + ' (คิดในเครื่อง)';
+  return sp;
+}
+function stSpring(t) {
+  const k = stVal(t, 'N/m|นิวตัน\\s*ต่อ\\s*เมตร', ['k']); if (!k || k <= 0) return null;
+  const m = stMass(t) || 1, A = stVal(t, null, ['A', 'แอมพลิจูด', 'ดึงออก', 'ยืดออก']) || stMeters(t) || 0.4;
+  const sp = stCopy('มวลติดสปริง'); if (!sp) return null;
+  const L0 = 1.8, Aa = Math.min(Math.max(A, 0.05), 1.4);
+  sp.title = 'มวล ' + stR(m) + ' kg ติดสปริง k = ' + stR(k) + ' N/m';
+  sp.world = { w: Math.max(4, 0.2 + L0 + Aa + 1), h: 1.6, g: 9.8 };
+  sp.bodies[0] = Object.assign(sp.bodies[0], { m, x: 0.2 + L0 + Aa });
+  sp.springs[0] = Object.assign(sp.springs[0], { k, L0 });
+  sp.params = [{ key: 'K1.k', label: 'k (N/m)', min: Math.max(1, Math.floor(k / 4)), max: Math.ceil(k * 3), step: Math.max(1, Math.round(k / 40)) }, { key: 'A.m', label: 'มวล (kg)', min: 0.1, max: Math.ceil(m * 4), step: 0.1 }];
+  const T = 2 * Math.PI * Math.sqrt(m / k);
+  sp.note = 'คาบ T = 2π√(m/k) = ' + stR(T) + ' s ความถี่ ' + stR(1 / T) + ' Hz อัตราเร็วสูงสุด ' + stR(Aa * Math.sqrt(k / m)) + ' m/s (คิดในเครื่อง)';
+  return sp;
+}
+function stPendulum(t, g) {
+  const L = stLen(t, ['L', 'ยาว', 'ความยาว', 'เชือกยาว']) || stMeters(t); if (!L || L <= 0) return null;
+  const ang = stAngle(t) || 15, m = stMass(t) || 0.5, th = Math.min(80, Math.max(2, ang)) * Math.PI / 180;
+  const sp = stCopy('ลูกตุ้มอย่างง่าย'); if (!sp) return null;
+  const W = 2.4 * L + 0.8, Hh = L + 0.8, ax = W / 2, ay = Hh - 0.3, r = Math.max(0.05, L / 18);
+  sp.title = 'ลูกตุ้มยาว ' + stR(L) + ' m';
+  sp.world = { w: W, h: Hh, g };
+  sp.bodies[0] = Object.assign(sp.bodies[0], { m, r, x: ax + L * Math.sin(th), y: ay - L * Math.cos(th) });
+  sp.ropes[0] = Object.assign(sp.ropes[0], { ax, ay });
+  const T = 2 * Math.PI * Math.sqrt(L / g);
+  sp.note = 'คาบ T = 2π√(L/g) ≈ ' + stR(T) + ' s (มุมเล็ก คิดในเครื่อง) ความเร็วสูงสุดที่จุดต่ำสุด ' + stR(Math.sqrt(2 * g * L * (1 - Math.cos(th)))) + ' m/s';
+  return sp;
+}
+/* the model for a typed problem, or null (the AI makes it as before) */
+function stScene(text) {
+  if (!stOn()) return null;
+  const t = stClean(text); if (!t || t.length > 400) return null;
+  const g = stG(t);
+  let sp = null;
+  if (/ลูกตุ้ม|pendulum/i.test(t)) sp = stPendulum(t, g);
+  else if (/สปริง|spring/i.test(t)) sp = stSpring(t);
+  else if (/พื้นเอียง|incline|ทางลาด/i.test(t)) sp = stIncline(t, g);
+  else if (/โพรเจกไทล์|projectile|ขว้าง|ยิง|เตะ|ทำมุม/i.test(t) && (stAngle(t) != null || /แนวระดับ|แนวนอน|horizontal/i.test(t))) sp = stProjectile(t, g);
+  else if (/ตกอิสระ|ปล่อย|ตกจาก|free\s*fall|โยน|ขว้างลง|drop|throw/i.test(t)) sp = stFall(t, g);
+  return sp ? scClean(sp) : null;
+}
+
 
 /* ---------- living models in three dimensions: z is up. Physics (bodies, planes, ropes, springs, fields),
    particles in a box (chemistry, biology) and surfaces or curves (maths). Drag to turn, pinch or wheel to zoom. ---------- */
@@ -1662,6 +1817,8 @@ function sc3Clean(sp, o) {
   o.dim = 3;
   if (sp.clean) o.clean = true; /* no frame: the model sits on the paper like a drawing */
   if (sp.pen) o.pen = true; /* coloured as if with coloured pencils */
+  /* an animal of the curriculum (task 9.10, m/animals.js): which one, and the colour chosen for it ('' as in nature) */
+  if (typeof sp.animal === 'string' && sp.animal) { o.domain = 'bio'; o.animal = sp.animal.replace(/[^a-z0-9]/g, '').slice(0, 20); o.col = /^#[0-9a-fA-F]{6}$/.test(String(sp.col || '')) ? sp.col : ''; o.mark = 'ani'; o.params = []; return o; }
   if (o.domain === 'phys') {
     const wd = sp.world || {};
     o.world = { size: scNum(wd.size, 4, 0.1, 1e9), g: scNum(wd.g, 9.8, 0, 1000), ground: wd.ground !== false, mu: scNum(wd.mu, 0.3, 0, 5), tz: scNum(wd.tz, 0, -1e9, 1e9) };
@@ -1685,7 +1842,10 @@ function sc3Clean(sp, o) {
     const t = sp.t || {}; o.t = { min: scNum(t.min, 0, -1e6, 1e6), max: scNum(t.max, 6.2832, -1e6, 1e6), speed: scNum(t.speed, 1, 0, 1e4), loop: t.loop !== false };
     o.vars = {}; for (const [k, v] of Object.entries(sp.vars || {}).slice(0, 8)) if (/^[a-zA-Z]\w{0,9}$/.test(k) && !/^(t|x|y|z|e|pi)$/.test(k)) o.vars[k] = scNum(v, 1, -1e9, 1e9);
     const ex = (s) => scTxt(s, 140).replace(/[^0-9A-Za-z_+\-*/^().,\s<>=!]/g, '');
-    o.items = (Array.isArray(sp.items) ? sp.items : []).slice(0, 8).map((it, i) => ({ type: ['surface', 'curve', 'point', 'vector', 'tangent', 'orbital'].includes(it.type) ? it.type : 'surface', o: scTxt(it.o, 60).replace(/[^a-z0-9,]/g, ''), dir: it.dir ? v3(it.dir) : null, pick: /^[a-zA-Z]\w{0,9}$/.test(it.pick || '') ? it.pick : '', col2: scCol(it.col2, '#E39B2D'), color: scCol(it.color, SC_PAL[i % SC_PAL.length]), label: scTxt(it.label, 24), expr: ex(it.expr), x: ex(it.x), y: ex(it.y), z: ex(it.z), s0: ex(it.s0), s1: ex(it.s1), n: Math.round(scNum(it.n, 26, 6, 48)), range: Array.isArray(it.range) ? it.range.slice(0, 4).map((v) => scNum(v, 0, -1e6, 1e6)) : null, trace: !!it.trace }));
+    o.items = (Array.isArray(sp.items) ? sp.items : []).slice(0, 8).map((it, i) => Object.assign({ type: ['surface', 'curve', 'point', 'vector', 'tangent', 'orbital'].includes(it.type) ? it.type : 'surface', o: scTxt(it.o, 60).replace(/[^a-z0-9,]/g, ''), dir: it.dir ? v3(it.dir) : null, pick: /^[a-zA-Z]\w{0,9}$/.test(it.pick || '') ? it.pick : '', col2: scCol(it.col2, '#E39B2D'), color: scCol(it.color, SC_PAL[i % SC_PAL.length]), label: scTxt(it.label, 24), expr: ex(it.expr), x: ex(it.x), y: ex(it.y), z: ex(it.z), s0: ex(it.s0), s1: ex(it.s1), n: Math.round(scNum(it.n, 26, 6, 48)), range: Array.isArray(it.range) ? it.range.slice(0, 4).map((v) => scNum(v, 0, -1e6, 1e6)) : null, trace: !!it.trace },
+      /* an orbital drawn with the pen tool keeps the way it was drawn on the page: its own axes x y z, as three rows (task 9.9) */
+      Array.isArray(it.fr) && it.fr.length === 9 ? { fr: it.fr.map((v) => scNum(v, 0, -1, 1)) } : {}));
+    if (sp.mark === 'orb') o.mark = 'orb';
   }
   return o;
 }
@@ -1886,8 +2046,9 @@ function orb3Draw(g, it, sp, L, rt) {
   if (it.pick && sp.vars && list.length > 1) o = list[clamp(Math.round(sp.vars[it.pick]) - 1, 0, list.length - 1)];
   const many = sp.items.filter((x) => x.type === 'orbital').length, n1 = many > 2 ? 20 : 26, n2 = many > 2 ? 30 : 40, R = L * 0.85, dir = it.dir; /* fewer faces when several orbitals turn together (iPad) */
   /* the biggest value over all directions sets the size, so every orbital fills the same space */
+  const fr = it.fr, loc = fr ? (u) => [u[0] * fr[0] + u[1] * fr[1] + u[2] * fr[2], u[0] * fr[3] + u[1] * fr[4] + u[2] * fr[5], u[0] * fr[6] + u[1] * fr[7] + u[2] * fr[8]] : (u) => u;
   let mx = 0; const U = [];
-  for (let i = 0; i <= n1; i++) { U.push([]); const th = Math.PI * i / n1; for (let j = 0; j <= n2; j++) { const ph = 2 * Math.PI * j / n2, u = [Math.sin(th) * Math.cos(ph), Math.sin(th) * Math.sin(ph), Math.cos(th)], v = orbPsi(o, u, dir); U[i].push([u, v]); mx = Math.max(mx, v * v); } }
+  for (let i = 0; i <= n1; i++) { U.push([]); const th = Math.PI * i / n1; for (let j = 0; j <= n2; j++) { const ph = 2 * Math.PI * j / n2, u = [Math.sin(th) * Math.cos(ph), Math.sin(th) * Math.sin(ph), Math.cos(th)], v = orbPsi(o, loc(u), dir); U[i].push([u, v]); mx = Math.max(mx, v * v); } }
   const k = R / (mx || 1), cm = rt.cam || CAM0, V = [Math.sin(cm.yaw) * Math.cos(cm.pitch), -Math.cos(cm.yaw) * Math.cos(cm.pitch), Math.sin(cm.pitch)];
   const Lt = vUnit(vAdd(V, [0.25, -0.15, 0.45])), P = (e) => vMul(e[0], e[1] * e[1] * k);
   const hex = (c) => (/^#[0-9a-f]{6}$/i.test(c) ? c : '#2F4BB8'), c1 = hex(it.color), c2 = hex(it.col2);
@@ -1903,7 +2064,9 @@ function orb3Draw(g, it, sp, L, rt) {
   }
   if (sp.pen) g.ball([0, 0, 0], L * 0.02, '#3A3F48'); else g.ball([0, 0, 0], L * 0.025, '#333333');
   const nm = list.length > 1 && !it.pick ? list.map((x) => ORB_NAMES[x] || x).join(', ') : (ORB_NAMES[o] || o);
-  rt.read = [['ออร์บิทัล', nm], ['สี', 'น้ำเงิน เฟสบวก, ส้ม เฟสลบ']];
+  /* the names of the colours chosen for the two phases (scene.js ORB_COLS); a colour not in the list keeps the old words */
+  const cn = { '#2F4BB8': 'น้ำเงิน', '#E39B2D': 'ส้ม', '#C62828': 'แดง', '#2E7D32': 'เขียว', '#6A1B9A': 'ม่วง', '#F9A825': 'เหลือง', '#00838F': 'ฟ้า', '#D81B60': 'ชมพู', '#37474F': 'เทาเข้ม', '#90A4AE': 'เทาอ่อน' };
+  rt.read = [['ออร์บิทัล', nm], ['สี', (cn[String(c1).toUpperCase()] || 'น้ำเงิน') + ' เฟสบวก, ' + (cn[String(c2).toUpperCase()] || 'ส้ม') + ' เฟสลบ']];
 }
 /* ----- coloured pencil: the shape is drawn on a layer of its own, its colour broken into short slanted strokes so the
    paper shows through, with a soft pencil line round the outside. The grain stays put on the paper while the shape turns ----- */
@@ -1938,6 +2101,7 @@ function pencilDraw(c, w, h, gp, rt) {
 }
 /* ----- one entry for the runtime ----- */
 function sc3Reset(sp, r) {
+  if (sp.animal) { r.st = { t: 0 }; return; }
   if (sp.domain === 'phys') {
     r.st = p3Init(sp); let mf = 0; for (const B of r.st.bodies) mf = Math.max(mf, B.b.m * sp.world.g); if (sp.fields.central) for (const B of r.st.bodies) { const d = vLen(vSub(B.p, sp.fields.central.p)); mf = Math.max(mf, sp.fields.central.GM * B.b.m / Math.max(d * d, 1e-9)); }
     if (sp.fields.B) for (const B of r.st.bodies) mf = Math.max(mf, Math.abs(B.b.q) * vLen(vCross(B.v, sp.fields.B))); for (const s of sp.springs) mf = Math.max(mf, s.k * sp.world.size * 0.3); for (const f of sp.forces) mf = Math.max(mf, vLen(f.f));
@@ -1945,13 +2109,28 @@ function sc3Reset(sp, r) {
   } else if (sp.domain === 'math') r.st = { t: sp.t.min };
   else r.st = c3Init(sp);
 }
+/* animals (task 9.10): their part is loaded the first time one is drawn; "animals" in flags.json turns it off */
+function sc3AnLoad(r) {
+  if (r.anTry) return; r.anTry = 1;
+  need('animals').then(() => { for (const [id, R] of SCN) if (R === r) { const it = findItem(id); if (it) scRender(it, r); } }, () => { r.anOff = 1; for (const [id, R] of SCN) if (R === r) { const it = findItem(id); if (it) scRender(it, r); } });
+}
 function sc3Tick(sp, r, dtw) {
+  if (sp.animal) {
+    if (typeof anTick !== 'function') { sc3AnLoad(r); return false; }
+    anTick(sp, r, dtw * (r.slow ? 0.25 : 1));
+    /* drawn about 30 times a second: smooth enough, and light on an iPad */
+    r.anAcc = (r.anAcc || 0) + dtw; if (r.anAcc < (r.anMs > 14 ? 0.05 : 0.03)) return false; /* a slow device: 20 a second */ r.anAcc = 0; return true;
+  }
   const sim = dtw * (sp.speed || 1) * (r.slow ? 0.25 : 1);
   if (sp.domain === 'phys') { const n = Math.max(1, Math.ceil(sim / 0.002)); for (let i = 0; i < n; i++) p3Step(sp, r.st, sim / n); for (const B of r.st.bodies) { B.trail.push(B.p.slice()); if (B.trail.length > 500) B.trail.shift(); } }
   else if (sp.domain === 'math') { r.st.t += dtw * sp.t.speed * (r.slow ? 0.25 : 1); if (r.st.t > sp.t.max) { if (sp.t.loop) { r.st.t = sp.t.min; r.traces = {}; } else { r.st.t = sp.t.max; r.playing = false; r.ended = true; } } }
   else { const s2 = dtw * (r.slow ? 0.25 : 1), n = Math.max(1, Math.ceil(s2 / 0.01)); for (let i = 0; i < n; i++) c3Step(sp, r.st, s2 / n); if (r.st.t - r.st.lastH > 0.2) { r.st.lastH = r.st.t; r.st.hist.push([r.st.t].concat(sp.species.map((_, i) => r.st.P.filter((q) => q.s === i).length))); if (r.st.hist.length > 500) r.st.hist.shift(); } }
 }
 function sc3Render(c, w, h, sp, r) {
+  if (sp.animal) {
+    if (typeof anDraw === 'function') return anDraw(c, w, h, sp, r);
+    c.fillStyle = '#5A6472'; c.font = '14px Sarabun, sans-serif'; c.fillText(r.anOff ? 'ส่วนสัตว์สามมิติปิดใช้ชั่วคราว' : 'กำลังโหลด', 16, 24); sc3AnLoad(r); r.read = []; return true;
+  }
   if (sp.domain === 'phys') {
     p3Draw(c, w, h, sp, r.st, r);
     const live = r.st.bodies.filter((B) => !B.b.fixed);
@@ -1963,12 +2142,22 @@ function sc3Render(c, w, h, sp, r) {
 }
 /* drag to turn, two fingers or the wheel to zoom, double tap to face front */
 function sc3Bind(cv, it, r) {
-  const pts = new Map(); let pinch0 = 0, zoom0 = 1, lastTap = 0; cv.style.touchAction = 'none';
+  const pts = new Map(); let pinch0 = 0, zoom0 = 1, lastTap = 0, down = null; cv.style.touchAction = 'none';
   const cam = () => r.cam || (r.cam = Object.assign({}, CAM0));
   const redraw = () => { if (!r.playing) scRender(findItem(it.id) || it, r); };
-  cv.addEventListener('pointerdown', (e) => { e.stopPropagation(); try { cv.setPointerCapture(e.pointerId); } catch (x) { /* fine */ } pts.set(e.pointerId, [e.clientX, e.clientY]); if (pts.size === 2) { const [a, b] = [...pts.values()]; pinch0 = Math.hypot(a[0] - b[0], a[1] - b[1]); zoom0 = cam().zoom; } const t = now(); if (pts.size === 1 && t - lastTap < 320) { r.cam = Object.assign({}, CAM0); redraw(); } lastTap = t; });
-  cv.addEventListener('pointermove', (e) => { if (!pts.has(e.pointerId)) return; e.stopPropagation(); const p0 = pts.get(e.pointerId), dx = e.clientX - p0[0], dy = e.clientY - p0[1]; pts.set(e.pointerId, [e.clientX, e.clientY]); const c = cam(); if (pts.size >= 2) { const [a, b] = [...pts.values()]; if (pinch0) c.zoom = clamp(zoom0 * Math.hypot(a[0] - b[0], a[1] - b[1]) / pinch0, 0.4, 4); } else { c.yaw -= dx * 0.009; c.pitch = clamp(c.pitch + dy * 0.009, -1.5707, 1.5707); } redraw(); });
+  cv.addEventListener('pointerdown', (e) => { e.stopPropagation(); try { cv.setPointerCapture(e.pointerId); } catch (x) { /* fine */ } if (e.isPrimary) for (const [k, v] of pts) if (v[2] === e.pointerType) pts.delete(k); /* a first finger: no other finger is still down (task 9.9) */ pts.set(e.pointerId, [e.clientX, e.clientY, e.pointerType]); down = pts.size === 1 ? [e.clientX, e.clientY, now(), e.pointerId] : null; if (pts.size === 2) { const [a, b] = [...pts.values()]; pinch0 = Math.hypot(a[0] - b[0], a[1] - b[1]); zoom0 = cam().zoom; } const t = now(); if (pts.size === 1 && t - lastTap < 320) { r.cam = Object.assign({}, CAM0); redraw(); } lastTap = t; });
+  cv.addEventListener('pointermove', (e) => { if (!pts.has(e.pointerId)) return; e.stopPropagation(); const p0 = pts.get(e.pointerId), dx = e.clientX - p0[0], dy = e.clientY - p0[1]; pts.set(e.pointerId, [e.clientX, e.clientY, e.pointerType]); const c = cam(); if (pts.size >= 2) { const [a, b] = [...pts.values()]; if (pinch0) c.zoom = clamp(zoom0 * Math.hypot(a[0] - b[0], a[1] - b[1]) / pinch0, 0.4, 4); } else { c.yaw -= dx * 0.009; c.pitch = clamp(c.pitch + dy * 0.009, -1.5707, 1.5707); } redraw(); });
   const up = (e) => { pts.delete(e.pointerId); if (pts.size < 2) pinch0 = 0; }; cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
+  /* an animal (task 9.10): a tap (not a drag that turns it) and it answers the way the real one does */
+  cv.addEventListener('pointerup', (e) => {
+    const d0 = down; down = null; if (!d0 || d0[3] !== e.pointerId || pts.size) return;
+    if (Math.hypot(e.clientX - d0[0], e.clientY - d0[1]) > 10 || now() - d0[2] > 450) return;
+    const live = findItem(it.id) || it; if (!live.spec || !live.spec.animal || typeof anTap !== 'function') return;
+    const rc = cv.getBoundingClientRect(), x = (e.clientX - rc.left) * (cv.clientWidth / (rc.width || 1)), y = (e.clientY - rc.top) * (cv.clientHeight / (rc.height || 1));
+    if (!anTap(live.spec, r, x, y, cv.clientWidth, cv.clientHeight)) return;
+    if (!r.playing) { r.playing = true; const pb = itemsEl.querySelector('.item[data-id="' + it.id + '"] [data-s="play"]'); if (pb) pb.textContent = 'หยุด'; }
+    if (!scnRaf) scnRaf = requestAnimationFrame(scTick);
+  });
   cv.addEventListener('wheel', (e) => { e.preventDefault(); e.stopPropagation(); const c = cam(); c.zoom = clamp(c.zoom * Math.exp(-e.deltaY * 0.0015), 0.4, 4); redraw(); }, { passive: false });
 }
 const SCENE_TPL3 = [
@@ -1997,6 +2186,29 @@ SCENE_TPL3.push(
   ['ไฮบริด sp³', 'สี่ออร์บิทัลชี้ไปมุมทรงสี่หน้า มุม 109.5 องศา เช่น CH4', { domain: 'math', dim: 3, title: 'ไฮบริด sp³', view: { L: 1.6 }, t: { min: 0, max: 1, speed: 0 }, items: SP3.map((d, i) => ({ type: 'orbital', o: 'sp3', dir: d, color: ['#2F4BB8', '#2E8B57', '#8E44AD', '#B23A3A'][i] })) }]
 );
 SCENE_TPL['3d'] = SCENE_TPL3;
+/* ----- an orbital drawn with the pen tool (chem.js marks os op od odz osp3) becomes a solid orbital on the paper that
+   turns under a finger (task 9.9). It starts the way it was dragged: the axis along the drag, its size the drag length,
+   the nucleus where the drag began, in the starting view (CAM0) that a double tap goes back to ----- */
+const ORB_MARK = { os: ['s', 'ออร์บิทัล s', 0.75], op: ['px', 'ออร์บิทัล p', 1], od: ['dx2y2', 'ออร์บิทัล d', 1], odz: ['dz2', 'ออร์บิทัล dz²', 1], osp3: ['sp3', 'ไฮบริด sp³', 1] };
+function orb3Mark(kind, a, b) {
+  const m = ORB_MARK[kind]; if (!m) return null;
+  const drag = Math.hypot(b[0] - a[0], b[1] - a[1]);
+  const snapT = (t) => { const s = Math.round(t / (Math.PI / 12)) * (Math.PI / 12); return Math.abs(s - t) < 0.09 ? s : t; };
+  const t = drag >= 8 ? snapT(Math.atan2(b[1] - a[1], b[0] - a[0])) : (kind === 'odz' ? -Math.PI / 2 : 0);
+  const L = drag >= 8 ? clamp(drag, 15, 260) : 45;
+  /* a direction on the screen (right, down) as a direction in the model, seen from the starting view */
+  const cy = Math.cos(CAM0.yaw), sy = Math.sin(CAM0.yaw), cp = Math.cos(CAM0.pitch), spp = Math.sin(CAM0.pitch);
+  const R = [cy, sy, 0], U = [-sy * spp, cy * spp, cp], d = (th) => vUnit(vSub(vMul(R, Math.cos(th)), vMul(U, Math.sin(th))));
+  let e1 = d(t), e2 = d(t + Math.PI / 2), e3 = vCross(e1, e2);
+  if (kind === 'odz') { e3 = d(t); e1 = d(t + Math.PI / 2); e2 = vCross(e3, e1); } /* dz² stands along the drag */
+  const fr = e1.concat(e2, e3).map((v) => Math.round(v * 1e4) / 1e4);
+  /* the model fills about a third of its square (cam3 with view L 1.6), so the lobe on the page is as long as the drag */
+  const side = Math.round(clamp(L * m[2] / 0.326, 110, 800));
+  const item = { type: 'orbital', o: m[0], color: '#2F4BB8', col2: '#E39B2D', fr };
+  if (kind === 'osp3') item.dir = [1, 0, 0];
+  const spec = { domain: 'math', dim: 3, title: m[1], view: { L: 1.6 }, t: { min: 0, max: 1, speed: 0 }, items: [item], clean: true, pen: true, mark: 'orb' };
+  return { spec, x: Math.round(a[0] - side / 2), y: Math.round(a[1] - side / 2), w: side };
+}
 
 
 /* ---------- living pictures, like the moving photographs of a wizarding newspaper: any drawing gets a behaviour that loops

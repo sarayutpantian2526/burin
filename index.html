@@ -302,6 +302,7 @@ body.shellaud #presentExit, body.shellaud #presentWait, body.showscr #livePill, 
 /* the move handle stays out of the way while writing: it shows with the select or text tool, or under a mouse pointer */
 .item .tgrab, .item .tsize { opacity: 0 !important; pointer-events: none !important; }
 body[data-tool="text"] .item .tgrab, body[data-tool="text"] .item .tsize { opacity: 0.75 !important; pointer-events: auto !important; }
+body[data-tool="text"] .item.sim.clean:not(.hkon):not(.picked) .tgrab, body[data-tool="text"] .item.sim.clean:not(.hkon):not(.picked) .tsize { opacity: 0 !important; pointer-events: none !important; transition: opacity 0.4s; }
 @media (hover: hover) and (pointer: fine) { .item:hover .tgrab, .item:hover .tsize { opacity: 0.75 !important; pointer-events: auto !important; } }
 /* a picked box (the blue frame) always shows its move handle, a little larger */
 #items.editable .item.picked .tgrab { display: grid; }
@@ -313,10 +314,18 @@ body[data-tool="text"] .item .tgrab, body[data-tool="text"] .item .tsize { opaci
 /* dock */
 .shp { width: 64px; height: 56px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-size: 11px; color: var(--fg); padding: 0; }
 .shp svg { width: 26px; height: 22px; }
+.shp.anshp { width: 76px; height: 70px; }
+.shp.anshp img { width: 56px; height: 42px; display: block; }
+.shp.anshp img:not([src]) { visibility: hidden; }
+.anfind { grid-column: 1 / -1; margin: 0 0 4px; }
+.anfind input { width: 100%; box-sizing: border-box; }
 .shpsec { grid-column: 1 / -1; margin-top: 4px; }
 .shptabs { display: flex; gap: 6px; }
 .shp3d { grid-column: 1 / -1; margin-top: 4px; }
 .shptabs .chip { flex: 1; justify-content: center; padding-left: 6px; padding-right: 6px; min-width: 0; }
+/* five set names do not fit one row of the panel: they wrap whole, never cut (เรขาคณิต was clipped, 21 พ.ย. 2569) */
+.shptabs { flex-wrap: wrap; }
+.shptabs .chip { flex: 1 1 auto; white-space: nowrap; }
 .shp[aria-pressed="true"] { border: 2px solid var(--accent); background: var(--accent-soft); }
 .dock { position: absolute; left: 12px; top: 12px; z-index: 7; display: flex; flex-wrap: nowrap; max-width: calc(100% - 24px); align-items: center; gap: 2px; padding: 4px; border-radius: 18px; background: var(--surface); box-shadow: var(--shadow); }
 .curc { width: 46px; height: 46px; border-radius: 13px; border: 0; background: transparent; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; }
@@ -388,6 +397,7 @@ body.tv .toast { bottom: 112px; }
 .selbar .count { display: none; }
 
 .toast { position: fixed; left: 50%; bottom: max(20px, env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); z-index: 60; padding: 10px 16px; border-radius: 12px; background: var(--chrome); color: var(--chrome-fg); font-size: 14px; box-shadow: var(--shadow); max-width: calc(100% - 40px); text-align: center; }
+.chemno { position: fixed; z-index: 61; left: 50%; bottom: max(20px, env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); min-height: 44px; padding: 0 16px; border-radius: 22px; border: 1px solid var(--line, rgba(0,0,0,.15)); background: var(--chrome); color: var(--chrome-fg); font: inherit; font-size: 14px; box-shadow: var(--shadow); white-space: nowrap; }
 .loading { position: absolute; inset: 0; z-index: 8; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; background: var(--desk); color: var(--muted); }
 .loading b { color: var(--fg); font-size: 18px; }
 
@@ -735,6 +745,14 @@ body.tv .grip { height: 68px; width: 32px; }
 .tgpop > .btn.on, .tgpop > .btn[aria-pressed="true"] { border-color: transparent; }
 /* the selection bar shows the commands used most; "more" shows the rest in the same bar */
 #selbar:not(.allcmd) .sovf { display: none !important; }
+/* task 2.8: commands in groups by what people want to do; a group opens its commands in a row of the same bar */
+#selbar .sgin { display: none !important; }
+@media (max-width: 620px) { #selbar.sgmode .sg { display: contents; } #selbar.sgmode .sg.none, #selbar.sgmode .sg[hidden] { display: none; } }
+.selbar .selsub { flex-basis: 100%; display: flex; flex-wrap: wrap; justify-content: center; gap: 2px; margin-top: 2px; padding-top: 6px; border-top: 1px solid rgba(127, 127, 127, 0.35); }
+.selbar .selsub:empty, .selbar .selsub[hidden] { display: none; }
+.selbar button.sgchip .chev { width: 10px; height: 10px; margin-left: 2px; vertical-align: 1px; }
+.selbar button.sgchip > span { white-space: nowrap; }
+.selbar button.sgchip[aria-expanded="true"] { background: rgba(127, 127, 127, 0.3); box-shadow: inset 0 -3px 0 currentColor; }
 #tabMenu b { font-size: 13px; padding: 6px 12px 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 260px; }
 #tabMenu button { min-height: 44px; text-align: left; padding: 0 12px; border: 0; border-radius: 10px; background: transparent; cursor: pointer; font-size: 14px; }
 #tabMenu button:hover { background: var(--surface-2); }
@@ -2061,10 +2079,16 @@ body.present .item .tsize, body.role-student .item .tsize { display: none; }
 /* a model without its box: only the drawing on the paper, and a small handle for its controls */
 .item.sim.clean { background: transparent !important; border-color: transparent !important; box-shadow: none !important; padding: 0 !important; }
 .item.sim.clean .scncv { background: transparent; border: 0; border-radius: 0; }
+.item.sim.orbmark .scncv { aspect-ratio: 1 / 1; }
+.item.sim.animark .scncv { aspect-ratio: 4 / 3; }
 .item.sim.clean > .gh, .item.sim.clean > .sro { display: none; }
 .cleandot { left: 4px; top: 4px; color: var(--muted); }
 .item.sim.clean:hover .cleandot, .cleandot[aria-expanded="true"] { opacity: 1; }
 .cleanpill { left: 4px; top: 38px; z-index: 4; }
+.orbcols { display: inline-flex; gap: 4px; align-items: center; margin-left: 4px; }
+.cleanpill .sbtns .orbcols button { width: 30px; height: 30px; padding: 3px; border-radius: 50%; }
+.cleanpill .sbtns .orbcols button[aria-pressed="true"] { border: 2px solid #141A22; }
+.orbcols svg { width: 100%; height: 100%; display: block; }
 .cleanpill .sbtns button { font: inherit; font-size: 13px; padding: 4px 10px; border-radius: 8px; border: 1px solid #D6DCE4; background: #FFFFFF; color: #141A22; }
 body.noctl .cleandot, body.present .cleandot { display: none !important; }
 .item.life { background: none; border: 0; box-shadow: none; padding: 0; pointer-events: none; }
@@ -6115,7 +6139,8 @@ function beginTool(pt, e) {
   } else if (S.tool === 'shape') {
     if (S.sel && nearHandle(S.sel.box, x, y) >= 0) { startScale(pt, nearHandle(S.sel.box, x, y)); return; }
     if (S.sel && inBox(S.sel.box, x, y)) { pt.mode = 'move'; pt.last = [x, y]; pt.dx = 0; pt.dy = 0; return; }
-    const hit = strokeAt(x, y);
+    S.shapePtr = pt.type;
+    const hit = chemDrawsHere(S.shapeKind, [x, y]) ? null : strokeAt(x, y); /* a bond started on an atom joins it instead of picking it up (task 8.18) */
     if (hit) { selectStrokes(hit); pt.mode = 'move'; pt.last = [x, y]; pt.dx = 0; pt.dy = 0; return; }
     if (S.sel) clearSel();
     pt.mode = 'shape'; pt.a = [x, y]; pt.b = [x, y];
@@ -6841,10 +6866,50 @@ function previewShape(pt) {
   const c = cLive.getContext('2d');
   c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, cLive.width, cLive.height);
   liveXf(c);
+  if (/^an:/.test(S.shapeKind || '')) { /* an animal: the box it will stand in */
+    const a = pt.a, b = pt.b, w = clamp(Math.abs(b[0] - a[0]), 160, 900); c.save(); c.setLineDash([6, 5]); c.strokeStyle = 'rgba(47,75,184,0.7)'; c.lineWidth = 1.5; c.strokeRect(Math.min(a[0], b[0]), Math.min(a[1], b[1]), w, w * 3 / 4); c.restore(); return;
+  }
   for (const s of shapeStrokeLists(S.shapeKind, pt.a, pt.b)) drawStroke(c, s);
+  chemShowHit(c);
   emitInk(shapeStrokeLists(S.shapeKind, pt.a, pt.b));
 }
+/* an orbital drawn with the pen tool becomes a solid orbital that turns (task 9.9); "orb3" in flags.json keeps the flat drawing */
+const ORB3_KINDS = ['os', 'op', 'od', 'odz', 'osp3'];
+function orb3Commit(kind, pt) {
+  if (!ORB3_KINDS.includes(kind) || !flagOn('orb3') || !flagOn('scene') || !S.page) return false;
+  clearLive(); emitInk(null);
+  const pid = S.pid;
+  need('scene').then(() => {
+    if (S.pid !== pid || !S.page) return;
+    const m = orb3Mark(kind, pt.a, pt.b); if (!m) return;
+    addItem({ type: 'scene', spec: scClean(m.spec), x: m.x, y: m.y, w: m.w });
+    if (!store_ls.get('tp-orb3tip')) { store_ls.set('tp-orb3tip', '1'); toast('ออร์บิทัลเป็นสามมิติ ลากเพื่อหมุน ใช้สองนิ้วย่อขยาย แตะสองครั้งกลับมุมเดิม', 4000); }
+  }, () => {
+    /* the part did not load (offline on an old copy): the flat drawing as before */
+    if (S.pid !== pid) return;
+    const list = shapeStrokeLists(kind, pt.a, pt.b); if (!list.length) return;
+    const before = { [DEV]: clone(S.mine) }, g = 'g' + uid();
+    for (const s of list) { s.g = g; S.mine.push(s); }
+    pushUndo({ t: 'layers', before, after: { [DEV]: clone(S.mine) } }); saveMine();
+  });
+  return true;
+}
+/* an animal chosen in the shape tool (task 9.10): a tap puts it there, a drag gives its box (corner to corner) */
+function anCommit(kind, pt) {
+  const m = /^an:([a-z0-9]+)$/.exec(kind || ''); if (!m || !S.page) return false;
+  clearLive(); emitInk(null);
+  const pid = S.pid, a = pt.a, b = pt.b, drag = Math.hypot(b[0] - a[0], b[1] - a[1]) >= 24;
+  const w = drag ? clamp(Math.abs(b[0] - a[0]), 160, 900) : 340, x = drag ? Math.min(a[0], b[0]) : a[0] - w / 2, y = drag ? Math.min(a[1], b[1]) : a[1] - w * 3 / 8;
+  need('scene').then(() => need('animals')).then(() => {
+    if (S.pid !== pid || !S.page) return; const sp = anSpec(m[1]); if (!sp) return;
+    addItem({ type: 'scene', spec: scClean(sp), x: Math.round(Math.max(0, x)), y: Math.round(Math.max(0, y)), w: Math.round(w) });
+    if (!store_ls.get('tp-antip')) { store_ls.set('tp-antip', '1'); toast('แตะตัวสัตว์แล้วมันจะตอบสนองเหมือนตัวจริง ลากเพื่อหมุนดูรอบตัว ใช้สองนิ้วย่อขยาย', 4500); }
+  }, () => {});
+  return true;
+}
 function commitShape(pt) {
+  if (orb3Commit(S.shapeKind, pt)) return;
+  if (anCommit(S.shapeKind, pt)) return;
   const list = shapeStrokeLists(S.shapeKind, pt.a, pt.b);
   clearLive();
   if (!list.length) return;
@@ -6852,9 +6917,11 @@ function commitShape(pt) {
   /* the strokes of one shape (a vector and its arrowhead, a triangle and its angle mark) belong together */
   const g = 'g' + uid();
   for (const s of list) { s.g = g; S.mine.push(s); }
+  const joined = isChemMark(S.shapeKind) ? chemJoin(list) : null; /* what it joined moves with it as one structure (task 8.18) */
   pushUndo({ t: 'layers', before, after: { [DEV]: clone(S.mine) } });
   saveMine(); emitInk(null);
   geoSegCache = null;
+  if (joined) chemUndoChip(pt, before, list);
   /* a new shape stays selected, so it can be moved, resized or deleted straight away; a geometry mark does not, so the next one can follow at once */
   if (!isGeoMark(S.shapeKind) && !isChemMark(S.shapeKind) && !isPedMark(S.shapeKind)) selectStrokes(list.map((st) => ({ layer: DEV, id: st.id })));
 }
@@ -7139,30 +7206,91 @@ function showSelbar() {
   $('#sFront').hidden = $('#sBack').hidden = !(m && (S.page.items || []).length > 1);
   $('#sBig').hidden = $('#sSmall').hidden = true;
   $('#sGen').hidden = !n;
-  selFold(); selGroups();
+  if (S.sel !== SG.sel) { SG.sel = S.sel; SG.open = null; }
+  selFold(); sgFold(); selGroups();
   placeSelbar();
 }
-/* the selection bar (task 2.5, switch "groups"): what can be done with the selection decides which commands are there at
-   all; of those, the ones used most show first and the rest wait under "เพิ่มเติม", which shows them in the same bar.
-   Commands that only appear for one kind of selection (a picture, a question, a chemistry line) always stay in sight */
-const SEL_KEEP = ['sKey', 'sOrig', 'sImMeas', 'sCut', 'sCap', 'sBal', 'sProof', 'sJoin'];
-const SEL_RANK = ['sRead', 'sSolve', 'sQuiz', 'sEq', 'sGraph', 'sAnim', 'sHand', 'sTidy', 'sData', 'sUnit', 'sMedia', 'sTrace', 'sFront', 'sBack'];
-const SEL_MAX = 5;
+/* the selection bar (task 2.5, then task 2.8 below): what can be done with the selection decides which commands are there
+   at all; with the switch "groups" on, sgFold puts them in front or in groups. selFold clears what the bar of task 2.5
+   left ("เพิ่มเติม" with the rest in the same bar), which stays hidden now */
 function selFold() {
   const bar = $('#selbar'), more = $('#sMore'); if (!bar || !more) return;
   bar.querySelectorAll('.sovf').forEach((b) => b.classList.remove('sovf'));
   bar.classList.remove('allcmd'); more.setAttribute('aria-expanded', 'false'); more.querySelector('span').textContent = 'เพิ่มเติม';
   more.hidden = true;
-  if (!TGRP.on) return;
-  const shown = SEL_RANK.map((id) => $('#' + id)).filter((b) => b && !b.hidden);
-  const keep = SEL_KEEP.filter((id) => { const b = $('#' + id); return b && !b.hidden; }).length;
-  const extra = shown.slice(Math.max(3, SEL_MAX - keep));
-  if (extra.length < 2) return; /* one more command fits where the "more" button would go */
-  extra.forEach((b) => b.classList.add('sovf')); more.hidden = false;
 }
 function selGroups() {
   const all = $('#selbar').classList.contains('allcmd');
-  for (const g of ['#sgInk', '#sgCalc', '#sgMake', '#sgOrder']) $(g).classList.toggle('none', ![...$(g).children].some((b) => !b.hidden && (all || !b.classList.contains('sovf'))));
+  for (const g of ['#sgFront', '#sgChips', '#sgInk', '#sgCalc', '#sgMake', '#sgOrder']) { const e = $(g); if (e) e.classList.toggle('none', ![...e.children].some((b) => b.tagName === 'BUTTON' && !b.hidden && !b.classList.contains('sgin') && (all || !b.classList.contains('sovf')))); }
+}
+/* task 2.8 (switch "groups"): the bar shows up to three commands used most with this kind of selection, then the groups
+   แปลง เห็นภาพ ตรวจและแก้ จัดวาง; a group with one command left shows that command itself, a group opens its commands
+   in a row of the same bar, so every command is at most two taps away. The buttons are moved, never copied: ids and what
+   they do stay the same, and each goes back to its place before the bar is laid out again or when the switch is off */
+const SEL_GRP = [
+  ['sgbConv', 'แปลง', ['sRead', 'sEq', 'sData', 'sQuiz', 'sHand', 'sOrig'], '<path d="M3 5h7v7H3z M12 10h7v7h-7z M14 5.5h2.5a2 2 0 0 1 2 2V8 M8 16.5H5.5a2 2 0 0 1-2-2V14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>'],
+  ['sgbSee', 'เห็นภาพ', ['sGraph', 'sAnim', 'sTrace', 'sMedia'], '<path d="M2.5 11s3-6 8.5-6 8.5 6 8.5 6-3 6-8.5 6-8.5-6-8.5-6z" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="11" cy="11" r="2.8" fill="none" stroke="currentColor" stroke-width="1.6"/>'],
+  ['sgbCheck', 'ตรวจและแก้', ['sSolve', 'sUnit', 'sBal', 'sProof', 'sImMeas'], '<circle cx="11" cy="11" r="7.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M7.5 11.2l2.4 2.4 4.6-5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>'],
+  ['sgbArr', 'จัดวาง', ['sTidy', 'sJoin', 'sCut', 'sCap', 'sFront', 'sBack'], '<rect x="3" y="4" width="16" height="4" rx="1.2" fill="none" stroke="currentColor" stroke-width="1.6"/><rect x="3" y="10.5" width="10" height="4" rx="1.2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M3 18h13" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>']
+];
+const SEL_FRONT = 3;
+const SG = { marks: {}, open: null };
+/* the commands used most with what is selected, best first: handwriting, a typed line with mathematics, a table, plain
+   typed text, one picture, one other box; the subject of the notebook decides the checking command */
+function selFrontIds() {
+  const sel = S.sel || { strokes: [], items: [] }, n = sel.strokes.length, its = sel.items.map(findItem).filter(Boolean);
+  const subj = (S.nb && S.nb.subject) || 'phys', chk = subj === 'chem' || subj === 'sci' ? 'sBal' : subj === 'math' ? 'sProof' : 'sUnit';
+  const isText = (it) => !it.type || it.type === 'text';
+  if (n) return its.length ? ['sRead', 'sQuiz', 'sGraph'] : ['sRead', subj === 'chem' ? 'sBal' : 'sSolve', 'sQuiz'];
+  if (its.length && its.every(isText)) {
+    const md = its.map((it) => it.md || '').join('\n');
+    if (/\|\s*-{3}/.test(md)) return ['sData', 'sGraph', 'sCap'];
+    if (/\$|\\ce\{|[=<>]|\d\s*[+\-*/^]\s*\d/.test(md)) return ['sSolve', 'sGraph', chk];
+    return ['sQuiz', 'sHand', 'sJoin'];
+  }
+  if (its.length === 1 && its[0].type === 'img') return ['sImMeas', 'sCut', 'sCap'];
+  if (its.length === 1) return ['sCap', 'sAnim'];
+  return ['sQuiz', 'sGraph', 'sFront'];
+}
+function sgPark(b) { if (!SG.marks[b.id]) { const mk = document.createComment(b.id); b.before(mk); SG.marks[b.id] = mk; } }
+function sgHome() { for (const id in SG.marks) { const b = $('#' + id), mk = SG.marks[id]; if (b && mk && mk.parentNode && b.previousSibling !== mk) mk.after(b); if (b) b.classList.remove('sgin'); } }
+function sgFold() {
+  const bar = $('#selbar'); if (!bar) return;
+  sgHome();
+  const on = TGRP.on;
+  if (!$('#sgFront')) {
+    if (!on) return;
+    const front = document.createElement('span'); front.className = 'sg'; front.id = 'sgFront';
+    const chips = document.createElement('span'); chips.className = 'sg'; chips.id = 'sgChips';
+    const sub = document.createElement('div'); sub.className = 'selsub'; sub.id = 'selSub'; sub.setAttribute('role', 'group');
+    $('#sgInk').before(front, chips); bar.insertBefore(sub, $('#sBig'));
+    for (const [id, label, , icon] of SEL_GRP) {
+      const c = document.createElement('button'); c.type = 'button'; c.id = id; c.className = 'sgchip'; c.setAttribute('aria-expanded', 'false');
+      c.innerHTML = '<svg viewBox="0 0 22 22" aria-hidden="true">' + icon + '</svg><span>' + label + '<svg class="chev" viewBox="0 0 10 10" aria-hidden="true"><path d="M2 3.5l3 3 3-3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>';
+      c.onclick = (e) => { e.stopPropagation(); SG.open = SG.open === id ? null : id; sgFold(); selGroups(); placeSelbar(); };
+      chips.appendChild(c);
+    }
+  }
+  const front = $('#sgFront'), chips = $('#sgChips'), sub = $('#selSub');
+  front.hidden = chips.hidden = sub.hidden = !on; bar.classList.toggle('sgmode', on);
+  if (!on) { SG.open = null; return; }
+  $('#sMore').hidden = true;
+  const vis = (id) => { const b = $('#' + id); return b && !b.hidden ? b : null; };
+  /* "ขยับได้" (make it move) is what learners love most (the owner, 20 Nov 2026): first whenever it can be used, in the
+     same look as the other commands.
+     The result of a calculation and "ลายมือเดิม" (undo a conversion) belong to this selection only: always in front */
+  const first = ['sAnim', 'sAns', 'sOrig'].map(vis).filter(Boolean);
+  const pick = selFrontIds().map(vis).filter((b) => b && first.indexOf(b) < 0).slice(0, SEL_FRONT - (first.indexOf($('#sAnim')) >= 0 && innerWidth <= 620 ? 1 : 0)); /* a phone keeps two rows */
+  for (const b of first.concat(pick)) { sgPark(b); front.appendChild(b); }
+  const placed = new Set(first.concat(pick));
+  for (const [gid, , ids] of SEL_GRP) {
+    const chip = $('#' + gid), rest = ids.map(vis).filter((b) => b && !placed.has(b));
+    chip.hidden = rest.length < 2; chip.setAttribute('aria-expanded', 'false');
+    if (rest.length === 1) { sgPark(rest[0]); chips.insertBefore(rest[0], chip); continue; }
+    for (const b of rest) b.classList.add('sgin');
+    if (SG.open === gid && rest.length > 1) { chip.setAttribute('aria-expanded', 'true'); for (const b of rest) { sgPark(b); b.classList.remove('sgin'); sub.appendChild(b); } }
+  }
+  if (SG.open && $('#' + SG.open).hidden) SG.open = null;
 }
 function selMore() {
   const bar = $('#selbar'), more = $('#sMore'), all = !bar.classList.contains('allcmd');
@@ -7176,6 +7304,7 @@ function placeSelbar() {
   const k = pr.width / W, b = S.sel.box;
   const L = pr.left + b[0] * k - hr.left, R = pr.left + b[2] * k - hr.left, T = pr.top + b[1] * k - hr.top, B = pr.top + b[3] * k - hr.top;
   bar.classList.add('floating');
+  if (bar.classList.contains('sgmode')) bar.style.left = '8px'; /* lay out at the full width first, so a narrow screen gets as few rows as it can */
   { /* a group that starts a new row has no divider line on its left */ let top = null; for (const g of bar.querySelectorAll('.sg')) { if (g.classList.contains('none')) continue; g.classList.remove('rowstart'); const t = g.offsetTop; g.classList.toggle('rowstart', top != null && t > top + 4); top = t; } }
   const bw = bar.offsetWidth, bh = bar.offsetHeight, pad = 10;
   let x = clamp((L + R) / 2 - bw / 2, 8, Math.max(8, hr.width - bw - 8));
@@ -8874,27 +9003,51 @@ function vectorSvg(vecs, view) {
   if (d3) s += figTxt(VW - 12, VH - 10, 'ลากที่รูปเพื่อหมุนดู', { size: 12, anchor: 'end' });
   return s + '</svg>';
 }
-/* a 3D vector figure on the page turns when dragged; the view is saved with the page */
+/* a 3D vector figure on the page turns when dragged, zooms with two fingers or the wheel, and a double tap brings back the
+   first view (task 9.9); the view is saved with the page */
+function vecZoom(svg, zm) {
+  if (!zm || Math.abs(zm - 1) < 1e-3) return svg;
+  return svg.replace(/viewBox="0 0 ([\d.]+) ([\d.]+)"/, (m, w, h) => { const W = +w / zm, H = +h / zm; return 'viewBox="' + ((+w - W) / 2).toFixed(1) + ' ' + ((+h - H) / 2).toFixed(1) + ' ' + W.toFixed(1) + ' ' + H.toFixed(1) + '"'; });
+}
 function buildVecFig(d, it, forExport) {
   const v3 = it.vec3; d.innerHTML = cleanSvg(it.svg) || '';
   if (forExport || !v3 || !Array.isArray(v3.vecs)) return;
-  d.classList.add('live', 'no-ink', 'vecfig');
-  let drag = null;
+  d.classList.add('live', 'no-ink', 'vecfig'); d.style.touchAction = 'none';
+  const pts = new Map(); let drag = null, pinch = null, lastTap = 0, saveT = 0;
+  const show = (live) => {
+    const svg = vecZoom(vectorSvg(live.vec3.vecs, { az: live.vec3.az, el: live.vec3.el }), live.vec3.zm);
+    const g = d.querySelector('svg'); if (g) g.outerHTML = svg; else d.insertAdjacentHTML('afterbegin', svg); return svg;
+  };
+  const keep = (live, svg) => { live.svg = svg; savePage(); };
   d.addEventListener('pointerdown', (e) => {
     if (e.target.closest('.tgrab,.tsize,.x')) return;
     e.stopPropagation(); e.preventDefault();
-    const live = findItem(it.id) || it; drag = { x: e.clientX, y: e.clientY, az: live.vec3.az, el: live.vec3.el, live };
+    /* a first finger (or a pen or mouse) means no other pointer of its kind is still down, even if its lift was never heard */
+    const live = findItem(it.id) || it; if (e.isPrimary) { for (const [k, v] of pts) if (v[2] === e.pointerType) pts.delete(k); if (pts.size < 1) pinch = null; } pts.set(e.pointerId, [e.clientX, e.clientY, e.pointerType]);
     try { d.setPointerCapture(e.pointerId); } catch (er) { /* fine */ }
+    if (pts.size >= 2) { const [a, b] = [...pts.values()]; pinch = { d: Math.hypot(a[0] - b[0], a[1] - b[1]) || 1, zm: live.vec3.zm || 1, live }; drag = null; return; }
+    const t = now();
+    if (t - lastTap < 320) { lastTap = 0; const v = vecBestView(live.vec3.vecs); live.vec3.az = v.az; live.vec3.el = v.el; live.vec3.zm = 1; keep(live, show(live)); drag = null; return; }
+    lastTap = t; drag = { x: e.clientX, y: e.clientY, az: live.vec3.az, el: live.vec3.el, live };
   });
   d.addEventListener('pointermove', (e) => {
-    if (!drag) return; e.stopPropagation();
+    if (!pts.has(e.pointerId)) return; e.stopPropagation(); pts.set(e.pointerId, [e.clientX, e.clientY, e.pointerType]);
+    if (pinch && pts.size >= 2) { const [a, b] = [...pts.values()]; pinch.live.vec3.zm = clamp(pinch.zm * Math.hypot(a[0] - b[0], a[1] - b[1]) / pinch.d, 0.5, 4); pinch.svg = show(pinch.live); return; }
+    if (!drag) return;
     const az = ((drag.az - (e.clientX - drag.x) * 0.5) % 360 + 360) % 360, el = clamp(drag.el + (e.clientY - drag.y) * 0.4, -85, 85);
-    drag.live.vec3.az = az; drag.live.vec3.el = el;
-    const svg = vectorSvg(drag.live.vec3.vecs, { az, el }); drag.svg = svg;
-    const g = d.querySelector('svg'); if (g) g.outerHTML = svg; else d.insertAdjacentHTML('afterbegin', svg);
+    drag.live.vec3.az = az; drag.live.vec3.el = el; drag.svg = show(drag.live);
   });
-  const end = () => { if (!drag) return; const dr = drag; drag = null; if (dr.svg) { dr.live.svg = dr.svg; savePage(); } };
+  const end = (e) => {
+    pts.delete(e.pointerId);
+    if (pinch && pts.size < 2) { const p = pinch; pinch = null; if (p.svg) keep(p.live, p.svg); return; }
+    if (!drag) return; const dr = drag; drag = null; if (dr.svg) keep(dr.live, dr.svg);
+  };
   d.addEventListener('pointerup', end); d.addEventListener('pointercancel', end);
+  d.addEventListener('wheel', (e) => {
+    e.preventDefault(); e.stopPropagation(); const live = findItem(it.id) || it;
+    live.vec3.zm = clamp((live.vec3.zm || 1) * Math.exp(-e.deltaY * 0.0015), 0.5, 4); const svg = show(live);
+    clearTimeout(saveT); saveT = setTimeout(() => keep(live, svg), 400);
+  }, { passive: false });
 }
 /* parametric x(t), y(t) or polar r(θ), sampled here with math.js and drawn to scale */
 function curveSvg(c) {
@@ -8944,7 +9097,7 @@ async function moleculeSvg(mols) {
   for (const m of mols.slice(0, 5)) {
     const el = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); el.setAttribute('width', '260'); el.setAttribute('height', '220');
     el.style.position = 'fixed'; el.style.left = '-9999px'; document.body.appendChild(el);
-    const ok = await new Promise((res) => { try { SD.parse(m.smiles, (tree) => { try { new SD.SvgDrawer({ width: 260, height: 220, bondThickness: 1.4, fontSizeLarge: 14, fontSizeSmall: 9, padding: 14 }).draw(tree, el, 'light', null, false); res(true); } catch (e) { res(false); } }, () => res(false)); } catch (e) { res(false); } });
+    const ok = await new Promise((res) => { try { SD.parse(m.smiles, (tree) => { try { new SD.SvgDrawer({ width: 260, height: 220, bondThickness: 1.4, fontSizeLarge: 14, fontSizeSmall: 9, padding: 14, compactDrawing: false }).draw(tree, el, 'light', null, false); res(true); } catch (e) { res(false); } }, () => res(false)); } catch (e) { res(false); } });
     if (ok) molFix(el);
     const inner = ok ? el.innerHTML : ''; const vb = el.getAttribute('viewBox') || '0 0 260 220'; el.remove();
     if (!inner) continue; parts.push({ m, inner, vb });
@@ -9005,29 +9158,43 @@ async function graphFromSelection() {
   /* typed vectors: drawn straight away, no AI needed */
   const tv = typed ? parseVectors(typed) : [];
   if (tv.length && !refs.length) { clearSel(); placeVecFig(tv, box, 'สร้างรูปเวกเตอร์ ' + tv.map((v) => v.name.replace('_', '')).join(', ') + ' แล้ว'); return; }
+  /* task 8.19: an element, an ion, a configuration or a change of energy level; a triangle, resistors or forces from
+     their numbers: worked out here. Before the graph, which would take R1 = 2 Ω for a function */
+  if (typed && !refs.length && (await qnPut(typed, box) || await fgPut(typed, box) || await mlPut(typed, box))) return;
   /* a typed function of one variable: graphed here, offline (task 8.15); anything else goes to the AI as before */
   if (typed && !refs.length && await tyReady()) {
     let g = null; try { await loadLib('math'); g = tyGraph(typed); } catch (e) { g = null; }
     if (g) { clearSel(); placeGraph(g, box); return; }
   }
-  if (!needAIInk('read', refs.length)) return;
   /* handwriting read before (task 8.16) goes as text, not as a picture */
   const m = refs.length ? await inkGet('graph', refs) : null, rd = m ? (m.text || (m.eq ? m.eq.split('\n').map((l) => '$' + l + '$').join('\n') : '')) : '';
+  /* task 8.19: what was read is drawn here when the app can work it out (vectors, one function of one variable), with no AI */
+  if (rd && await lcReady()) {
+    const both = (typed ? typed + '\n' : '') + rd, rv = parseVectors(both);
+    if (rv.length) { clearSel(); placeVecFig(rv, box, 'สร้างรูปเวกเตอร์ ' + rv.map((v) => v.name.replace('_', '')).join(', ') + ' แล้ว จากลายมือที่อ่านไว้'); return; }
+    if (await qnPut(both, box, ' จากลายมือที่อ่านไว้') || await fgPut(both, box, ' จากลายมือที่อ่านไว้') || await mlPut(both, box, ' จากลายมือที่อ่านไว้')) return;
+    let g = null; try { await loadLib('math'); g = tyGraph(both); } catch (e) { g = null; }
+    if (g) { clearSel(); placeGraph(g, box); return; }
+  }
+  if (!needAIInk('read', refs.length)) return;
   const img = refs.length && !rd ? await inkBlob(refs) : null;
   if (!img && !typed && !rd) { toast('วงสมการที่ต้องการสร้างรูป'); return; }
   clearSel(); S.pending.push(box); drawSelBox();
   const FW = floatWait('AI กำลังอ่านสมการเพื่อสร้างรูป', ['อ่านสมการ', 'สร้างรูป']);
   try {
   try { await loadLib('math'); } catch (e) { /* checked below */ }
+  const qa = await qnReady(), fa = await fgReady(), ma = await mlReady();
   const prompt = 'Make the most useful figure for teaching from the equation or expression a Thai teacher wrote' + (img ? ' (handwriting in the attached image)' : '') + '.' + (typed ? '\nTyped text:\n' + typed : '') + (rd ? '\nThe handwriting, as read before:\n' + rd.slice(0, 3000) : '') + '\n'
     + 'Choose ONE kind:\n'
     + '- vector: one or more vectors given by components, in 2D or 3D (i, j, k or (x, y, z)), including sums and differences of them and complex numbers drawn as 2D vectors.\n'
     + '- graph: a quantity as a function of ONE variable, y = f(x) or s(t), v(t), F(x) and so on.\n'
     + '- curve: a parametric curve x(t), y(t), a polar curve r(θ), or an implicit conic you can write parametrically (circle, ellipse, hyperbola branch).\n'
     + '- molecule: chemical formulas, structures or a reaction.\n'
+    + (qa ? '- atom: an element or ion (its electron configuration or orbitals), an electron configuration someone wrote, or a change of energy level in hydrogen (n = 3 to n = 2): the app works these out itself.\n' : '')
     + '- diagram: anything else: a geometry figure with given lengths or angles, a circuit, a free-body diagram, a ray diagram, an energy-level diagram, field lines, a number line or a set diagram.\n'
     + 'Reply in exactly this format and nothing else.\n'
-    + '@@KIND one of vector, graph, curve, molecule, diagram\n'
+    + (fa ? '- calc: a triangle with some sides and angles given, resistors all in series or all in parallel, or forces given by size and direction: the app works these out itself.\n' : '')
+    + '@@KIND one of vector, graph, curve, molecule, ' + (qa ? 'atom, ' : '') + (fa ? 'calc, ' : '') + 'diagram\n' + (fa ? 'For calc only: @@CALC the given values exactly as written on one line, with their units and words, e.g. สามเหลี่ยม ABC AB = 5 cm, BC = 7 cm, มุม B = 60° or R1 = 2 Ω, R2 = 3 Ω ต่ออนุกรม V = 12 V or F1 = 10 N ที่ 0°, F2 = 5 N ที่ 90°\n' : '') + (qa ? 'For atom only: @@ATOM the element, ion, configuration or change of level exactly as written, e.g. Fe3+ or 1s2 2s2 2p6 3s1 or n = 3 to n = 2\n' : '')
     + 'For vector, one line per vector, numbers only (compute sums yourself):\n@@VEC name | x | y | z   (leave z empty for 2D)\n'
     + 'For graph:\n@@TITLE short Thai title\n@@XVAR t\n@@EXPR\n(math.js expression in that variable, * for every multiplication, without "y =")\n@@XRANGE min max\n@@YRANGE auto\n@@XLABEL t (s)\n@@YLABEL y (m)\n@@PARAM name | Thai label with unit | default | min | max | step\n(every symbol other than the variable is a @@PARAM, with the teacher\'s numbers as defaults)\n'
     + 'For curve (math.js expressions, angles in radians):\n@@CURVE parametric or polar\n@@VAR t | min | max\n@@X expression in t   (parametric)\n@@Y expression in t   (parametric)\n@@R expression in t   (polar, t is the angle)\n'
@@ -9055,11 +9222,21 @@ async function graphFromSelection() {
       if (!isFinite(c.t0) || !isFinite(c.t1) || c.t1 <= c.t0) { c.t0 = 0; c.t1 = 2 * Math.PI; }
       const svg = window.math && curveSvg(c); if (!svg) throw { code: 'empty_completion' };
       figPlace(svg, box, 440, note || 'สร้างเส้นโค้งแล้ว');
+    } else if (kind === 'calc' && fa) {
+      /* the AI only reads the numbers; the figure is worked out here */
+      const f = fgFigure(sec(parts, 'CALC') || ''); if (!f) throw { code: 'empty_completion' };
+      figPlace(f.svg, box, 480, f.note);
+    } else if (kind === 'atom' && qa) {
+      /* the AI only reads what is written; the configuration or the levels are worked out here */
+      const f = qnFigure(sec(parts, 'ATOM') || ''); if (!f) throw { code: 'empty_completion' };
+      figPlace(f.svg, box, 460, f.note);
     } else if (kind === 'molecule') {
       const mols = [];
       for (const p of parts.filter((q) => q.key === 'MOL')) for (const ln of [p.arg].concat(p.text ? p.text.split('\n') : [])) {
         const f = ln.replace(/^@@\s*MOL\s*/i, '').split('|').map((x) => x.trim()); if (f.length < 2 || !f[1] || /\s/.test(f[1])) continue;
-        mols.push({ name: f[0].slice(0, 40), smiles: f[1].slice(0, 300), role: /react/i.test(f[2] || '') ? 'reactant' : /prod/i.test(f[2] || '') ? 'product' : '' });
+        /* a name in the app's table (task 8.19) keeps the table's structure, not the one the AI wrote */
+        const known = ma && mlSmiles(f[0]);
+        mols.push({ name: f[0].slice(0, 40), smiles: known || f[1].slice(0, 300), role: /react/i.test(f[2] || '') ? 'reactant' : /prod/i.test(f[2] || '') ? 'product' : '' });
       }
       const svg = mols.length ? await moleculeSvg(mols) : null; if (!svg) throw { code: 'empty_completion' };
       figPlace(svg, box, Math.min(W - 40, 240 * Math.min(mols.length, 4)), note || 'วาดโครงสร้างโมเลกุลแล้ว');
@@ -10120,7 +10297,16 @@ function togglePop(which) {
   const pop = $(id);
   const open = pop.hidden;
   closePops();
-  if (open) { pop.hidden = false; $('#curColor').setAttribute('aria-expanded', 'true'); }
+  if (open) { pop.hidden = false; $('#curColor').setAttribute('aria-expanded', 'true'); popFit(pop); }
+}
+/* a panel under the toolbar ends above the bottom of the screen and scrolls inside, so its last buttons can be reached
+   (the chemistry set ran past the bottom of an iPad and could not be scrolled to, 21 พ.ย. 2569) */
+function popFit(pop) {
+  if (!pop || pop.hidden) return;
+  pop.style.maxHeight = '';
+  const r = pop.getBoundingClientRect(), vh = window.innerHeight || document.documentElement.clientHeight;
+  if (r.bottom > vh - 8 && r.top < vh) pop.style.maxHeight = Math.max(160, Math.floor(vh - Math.max(r.top, 8) - 12)) + 'px';
+  else if (r.top < 8 && r.bottom > 0) pop.style.maxHeight = Math.max(160, Math.floor(r.bottom - 8)) + 'px';
 }
 const SHAPES = [
   ['line', 'เส้นตรง', '<path d="M3 19L23 3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>'],
@@ -10149,13 +10335,17 @@ const GEO_MARKS = [
 ];
 const isGeoMark = (k) => GEO_MARKS.some((m) => m[0] === k);
 function renderShapes() {
-  const g = $('#shapeGrid'); g.innerHTML = '';
+  const g = $('#shapeGrid'); g.innerHTML = ''; g.style.gridTemplateColumns = 'repeat(4,64px)';
+  setTimeout(() => popFit($('#popShape')), 0); /* another set has another height */
   /* three sets, one shown at a time so the panel stays short: shapes, geometry marks, chemistry structures.
      It opens on the set of the shape in use; the set for this notebook's subject comes first in the row */
   const subj = (S.nb && S.nb.subject) || 'phys';
   const sets = { shp: ['รูปทรง', [['-', 'สองมิติ']].concat(SHAPES.filter((x) => x[0] !== 'axes'), SOLID_MARKS), 'ลากบนหน้าเพื่อวาดและกำหนดขนาด เส้นที่มองไม่เห็นเป็นเส้นประ'], coord: ['พิกัด', COORD_MARKS, 'ลากเป็นกรอบหรือแตะเพื่อวาง ตัวอักษรกำกับเป็นเส้นไปพร้อมรูป'], geo: ['เรขาคณิต', GEO_MARKS, 'แตะที่ด้านหรือที่มุมของรูป'], chem: ['เคมี', CHEM_MARKS, 'พันธะต่อกันเป็นมุม 120 องศาเอง แตะปลายพันธะเพื่อต่อ'], subj: ['เฉพาะวิชา', SUBJ_MARKS, 'แผนภาพรังสีหาภาพให้เอง สัญลักษณ์พันธุประวัติวางต่อกันได้'] };
   const order = subj === 'chem' ? ['chem', 'shp', 'coord', 'geo', 'subj'] : subj === 'math' ? ['geo', 'coord', 'shp', 'chem', 'subj'] : subj === 'bio' ? ['subj', 'shp', 'chem', 'coord', 'geo'] : ['shp', 'coord', 'geo', 'chem', 'subj'];
-  const kindSet = isSubjMark(S.shapeKind) ? 'subj' : isChemMark(S.shapeKind) ? 'chem' : isGeoMark(S.shapeKind) ? 'geo' : (isCoordMark(S.shapeKind) || S.shapeKind === 'axes') ? 'coord' : 'shp';
+  /* animals that live in 3D have a tab of their own (task 9.10, owner 21 พ.ย. 2569), first in a biology notebook */
+  const anOn = flagOn('animals') && flagOn('scene');
+  if (anOn) { sets.ani = ['สัตว์', [], 'แตะเลือกสัตว์ แล้วแตะหรือลากบนหน้าเพื่อวาง แตะตัวสัตว์บนหน้าแล้วมันตอบสนองเหมือนตัวจริง']; if (subj === 'bio') order.unshift('ani'); else order.push('ani'); }
+  const kindSet = /^an:/.test(S.shapeKind || '') && anOn ? 'ani' : isSubjMark(S.shapeKind) ? 'subj' : isChemMark(S.shapeKind) ? 'chem' : isGeoMark(S.shapeKind) ? 'geo' : (isCoordMark(S.shapeKind) || S.shapeKind === 'axes') ? 'coord' : 'shp';
   const tab = sets[renderShapes.tab] ? renderShapes.tab : kindSet;
   let tb = $('#shapeTabs');
   if (!tb) { tb = document.createElement('div'); tb.id = 'shapeTabs'; tb.className = 'chips shptabs'; tb.setAttribute('role', 'tablist'); const lb0 = g.parentNode.querySelector('.label'); g.parentNode.insertBefore(tb, lb0 || g); }
@@ -10180,6 +10370,7 @@ function renderShapes() {
     const b = document.createElement('button'); b.type = 'button'; b.className = 'btn shp3d'; b.textContent = 'ตารางพันเนตต์จากจีโนไทป์พ่อแม่';
     b.onclick = () => { closePops(); insertPunnett(); }; g.appendChild(b);
   }
+  if (tab === 'ani') anShapeGrid(g);
   if (tab === 'chem') { /* the same orbitals as solid shapes that turn under a finger */
     const b = document.createElement('button'); b.type = 'button'; b.className = 'btn shp3d'; b.textContent = 'ออร์บิทัลสามมิติ หมุนดูได้';
     b.onclick = withMod('scene', () => { const list = (SCENE_TPL['3d'] || []).filter((x) => x[2] && x[2].items && x[2].items.some((i) => i.type === 'orbital')); closePops();
@@ -10187,7 +10378,49 @@ function renderShapes() {
     g.appendChild(b);
   }
 }
+/* the tab of animals in the shape tool: a search box and every animal by its group, with a small picture of it drawn
+   here (pictures come a few at a time, so the panel opens at once) */
+const ANG = { q: '' };
+function anShapeGrid(g) {
+  g.style.gridTemplateColumns = 'repeat(4,76px)';
+  if (!AN_LIST) {
+    const w = document.createElement('div'); w.className = 'note small'; w.textContent = 'กำลังโหลดสัตว์'; g.appendChild(w);
+    need('scene').then(() => need('animals')).then(() => { if (renderShapes.tab === 'ani' || /^an:/.test(S.shapeKind || '')) renderShapes(); }, () => {});
+    return;
+  }
+  const sr = document.createElement('label'); sr.className = 'field anfind'; sr.innerHTML = '<input type="search" placeholder="ค้นหา เช่น งูดิน ไม่ใช่แมลง" aria-label="ค้นหาสัตว์">';
+  const si = sr.querySelector('input'); si.value = ANG.q; g.appendChild(sr);
+  const cells = [], heads = [];
+  /* groups in the order of the classification taught at school, simple to complex */
+  const GO = ['ฟองน้ำ (พอริเฟอรา)', 'ไนดาเรีย', 'หนอนตัวแบน', 'หนอนปล้อง (แอนเนลิด)', 'หอยและหมึก (มอลลัสก์)', 'สัตว์ขาปล้อง (ครัสเตเชียน)', 'สัตว์ขาปล้อง (แมง)', 'สัตว์ขาปล้อง (ตะขาบและกิ้งกือ)', 'แมลง', 'เอไคโนเดิร์ม', 'ปลากระดูกอ่อน', 'ปลา', 'สัตว์สะเทินน้ำสะเทินบก', 'สัตว์เลื้อยคลาน', 'สัตว์ปีก (นก)', 'สัตว์ปีก (นกที่บินไม่ได้)', 'สัตว์เลี้ยงลูกด้วยน้ำนม ออกลูกเป็นไข่', 'สัตว์เลี้ยงลูกด้วยน้ำนม มีกระเป๋าหน้าท้อง', 'สัตว์เลี้ยงลูกด้วยน้ำนม กินมดและปลวก', 'สัตว์เลี้ยงลูกด้วยน้ำนม ฟันแทะ', 'สัตว์เลี้ยงลูกด้วยน้ำนม บินได้', 'สัตว์เลี้ยงลูกด้วยน้ำนม กินเนื้อ', 'สัตว์เลี้ยงลูกด้วยน้ำนม มีกีบ', 'สัตว์เลี้ยงลูกด้วยน้ำนม มีงวง', 'สัตว์เลี้ยงลูกด้วยน้ำนม ในน้ำ', 'สัตว์เลี้ยงลูกด้วยน้ำนม ไพรเมต', 'สัตว์เลี้ยงลูกด้วยน้ำนม'];
+  const gx = (x) => { const i = GO.indexOf(x[4]); return i < 0 ? 99 : i; };
+  let grp = '';
+  for (const [id, th, hint, kw, gr] of AN_LIST.slice().sort((a, b) => gx(a) - gx(b))) {
+    if (gr !== grp) { grp = gr; const h = document.createElement('span'); h.className = 'label shpsec'; h.textContent = gr; g.appendChild(h); heads.push([h, gr]); }
+    const b = document.createElement('button'); b.className = 'shp anshp'; b.type = 'button'; b.dataset.an = id;
+    b.setAttribute('aria-pressed', 'an:' + id === S.shapeKind ? 'true' : 'false');
+    b.innerHTML = '<img alt=""><span></span>'; b.querySelector('span').textContent = th; b.title = hint;
+    const im = b.querySelector('img'), u = anThumb(id, true); if (u) im.src = u;
+    b.onclick = () => { S.shapeKind = 'an:' + id; store_ls.set('tp-shapekind', S.shapeKind); renderShapes.tab = null; renderShapes(); closePops(); toast('แตะบนหน้าเพื่อวาง' + th + ' หรือลากเพื่อกำหนดขนาด', 2000); };
+    g.appendChild(b); cells.push([b, (th + ' ' + hint + ' ' + kw + ' ' + gr).toLowerCase(), gr]);
+  }
+  const filt = () => { const q = si.value.trim().toLowerCase(); ANG.q = si.value; const vis = {}; for (const [b, t, gr] of cells) { b.hidden = !!q && !t.includes(q); if (!b.hidden) vis[gr] = 1; } for (const [h, gr] of heads) h.hidden = !vis[gr]; setTimeout(() => popFit($('#popShape')), 0); };
+  si.oninput = filt; filt();
+  /* the pictures, a few at a time */
+  const todo = cells.filter(([b]) => !b.querySelector('img').src), step = () => { if (!g.isConnected) return; for (let k = 0; k < 3 && todo.length; k++) { const [b] = todo.shift(); const u = anThumb(b.dataset.an); if (u) b.querySelector('img').src = u; } if (todo.length) setTimeout(step, 30); };
+  setTimeout(step, 30);
+}
+/* the move and resize buttons of a model without its box (an orbital drawn with the shape tool) show with the text
+   tool for 3 seconds, then fade; touching the model shows them again for 3 seconds (owner 21 พ.ย. 2569) */
+const HK = { t: 0 };
+function hkShow(el) {
+  const list = el ? [el] : [...document.querySelectorAll('#items .item.sim.clean')];
+  list.forEach((d) => d.classList.add('hkon')); clearTimeout(HK.t);
+  HK.t = setTimeout(() => document.querySelectorAll('#items .item.hkon').forEach((d) => d.classList.remove('hkon')), 3000);
+}
+document.addEventListener('pointerdown', (e) => { const d = S.tool === 'text' && e.target.closest && e.target.closest('#items .item.sim.clean'); if (d) hkShow(d); }, true);
 function renderTools() {
+  if (S.tool === 'text' && document.body.dataset.tool !== 'text') setTimeout(() => hkShow(), 0);
   document.body.dataset.tool = S.tool;
   document.querySelectorAll('.tool[data-tool]').forEach((b) => b.setAttribute('aria-pressed', b.dataset.tool === S.tool ? 'true' : 'false'));
   renderShapes();
@@ -10504,6 +10737,17 @@ const TOPIC_EN = [
   ['นิวเคลียร์', 'nuclear decay'], ['กัมมันตรังสี', 'radioactive decay'], ['สัมพัทธภาพ', 'special relativity'], ['ควอนตัม', 'quantum mechanics'],
   ['โฟโตอิเล็กทริก', 'photoelectric effect'], ['เวกเตอร์', 'vector addition']
 ];
+/* task 8.19 group 7: a curriculum topic written on the page gives its English search words from the app's own table
+   (CURRIC), with no AI. "mediatopic" in flags.json turns it off (or "localcalc"): the AI reads the page as before */
+const MDT = { list: null };
+function mdTopic(text) {
+  if (!flagOn('mediatopic') || !flagOn('localcalc')) return null;
+  const t = String(text || ''); if (!t.trim()) return null;
+  if (!MDT.list) { const L = []; for (const lv of Object.values(CURRIC)) for (const [, subs] of lv[1]) for (const [th, en] of subs) if (th.length >= 4) L.push([th, en]); MDT.list = L.sort((x, y) => y[0].length - x[0].length); }
+  /* the longest topic name found in the text: การถ่ายโอนความร้อน before ความร้อน */
+  for (const [th, en] of MDT.list) if (t.includes(th)) return { th, en };
+  return null;
+}
 function guessQueries(text) {
   const t = String(text || ''); const out = [];
   for (const [th, en] of TOPIC_EN) if (t.includes(th) && !out.includes(en)) out.push(en);
@@ -10762,11 +11006,15 @@ async function autoMedia() {
   const out = $('#mAutoOut'), head = $('#mTopic');
   if (webBlocked()) { out.innerHTML = '<div class="note warn">ขณะเปิดใน claude.ai หน้านี้ดึงสื่อจากเว็บไม่ได้ ใช้ได้เมื่อเปิดแอปจากเว็บของคุณเอง</div>'; return; }
   const my = ++MD.busy;
-  waitCard(out, 'AI กำลังอ่านหน้าที่เขียนและจัดชุดสื่อ', ['อ่านเนื้อหาบนหน้า', 'เลือกสื่อที่ตรงกับเนื้อหา'], { cancel: false }); head.textContent = '';
+  /* typed text naming a curriculum topic (and no handwriting picked): its search words come from the app's table */
+  const loc0 = !(S.sel && S.sel.strokes.length) ? mdTopic(pageText()) : null;
+  if (loc0) waitLine(out, 'กำลังหาสื่อของหัวข้อ ' + loc0.th);
+  else waitCard(out, 'AI กำลังอ่านหน้าที่เขียนและจัดชุดสื่อ', ['อ่านเนื้อหาบนหน้า', 'เลือกสื่อที่ตรงกับเนื้อหา'], { cancel: false }); head.textContent = '';
   let topic = '', q = { img: [], gif: [], video: [] };
   const typed = pageText();
   const sel = S.sel && S.sel.strokes.length ? S.sel.strokes : null;
-  if (AI.ready('read')) {
+  if (loc0) { topic = loc0.th; q = { img: [loc0.en], gif: [loc0.en], video: [loc0.en] }; }
+  if (!loc0 && AI.ready('read')) {
     try {
       const lim = AI.limits('read');
       const img = !lim || lim.images ? await inkBlob(sel) : null;
@@ -11365,7 +11613,7 @@ function researchTemplate() {
 /* parts that are not needed to open a notebook and write are loaded the first time they are used (moving models,
    the equation solver, drawing from a reference, statistics), so the app opens fast and stays fast however much is added.
    Each part is kept for offline use by the service worker */
-const MODS = { scene: 'm/scene.js', cas: 'm/cas.js', sketch: 'm/sketch.js', stats: 'm/stats.js', video: 'm/video.js', data: 'm/data.js', measure: 'm/measure.js', imgmeas: 'm/imgmeas.js', cite: 'm/cite.js', work: 'm/work.js', search: 'm/search.js', toc: 'm/toc.js', keep: 'm/keep.js', trash: 'm/trash.js', export: 'm/export.js', history: 'm/history.js', aipages: 'm/aipages.js', cmds: 'm/cmds.js', clean: 'm/clean.js', ar: 'm/ar.js', typed: 'm/typed.js', account: 'm/account.js', cloudset: 'm/cloudset.js' }, MODP = {}, MODOK = {}, MODEV = {};
+const MODS = { scene: 'm/scene.js', cas: 'm/cas.js', sketch: 'm/sketch.js', stats: 'm/stats.js', video: 'm/video.js', data: 'm/data.js', measure: 'm/measure.js', imgmeas: 'm/imgmeas.js', cite: 'm/cite.js', work: 'm/work.js', search: 'm/search.js', toc: 'm/toc.js', keep: 'm/keep.js', trash: 'm/trash.js', export: 'm/export.js', history: 'm/history.js', aipages: 'm/aipages.js', cmds: 'm/cmds.js', clean: 'm/clean.js', ar: 'm/ar.js', typed: 'm/typed.js', account: 'm/account.js', cloudset: 'm/cloudset.js', quantum: 'm/quantum.js', figs: 'm/figs.js', mols: 'm/mols.js', animals: 'm/animals.js' }, MODP = {}, MODOK = {}, MODEV = {};
 /* switches to turn a part of the app off without putting a new release up: flags.json next to index.html,
    for example {"off": ["video"]}. Read once when the app opens; when it cannot be read, everything stays on */
 const FLAGS = { off: {}, told: {} };
@@ -11377,6 +11625,35 @@ function flagsReady() { return Promise.race([FLAGS.ready, new Promise((r) => set
 function modUrl(name) { let v = ''; try { v = BUILD; } catch (e) { v = ''; } return /^\d+$/.test(v) ? MODS[name].replace(/^m\//, 'm/' + v + '/') : MODS[name] + '?v=' + (v || Date.now()); }
 /* typed text read here without AI (task 8.15); "typed" in flags.json turns it off and everything goes to the AI as before */
 async function tyReady() { if (!flagOn('typed')) return false; try { await need('typed'); return true; } catch (e) { return false; } }
+/* task 8.19: what the app can work out by the rules of the subject is worked out here, offline, with no AI (handwriting
+   the AI read before is used as text). Off with "localcalc" in flags.json (or "typed"): the work goes to the AI as before */
+async function lcReady() { return flagOn('localcalc') && await tyReady(); }
+/* task 8.19 group 2: atoms by the rules of quantum chemistry (m/quantum.js); "quantum" in flags.json turns it off */
+async function qnReady() { if (!flagOn('quantum') || !await lcReady()) return false; try { await need('quantum'); return true; } catch (e) { return false; } }
+/* the figure of an element, an ion, a written configuration or a change of level in hydrogen, placed at once; false when the text is none of these */
+/* task 8.19 group 4: triangles, resistor circuits and forces worked out from their numbers (m/figs.js); "figs" in flags.json turns it off */
+async function fgReady() { if (!flagOn('figs') || !await lcReady()) return false; try { await need('figs'); return true; } catch (e) { return false; } }
+async function fgPut(text, box, note) {
+  if (!text || !await fgReady()) return false;
+  let f = null; try { f = fgFigure(text); } catch (e) { f = null; }
+  if (!f) return false;
+  clearSel(); figPlace(f.svg, box, 480, f.note + (note || '')); return true;
+}
+/* task 8.19 group 5: names and formulas of substances to their structures from a table in the app (m/mols.js); "mols" in flags.json turns it off */
+async function mlReady() { if (!flagOn('mols') || !await lcReady()) return false; try { await need('mols'); return true; } catch (e) { return false; } }
+async function mlPut(text, box, note) {
+  if (!text || !await mlReady()) return false;
+  let ms = null; try { ms = mlParse(text); } catch (e) { ms = null; }
+  if (!ms) return false;
+  const svg = await moleculeSvg(ms).catch(() => null); if (!svg) return false;
+  clearSel(); figPlace(svg, box, Math.min(W - 40, 240 * Math.min(ms.length, 4)), 'วาดโครงสร้างจากตารางสารในแอป ไม่ใช้ AI' + (note || '')); return true;
+}
+async function qnPut(text, box, note) {
+  if (!text || !await qnReady()) return false;
+  let f = null; try { f = qnFigure(text); } catch (e) { f = null; }
+  if (!f) return false;
+  clearSel(); figPlace(f.svg, box, 460, f.note + (note || '')); return true;
+}
 function need(name) {
   if (MODP[name]) return MODP[name];
   if (!MODS[name] || MODS[name] === 'inline') { MODOK[name] = true; return (MODP[name] = Promise.resolve()); }
@@ -11393,16 +11670,17 @@ function need(name) {
     modSet(name, ex); MODEV[name] = ex.__ev; MODOK[name] = true;
   }).catch((e) => { delete MODP[name]; throw e; }));
 }
-let SCENE_TPL, SCN, LIFE, renderScenePicker, scClean, scRender, restoreInk, openMotionPick, insertScene, buildScene, buildLife, sceneDomainFor, lifeBox, animKick, scReset;
+let qnFigure, qnParse, fgFigure, mlParse, mlSmiles, AN_LIST, anDraw, anTick, anTap, anSpec, anThumb;
+let SCENE_TPL, SCN, LIFE, renderScenePicker, scClean, scRender, restoreInk, openMotionPick, insertScene, buildScene, buildLife, sceneDomainFor, lifeBox, animKick, scReset, orb3Mark;
 let findShow, findRun, findGo, tocShow, tocHeads, tocMark, keepBoot, keepRender, keepSave, keepLoad, keepBanner, trashShow, trashPurge, trashRestore, trashDrop, trashList, expRender, expSave, expLoad, histNote, histOpen, histPurge, histRestore, histVersions, apRender, apSource, apWanted, apReading, ikGet, ikPut, ikPage, ikPageKeep, ikIndex, ikTexts, cmdShow, cmdList, cmdFind, cmdRun, cleanStart, cleanEnd, cleanFit, arOpen, arBuild, tyGraph, tyTable, tySteps, tyTidy, tyAdvice, acStep, acSay, acVerify, acForgot, acNewPw, acDelSection, csRender, csUsage, csSwitch;
 let texToCas, casVars, casWithUnits, casRun, casRowTex, casReady, solveSelection, openBgCut, openSketch, ST, openStats, openVideoLab, dataSelection, poolSection, poolShow, poolGot, poolEnd, openMeasure, openImgMeasure, unitCheck, openCite, captionSel, captionRenumber, hwHubOpen, hwStudentOpen, hwAssignOpen, hwBoard, hwDetail;
 const MOD_EXPORTS = {
-  scene: ['SCENE_TPL', 'SCN', 'LIFE', 'renderScenePicker', 'scClean', 'scRender', 'restoreInk', 'openMotionPick', 'insertScene', 'buildScene', 'buildLife', 'sceneDomainFor', 'lifeBox', 'animKick', 'scReset'],
+  scene: ['SCENE_TPL', 'SCN', 'LIFE', 'renderScenePicker', 'scClean', 'scRender', 'restoreInk', 'openMotionPick', 'insertScene', 'buildScene', 'buildLife', 'sceneDomainFor', 'lifeBox', 'animKick', 'scReset', 'orb3Mark'],
   cas: ['texToCas', 'casVars', 'casWithUnits', 'casRun', 'casRowTex', 'casReady', 'solveSelection'],
-  sketch: ['openBgCut', 'openSketch'], stats: ['ST', 'openStats'], video: ['openVideoLab'], data: ['dataSelection', 'poolSection', 'poolShow', 'poolGot', 'poolEnd', 'unitCheck'], measure: ['openMeasure'], imgmeas: ['openImgMeasure'], cite: ['openCite', 'captionSel', 'captionRenumber'], work: ['hwHubOpen', 'hwStudentOpen', 'hwAssignOpen', 'hwBoard', 'hwDetail'], search: ['findShow', 'findRun', 'findGo'], toc: ['tocShow', 'tocHeads', 'tocMark'], keep: ['keepBoot', 'keepRender', 'keepSave', 'keepLoad', 'keepBanner'], trash: ['trashShow', 'trashPurge', 'trashRestore', 'trashDrop', 'trashList'], export: ['expRender', 'expSave', 'expLoad'], history: ['histNote', 'histOpen', 'histPurge', 'histRestore', 'histVersions'], aipages: ['apRender', 'apSource', 'apWanted', 'apReading', 'ikGet', 'ikPut', 'ikPage', 'ikPageKeep', 'ikIndex', 'ikTexts'], cmds: ['cmdShow', 'cmdList', 'cmdFind', 'cmdRun'], clean: ['cleanStart', 'cleanEnd', 'cleanFit'], ar: ['arOpen', 'arBuild'], typed: ['tyGraph', 'tyTable', 'tySteps', 'tyTidy', 'tyAdvice'], account: ['acStep', 'acSay', 'acVerify', 'acForgot', 'acNewPw', 'acDelSection'], cloudset: ['csRender', 'csUsage', 'csSwitch']
+  sketch: ['openBgCut', 'openSketch'], stats: ['ST', 'openStats'], video: ['openVideoLab'], data: ['dataSelection', 'poolSection', 'poolShow', 'poolGot', 'poolEnd', 'unitCheck'], measure: ['openMeasure'], imgmeas: ['openImgMeasure'], cite: ['openCite', 'captionSel', 'captionRenumber'], work: ['hwHubOpen', 'hwStudentOpen', 'hwAssignOpen', 'hwBoard', 'hwDetail'], search: ['findShow', 'findRun', 'findGo'], toc: ['tocShow', 'tocHeads', 'tocMark'], keep: ['keepBoot', 'keepRender', 'keepSave', 'keepLoad', 'keepBanner'], trash: ['trashShow', 'trashPurge', 'trashRestore', 'trashDrop', 'trashList'], export: ['expRender', 'expSave', 'expLoad'], history: ['histNote', 'histOpen', 'histPurge', 'histRestore', 'histVersions'], aipages: ['apRender', 'apSource', 'apWanted', 'apReading', 'ikGet', 'ikPut', 'ikPage', 'ikPageKeep', 'ikIndex', 'ikTexts'], cmds: ['cmdShow', 'cmdList', 'cmdFind', 'cmdRun'], clean: ['cleanStart', 'cleanEnd', 'cleanFit'], ar: ['arOpen', 'arBuild'], typed: ['tyGraph', 'tyTable', 'tySteps', 'tyTidy', 'tyAdvice'], quantum: ['qnFigure', 'qnParse'], figs: ['fgFigure'], mols: ['mlParse', 'mlSmiles'], animals: ['AN_LIST', 'anDraw', 'anTick', 'anTap', 'anSpec', 'anThumb'], account: ['acStep', 'acSay', 'acVerify', 'acForgot', 'acNewPw', 'acDelSection'], cloudset: ['csRender', 'csUsage', 'csSwitch']
 };
 function modSet(name, x) {
-  if (name === 'scene') { SCENE_TPL = x.SCENE_TPL; SCN = x.SCN; LIFE = x.LIFE; renderScenePicker = x.renderScenePicker; scClean = x.scClean; scRender = x.scRender; restoreInk = x.restoreInk; openMotionPick = x.openMotionPick; insertScene = x.insertScene; buildScene = x.buildScene; buildLife = x.buildLife; sceneDomainFor = x.sceneDomainFor; lifeBox = x.lifeBox; animKick = x.animKick; scReset = x.scReset; }
+  if (name === 'scene') { SCENE_TPL = x.SCENE_TPL; SCN = x.SCN; LIFE = x.LIFE; renderScenePicker = x.renderScenePicker; scClean = x.scClean; scRender = x.scRender; restoreInk = x.restoreInk; openMotionPick = x.openMotionPick; insertScene = x.insertScene; buildScene = x.buildScene; buildLife = x.buildLife; sceneDomainFor = x.sceneDomainFor; lifeBox = x.lifeBox; animKick = x.animKick; scReset = x.scReset; orb3Mark = x.orb3Mark; }
   else if (name === 'cas') { texToCas = x.texToCas; casVars = x.casVars; casWithUnits = x.casWithUnits; casRun = x.casRun; casRowTex = x.casRowTex; casReady = x.casReady; solveSelection = x.solveSelection; }
   else if (name === 'sketch') { openBgCut = x.openBgCut; openSketch = x.openSketch; }
   else if (name === 'stats') { ST = x.ST; openStats = x.openStats; }
@@ -11421,6 +11699,10 @@ function modSet(name, x) {
   else if (name === 'account') { acStep = x.acStep; acSay = x.acSay; acVerify = x.acVerify; acForgot = x.acForgot; acNewPw = x.acNewPw; acDelSection = x.acDelSection; }
   else if (name === 'cloudset') { csRender = x.csRender; csUsage = x.csUsage; csSwitch = x.csSwitch; }
   else if (name === 'typed') { tyGraph = x.tyGraph; tyTable = x.tyTable; tySteps = x.tySteps; tyTidy = x.tyTidy; tyAdvice = x.tyAdvice; }
+  else if (name === 'quantum') { qnFigure = x.qnFigure; qnParse = x.qnParse; }
+  else if (name === 'figs') { fgFigure = x.fgFigure; }
+  else if (name === 'mols') { mlParse = x.mlParse; mlSmiles = x.mlSmiles; }
+  else if (name === 'animals') { AN_LIST = x.AN_LIST; anDraw = x.anDraw; anTick = x.anTick; anTap = x.anTap; anSpec = x.anSpec; anThumb = x.anThumb; }
   else if (name === 'aipages') { apRender = x.apRender; apSource = x.apSource; apWanted = x.apWanted; apReading = x.apReading; ikGet = x.ikGet; ikPut = x.ikPut; ikPage = x.ikPage; ikPageKeep = x.ikPageKeep; ikIndex = x.ikIndex; ikTexts = x.ikTexts; }
   else if (name === 'history') { histNote = x.histNote; histOpen = x.histOpen; histPurge = x.histPurge; histRestore = x.histRestore; histVersions = x.histVersions; }
   else if (name === 'keep') { keepBoot = x.keepBoot; keepRender = x.keepRender; keepSave = x.keepSave; keepLoad = x.keepLoad; keepBanner = x.keepBanner; }
@@ -11722,25 +12004,113 @@ CHEM_MARKS.push(
 const isChemMark = (k) => k !== '-' && CHEM_MARKS.some((m) => m[0] === k);
 const CHEM_HINT = { os: 'แตะที่นิวเคลียส ลากเพื่อกำหนดขนาด', op: 'ลากจากนิวเคลียสไปตามแกนของออร์บิทัล', od: 'ลากจากนิวเคลียสไปตามแนวกลีบหนึ่ง', odz: 'ลากจากนิวเคลียสไปตามแกน z', osp3: 'ลากจากนิวเคลียสไปทางกลีบใหญ่', obox: 'ลากไปทางขวาเพื่อกำหนดจำนวนกล่อง', oup: 'แตะในกล่อง ลูกศรจะไปอยู่ครึ่งซ้าย', odn: 'แตะในกล่อง ลูกศรจะไปอยู่ครึ่งขวา', rfwd: 'ลากจากสารตั้งต้นไปผลิตภัณฑ์', req: 'ลากจากซ้ายไปขวา', rres: 'ลากระหว่างโครงสร้างสองแบบ', rheat: 'ลากจากสารตั้งต้นไปผลิตภัณฑ์', rretro: 'ลากจากเป้าหมายไปสารตั้งต้น', eexo: 'ลากเป็นกรอบเพื่อวางกราฟ', eendo: 'ลากเป็นกรอบเพื่อวางกราฟ', e2step: 'ลากเป็นกรอบเพื่อวางกราฟ', bond1: 'ลากเพื่อวาดพันธะ แตะปลายพันธะเดิมเพื่อต่อเป็นโซ่', bond2: 'ลากเพื่อวาดพันธะคู่ แตะปลายพันธะเดิมเพื่อต่อ', bond3: 'ลากเพื่อวาดพันธะสาม แตะปลายพันธะเดิมเพื่อต่อ', wedge: 'ลากจากอะตอมที่อยู่หน้า', hash: 'ลากจากอะตอมที่อยู่หน้า', benz: 'แตะเพื่อวางวง แตะที่ปลายพันธะเพื่อต่อวง ลากเพื่อหมุนหรือย่อขยาย', lp: 'แตะข้างอะตอม ลากเพื่อหันทิศ', curly: 'ลากจากคู่อิเล็กตรอนไปยังที่ที่มันไป', hook: 'ลากจากอิเล็กตรอนเดี่ยวไปยังที่ที่มันไป' };
 
+/* ---------- what a drawn structure joins (task 8.18, "snap" in flags.json) ----------
+   A bond, a ring or a lone pair started or ended near an atom joins it: the point is caught within a distance measured
+   on the screen (bigger for a finger than for a pen, the same at every zoom), a bond meets a written or typed atom at
+   the edge of its letters, a bond leaving an atom takes 120, 109.5 or 180 degrees to the bonds already there when it
+   is close to one, and what joins becomes one structure that moves together. "ไม่ต่อกัน" right after puts it back as drawn */
+const CHEM = { off: false, hit: null, sig: '', ends: null, mid: null };
+const chemSnapOn = () => !CHEM.off && flagOn('snap');
+/* the catch distance on the page: about the width of a pen tip or a fingertip on the screen */
+function chemR() {
+  if (CHEM.raw) return 0; /* drawn again as dragged, after "ไม่ต่อกัน" */
+  if (!chemSnapOn()) return 14;
+  const px = S.shapePtr === 'touch' ? 30 : S.shapePtr === 'mouse' ? 16 : 22;
+  return clamp(px / ((S.base || 1) * (S.zoom || 1)), 6, CHEM_BOND * 0.6);
+}
 /* the ends of bonds already on the page (only the line along each bond, kept as cm 'b'), with the way each bond points */
 function chemEnds() {
+  const all = allStrokes();
+  let sig = all.length + ':'; for (const r of all) { const p = r.s.p; if (r.s.cm === 'b' && p) sig += (p[0] + p[1] * 3 + p[p.length - 2]) + ','; }
+  if (CHEM.ends && CHEM.sig === sig) return CHEM.ends;
   const out = [];
-  for (const r of allStrokes()) {
+  for (const r of all) {
     const st = r.s; if (!st || st.cm !== 'b' || !st.p || st.p.length < 6) continue;
     const n = st.p.length, a = [st.p[0] / 10, st.p[1] / 10], b = [st.p[n - 3] / 10, st.p[n - 2] / 10];
-    out.push({ p: a, from: b }, { p: b, from: a });
+    out.push({ p: a, from: b, r }, { p: b, from: a, r });
+  }
+  CHEM.sig = sig; CHEM.ends = out;
+  return out;
+}
+/* letters written or typed near a point: small pen writing that is not part of a drawn shape, gathered into one label
+   when the strokes touch (Cl, OH), and short typed labels; each is a circle round its letters */
+function chemAtoms(pt, R) {
+  const out = [], near = R + 70, small = [];
+  for (const r of allStrokes()) {
+    const s = r.s;
+    if (s.k !== 'p' || s.cm || s.gm || (s.g && !s.ca) || !s.p || s.p.length < 3) continue; /* a drawn shape is not a letter, unless it is a letter that joined a structure */
+    const b = sbox(s); if (b[2] - b[0] > 46 || b[3] - b[1] > 46) continue;
+    if (b[2] < pt[0] - near || b[0] > pt[0] + near || b[3] < pt[1] - near || b[1] > pt[1] + near) continue;
+    small.push({ b: b.slice(), refs: [r] });
+  }
+  /* strokes whose boxes touch belong to one label */
+  for (let i = 0; i < small.length; i++) for (let j = i + 1; j < small.length; j++) {
+    const A = small[i], B = small[j]; if (!A || !B) continue;
+    if (A.b[0] - 4 > B.b[2] || B.b[0] - 4 > A.b[2] || A.b[1] - 4 > B.b[3] || B.b[1] - 4 > A.b[3]) continue;
+    A.b = [Math.min(A.b[0], B.b[0]), Math.min(A.b[1], B.b[1]), Math.max(A.b[2], B.b[2]), Math.max(A.b[3], B.b[3])]; A.refs.push(...B.refs); small[j] = null; j = i;
+  }
+  for (const A of small) if (A && A.b[2] - A.b[0] <= 70 && A.b[3] - A.b[1] <= 50) out.push({ c: [(A.b[0] + A.b[2]) / 2, (A.b[1] + A.b[3]) / 2], r: Math.hypot(A.b[2] - A.b[0], A.b[3] - A.b[1]) / 2 + 3, refs: A.refs });
+  for (const it of (S.page && S.page.items) || []) {
+    if (it.type && it.type !== 'text') continue;
+    const t = String(it.md || '').replace(/\$|\\ce\{|\\mathrm\{|[{}_^\s]/g, '');
+    if (!/^[A-Za-z][A-Za-z0-9+\-−]{0,4}$/.test(t)) continue;
+    const b = tightItemBox(it); if (b[2] - b[0] > 90 || b[3] - b[1] > 60) continue;
+    const c = [(b[0] + b[2]) / 2, (b[1] + b[3]) / 2]; if (Math.abs(c[0] - pt[0]) > near || Math.abs(c[1] - pt[1]) > near) continue;
+    out.push({ c, r: Math.hypot(b[2] - b[0], b[3] - b[1]) / 2 * 0.8 + 2, refs: [], item: it.id });
   }
   return out;
 }
+/* the atom nearest a point within R: a bond end (a carbon of the skeleton) or a written atom, with every bond that already
+   meets there so a new one goes into the free side; p is the centre, r how far from it a bond stops */
 function chemNearEnd(pt, R) {
+  const ends = chemEnds(), on = chemSnapOn();
   let best = null, bd = R;
-  for (const e of chemEnds()) { const d = Math.hypot(e.p[0] - pt[0], e.p[1] - pt[1]); if (d < bd) { bd = d; best = e; } }
+  for (const e of ends) { const d = Math.hypot(e.p[0] - pt[0], e.p[1] - pt[1]); if (d < bd) { bd = d; best = { p: e.p.slice(), r: 0, from: e.from }; } }
+  if (on) for (const A of chemAtoms(pt, R)) {
+    const d = Math.max(0, Math.hypot(A.c[0] - pt[0], A.c[1] - pt[1]) - A.r);
+    if (d < bd || (best && !best.r && Math.hypot(best.p[0] - A.c[0], best.p[1] - A.c[1]) < A.r + 6 && d < R)) { bd = d; best = { p: A.c.slice(), r: A.r, refs: A.refs, item: A.item }; }
+  }
   if (!best) return null;
-  /* every bond already meeting at that point, so a new one goes into the free side */
-  const dirs = chemEnds().filter((e) => Math.hypot(e.p[0] - best.p[0], e.p[1] - best.p[1]) < 1.5).map((e) => Math.atan2(e.from[1] - e.p[1], e.from[0] - e.p[0]));
-  return { p: best.p.slice(), from: best.from, dirs };
+  const at = ends.filter((e) => Math.hypot(e.p[0] - best.p[0], e.p[1] - best.p[1]) < (best.r ? best.r + 6 : 1.5));
+  if (best.r && at.length === 1) best.from = at[0].from;
+  if (!best.from && at.length) best.from = at[0].from;
+  best.dirs = at.map((e) => Math.atan2(e.from[1] - e.p[1], e.from[0] - e.p[0]));
+  best.bonds = at.map((e) => e.r);
+  return best;
 }
 const chemSnapAng = (t) => Math.round(t / (Math.PI / 6)) * (Math.PI / 6);
+/* the way a bond leaves an atom: 120, 109.5 or 180 degrees from a bond already there when the drag is close to it,
+   otherwise the nearest step of 30 degrees as before */
+function chemBondAng(t, end) {
+  if (chemSnapOn() && end && end.dirs && end.dirs.length) {
+    let best = null, bd = 9 * Math.PI / 180;
+    for (const d of end.dirs) for (const deg of [120, -120, 109.5, -109.5, 180]) {
+      const c = d + deg * Math.PI / 180, e = Math.abs(Math.atan2(Math.sin(t - c), Math.cos(t - c)));
+      if (e < bd) { bd = e; best = c; }
+    }
+    if (best != null) { CHEM.hit = CHEM.hit || {}; CHEM.hit.ang = 1; return Math.atan2(Math.sin(best), Math.cos(best)); }
+  }
+  return chemSnapAng(t);
+}
+/* the bond nearest a point along its middle part (not near its ends), for a ring that shares it or an arrow that starts on it */
+function chemNearBond(pt, R) {
+  let best = null, bd = R;
+  for (const e of chemEnds()) {
+    const a = e.p, b = e.from, dx = b[0] - a[0], dy = b[1] - a[1], L2 = dx * dx + dy * dy; if (!L2) continue;
+    const t = ((pt[0] - a[0]) * dx + (pt[1] - a[1]) * dy) / L2; if (t < 0.2 || t > 0.8) continue;
+    const d = Math.hypot(pt[0] - a[0] - t * dx, pt[1] - a[1] - t * dy); if (d < bd) { bd = d; best = { a: a.slice(), b: b.slice(), r: e.r }; }
+  }
+  return best;
+}
+/* starting the structure tools on what is already there draws from it instead of picking it up (picking up the old
+   bond when a new one should join it was why bonds sometimes did not join); a bond tool on the middle of a bond still picks
+   the structure up to move it */
+function chemDrawsHere(kind, pt) {
+  if (!isChemMark(kind) || !chemSnapOn()) return false;
+  if (/^(curly|hook|lp|benz)$/.test(kind)) return true;
+  if (!/^(bond|wedge|hash)/.test(kind)) return false;
+  return !!chemNearEnd(pt, chemR());
+}
 /* where a bond starting at an atom goes when the user only taps: the zigzag of a carbon chain (120 degrees), or the
    free side when more bonds already meet there */
 function chemAutoDir(end) {
@@ -11756,19 +12126,66 @@ function chemAutoDir(end) {
   for (let i = 0; i < ds.length; i++) { const a = ds[i], b = i + 1 < ds.length ? ds[i + 1] : ds[0] + Math.PI * 2; if (b - a > gap) { gap = b - a; best = a + (b - a) / 2; } }
   return best;
 }
+/* while dragging, a ring round each atom the new bond will join, so it is plain before letting go */
+function chemShowHit(c) {
+  if (!chemSnapOn() || !CHEM.hit || !isChemMark(S.shapeKind)) return;
+  const sc = (S.base || 1) * (S.zoom || 1);
+  c.save(); c.strokeStyle = 'rgba(37, 99, 235, 0.55)'; c.lineWidth = 2 / sc;
+  for (const n of CHEM.hit.nodes || []) { c.beginPath(); c.arc(n.p[0], n.p[1], Math.max(n.r || 0, 7 / sc) + 3 / sc, 0, Math.PI * 2); c.stroke(); }
+  c.restore();
+}
+/* the strokes just drawn take the group of every structure they joined (and its written atoms), so the whole molecule is
+   picked up and moved as one; only this device's own strokes are regrouped. True when something was joined */
+function chemJoin(list) {
+  if (!chemSnapOn() || !CHEM.hit || !list.length) return false;
+  const g0 = list[0].g, merge = new Set(), mine = new Set(S.mine);
+  for (const n of CHEM.hit.nodes || []) for (const r of [].concat(n.bonds || [], n.refs || [])) {
+    if (!r || r.layer !== DEV || !mine.has(r.s)) continue;
+    if (r.s.g) merge.add(r.s.g); else { r.s.g = g0; r.s.ca = 1; }
+  }
+  merge.delete(g0);
+  if (merge.size) for (const s of S.mine) if (merge.has(s.g)) s.g = g0;
+  return !!((CHEM.hit.nodes && CHEM.hit.nodes.length) || CHEM.hit.pin);
+}
+/* "ไม่ต่อกัน" for a few seconds after something joined: puts it back as it was dragged, joined to nothing */
+function chemUndoChip(pt, before, list) {
+  let el = document.getElementById('chemNo');
+  if (!el) { el = document.createElement('button'); el.id = 'chemNo'; el.type = 'button'; el.className = 'chemno no-ink'; el.textContent = 'ไม่ต่อกัน'; document.body.appendChild(el); }
+  const kind = S.shapeKind, a = pt.a.slice(), b = pt.b.slice(), pid = S.pid, ids = list.map((s) => s.id);
+  /* where the toasts show, at the bottom middle, so it never covers the atom the next bond starts from */
+  el.hidden = false; const tt = document.getElementById('toast'); if (tt) tt.hidden = true;
+  clearTimeout(CHEM.chipT); CHEM.chipT = setTimeout(() => { el.hidden = true; }, 3500);
+  el.onpointerdown = (e) => e.stopPropagation();
+  el.onclick = (e) => {
+    e.stopPropagation(); el.hidden = true; clearTimeout(CHEM.chipT);
+    if (S.pid !== pid || !ids.every((id) => S.mine.some((s) => s.id === id))) return; /* already undone or changed */
+    CHEM.raw = true; let raw; try { raw = chemMarkLists(kind, a, b); } finally { CHEM.raw = false; CHEM.hit = null; }
+    const cur = clone(S.mine), g = 'g' + uid();
+    S.mine = clone(before[DEV] || []); for (const s of raw) { s.g = g; S.mine.push(s); }
+    pushUndo({ t: 'layers', before: { [DEV]: cur }, after: { [DEV]: clone(S.mine) } });
+    saveMine(); drawInk();
+  };
+}
 function chemMarkLists(kind, a, b) {
   const out = [], line = (p, q, extra) => out.push(Object.assign({ pts: shapePts({ type: 'line', a: p, b: q }, 55) }, extra || {}));
-  const drag = Math.hypot(b[0] - a[0], b[1] - a[1]), w = curW();
+  let drag = Math.hypot(b[0] - a[0], b[1] - a[1]); const w = curW();
   const mk = () => out.map((o) => Object.assign({ id: 's' + uid(), k: 'p', c: S.color, w: o.w || w, p: o.pts, cm: o.cm || 1 }));
+  CHEM.hit = null;
+  const SR = chemR(), hit = (n) => { if (n) { CHEM.hit = CHEM.hit || {}; (CHEM.hit.nodes = CHEM.hit.nodes || []).push(n); } return n; };
   if (/^(bond|wedge|hash)/.test(kind)) {
-    const st = chemNearEnd(a, 14), p0 = st ? st.p : a.slice();
-    let p1;
-    const endSnap = drag >= 8 ? chemNearEnd(b, 14) : null;
-    if (endSnap && Math.hypot(endSnap.p[0] - p0[0], endSnap.p[1] - p0[1]) > 10) p1 = endSnap.p; /* closing a ring onto an atom already there */
-    else {
-      const t = drag >= 8 ? chemSnapAng(Math.atan2(b[1] - p0[1], b[0] - p0[0])) : chemAutoDir(st);
-      let L = drag >= 8 ? Math.hypot(b[0] - p0[0], b[1] - p0[1]) : CHEM_BOND; if (Math.abs(L - CHEM_BOND) < CHEM_BOND * 0.35) L = CHEM_BOND;
-      p1 = [p0[0] + L * Math.cos(t), p0[1] + L * Math.sin(t)];
+    const st = hit(chemNearEnd(a, SR)), c0 = st ? st.p : a.slice();
+    let p0 = c0, p1;
+    const endSnap = drag >= 8 ? chemNearEnd(b, SR) : null;
+    if (endSnap && Math.hypot(endSnap.p[0] - c0[0], endSnap.p[1] - c0[1]) > 10) { /* closing a ring onto an atom already there */
+      hit(endSnap); const t = Math.atan2(endSnap.p[1] - c0[1], endSnap.p[0] - c0[0]);
+      p1 = [endSnap.p[0] - (endSnap.r || 0) * Math.cos(t), endSnap.p[1] - (endSnap.r || 0) * Math.sin(t)];
+      if (st && st.r) p0 = [c0[0] + st.r * Math.cos(t), c0[1] + st.r * Math.sin(t)];
+    } else {
+      const t = drag >= 8 ? chemBondAng(Math.atan2(b[1] - c0[1], b[0] - c0[0]), st) : chemAutoDir(st);
+      let L = drag >= 8 ? Math.hypot(b[0] - c0[0], b[1] - c0[1]) : CHEM_BOND; if (Math.abs(L - CHEM_BOND) < CHEM_BOND * 0.35) L = CHEM_BOND;
+      /* from a written atom the bond starts at the edge of its letters, and the next atom still sits one bond away */
+      if (st && st.r) { L = Math.max(L, st.r + 12); p0 = [c0[0] + st.r * Math.cos(t), c0[1] + st.r * Math.sin(t)]; }
+      p1 = [c0[0] + L * Math.cos(t), c0[1] + L * Math.sin(t)];
     }
     const dx = p1[0] - p0[0], dy = p1[1] - p0[1], L = Math.hypot(dx, dy) || 1, u = [dx / L, dy / L], nv = [-u[1], u[0]];
     if (kind === 'wedge') {
@@ -11791,22 +12208,48 @@ function chemMarkLists(kind, a, b) {
     return mk();
   }
   if (kind === 'benz') {
-    const st = chemNearEnd(a, 14); let c, rot, R = CHEM_BOND;
-    if (st && drag < 8) { /* the ring grows out of the atom at the end of a bond, along that bond */
-      const t = Math.atan2(st.p[1] - st.from[1], st.p[0] - st.from[0]); c = [st.p[0] + R * Math.cos(t), st.p[1] + R * Math.sin(t)]; rot = t + Math.PI;
+    const st = hit(chemNearEnd(a, SR)); let c, rot, R = CHEM_BOND;
+    const side = drag < 8 && chemSnapOn() && !st ? chemNearBond(a, SR) : null;
+    if (side) { /* tapped on the middle of a bond: the new ring shares that bond, on the side tapped */
+      hit({ p: side.a, bonds: [side.r] });
+      const m = [(side.a[0] + side.b[0]) / 2, (side.a[1] + side.b[1]) / 2], L = Math.hypot(side.b[0] - side.a[0], side.b[1] - side.a[1]);
+      let nv = [-(side.b[1] - side.a[1]) / L, (side.b[0] - side.a[0]) / L]; if ((a[0] - m[0]) * nv[0] + (a[1] - m[1]) * nv[1] < 0) nv = [-nv[0], -nv[1]];
+      R = L; c = [m[0] + nv[0] * L * Math.sqrt(3) / 2, m[1] + nv[1] * L * Math.sqrt(3) / 2]; rot = Math.atan2(side.a[1] - c[1], side.a[0] - c[0]);
+      const tb = Math.atan2(side.b[1] - c[1], side.b[0] - c[0]), dd = Math.atan2(Math.sin(tb - rot - Math.PI / 3), Math.cos(tb - rot - Math.PI / 3)); if (Math.abs(dd) > 0.05) rot = tb;
+    } else if (st && drag < 8) { /* the ring grows out of the atom at the end of a bond, along that bond (or into the free side) */
+      const t = !chemSnapOn() || st.dirs.length === 1 ? Math.atan2(st.p[1] - st.from[1], st.p[0] - st.from[0]) : st.dirs.length ? chemAutoDir(st) : -Math.PI / 2;
+      const o = [st.p[0] + (st.r || 0) * Math.cos(t), st.p[1] + (st.r || 0) * Math.sin(t)];
+      c = [o[0] + R * Math.cos(t), o[1] + R * Math.sin(t)]; rot = t + Math.PI;
     } else { c = a.slice(); rot = drag >= 8 ? chemSnapAng(Math.atan2(b[1] - a[1], b[0] - a[0])) : -Math.PI / 2; if (drag >= 8) R = clamp(drag, 20, 160); if (Math.abs(R - CHEM_BOND) < CHEM_BOND * 0.35) R = CHEM_BOND; }
     const v = []; for (let i = 0; i < 6; i++) { const t = rot + i * Math.PI / 3; v.push([c[0] + R * Math.cos(t), c[1] + R * Math.sin(t)]); }
-    for (let i = 0; i < 6; i++) line(v[i], v[(i + 1) % 6], { cm: 'b' }); /* each side is a bond, so chains can grow from any corner */
+    /* each side is a bond, so chains can grow from any corner; a side that is already a bond is not drawn twice */
+    const have = chemSnapOn() ? chemEnds() : [], twice = (p, q) => have.some((e) => Math.hypot(e.p[0] - p[0], e.p[1] - p[1]) < 2 && Math.hypot(e.from[0] - q[0], e.from[1] - q[1]) < 2);
+    for (let i = 0; i < 6; i++) { const p = v[i], q = v[(i + 1) % 6]; if (!twice(p, q)) line(p, q, { cm: 'b' }); }
     out.push({ pts: shapePts({ type: 'ellipse', cx: c[0], cy: c[1], rx: R * 0.58, ry: R * 0.58 }, 55) });
     return mk();
   }
   if (kind === 'lp') {
-    const t = drag >= 8 ? Math.atan2(b[1] - a[1], b[0] - a[0]) : 0, nv = [-Math.sin(t), Math.cos(t)], g = clamp(w * 1.4 + 2.5, 3.5, 6);
+    /* tapped beside a written atom: the pair sits just outside its letters, facing away from it (or into the free side) */
+    const at = chemSnapOn() ? chemNearEnd(a, SR) : null; let t0 = null;
+    if (at && at.r) {
+      hit(at); const d = Math.hypot(a[0] - at.p[0], a[1] - at.p[1]);
+      if (drag < 8) { t0 = d > at.r * 0.4 ? Math.atan2(a[1] - at.p[1], a[0] - at.p[0]) : chemAutoDir(at); a = [at.p[0] + (at.r + 4) * Math.cos(t0), at.p[1] + (at.r + 4) * Math.sin(t0)]; }
+    }
+    const t = t0 != null ? t0 : drag >= 8 ? Math.atan2(b[1] - a[1], b[0] - a[0]) : 0, nv = [-Math.sin(t), Math.cos(t)], g = clamp(w * 1.4 + 2.5, 3.5, 6);
     for (const s of [-1, 1]) { const q = [a[0] + nv[0] * g * s, a[1] + nv[1] * g * s]; out.push({ pts: shapePts({ type: 'ellipse', cx: q[0], cy: q[1], rx: 0.6, ry: 0.6 }, 55), w: clamp(w * 1.6, 3, 6) }); }
     return mk();
   }
   if (kind === 'curly' || kind === 'hook') {
     if (drag < 12) return [];
+    if (chemSnapOn()) {
+      /* the arrow starts on a bond or a written atom and ends on one when it is let go near it; a bare corner of the skeleton
+         does not pull it (that bent short arrows out of shape), and an arrow the pull would shorten a lot stays as dragged */
+      const pin = (q, o) => { const n = chemNearEnd(q, SR); if (n && n.r) { const t = Math.atan2(o[1] - n.p[1], o[0] - n.p[0]); return [n.p[0] + (n.r + 2) * Math.cos(t), n.p[1] + (n.r + 2) * Math.sin(t)]; }
+        const m = chemNearBond(q, SR); return m ? [(m.a[0] + m.b[0]) / 2, (m.a[1] + m.b[1]) / 2] : q; };
+      const a2 = pin(a, b), b2 = pin(b, a), d2 = Math.hypot(b2[0] - a2[0], b2[1] - a2[1]);
+      if ((a2 !== a || b2 !== b) && d2 >= 12 && d2 >= drag * 0.6) { CHEM.hit = { pin: 1 }; a = a2; b = b2; }
+      drag = Math.hypot(b[0] - a[0], b[1] - a[1]);
+    }
     /* a smooth arc that bows to the left of the drag, with its head along the arc at the end */
     const m = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2], nv = [-(b[1] - a[1]) / drag, (b[0] - a[0]) / drag], bow = drag * 0.38;
     const c = [m[0] + nv[0] * bow, m[1] + nv[1] * bow], pts = [];
@@ -21918,7 +22361,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1795158431';
+const BUILD = '1795303637';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
@@ -21944,8 +22387,8 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden) chec
 setInterval(checkUpdate, 30 * 60 * 1000); setTimeout(checkUpdate, 8000);
 
 /* ---------- version and what is new ---------- */
-const VERSION = '20261120-a58b87fe';
-const NEWS = [{"id": 20, "date": "2026-11-20", "items": ["ต่อสาย จอสะอาด แบบ ทั้งหน้า เห็นหน้าครบถึงขอบล่าง พอดีความสูงจอ และพื้นรอบหน้าเป็นสีดำ โปรเจกเตอร์จึงฉายแสงเฉพาะหน้ากระดาษ"]}, {"id": 19, "date": "2026-11-20", "items": ["ขยายหน้าจออยู่ มีปุ่ม หน้าใหม่ ข้างเลขหน้าที่มุมล่าง แตะครั้งเดียวได้หน้าใหม่ต่อจากหน้านี้ ขยายเท่าเดิม พร้อมเขียนที่มุมบนซ้าย"]}, {"id": 18, "date": "2026-11-19", "items": ["เขียนตอนขยายหน้าจอ เส้นไม่หดตรงมุมเมื่อยกปากกาแล้ว ตัวอักษรอยู่ตรงที่เขียนเหมือนตอนกำลังเขียน", "ขยายหน้าจอแล้วพักปากกาครู่หนึ่งขณะเขียน ตัวอักษรไม่ถูกเปลี่ยนเป็นรูปทรงอีก วาดค้างไว้ให้เป็นรูปทรงยังใช้ได้กับรูปที่ใหญ่กว่าลายมือบนหน้า", "ห้องเรียนสดที่ครูเปิด PDF แอปของนักเรียนไม่ปิดเองเพราะหน่วยความจำเต็มอีก"]}, {"id": 17, "date": "2026-11-18", "items": ["มอบหมายการบ้าน กดปุ่มแล้วขึ้น กำลังมอบหมาย และ มอบหมายแล้ว กดซ้ำไม่ได้ จึงไม่มีการบ้านซ้ำ ลิงก์กับ QR เลื่อนขึ้นมาให้เห็นทันที"]}, {"id": 16, "date": "2026-11-18", "items": ["ตั้งค่าคลาวด์ใหม่ ที่เมนู แท็บ บัญชี ซิงก์ และ AI ใช้คลาวด์ BURIN ได้ทันทีโดยไม่ต้องตั้งค่า", "ใช้ Supabase ของตัวเองได้ในหัวข้อ ขั้นสูง และสลับกลับมาคลาวด์ BURIN ได้ทุกเมื่อ สมุดทั้งสองที่ไม่หาย"]}, {"id": 15, "date": "2026-11-18", "items": ["ลืมรหัสผ่าน ตั้งรหัสใหม่ได้จากหน้าเข้าสู่ระบบ กด ลืมรหัสผ่าน แล้วทำตามอีเมลที่ได้รับ", "สมัครบัญชีใหม่แล้วยืนยันอีเมลได้ในแอป และกดส่งอีเมลยืนยันอีกครั้งได้"]}, {"id": 14, "date": "2026-11-18", "items": ["ห้องเรียนสดที่ลืมปิดปิดเอง เมื่อกลับมาที่แอปหลังห่างไปเกิน 1 ชั่วโมง ห้องไม่เปิดต่อเองและไม่ส่งสิ่งที่เขียนให้ผู้เรียน แตะ เปิดห้องเดิมอีกครั้ง ได้รหัสเดิม", "ห้องที่ไม่มีผู้เรียนและครูไม่ได้ใช้แอปนาน 30 นาทีปิดเอง มีแถบบอกก่อน 1 นาที ครูที่กำลังสอนห้องไม่ปิด แม้ผู้เรียนล็อกจอ", "ปิดห้องแล้วผู้เรียนยังส่งการบ้านได้ถึงเวลาที่กำหนด และเห็นปุ่มไปที่งานของฉัน"]}, {"id": 13, "date": "2026-11-17", "items": ["ข้อความที่พิมพ์ไม่ต้องรอ AI สมการที่พิมพ์ เช่น y = 2x + 1 สร้างกราฟได้ทันที ตารางที่พิมพ์เป็นข้อมูลได้ทันที และตรวจหน่วยของบรรทัดคำนวณที่พิมพ์ได้ทันที ใช้ได้แม้ไม่มีอินเทอร์เน็ต", "วาดใหม่ จัดเส้นตรง สี่เหลี่ยม วงกลม ในภาพร่างให้เรียบร้อยทันทีโดยไม่ใช้ AI ตัวอักษรยังเป็นลายมือเดิม ถ้าต้องการให้แก้ตามเนื้อหา กด ให้ AI วาดใหม่ตามเนื้อหา", "หลังทำแบบฝึก บทที่ยังอ่อนบอกชนิดข้อที่พลาด และความเข้าใจที่ควรแก้จากตัวเลือกที่ตอบ"]}, {"id": 12, "date": "2026-11-17", "items": ["ลายมือที่ AI อ่านแล้วไม่ต้องอ่านซ้ำ แปลงเป็นตัวพิมพ์ แก้สมการ สร้างรูป ตรวจหน่วย และสร้างโจทย์ จากลายมือเดิมใช้คำที่อ่านไว้ เร็วขึ้นและไม่ส่งภาพซ้ำ ถ้าอ่านผิด สั่งงานเดิมอีกครั้ง AI จะอ่านใหม่", "ค้นหาในทุกสมุดพบลายมือที่ AI เคยอ่านแล้วด้วย"]}, {"id": 11, "date": "2026-11-17", "items": ["ทดลองวางวัตถุสามมิติบนโต๊ะจริง (AR) ได้ที่ ปุ่ม สมุดทั้งหมด แท็บ ภาษา การเขียน และจอ หัวข้อ ลองดูในห้องจริง ใช้ได้บน iPad และ iPhone แอปสร้างไฟล์ในเครื่องเอง ไม่ใช้ AI"]}, {"id": 10, "date": "2026-11-17", "items": ["คอมที่ต่อจอที่สอง เลือก จอที่สอง ผู้ชมไม่เห็นแถบ ในเมนู นำเสนอ ครูใช้ได้ทุกคำสั่ง จอใหญ่เห็นแต่หน้ากระดาษ ไม่ต้องใช้อินเทอร์เน็ต", "ระหว่างเปิดจอผู้ชม ครูมีแถบเล็ก จอผู้ชม เลือกให้จอใหญ่เห็นทั้งหน้า พักจอ หรือปิด (ปุ่ม B บนคีย์บอร์ดหรือรีโมตก็พักจอได้)", "ต่อ iPad ออกทีวีด้วยสาย ใช้ ต่อสาย จอสะอาด ในเมนู นำเสนอ (ปุ่ม สอนและนำเสนอ)", "เริ่มแล้วจอเห็นแต่หน้ากระดาษ ไม่มีแถบหรือปุ่มใดขึ้นเลย ทั้งบน iPad และทีวี", "ก่อนเริ่ม เลือกปากกาให้แต่ละขอบจอ (สี ไฮไลต์ ยางลบ หรือเลเซอร์) ระหว่างนำเสนอ แตะขอบจอด้วยนิ้วเพื่อหยิบปากกาของขอบนั้น", "เลือกได้ว่าให้เห็นทั้งหน้า และเริ่มด้วยม่านบังครึ่งล่างที่ใช้นิ้วลากลงเพื่อเปิดทีละบรรทัด", "แตะค้างสามนิ้ว 1 วินาที เพื่อออก ใช้รีโมตนำเสนอเปลี่ยนหน้า ปุ่ม B พักจอ ปุ่ม Esc ออก", "เมนู นำเสนอ เหลือสามข้อ จอแสดงผลแบบนักเรียนบนอีกเครื่องและบนจอที่สองรวมเป็นข้อเดียว"]}, {"id": 9, "date": "2026-11-17", "items": ["แถบบนเหลือปุ่มน้อยลง ปุ่มที่ใช้นาน ๆ ครั้ง รวมอยู่ในสองกลุ่ม", "ปุ่ม ต่อยอดจากหน้า มี แปลงเป็นตัวพิมพ์ สร้างโจทย์ และ ชุดโจทย์", "ปุ่ม สอนและนำเสนอ มี ห้องสด นำเสนอ และ ห้องเรียนและโจทย์ (ฝั่งนักเรียนชื่อ ห้องเรียน มี สแกน QR และ เข้าห้องเรียน ด้วย)", "เลือกด้วยบ่วงแล้ว แถบเหนือส่วนที่เลือก แสดงคำสั่งที่ใช้บ่อยก่อน คำสั่งอื่นอยู่ที่ปุ่ม เพิ่มเติม", "หาคำสั่งไม่เจอ พิมพ์ชื่อในช่องค้นหาที่เมนู เช่น PDF หรือ สามมิติ แล้วแตะคำสั่งที่ขึ้นมา"]}, {"id": 8, "date": "2026-11-16", "items": ["สร้างโจทย์ด้วย AI จากกี่หน้าก็ได้ ทั้งเล่ม ตามบท หรือเป็นช่วงหน้า", "อยู่ที่ปุ่ม สร้างโจทย์ด้วย AI หัวข้อ หน้าที่ใช้สร้างโจทย์ แตะ ทั้งเล่ม หรือแตะชื่อบท หรือใส่ช่วงหน้า แล้วกด เลือกช่วงนี้", "หน้าที่ AI อ่านแล้ว เก็บไว้ในเครื่องนี้ ครั้งต่อไป ไม่ต้องอ่านซ้ำ จึงเร็วขึ้น และประหยัดค่า AI"]}, {"id": 7, "date": "2026-11-16", "items": ["ลบผิด หรือเขียนทับผิด ดึงหน้า เมื่อไม่กี่นาทีก่อน หรือเมื่อวาน กลับมาได้", "อยู่ที่ ลิ้นชักหน้า แตะแถบ หน้านี้ ด้านล่าง แล้วกดปุ่ม รุ่นก่อนของหน้านี้ เลือกรุ่น ดูภาพหน้าก่อน แล้วกด คืนหน้าเป็นรุ่นนี้", "หน้าก่อนคืน ถูกเก็บไว้ด้วย จึงย้อนกลับได้ แอปเก็บรุ่นก่อน ไว้ในเครื่องนี้ 30 วัน"]}, {"id": 6, "date": "2026-11-16", "items": ["บัญชีคลาวด์ ส่งออกข้อมูลทั้งบัญชี เป็นไฟล์เดียวได้ ทั้งสมุด หน้า หมึก รูป วิดีโอ เลคเชอร์ที่แชร์ การบ้าน และงานที่นักเรียนส่ง", "อยู่ที่ เมนู แท็บตั้งค่า หัวข้อ ข้อมูลทั้งบัญชี กดปุ่ม ส่งออกทั้งบัญชี", "นำเข้าไฟล์นี้ ในบัญชีอื่น หรือเครื่องใหม่ได้ การนำเข้า เพิ่มเฉพาะส่วนที่ยังไม่มี ไม่ทับ และไม่ลบ ของที่มีอยู่"]}, {"id": 5, "date": "2026-11-15", "items": ["ลบสมุด หรือลบหน้าแล้ว ยังกู้คืนได้ ภายใน 30 วัน สิ่งที่ลบ ไปอยู่ในถังขยะ ก่อนถูกลบจริง", "เปิดถังขยะ ได้ที่ เมนู สมุดทั้งหมด ปุ่มถังขยะ ใต้รายการสมุด กดกู้คืน แล้วสมุดกลับไป ที่เดิม หน้ากลับไป ตำแหน่งเดิม ในสมุด", "ลบถาวร ทีละรายการ หรือลบทั้งหมด ในถังขยะได้ ครบ 30 วัน แล้วแอปลบให้เอง"]}, {"id": 4, "date": "2026-11-15", "items": ["สำรองสมุด ทั้งหมดเป็นไฟล์เดียว ได้ที่ เมนู แท็บตั้งค่า หัวข้อ สมุดในเครื่องนี้ ไฟล์เก็บสมุดทุกเล่ม รูป และวิดีโอ ในเครื่องนี้", "นำสมุดคืน จากไฟล์สำรอง ได้ที่เดียวกัน การนำคืน เพิ่มเฉพาะส่วน ที่ยังไม่มีในเครื่อง ไม่ทับ และไม่ลบ ของที่มีอยู่", "แอปขอให้เบราว์เซอร์ เก็บสมุดในเครื่อง ไว้ถาวร และเตือนให้สำรองสมุด ที่หน้ารายการสมุด เมื่อสมุดเปลี่ยนไป ตั้งแต่สำรองครั้งล่าสุด", "บน iPad และ iPhone ใน Safari แอปชวนให้ เพิ่มลงหน้าจอโฮม เพื่อไม่ให้ Safari ลบสมุด ที่ไม่ได้เปิดนาน ให้สำรองสมุดก่อน แล้วนำคืน ในแอปบนหน้าจอโฮม"]}, {"id": 3, "date": "2026-11-14", "items": ["สารบัญ ของสมุด แตะปุ่มหน้าในสมุด ที่มุมซ้ายบน แล้วเลือก สารบัญ จะเห็นหัวเรื่อง ของทุกหน้า แตะหัวเรื่อง เพื่อไปที่หน้านั้น ได้ทันที", "หัวเรื่อง มาจากข้อความที่พิมพ์ไว้ บนสุดของหน้า หรือบรรทัด ที่ขึ้นต้นด้วย ## ลายมือที่ยังไม่ได้แปลง เป็นตัวพิมพ์ ไม่ขึ้นในสารบัญ", "ที่คั่นหน้า แตะ ปักที่คั่นหน้านี้ ในหน้าสารบัญ แล้วตั้งชื่อเองได้ หน้าที่มีที่คั่น จะมีริบบิ้นสีแดง ที่ภาพหน้า", "ที่คั่นหน้า อยู่กับสมุด ของเราเท่านั้น ผู้เรียนในห้องสด ไม่เห็นที่คั่นหน้า ของครู"]}, {"id": 2, "date": "2026-11-14", "items": ["ค้นหาข้อความ ในทุกสมุดได้แล้ว พิมพ์คำในช่องค้นหาที่เมนู แอปจะค้นทั้งชื่อสมุด ข้อความที่พิมพ์ ลายมือที่แปลงเป็นตัวพิมพ์แล้ว หัวเรื่องของหน้า และข้อความในกล่องต่าง ๆ", "แตะผลการค้นหา เพื่อไปที่หน้านั้น กล่องที่มีคำนั้นจะเรืองแสงสักครู่ ให้เห็นตำแหน่ง", "พิมพ์คำไทย ติดกันหรือเว้นวรรค ก็ค้นเจอเหมือนกัน การค้นหาอ่านสมุดอย่างเดียว ไม่แก้ไขอะไรในสมุด"]}, {"id": 1, "date": "2026-11-13", "items": ["ดูเวอร์ชันของแอปได้ที่เมนู แท็บตั้งค่า หัวข้อเกี่ยวกับแอป", "เมื่อมีเวอร์ชันใหม่ระหว่างใช้งาน แอปจะไม่รีโหลดเอง รวมถึงจอผู้ชม เวอร์ชันใหม่จะมีผล เมื่อเปิดแอปครั้งถัดไป หรือเมื่อแตะแถบ มีเวอร์ชันใหม่", "หน้าที่เปิดค้างไว้ ใช้ส่วนต่าง ๆ ของแอป จากเวอร์ชันเดียวกับตัวเองเสมอ ไม่ปนกับเวอร์ชันใหม่", "เมื่อแอปทำงานผิดพลาด แอปจะส่งรายงาน ให้ผู้พัฒนา โดยส่งเฉพาะ ข้อความแจ้งข้อผิดพลาด ตำแหน่งในโค้ด รุ่นเครื่อง และเวอร์ชันของแอป ไม่ส่งเนื้อหาสมุด ชื่อ หรืออีเมล"]}];
+const VERSION = '20261121-deb1bf22';
+const NEWS = [{"id": 25, "date": "2026-11-21", "items": ["สัตว์ในหลักสูตร เป็นสามมิติแบบสีไม้ที่ใช้ชีวิตเองเป็นวง เช่น วัวเดินแล้วก้มกินหญ้า กบพองคอร้องแล้วกระโดด ผีเสื้อบินไปดูดน้ำหวาน งูดินมุดดิน แตะตัวสัตว์แล้วมันตอบสนองเหมือนตัวจริง เช่น วิ่งหนี บินหนี หดเข้าเปลือก พ่นหมึก ลากเพื่อหมุนดูรอบตัว", "เพิ่มสัตว์ที่ข้อสอบแข่งขันและสอบเข้าชอบถามอีก 20 ชนิด เช่น ฟองน้ำ ไฮดรา แมงกะพรุน พลานาเรีย ปลิง หมึกยักษ์ ดาวทะเล แมงมุม แมงป่อง ตะขาบ กิ้งกือ ฉลาม ม้าน้ำ โลมา ตุ่นปากเป็ด จิงโจ้ เพนกวิน งูเห่า ใต้ตัวสัตว์ทุกตัวมีบรรทัด จุดเด่น บอกลักษณะที่มักออกสอบ ค้นด้วยคำอย่าง ไม่ใช่แมลง หรือ ออกลูกเป็นไข่ ก็เจอ", "สัตว์ขยับลื่นขึ้น ใช้แรงเครื่องน้อยลงมาก", "เครื่องมือรูปทรงมีแท็บ สัตว์ เรียงตามกลุ่มสัตว์พร้อมภาพเล็กของแต่ละตัว และช่องค้นหา แตะสัตว์แล้วแตะหรือลากบนหน้าเพื่อวาง", "เพิ่มนกที่บินไม่ได้ (นกกระจอกเทศ นกอีมู นกคาสโซวารี นกกีวี) ตัวกินมด ตัวนิ่ม ตัวกินมดหนาม และสัตว์ที่พบบ่อยในสวนสัตว์ (ยีราฟ ม้าลาย สิงโต เสือโคร่ง หมี หมีแพนด้า ฮิปโปโปเตมัส แรด อูฐ กวาง ลิง อุรังอุตัง แมวน้ำ นกยูง นกฟลามิงโก นกแก้ว) รวมเป็น 87 ชนิด", "สัตว์เลี้ยงลูกด้วยน้ำนมและนกแยกเป็นกลุ่มย่อยตามที่เรียน เช่น ออกลูกเป็นไข่ มีกระเป๋าหน้าท้อง มีกีบ กินเนื้อ ไพรเมต นกที่บินไม่ได้", "เพิ่มอีก 16 ชนิด ได้แก่ ม้า หมู แพะ หนู จระเข้ กิ้งก่า วาฬ ปลาดุก ปลาตีน หนอนผีเสื้อ ลูกอ๊อด แมลงวัน ด้วงกว่าง ดอกไม้ทะเล เม่นทะเล นกฮูก", "หาสัตว์ด้วยชื่อไทยในแผ่นแบบจำลอง หมวดชีววิทยา ก็ได้ เลือกสีของสัตว์ได้ที่ปุ่มสามจุด"]}, {"id": 24, "date": "2026-11-21", "items": ["แถบคำสั่งหลังเลือกด้วยบ่วงบาศก์ ปุ่ม ขยับได้ เป็นปุ่มแรกทุกครั้งที่ใช้ได้ ตามด้วยคำสั่งที่ใช้บ่อยกับสิ่งที่เลือกสามปุ่มข้างหน้า ที่เหลืออยู่ในกลุ่ม แปลง เห็นภาพ ตรวจและแก้ จัดวาง แตะกลุ่มแล้วคำสั่งขึ้นในแถบเดิม บน iPad แถบเหลือแถวเดียว บนมือถือสองแถว", "ออร์บิทัล s p d และ sp³ ที่วาดด้วยเครื่องมือรูปทรง เป็นสามมิติแล้ว ลากเพื่อหมุนดูได้ทุกทิศ ใช้สองนิ้วย่อขยาย แตะสองครั้งกลับมุมเดิม", "รูปเวกเตอร์สามมิติ ย่อขยายด้วยสองนิ้วได้ และแตะสองครั้งกลับมุมเดิม", "วาดโครงสร้างเคมีแล้วต่อกันเอง แตะหรือลากจากปลายพันธะเดิมได้พันธะใหม่ที่ต่อกัน ไม่หยิบพันธะเดิมไปแล้ว พันธะที่เริ่มหรือจบใกล้อักษรอะตอมที่เขียนหรือพิมพ์ ต่อที่ขอบอักษรนั้น มุมพันธะเข้า 109.5 120 หรือ 180 องศาเมื่อลากใกล้ แตะกลางด้านของวงได้วงที่เชื่อมกัน ทั้งโมเลกุลย้ายไปด้วยกัน กด ไม่ต่อกัน ที่ขึ้นด้านล่างถ้าไม่ต้องการให้ต่อ", "ลายมือที่เคยแปลงเป็นตัวพิมพ์แล้ว สร้างรูปและตรวจหน่วยได้ทันที แอปคำนวณเองโดยไม่ต้องรอ AI ทั้งกราฟของฟังก์ชัน เวกเตอร์ และบรรทัดคำนวณ ใช้ได้แม้ยังไม่ได้เชื่อม AI", "เลือกสัญลักษณ์ธาตุ ไอออน หรือการเปลี่ยนระดับพลังงาน เช่น Fe3+ หรือ n = 3 ไป n = 2 แล้วกด สร้างรูป ได้การจัดเรียงอิเล็กตรอน กล่องออร์บิทัล เลขควอนตัม หรือแผนภาพระดับพลังงานพร้อมความยาวคลื่นทันที แอปคำนวณเองไม่ใช้ AI และตรวจการจัดเรียงที่เขียนได้", "แก้สมการแล้วกด แสดงวิธีทำ ได้ขั้นตอนทันทีโดยไม่ต้องรอ AI ทั้งสมการเชิงเส้น สมการกำลังสอง ระบบสมการสองและสามตัวแปร และอนุพันธ์กับปริพันธ์ของพหุนาม วางลงหน้าได้", "เลือกค่าที่ให้ของสามเหลี่ยม ตัวต้านทานที่ต่ออนุกรมหรือขนาน หรือแรงที่บอกขนาดและทิศ แล้วกด สร้างรูป ได้รูปตามมาตราส่วนพร้อมค่าที่คำนวณทันทีโดยไม่ใช้ AI", "เลือกชื่อสาร สูตร หรือสมการเคมี เช่น เอทานอล หรือ CH4 + 2O2 -> CO2 + 2H2O แล้วกด สร้างรูป ได้โครงสร้างโมเลกุลทันทีจากตารางสารในแอปโดยไม่ใช้ AI", "หน้าที่พิมพ์ชื่อหัวข้อในหลักสูตร กด หาสื่อ แล้วได้ภาพ GIF และวิดีโอของหัวข้อนั้นทันทีโดยไม่ต้องรอ AI", "พิมพ์โจทย์การเคลื่อนที่ เช่น ขว้างลูกบอล 20 m/s ทำมุม 30 องศา ในแผ่นแบบจำลอง ได้แบบจำลองที่ขยับได้ทันทีพร้อมเวลา ระยะ และจุดสูงสุดที่คำนวณแล้ว โดยไม่ใช้ AI", "ออร์บิทัลสามมิติแบบไม่มีกรอบ แตะปุ่มสามจุดแล้วเลือกคู่สีของสองเฟสได้ห้าแบบ และปุ่มย่อขยายจางหายเองเมื่อไม่ได้ใช้"]}, {"id": 20, "date": "2026-11-20", "items": ["ต่อสาย จอสะอาด แบบ ทั้งหน้า เห็นหน้าครบถึงขอบล่าง พอดีความสูงจอ และพื้นรอบหน้าเป็นสีดำ โปรเจกเตอร์จึงฉายแสงเฉพาะหน้ากระดาษ"]}, {"id": 19, "date": "2026-11-20", "items": ["ขยายหน้าจออยู่ มีปุ่ม หน้าใหม่ ข้างเลขหน้าที่มุมล่าง แตะครั้งเดียวได้หน้าใหม่ต่อจากหน้านี้ ขยายเท่าเดิม พร้อมเขียนที่มุมบนซ้าย"]}, {"id": 18, "date": "2026-11-19", "items": ["เขียนตอนขยายหน้าจอ เส้นไม่หดตรงมุมเมื่อยกปากกาแล้ว ตัวอักษรอยู่ตรงที่เขียนเหมือนตอนกำลังเขียน", "ขยายหน้าจอแล้วพักปากกาครู่หนึ่งขณะเขียน ตัวอักษรไม่ถูกเปลี่ยนเป็นรูปทรงอีก วาดค้างไว้ให้เป็นรูปทรงยังใช้ได้กับรูปที่ใหญ่กว่าลายมือบนหน้า", "ห้องเรียนสดที่ครูเปิด PDF แอปของนักเรียนไม่ปิดเองเพราะหน่วยความจำเต็มอีก"]}, {"id": 17, "date": "2026-11-18", "items": ["มอบหมายการบ้าน กดปุ่มแล้วขึ้น กำลังมอบหมาย และ มอบหมายแล้ว กดซ้ำไม่ได้ จึงไม่มีการบ้านซ้ำ ลิงก์กับ QR เลื่อนขึ้นมาให้เห็นทันที"]}, {"id": 16, "date": "2026-11-18", "items": ["ตั้งค่าคลาวด์ใหม่ ที่เมนู แท็บ บัญชี ซิงก์ และ AI ใช้คลาวด์ BURIN ได้ทันทีโดยไม่ต้องตั้งค่า", "ใช้ Supabase ของตัวเองได้ในหัวข้อ ขั้นสูง และสลับกลับมาคลาวด์ BURIN ได้ทุกเมื่อ สมุดทั้งสองที่ไม่หาย"]}, {"id": 15, "date": "2026-11-18", "items": ["ลืมรหัสผ่าน ตั้งรหัสใหม่ได้จากหน้าเข้าสู่ระบบ กด ลืมรหัสผ่าน แล้วทำตามอีเมลที่ได้รับ", "สมัครบัญชีใหม่แล้วยืนยันอีเมลได้ในแอป และกดส่งอีเมลยืนยันอีกครั้งได้"]}, {"id": 14, "date": "2026-11-18", "items": ["ห้องเรียนสดที่ลืมปิดปิดเอง เมื่อกลับมาที่แอปหลังห่างไปเกิน 1 ชั่วโมง ห้องไม่เปิดต่อเองและไม่ส่งสิ่งที่เขียนให้ผู้เรียน แตะ เปิดห้องเดิมอีกครั้ง ได้รหัสเดิม", "ห้องที่ไม่มีผู้เรียนและครูไม่ได้ใช้แอปนาน 30 นาทีปิดเอง มีแถบบอกก่อน 1 นาที ครูที่กำลังสอนห้องไม่ปิด แม้ผู้เรียนล็อกจอ", "ปิดห้องแล้วผู้เรียนยังส่งการบ้านได้ถึงเวลาที่กำหนด และเห็นปุ่มไปที่งานของฉัน"]}, {"id": 13, "date": "2026-11-17", "items": ["ข้อความที่พิมพ์ไม่ต้องรอ AI สมการที่พิมพ์ เช่น y = 2x + 1 สร้างกราฟได้ทันที ตารางที่พิมพ์เป็นข้อมูลได้ทันที และตรวจหน่วยของบรรทัดคำนวณที่พิมพ์ได้ทันที ใช้ได้แม้ไม่มีอินเทอร์เน็ต", "วาดใหม่ จัดเส้นตรง สี่เหลี่ยม วงกลม ในภาพร่างให้เรียบร้อยทันทีโดยไม่ใช้ AI ตัวอักษรยังเป็นลายมือเดิม ถ้าต้องการให้แก้ตามเนื้อหา กด ให้ AI วาดใหม่ตามเนื้อหา", "หลังทำแบบฝึก บทที่ยังอ่อนบอกชนิดข้อที่พลาด และความเข้าใจที่ควรแก้จากตัวเลือกที่ตอบ"]}, {"id": 12, "date": "2026-11-17", "items": ["ลายมือที่ AI อ่านแล้วไม่ต้องอ่านซ้ำ แปลงเป็นตัวพิมพ์ แก้สมการ สร้างรูป ตรวจหน่วย และสร้างโจทย์ จากลายมือเดิมใช้คำที่อ่านไว้ เร็วขึ้นและไม่ส่งภาพซ้ำ ถ้าอ่านผิด สั่งงานเดิมอีกครั้ง AI จะอ่านใหม่", "ค้นหาในทุกสมุดพบลายมือที่ AI เคยอ่านแล้วด้วย"]}, {"id": 11, "date": "2026-11-17", "items": ["ทดลองวางวัตถุสามมิติบนโต๊ะจริง (AR) ได้ที่ ปุ่ม สมุดทั้งหมด แท็บ ภาษา การเขียน และจอ หัวข้อ ลองดูในห้องจริง ใช้ได้บน iPad และ iPhone แอปสร้างไฟล์ในเครื่องเอง ไม่ใช้ AI"]}, {"id": 10, "date": "2026-11-17", "items": ["คอมที่ต่อจอที่สอง เลือก จอที่สอง ผู้ชมไม่เห็นแถบ ในเมนู นำเสนอ ครูใช้ได้ทุกคำสั่ง จอใหญ่เห็นแต่หน้ากระดาษ ไม่ต้องใช้อินเทอร์เน็ต", "ระหว่างเปิดจอผู้ชม ครูมีแถบเล็ก จอผู้ชม เลือกให้จอใหญ่เห็นทั้งหน้า พักจอ หรือปิด (ปุ่ม B บนคีย์บอร์ดหรือรีโมตก็พักจอได้)", "ต่อ iPad ออกทีวีด้วยสาย ใช้ ต่อสาย จอสะอาด ในเมนู นำเสนอ (ปุ่ม สอนและนำเสนอ)", "เริ่มแล้วจอเห็นแต่หน้ากระดาษ ไม่มีแถบหรือปุ่มใดขึ้นเลย ทั้งบน iPad และทีวี", "ก่อนเริ่ม เลือกปากกาให้แต่ละขอบจอ (สี ไฮไลต์ ยางลบ หรือเลเซอร์) ระหว่างนำเสนอ แตะขอบจอด้วยนิ้วเพื่อหยิบปากกาของขอบนั้น", "เลือกได้ว่าให้เห็นทั้งหน้า และเริ่มด้วยม่านบังครึ่งล่างที่ใช้นิ้วลากลงเพื่อเปิดทีละบรรทัด", "แตะค้างสามนิ้ว 1 วินาที เพื่อออก ใช้รีโมตนำเสนอเปลี่ยนหน้า ปุ่ม B พักจอ ปุ่ม Esc ออก", "เมนู นำเสนอ เหลือสามข้อ จอแสดงผลแบบนักเรียนบนอีกเครื่องและบนจอที่สองรวมเป็นข้อเดียว"]}, {"id": 9, "date": "2026-11-17", "items": ["แถบบนเหลือปุ่มน้อยลง ปุ่มที่ใช้นาน ๆ ครั้ง รวมอยู่ในสองกลุ่ม", "ปุ่ม ต่อยอดจากหน้า มี แปลงเป็นตัวพิมพ์ สร้างโจทย์ และ ชุดโจทย์", "ปุ่ม สอนและนำเสนอ มี ห้องสด นำเสนอ และ ห้องเรียนและโจทย์ (ฝั่งนักเรียนชื่อ ห้องเรียน มี สแกน QR และ เข้าห้องเรียน ด้วย)", "เลือกด้วยบ่วงแล้ว แถบเหนือส่วนที่เลือก แสดงคำสั่งที่ใช้บ่อยก่อน คำสั่งอื่นอยู่ที่ปุ่ม เพิ่มเติม", "หาคำสั่งไม่เจอ พิมพ์ชื่อในช่องค้นหาที่เมนู เช่น PDF หรือ สามมิติ แล้วแตะคำสั่งที่ขึ้นมา"]}, {"id": 8, "date": "2026-11-16", "items": ["สร้างโจทย์ด้วย AI จากกี่หน้าก็ได้ ทั้งเล่ม ตามบท หรือเป็นช่วงหน้า", "อยู่ที่ปุ่ม สร้างโจทย์ด้วย AI หัวข้อ หน้าที่ใช้สร้างโจทย์ แตะ ทั้งเล่ม หรือแตะชื่อบท หรือใส่ช่วงหน้า แล้วกด เลือกช่วงนี้", "หน้าที่ AI อ่านแล้ว เก็บไว้ในเครื่องนี้ ครั้งต่อไป ไม่ต้องอ่านซ้ำ จึงเร็วขึ้น และประหยัดค่า AI"]}, {"id": 7, "date": "2026-11-16", "items": ["ลบผิด หรือเขียนทับผิด ดึงหน้า เมื่อไม่กี่นาทีก่อน หรือเมื่อวาน กลับมาได้", "อยู่ที่ ลิ้นชักหน้า แตะแถบ หน้านี้ ด้านล่าง แล้วกดปุ่ม รุ่นก่อนของหน้านี้ เลือกรุ่น ดูภาพหน้าก่อน แล้วกด คืนหน้าเป็นรุ่นนี้", "หน้าก่อนคืน ถูกเก็บไว้ด้วย จึงย้อนกลับได้ แอปเก็บรุ่นก่อน ไว้ในเครื่องนี้ 30 วัน"]}, {"id": 6, "date": "2026-11-16", "items": ["บัญชีคลาวด์ ส่งออกข้อมูลทั้งบัญชี เป็นไฟล์เดียวได้ ทั้งสมุด หน้า หมึก รูป วิดีโอ เลคเชอร์ที่แชร์ การบ้าน และงานที่นักเรียนส่ง", "อยู่ที่ เมนู แท็บตั้งค่า หัวข้อ ข้อมูลทั้งบัญชี กดปุ่ม ส่งออกทั้งบัญชี", "นำเข้าไฟล์นี้ ในบัญชีอื่น หรือเครื่องใหม่ได้ การนำเข้า เพิ่มเฉพาะส่วนที่ยังไม่มี ไม่ทับ และไม่ลบ ของที่มีอยู่"]}, {"id": 5, "date": "2026-11-15", "items": ["ลบสมุด หรือลบหน้าแล้ว ยังกู้คืนได้ ภายใน 30 วัน สิ่งที่ลบ ไปอยู่ในถังขยะ ก่อนถูกลบจริง", "เปิดถังขยะ ได้ที่ เมนู สมุดทั้งหมด ปุ่มถังขยะ ใต้รายการสมุด กดกู้คืน แล้วสมุดกลับไป ที่เดิม หน้ากลับไป ตำแหน่งเดิม ในสมุด", "ลบถาวร ทีละรายการ หรือลบทั้งหมด ในถังขยะได้ ครบ 30 วัน แล้วแอปลบให้เอง"]}, {"id": 4, "date": "2026-11-15", "items": ["สำรองสมุด ทั้งหมดเป็นไฟล์เดียว ได้ที่ เมนู แท็บตั้งค่า หัวข้อ สมุดในเครื่องนี้ ไฟล์เก็บสมุดทุกเล่ม รูป และวิดีโอ ในเครื่องนี้", "นำสมุดคืน จากไฟล์สำรอง ได้ที่เดียวกัน การนำคืน เพิ่มเฉพาะส่วน ที่ยังไม่มีในเครื่อง ไม่ทับ และไม่ลบ ของที่มีอยู่", "แอปขอให้เบราว์เซอร์ เก็บสมุดในเครื่อง ไว้ถาวร และเตือนให้สำรองสมุด ที่หน้ารายการสมุด เมื่อสมุดเปลี่ยนไป ตั้งแต่สำรองครั้งล่าสุด", "บน iPad และ iPhone ใน Safari แอปชวนให้ เพิ่มลงหน้าจอโฮม เพื่อไม่ให้ Safari ลบสมุด ที่ไม่ได้เปิดนาน ให้สำรองสมุดก่อน แล้วนำคืน ในแอปบนหน้าจอโฮม"]}, {"id": 3, "date": "2026-11-14", "items": ["สารบัญ ของสมุด แตะปุ่มหน้าในสมุด ที่มุมซ้ายบน แล้วเลือก สารบัญ จะเห็นหัวเรื่อง ของทุกหน้า แตะหัวเรื่อง เพื่อไปที่หน้านั้น ได้ทันที", "หัวเรื่อง มาจากข้อความที่พิมพ์ไว้ บนสุดของหน้า หรือบรรทัด ที่ขึ้นต้นด้วย ## ลายมือที่ยังไม่ได้แปลง เป็นตัวพิมพ์ ไม่ขึ้นในสารบัญ", "ที่คั่นหน้า แตะ ปักที่คั่นหน้านี้ ในหน้าสารบัญ แล้วตั้งชื่อเองได้ หน้าที่มีที่คั่น จะมีริบบิ้นสีแดง ที่ภาพหน้า", "ที่คั่นหน้า อยู่กับสมุด ของเราเท่านั้น ผู้เรียนในห้องสด ไม่เห็นที่คั่นหน้า ของครู"]}, {"id": 2, "date": "2026-11-14", "items": ["ค้นหาข้อความ ในทุกสมุดได้แล้ว พิมพ์คำในช่องค้นหาที่เมนู แอปจะค้นทั้งชื่อสมุด ข้อความที่พิมพ์ ลายมือที่แปลงเป็นตัวพิมพ์แล้ว หัวเรื่องของหน้า และข้อความในกล่องต่าง ๆ", "แตะผลการค้นหา เพื่อไปที่หน้านั้น กล่องที่มีคำนั้นจะเรืองแสงสักครู่ ให้เห็นตำแหน่ง", "พิมพ์คำไทย ติดกันหรือเว้นวรรค ก็ค้นเจอเหมือนกัน การค้นหาอ่านสมุดอย่างเดียว ไม่แก้ไขอะไรในสมุด"]}, {"id": 1, "date": "2026-11-13", "items": ["ดูเวอร์ชันของแอปได้ที่เมนู แท็บตั้งค่า หัวข้อเกี่ยวกับแอป", "เมื่อมีเวอร์ชันใหม่ระหว่างใช้งาน แอปจะไม่รีโหลดเอง รวมถึงจอผู้ชม เวอร์ชันใหม่จะมีผล เมื่อเปิดแอปครั้งถัดไป หรือเมื่อแตะแถบ มีเวอร์ชันใหม่", "หน้าที่เปิดค้างไว้ ใช้ส่วนต่าง ๆ ของแอป จากเวอร์ชันเดียวกับตัวเองเสมอ ไม่ปนกับเวอร์ชันใหม่", "เมื่อแอปทำงานผิดพลาด แอปจะส่งรายงาน ให้ผู้พัฒนา โดยส่งเฉพาะ ข้อความแจ้งข้อผิดพลาด ตำแหน่งในโค้ด รุ่นเครื่อง และเวอร์ชันของแอป ไม่ส่งเนื้อหาสมุด ชื่อ หรืออีเมล"]}];
 const TH_MON = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
 function thDay(iso) { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || ''); return m ? (+m[3]) + ' ' + TH_MON[+m[2] - 1] + ' ' + (+m[1] + 543) : ''; }
 function renderVersion() { const el = $('#verNote'); if (el) el.innerHTML = 'เวอร์ชัน <span class="nowrap">' + esc(VERSION.startsWith('__') ? 'ในเครื่อง (ยังไม่ได้ประกอบ)' : VERSION) + '</span>'; }

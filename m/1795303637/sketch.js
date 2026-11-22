@@ -715,6 +715,9 @@ function openSketch(fromItem) {
     const search = async () => {
       const t = q('q').value.trim(); if (!t) return; const box = sh.querySelector('.skres'); waitLine(box, 'กำลังค้นใน Wikimedia Commons');
       let res = []; try { res = await commonsSearch(t, 'bitmap', 12); } catch (e) { res = []; }
+      /* task 8.19: a Thai topic of the curriculum is searched with its English words from the app's table first, no AI */
+      const loc = !res.length && /[฀-๿]/.test(t) && typeof mdTopic === 'function' ? mdTopic(t) : null;
+      if (loc) { try { res = await commonsSearch(loc.en, 'bitmap', 12); } catch (e) { res = []; } }
       if (!res.length && /[฀-๿]/.test(t) && AI.anyReady()) { try { const r = await AI.run('gen', 'Translate this picture search to short English keywords only: ' + t, { noCtx: true, subj: true, maxTokens: 60 }); const en = String(r.text || '').trim().split('\n')[0].slice(0, 60); if (en) res = await commonsSearch(en, 'bitmap', 12); } catch (e) { /* keep empty */ } }
       box.innerHTML = res.length ? '' : '<div class="note small">ไม่พบภาพ ลองคำค้นภาษาอังกฤษ หรือเลือกรูปจากเครื่อง</div>';
       const grid = document.createElement('div'); grid.className = 'skgrid'; box.appendChild(grid);
