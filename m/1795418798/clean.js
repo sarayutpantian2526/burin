@@ -43,6 +43,9 @@ function cleanCss() {
     '.item.teacher', '.item .qkey', '.item .tgrab', '.item .tsize', '.lifedot', '.lifepanel', '.cleandot', '.lockban', '.diarybar', '#sel', '.peek', '.fpeek'];
   st.textContent = off.map((s) => 'body.clean ' + s).join(', ') + ' { display: none !important; }\n'
     + 'body.clean .item.qon { outline: none !important; }\n'
+    /* on a projector black is no light: only the page is lit, not a grey 4:3 box (the browser's 8 px body margin goes too) */
+    + 'body.clean { margin: 0 !important; background: #000 !important; }\n'
+    + 'body.clean #viewport { background: #000 !important; border-radius: 0 !important; }\n'
     + '#cleanCover { position: absolute; left: 0; right: 0; bottom: 0; z-index: 4; background: #3A3F4A; background-image: repeating-linear-gradient(135deg, rgba(255,255,255,0.04) 0 12px, rgba(255,255,255,0) 12px 24px); box-shadow: 0 -2px 10px rgba(0,0,0,0.35); touch-action: none; }\n'
     + '#cleanBlank { position: absolute; inset: 0; z-index: 50; background: #000; touch-action: none; }\n'
     + '#cleanSet { position: fixed; inset: 0; z-index: 70; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.45); }\n'
@@ -120,7 +123,9 @@ function cleanPen(k) {
 function cleanFit() {
   if (!CLEAN.on || !CLEAN.set || !CLEAN.set.whole) return;
   const vw = vp.clientWidth, vh = vp.clientHeight, pw = W * S.base, ph = H * S.base; if (!pw || !ph) return;
-  const z = Math.max(0.5, Math.min(1, (vh - 24) / ph, (vw - 24) / pw));
+  /* the whole page always: in iPad Safari (its bars take about 74 points) the old floor of 0.5 cut the bottom of a portrait
+     page off; 12 points above, as topY() gives a page that is turned to */
+  const z = Math.max(0.2, Math.min(1, (vh - 24) / ph, (vw - 24) / pw));
   S.zoom = z; S.tx = (vw - pw * z) / 2; S.ty = Math.max(12, (vh - ph * z) / 2); S.pull = 0;
   applyT(); resizeLater();
 }
