@@ -17,6 +17,10 @@ const scTxt = (t, n) => String(t == null ? '' : t).replace(/[<>]/g, '').slice(0,
 const SC_PAL = ['#2F4BB8', '#C2571A', '#2E8B57', '#7B4FC9', '#D14D8B', '#0E9AA7', '#B8860B', '#5A6472'];
 
 /* clean anything that came from AI or another device before it runs */
+/* the pairs of colours for the two phases of an orbital (blue and orange first, as drawn until now) */
+/* the colours an animal can be drawn in (task 9.10): '' is as in nature, the others colour its body */
+const AN_COLS = [['', 'สีตามธรรมชาติ'], ['#8B5A2B', 'น้ำตาล'], ['#3A3A40', 'ดำ'], ['#ECE6D6', 'ขาว'], ['#5E9E3A', 'เขียว'], ['#2F4BB8', 'น้ำเงิน'], ['#C62828', 'แดง'], ['#F2B630', 'เหลือง']];
+const ORB_COLS = [['#2F4BB8', '#E39B2D', 'น้ำเงินกับส้ม'], ['#C62828', '#2E7D32', 'แดงกับเขียว'], ['#6A1B9A', '#F9A825', 'ม่วงกับเหลือง'], ['#00838F', '#D81B60', 'ฟ้ากับชมพู'], ['#37474F', '#90A4AE', 'เทาเข้มกับเทาอ่อน']];
 function scClean(sp) {
   sp = sp && typeof sp === 'object' ? sp : {};
   const dom = ['phys', 'chem', 'bio', 'math'].includes(sp.domain) ? sp.domain : 'phys';
@@ -126,11 +130,13 @@ function phAdd(b, k, fx, fy) { const o = b.F[k] || (b.F[k] = [0, 0]); o[0] += fx
 /* ---------- a person: the centre of mass moves by mechanics (inverted pendulum when walking, spring-mass when running,
    free flight when jumping, rotation about the feet when falling); arms and legs follow it; the ground force comes
    out of the motion itself: N = m(g + ay), friction = m ax ---------- */
-function psGround(sp, x) { let best = null; for (const s of sp.surfaces) { if (Math.abs(s.y2 - s.y1) > Math.abs(s.x2 - s.x1) * 0.2) continue; const a = Math.min(s.x1, s.x2), b = Math.max(s.x1, s.x2); if (x < a || x > b) continue; const y = s.y1 + (s.y2 - s.y1) * (x - s.x1) / ((s.x2 - s.x1) || 1); if (best == null || y > best) best = y; } return best == null ? 0 : best; }
+function psGround(sp, x) { let best = null; for (const s of sp.surfaces) { if (Math.abs(s.y2 - s.y1) > Math.abs(s.x2 - s.x1) * 0.2) continue; const a = Math.min(s.x1, s.x2), b = Math.max(s.x1, s.x2); if (x < a || x > b) continue; const y = s.y1 + (s.y2 - s.y1) * (x - s.x1) / ((s.x2 - s.x1) || 1); if (s._pg && sp._gl != null && y > sp._gl + sp._gs) continue; /* out on the paper (pagewalk.js): not a line or a box over its head */ if (best == null || y > best) best = y; } return best == null ? 0 : best; }
 function psKin(b, sp, t) {
-  const g = sp.world.g || 9.8, H = b.hgt, Lg = 0.5 * H, ys = Lg * 0.98, x0 = b.x0, gr = psGround(sp, x0);
+  const g = sp.world.g || 9.8, H = b.hgt, Lg = 0.5 * H, ys = Lg * 0.98, x0 = b.x0; let gr = psGround(sp, x0);
   const K = { hx: x0, hy: gr + ys, fl: [x0 - 0.06 * H, gr], fr: [x0 + 0.06 * H, gr], lean: 0, swing: 0, air: false, tuck: 0, phase: 'ยืน', rot: 0 };
   const walkLike = (v, tt, run) => {
+    /* out on the paper (pagewalk.js) the ground is what is under it where it walks now, not where it started */
+    if (sp._gl != null) gr = psGround(sp, x0 + v * tt);
     if (!run) {
       const sl = 0.42 * H, xh = x0 + v * tt, k = Math.floor((xh - x0) / sl), xf = x0 + sl * (k + 0.5), u = ((xh - x0) / sl) - k;
       /* the hip rises over the stance leg and dips when both feet are down: about 5 cm up and down per step */
@@ -322,12 +328,12 @@ function phDraw(c, w, h, sp, st, rt) {
   const ox = pad + ((w - 2 * pad) - (x1 - x0) * sc) / 2, oy = pad + ((h - 2 * pad) - (y1 - y0) * sc) / 2;
   const X = (x) => ox + (x - x0) * sc, Y = (y) => h - oy - (y - y0) * sc; rt.map = { X, Y, sc, x0, y0, ox, oy, h };
   /* fields */
-  const fl = sp.fields;
+  const fl = rt.outPass ? {} : sp.fields; /* the outside pass (scOutDraw): only what moves */
   if (fl.E && (fl.E[0] || fl.E[1])) { c.strokeStyle = 'rgba(224,161,0,0.35)'; c.lineWidth = 1.2; const L = Math.hypot(fl.E[0], fl.E[1]), ux = fl.E[0] / L, uy = fl.E[1] / L; for (let i = 1; i < 6; i++) for (let j = 1; j < 4; j++) { const px = ox + (w - 2 * ox) * i / 6, py = oy + (h - 2 * oy) * j / 4; scArrow(c, px - ux * 14, py + uy * 14, px + ux * 14, py - uy * 14, 'rgba(224,161,0,0.45)', 1.2, 6); } c.fillStyle = '#B07D00'; c.font = '13px Sarabun, sans-serif'; c.fillText('สนามไฟฟ้า E', 10, 18); }
   if (fl.B) { c.fillStyle = 'rgba(14,154,167,0.45)'; c.font = '14px sans-serif'; for (let i = 1; i < 8; i++) for (let j = 1; j < 5; j++) { const px = ox + (w - 2 * ox) * i / 8, py = oy + (h - 2 * oy) * j / 5; c.fillText(fl.B > 0 ? '•' : '×', px - 3, py + 4); } c.fillStyle = '#0B7480'; c.font = '13px Sarabun, sans-serif'; c.fillText('สนามแม่เหล็ก B ' + (fl.B > 0 ? 'พุ่งออกจากจอ' : 'พุ่งเข้าจอ'), 10, fl.E ? 36 : 18); }
   if (fl.central) { const cx = X(fl.central.x), cy = Y(fl.central.y), r = Math.max(6, fl.central.r * sc); const gr = c.createRadialGradient(cx - r * 0.3, cy - r * 0.3, r * 0.1, cx, cy, r); gr.addColorStop(0, '#FFE08A'); gr.addColorStop(1, '#E39B2D'); c.fillStyle = gr; c.beginPath(); c.arc(cx, cy, r, 0, 6.283); c.fill(); if (fl.central.label) { c.fillStyle = '#7A4A0C'; c.font = '13px Sarabun, sans-serif'; c.fillText(fl.central.label, cx + r + 4, cy - r); } }
   /* surfaces with hatching */
-  for (const s of sp.bare ? [] : sp.surfaces) {
+  for (const s of sp.bare || rt.outPass ? [] : sp.surfaces) {
     c.strokeStyle = '#3B4350'; c.lineWidth = 3; c.beginPath(); c.moveTo(X(s.x1), Y(s.y1)); c.lineTo(X(s.x2), Y(s.y2)); c.stroke();
     const L = Math.hypot(X(s.x2) - X(s.x1), Y(s.y2) - Y(s.y1)), n = Math.floor(L / 12), dx = (X(s.x2) - X(s.x1)) / L, dy = (Y(s.y2) - Y(s.y1)) / L;
     c.strokeStyle = 'rgba(59,67,80,0.35)'; c.lineWidth = 1; c.beginPath(); for (let i = 0; i <= n; i++) { const px = X(s.x1) + dx * i * 12, py = Y(s.y1) + dy * i * 12; c.moveTo(px, py); c.lineTo(px - 7 * dy - 5 * dx, py + 7 * dx - 5 * dy); } c.stroke();
@@ -378,8 +384,8 @@ function phDraw(c, w, h, sp, st, rt) {
     if (sp.show.a && b.ax != null) { const as = rt.ascale; if (Math.hypot(b.ax, b.ay) * as > 3) { scArrow(c, bx, by, bx + b.ax * as, by - b.ay * as, SC_COL.a, 2, 8); scLabel(c, 'a', bx + b.ax * as + 4, by - b.ay * as - 4, SC_COL.a); } }
   }
   /* legend */
-  if (sp.show.fbd && used.size && !sp.bare) { let lx = w - 8, ly = 16; c.font = '12px Sarabun, sans-serif'; for (const k of [...used]) { const t = SC_FNAME[k] || k, tw = c.measureText(t).width; c.fillStyle = SC_COL[k] || '#333'; c.fillRect(lx - tw - 18, ly - 8, 10, 3); c.fillStyle = '#3B4350'; c.fillText(t, lx - tw, ly - 3); ly += 16; } }
-  if (sp.show.energy) phEnergy(c, w, h, sp, st);
+  if (sp.show.fbd && used.size && !sp.bare && !rt.outPass) { let lx = w - 8, ly = 16; c.font = '12px Sarabun, sans-serif'; for (const k of [...used]) { const t = SC_FNAME[k] || k, tw = c.measureText(t).width; c.fillStyle = SC_COL[k] || '#333'; c.fillRect(lx - tw - 18, ly - 8, 10, 3); c.fillStyle = '#3B4350'; c.fillText(t, lx - tw, ly - 3); ly += 16; } }
+  if (sp.show.energy && !rt.outPass) phEnergy(c, w, h, sp, st);
 }
 function phEnergy(c, w, h, sp, st) {
   let K = 0, U = 0, Us = 0; const g = sp.world.g;
@@ -547,7 +553,7 @@ function scRuntime(it) {
   return r;
 }
 function scReset(it, r) {
-  const sp = it.spec; r.traces = {}; r.ended = false; r.E0 = null; r.mir = null; r.peek = 0; r.turning = null; r.turned = false; r.bind = null; r.back = null; r.roll = 0; r.lastPos = null;
+  const sp = it.spec; r.traces = {}; r.ended = false; r.E0 = null; r.mir = null; r.peek = 0; r.turning = null; r.turned = false; r.bind = null; r.back = null; r.roll = 0; r.lastPos = null; r.pwSkip = null;
   if (sp.dim === 3) { sc3Reset(sp, r); return; }
   if (sp.domain === 'phys') {
     r.st = phInit(sp);
@@ -561,19 +567,28 @@ function scReset(it, r) {
   } else if (sp.domain === 'math') { r.st = { t: sp.t.min }; }
   else r.st = ptInit(sp);
 }
+/* a drawing that moves by physics, out on the paper (pagewalk.js, switch "pagemove"): the lines and boxes of the page round
+   it are surfaces too, also those drawn after it started; else the model as it was made */
+function scPageSpec(it, r, sp) { if (!(sp.bare || r.pageOut) || !pwOn()) return sp; try { return pwSpec(it, r, sp); } catch (e) { return sp; } }
+/* one frame of a physics model (also driven step by step by the tests): true when it has drawn itself this frame */
+function scPhysTick(it, r, sp, dtw) {
+  if (r.turning != null) { r.turning += dtw / 0.4; if (r.turning >= 0.5 && !r.turned) { ipTurn(it, r); r.turned = true; } if (r.turning >= 1) { r.turning = null; r.turned = false; } scRender(it, r); return true; } if (r.peek) { r.peek -= dtw; if (r.peek <= 0) { r.peek = 0; r.turning = 0; r.turned = false; } scRender(it, r); return true; } const sim = dtw * (sp.speed || 1) * (r.slow ? 0.25 : 1), n = Math.max(1, Math.ceil(sim / 0.004)), spv = scPageSpec(it, r, sp); for (let i = 0; i < n; i++) phStep(spv, r.st, sim / n); for (const b of r.st.bodies) { b.trail.push([b.x, b.y]); if (b.trail.length > 400) b.trail.shift(); }
+      const pick = sp.show.graph; if (pick !== 'none') { r.st.hist.push([r.st.t].concat(r.st.bodies.filter((b) => !b.fixed).map((b) => pick === 'x' ? b.x : pick === 'y' ? b.y : pick === 'vx' ? b.vx : pick === 'vy' ? b.vy : pick === 'grf' ? (b.F.N ? b.F.N[1] : 0) : Math.hypot(b.vx, b.vy)))); if (r.st.hist.length > 600) r.st.hist.shift(); }
+      const up = sp.bare && sp.world.g > 0 && pwOn(); /* out on the paper a body thrown up high comes down again (pagewalk.js) */
+      const [x0, y0, x1, y1] = phBounds(sp, r.st), far = sp.bare ? 0.3 : Math.max(x1 - x0, y1 - y0) * 3; const edge = sp.bare && it.rig && it.rig.edge;
+      if (sp.bare && it.rig && it.rig.kind === 'person') ipSense(it, r);
+      if (edge && edge !== 'stay') ipEdge(it, r, x0, x1);
+      else if (sp.bare && r.st.bodies.some((b) => b.shape === 'person' && (b.x < x0 - 0.5 || b.x > x1 + 0.5))) { r.playing = false; r.ended = true; } if (!r.st.bodies.some((b) => b.shape === 'person') && r.st.bodies.every((b) => b.fixed || b.x < x0 - far || b.x > x1 + far || b.y < y0 - far || (b.y > y1 + far && !up))) { r.playing = false; r.ended = true; }
+  return false;
+}
 function scTick(ts) {
   scnRaf = 0; const dtw = scnLast ? Math.min(0.05, (ts - scnLast) / 1000) : 0.016; scnLast = ts; let any = false;
   for (const [id, r] of SCN) {
     if (!r.playing) continue; const it = findItem(id); if (!it) { r.playing = false; continue; }
     if (!r.cv || !r.cv.isConnected) continue;
     any = true; if (offView(r.cv)) continue; const sp = it.spec;
-    if (sp.dim === 3) { sc3Tick(sp, r, dtw); scRender(it, r); continue; }
-    if (sp.domain === 'phys') { if (r.turning != null) { r.turning += dtw / 0.4; if (r.turning >= 0.5 && !r.turned) { ipTurn(it, r); r.turned = true; } if (r.turning >= 1) { r.turning = null; r.turned = false; } scRender(it, r); continue; } if (r.peek) { r.peek -= dtw; if (r.peek <= 0) { r.peek = 0; r.turning = 0; r.turned = false; } scRender(it, r); continue; } const sim = dtw * (sp.speed || 1) * (r.slow ? 0.25 : 1), n = Math.max(1, Math.ceil(sim / 0.004)); for (let i = 0; i < n; i++) phStep(sp, r.st, sim / n); for (const b of r.st.bodies) { b.trail.push([b.x, b.y]); if (b.trail.length > 400) b.trail.shift(); }
-      const pick = sp.show.graph; if (pick !== 'none') { r.st.hist.push([r.st.t].concat(r.st.bodies.filter((b) => !b.fixed).map((b) => pick === 'x' ? b.x : pick === 'y' ? b.y : pick === 'vx' ? b.vx : pick === 'vy' ? b.vy : pick === 'grf' ? (b.F.N ? b.F.N[1] : 0) : Math.hypot(b.vx, b.vy)))); if (r.st.hist.length > 600) r.st.hist.shift(); }
-      const [x0, y0, x1, y1] = phBounds(sp, r.st), far = sp.bare ? 0.3 : Math.max(x1 - x0, y1 - y0) * 3; const edge = sp.bare && it.rig && it.rig.edge;
-      if (sp.bare && it.rig && it.rig.kind === 'person') ipSense(it, r);
-      if (edge && edge !== 'stay') ipEdge(it, r, x0, x1);
-      else if (sp.bare && r.st.bodies.some((b) => b.shape === 'person' && (b.x < x0 - 0.5 || b.x > x1 + 0.5))) { r.playing = false; r.ended = true; } if (!r.st.bodies.some((b) => b.shape === 'person') && r.st.bodies.every((b) => b.fixed || b.x < x0 - far || b.x > x1 + far || b.y < y0 - far || b.y > y1 + far)) { r.playing = false; r.ended = true; } }
+    if (sp.dim === 3) { if (sc3Tick(sp, r, dtw, it) !== false) scRender(it, r); continue; }
+    if (sp.domain === 'phys') { if (scPhysTick(it, r, sp, dtw)) continue; }
     else if (sp.domain === 'math') { r.st.t += dtw * sp.t.speed * (r.slow ? 0.25 : 1); if (r.st.t > sp.t.max) { if (sp.t.loop) { r.st.t = sp.t.min; r.traces = {}; } else { r.st.t = sp.t.max; r.playing = false; r.ended = true; } } }
     else { const sim = dtw * (r.slow ? 0.25 : 1), n = Math.max(1, Math.ceil(sim / 0.01)); for (let i = 0; i < n; i++) ptStep(sp, r.st, sim / n); if (!r.st.lastH || r.st.t - r.st.lastH > 0.2) { r.st.lastH = r.st.t; r.st.hist.push([r.st.t].concat(sp.species.map((_, i) => r.st.P.filter((p) => p.s === i).length))); if (r.st.hist.length > 500) r.st.hist.shift(); } }
     if (sp.bare && r.ended) { /* left the paper: come back to where it was drawn and, like a moving picture, play again */ scReset(it, r); r.playing = animOn(); const pb = itemsEl.querySelector('.item[data-id="' + id + '"] [data-s="play"]'); if (pb) pb.textContent = r.playing ? 'หยุด' : 'เล่น'; }
@@ -581,20 +596,46 @@ function scTick(ts) {
   }
   if (any) scnRaf = requestAnimationFrame(scTick); else scnLast = 0;
 }
+/* a model of bodies (2D physics, pagewalk.js switch "pagemove"): drawn on a canvas over its box that reaches as far as its
+   bodies go, so a ball thrown out of the box is seen whole on the page. Inside its box everything is drawn as before; outside
+   it only what moves (bodies, their arrows, trails, ropes and springs), so the ground and fields of the model stay in its box.
+   Without a frame (it.fr 0, the usual for a new one) the lines and boxes of the page are surfaces for its bodies too */
+function scOutDraw(it, r, w, h, ah) {
+  const cv = r.cv, d = cv.parentNode, ov = r.ov, sp = it.spec; if (!d) { phDraw(cv.getContext('2d'), w, ah, sp, r.st, r); return; }
+  const bx = (it.x || 0) + d.clientLeft + cv.offsetLeft, by = (it.y || 0) + d.clientTop + cv.offsetTop; r.org = [bx, by];
+  /* the window: the box and every body where it was last drawn, with room for its arrows, on the page */
+  let x0 = bx, y0 = by, x1 = bx + w, y1 = by + h; const mp = r.map;
+  if (mp) for (const b of r.st.bodies) { if (b.fixed) continue; const X = bx + mp.X(b.x), Y = by + mp.Y(b.y), m = 160; x0 = Math.min(x0, X - m); x1 = Math.max(x1, X + m); y0 = Math.min(y0, Y - m); y1 = Math.max(y1, Y + m); for (const p of sp.show.trail ? b.trail : []) { const tx = bx + mp.X(p[0]), ty = by + mp.Y(p[1]); x0 = Math.min(x0, tx - 4); x1 = Math.max(x1, tx + 4); y0 = Math.min(y0, ty - 4); y1 = Math.max(y1, ty + 4); } }
+  const q = 64; x0 = Math.max(Math.min(bx, 0), Math.floor(x0 / q) * q); y0 = Math.max(Math.min(by, 0), Math.floor(y0 / q) * q); x1 = Math.min(Math.max(bx + w, W), Math.ceil(x1 / q) * q); y1 = Math.min(Math.max(by + h, H), Math.ceil(y1 / q) * q);
+  const ww = x1 - x0, hh = y1 - y0, k = [x0, y0, ww, hh].join();
+  if (ov._k !== k) { ov._k = k; ov.style.left = (x0 - (it.x || 0) - d.clientLeft) + 'px'; ov.style.top = (y0 - (it.y || 0) - d.clientTop) + 'px'; ov.style.width = ww + 'px'; ov.style.height = hh + 'px'; }
+  const dpr = Math.min(3, (window.devicePixelRatio || 1) * Math.max(1, (S.base || 1) * (S.zoom || 1)), Math.sqrt(6e6 / Math.max(1, ww * hh)));
+  if (ov.width !== Math.round(ww * dpr) || ov.height !== Math.round(hh * dpr)) { ov.width = Math.round(ww * dpr); ov.height = Math.round(hh * dpr); }
+  const c = ov.getContext('2d'); c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, ov.width, ov.height); c.setTransform(dpr, 0, 0, dpr, (bx - x0) * dpr, (by - y0) * dpr);
+  c.save(); c.beginPath(); c.rect(0, 0, w, ah); c.clip(); phDraw(c, w, ah, sp, r.st, r); c.restore();
+  c.save(); c.beginPath(); c.rect(x0 - bx, y0 - by, ww, hh); c.rect(0, 0, w, h); c.clip('evenodd'); r.outPass = 1; try { phDraw(c, w, ah, sp, r.st, r); } finally { r.outPass = 0; } c.restore();
+}
 function scRender(it, r) {
   const cv = r.cv; if (!cv) return; const sp = it.spec;
-  const w = cv.clientWidth || 520, h = cv.clientHeight || 320, dpr = Math.min(4, (window.devicePixelRatio || 1) * Math.max(1, (S.base || 1) * (S.zoom || 1)));
+  if (sp.animal && r.box && r.box.isConnected) return anRender(it, r);
+  let w = cv.clientWidth || 520, h = cv.clientHeight || 320; const dpr = Math.min(4, (window.devicePixelRatio || 1) * Math.max(1, (S.base || 1) * (S.zoom || 1)), sp.animal ? Math.sqrt(1.2e6 / Math.max(1, w * h)) : 4); /* an animal moves all the time: its canvas has at most 1.2 million pixels */
   if (cv.width !== Math.round(w * dpr) || cv.height !== Math.round(h * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); }
   let c = cv.getContext('2d');
-  if (sp.bare) { const cap = Math.min(dpr, Math.sqrt(9e6 / Math.max(1, w * h))); if (cv.width !== Math.round(w * cap) || cv.height !== Math.round(h * cap)) { cv.width = Math.round(w * cap); cv.height = Math.round(h * cap); } c.setTransform(cap, 0, 0, cap, 0, 0); c.clearRect(0, 0, w, h); }
+  /* a drawing moving by physics, out on the paper (pagewalk.js): its canvas covers the page from the top, so a body that
+     goes up past where its box begins (thrown high, up onto a line) is still drawn whole; the world is mapped as before */
+  let pwTop = 0;
+  if (sp.bare && pwOn()) { pwTop = Math.max(0, Math.round(it.y || 0)); const full = pwTop + (it.h || 400), k = pwTop + ':' + full; if (cv._pwb !== k) { cv._pwb = k; cv.style.marginTop = -pwTop + 'px'; cv.style.setProperty('height', full + 'px', 'important'); } h = full; } /* drawn up over the top of its box; its box keeps its height (a negative margin) */
+  else if (sp.bare && cv._pwb) { cv._pwb = null; cv.style.marginTop = ''; cv.style.removeProperty('height'); }
+  if (sp.bare) { const cap = Math.min(dpr, Math.sqrt(9e6 / Math.max(1, w * h))); if (cv.width !== Math.round(w * cap) || cv.height !== Math.round(h * cap)) { cv.width = Math.round(w * cap); cv.height = Math.round(h * cap); } c.setTransform(cap, 0, 0, cap, 0, 0); c.clearRect(0, 0, w, h); if (pwTop) { c.translate(0, pwTop); h -= pwTop; } }
   else if (sp.clean) { c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, cv.width, cv.height); c.setTransform(dpr, 0, 0, dpr, 0, 0); }
+  else if (r.pageOut) { c.setTransform(dpr, 0, 0, dpr, 0, 0); c.clearRect(0, 0, w, h); } /* frameless out on the paper: the page shows through */
   else { c.setTransform(dpr, 0, 0, dpr, 0, 0); c.fillStyle = '#FFFFFF'; c.fillRect(0, 0, w, h); }
   if (sp.dim === 3) { if (sc3Render(c, w, h, sp, r) === false) loadLib('math').then(() => scRender(it, r)).catch(() => {}); if (r.ro) r.ro.innerHTML = (r.read || []).map(([k, v]) => '<span><b>' + esc(String(k)) + '</b> ' + esc(String(v)) + '</span>').join(''); return; }
   if (sp.domain === 'phys') {
     const gh = sp.show.graph !== 'none' && r.showGraph && !sp.bare ? Math.round(h * 0.28) : 0, ah = h - gh;
     const span = Math.min(sp.world.w, sp.world.h), pxPerM = Math.min((w - 32) / sp.world.w, (ah - 32) / sp.world.h);
     r.fscale = (span * 0.22 * pxPerM) / (r.fmax || 1); r.vscale = (span * 0.25 * pxPerM) / (r.vmax || 1); r.ascale = (span * 0.22 * pxPerM) / Math.max(sp.world.g || 1, 1e-9);
-    phDraw(c, w, ah, sp, r.st, r);
+    if (!sp.bare && r.ov && r.ov.isConnected && pwOn()) scOutDraw(it, r, w, h, ah); else phDraw(c, w, ah, sp, r.st, r);
     const live = r.st.bodies.filter((b) => !b.fixed);
     r.read = [['t', fmtNum(+r.st.t.toFixed(2)) + ' s']].concat(live.slice(0, 3).map((b) => [b.label, 'v = ' + fmtNum(+Math.hypot(b.vx, b.vy).toFixed(2)) + ' m/s' + (b.ax != null ? ', a = ' + fmtNum(+Math.hypot(b.ax, b.ay).toFixed(2)) + ' m/s²' : '')]));
     for (const b of live.filter((x) => x.shape === 'person').slice(0, 2)) { const N = b.F.N ? b.F.N[1] : 0; r.read.push([b.label || 'คน', (b.kin ? b.kin.phase + ', ' : '') + 'แรงจากพื้น ' + fmtNum(Math.round(N)) + ' N = ' + fmtNum(+(N / (b.m * (sp.world.g || 9.8))).toFixed(2)) + ' เท่าของน้ำหนัก']); }
@@ -607,6 +648,31 @@ function scRender(it, r) {
   if (r.ro) r.ro.innerHTML = (r.read || []).map(([k, v]) => '<span><b>' + esc(String(k)) + '</b> ' + esc(String(v)) + '</span>').join('');
 }
 
+/* the room round an animal's box where it is still drawn: [left, top, right, bottom], from the size of its box */
+function anMargin(w0, h0) { return [Math.round(w0 * 0.3), Math.round(h0 * 0.6), Math.round(w0 * 0.3), Math.round(h0 * 0.25)]; }
+/* an animal: drawn as w0 x h0 (its box) on a canvas that is bigger by anMargin all round and lies over the box */
+function anRender(it, r) {
+  const cv = r.cv, bx = r.box, sp = it.spec, w0 = bx.clientWidth || 340, h0 = bx.clientHeight || 255, g = r.anGrow || (r.anGrow = [0, 0, 0, 0]), m = anMargin(w0, h0).map((v, i) => v + g[i]), W2 = w0 + m[0] + m[2], H2 = h0 + m[1] + m[3];
+  const pos = [bx.offsetLeft - m[0], bx.offsetTop - m[1], W2, H2].join();
+  if (cv._pos !== pos) { cv._pos = pos; cv.style.left = (bx.offsetLeft - m[0]) + 'px'; cv.style.top = (bx.offsetTop - m[1]) + 'px'; cv.style.width = W2 + 'px'; cv.style.height = H2 + 'px'; }
+  r.anM = m;
+  /* the same sharpness as before for the box itself (at most 1.2 million pixels in it) */
+  const dpr = Math.min(4, (window.devicePixelRatio || 1) * Math.max(1, (S.base || 1) * (S.zoom || 1)), Math.sqrt(1.2e6 / Math.max(1, w0 * h0)));
+  if (cv.width !== Math.round(W2 * dpr) || cv.height !== Math.round(H2 * dpr)) { cv.width = Math.round(W2 * dpr); cv.height = Math.round(H2 * dpr); }
+  const c = cv.getContext('2d'); c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, cv.width, cv.height);
+  c.setTransform(dpr, 0, 0, dpr, m[0] * dpr, m[1] * dpr);
+  if (!sp.clean) { c.fillStyle = '#FFFFFF'; c.fillRect(0, 0, w0, h0); }
+  sc3Render(c, w0, h0, sp, r);
+  /* it went close to the edge of its canvas (a bird flying off high, a squid's cloud of ink): that side of the canvas grows,
+     and this picture is drawn again on it, so nothing of it is ever cut (owner 22 พ.ย. 2569) */
+  const bb = r.anBB;
+  if (bb && !r.anGrowing) {
+    const room = [m[0] + bb[0], m[1] + bb[2], w0 + m[2] - bb[1], h0 + m[3] - bb[3]], dim = [w0, h0, w0, h0]; let grew = false;
+    for (let i = 0; i < 4; i++) if (room[i] < 8 && g[i] < dim[i] * 2.5) { g[i] += Math.max(dim[i] * 0.3, 20 - room[i]); grew = true; }
+    if (grew) { r.anGrowing = 1; try { anRender(it, r); } finally { r.anGrowing = 0; } return; }
+  }
+  if (r.ro) r.ro.innerHTML = (r.read || []).map(([k, v]) => '<span><b>' + esc(String(k)) + '</b> ' + esc(String(v)) + '</span>').join('');
+}
 /* ---------- the box on the page ---------- */
 function buildScene(d, it, forExport) {
   it.spec = scClean(it.spec);
@@ -615,7 +681,15 @@ function buildScene(d, it, forExport) {
   const head = document.createElement('div'); head.className = 'gh';
   head.innerHTML = '<span></span>' + (forExport ? '' : '<span class="sbtns"><button type="button" data-s="play">เล่น</button><button type="button" data-s="reset">เริ่มใหม่</button><button type="button" data-s="slow" aria-pressed="false">ช้า</button>' + ((it.ink && it.ink.length) || (it.pics && it.pics.length) ? '<button type="button" data-s="back" title="เอาภาพเดิมกลับมาบนหน้า">คืนเป็นภาพวาด</button>' : '') + '</span>');
   head.firstChild.textContent = sp.title; d.appendChild(head);
-  const cv = document.createElement('canvas'); cv.className = 'simcv scncv'; d.appendChild(cv); r.cv = cv;
+  const cv = document.createElement('canvas'); cv.className = 'simcv scncv';
+  /* an animal is seen whole all the time (owner 22 พ.ย. 2569): its box is a place-holder (.anbox) and the canvas lies over
+     it with room all round, so a part that goes past the box is still drawn (anMargin) */
+  if (sp.animal && !forExport) { const bx = document.createElement('div'); bx.className = 'anbox'; d.appendChild(bx); cv.classList.add('anover'); r.box = bx; } else r.box = null;
+  d.appendChild(cv); r.cv = cv;
+  /* a model of bodies (2D physics) is drawn whole on the page, past its box (scOutDraw); without a frame it is out on the
+     paper: the page's lines and boxes are surfaces for its bodies (pagewalk.js, switch "pagemove") */
+  r.ov = null; r.pageOut = false; r.org = null;
+  if (!forExport && sp.domain === 'phys' && sp.dim !== 3 && !sp.bare && pwOn()) { const ov = document.createElement('canvas'); ov.className = 'scnover'; ov.setAttribute('aria-hidden', 'true'); d.appendChild(ov); r.ov = ov; r.pageOut = d.classList.contains('froff'); r.pwSkip = null; if (r.pageOut) d.classList.add('pageout'); }
   if (!forExport && sp.domain !== 'math') {
     const tg = document.createElement('div'); tg.className = 'scntog';
     const tog = (label, get, set) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'chip'; b.textContent = label; b.setAttribute('aria-pressed', get() ? 'true' : 'false'); b.onclick = () => { const live = findItem(it.id) || it; set(live.spec, !get(live.spec)); b.setAttribute('aria-pressed', get(live.spec) ? 'true' : 'false'); scRender(live, r); savePage(); }; tg.appendChild(b); };
@@ -672,6 +746,8 @@ function buildScene(d, it, forExport) {
   /* a model of orbitals, surfaces or curves can sit on the paper without its box; the box comes back from its small handle */
   const frameSwap = (v) => { const before = clone(S.page.items || []), items = clone(before), x = items.find((t) => t.id === it.id); if (!x) return; x.spec.clean = v; if (v) x.spec.pen = x.spec.pen !== false; setItems(items, before); };
   if (!forExport && !sp.bare && sp.dim === 3 && sp.domain === 'math' && !sp.clean) { const sb0 = head.querySelector('.sbtns'); const nf = document.createElement('button'); nf.type = 'button'; nf.textContent = 'ไม่มีกรอบ'; nf.title = 'วางบนกระดาษแบบไม่มีกรอบ ลงสีแบบสีไม้ ยังหมุนได้'; nf.onclick = () => frameSwap(true); sb0.appendChild(nf); }
+  if (sp.mark === 'orb') d.classList.add('orbmark');
+  if (sp.animal) d.classList.add('animark'); if (sp.animal && typeof anFitBox === 'function') anFitBox(d, it.w); /* an animal (task 9.10): a wide box, it walks about inside */ /* an orbital drawn with the pen tool: a square around its nucleus (task 9.9) */
   if (sp.clean && !forExport) {
     d.classList.add('clean');
     const hb = document.createElement('button'); hb.type = 'button'; hb.className = 'lifedot scnhandle cleandot no-ink'; hb.title = 'ปรับแบบจำลอง'; hb.setAttribute('aria-label', 'ปรับแบบจำลอง'); hb.setAttribute('aria-expanded', r.open ? 'true' : 'false');
@@ -680,11 +756,42 @@ function buildScene(d, it, forExport) {
     const pill = document.createElement('div'); pill.className = 'scnpill cleanpill no-ink'; pill.hidden = !r.open; pill.addEventListener('pointerdown', (e) => e.stopPropagation());
     hb.onclick = (e) => { e.stopPropagation(); r.open = !r.open; pill.hidden = !r.open; hb.setAttribute('aria-expanded', r.open ? 'true' : 'false'); };
     const sb2 = head.querySelector('.sbtns');
-    sb2.querySelectorAll('[data-s="play"],[data-s="reset"],[data-s="slow"]').forEach((x) => { if (!sp.t || !sp.t.speed) x.hidden = true; });
+    sb2.querySelectorAll('[data-s="play"],[data-s="reset"],[data-s="slow"]').forEach((x) => { if (!sp.animal && (!sp.t || !sp.t.speed)) x.hidden = true; });
     const pen = document.createElement('button'); pen.type = 'button'; pen.textContent = sp.pen ? 'สีเรียบ' : 'สีไม้'; pen.onclick = () => { const before = clone(S.page.items || []), items = clone(before), x = items.find((t) => t.id === it.id); if (!x) return; x.spec.pen = !x.spec.pen; setItems(items, before); };
     const fr = document.createElement('button'); fr.type = 'button'; fr.textContent = 'แสดงกรอบ'; fr.onclick = () => frameSwap(false);
     sb2.append(pen, fr);
-    [...d.children].filter((x) => x !== cv).forEach((x) => pill.appendChild(x));
+    /* orbitals: the colours of the two phases, chosen here (owner 21 พ.ย. 2569); one step of undo, like the other buttons */
+    if ((sp.items || []).some((x) => x.type === 'orbital')) {
+      const cr = document.createElement('div'); cr.className = 'orbcols'; cr.setAttribute('role', 'group'); cr.setAttribute('aria-label', 'สีของออร์บิทัล');
+      const cur = (sp.items.find((x) => x.type === 'orbital') || {}).color;
+      for (const [c1, c2, nm] of ORB_COLS) {
+        const b = document.createElement('button'); b.type = 'button'; b.title = nm; b.setAttribute('aria-label', 'สี' + nm); b.setAttribute('aria-pressed', cur === c1 ? 'true' : 'false');
+        b.innerHTML = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 2a8 8 0 0 0 0 16z" fill="' + c1 + '"/><path d="M10 2a8 8 0 0 1 0 16z" fill="' + c2 + '"/></svg>';
+        b.onclick = () => { const before = clone(S.page.items || []), items = clone(before), x = items.find((t) => t.id === it.id); if (!x) return; (x.spec.items || []).forEach((o) => { if (o.type === 'orbital') { o.color = c1; o.col2 = c2; } }); setItems(items, before); };
+        cr.appendChild(b);
+      }
+      sb2.appendChild(cr);
+    }
+    /* an animal (task 9.10): its colour as in nature, or one chosen here for the body; one step of undo */
+    if (sp.animal) {
+      const cr = document.createElement('div'); cr.className = 'orbcols ancols'; cr.setAttribute('role', 'group'); cr.setAttribute('aria-label', 'สีของสัตว์');
+      for (const [c1, nm] of AN_COLS) {
+        const b = document.createElement('button'); b.type = 'button'; b.title = nm; b.setAttribute('aria-label', nm); b.setAttribute('aria-pressed', (sp.col || '') === c1 ? 'true' : 'false');
+        b.innerHTML = c1 ? '<svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="8" fill="' + c1 + '" stroke="rgba(40,44,52,0.35)"/></svg>'
+          : '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 10V2a8 8 0 0 1 7.6 5.5z" fill="#A0663A"/><path d="M10 10l7.6-2.5A8 8 0 0 1 12.5 17.6z" fill="#5E9E3A"/><path d="M10 10l2.5 7.6A8 8 0 0 1 2.4 12.5z" fill="#F2B630"/><path d="M10 10L2.4 12.5A8 8 0 0 1 10 2z" fill="#4C4B52"/></svg>';
+        b.onclick = () => { const before = clone(S.page.items || []), items = clone(before), x = items.find((t) => t.id === it.id); if (!x) return; x.spec.col = c1; setItems(items, before); };
+        cr.appendChild(b);
+      }
+      sb2.appendChild(cr);
+      /* out on the paper (switch onpage): it walks over the whole page, or stays at its place as before; one step of undo */
+      if (typeof flagOn !== 'function' || flagOn('onpage')) {
+        const st = document.createElement('button'); st.type = 'button'; st.className = 'anstay'; st.textContent = sp.stay ? 'เดินทั่วหน้า' : 'อยู่กับที่';
+        st.title = sp.stay ? 'ให้ออกมาเดินบนหน้า ชนกล่องหรือเส้นแล้วหยุดหรือเลี่ยง เดินบนเส้นที่วาดได้' : 'ให้อยู่ตรงนี้ ไม่เดินไปทั่วหน้า';
+        st.onclick = () => { const before = clone(S.page.items || []), items = clone(before), x = items.find((t) => t.id === it.id); if (!x) return; if (x.spec.stay) delete x.spec.stay; else x.spec.stay = true; setItems(items, before); };
+        sb2.appendChild(st);
+      }
+    }
+    [...d.children].filter((x) => x !== cv && x !== r.box).forEach((x) => pill.appendChild(x));
     d.appendChild(hb); d.appendChild(pill);
   }
   if (sp.bare) {
@@ -705,13 +812,16 @@ function buildScene(d, it, forExport) {
     const fold = document.createElement('button'); fold.type = 'button'; fold.textContent = 'ย่อ'; fold.title = 'ย่อแถบนี้ เหลือปุ่มเล็กที่มุมภาพ'; fold.onclick = () => { r.open = false; pill.hidden = true; hb.setAttribute('aria-expanded', 'false'); };
     const del = document.createElement('button'); del.type = 'button'; del.textContent = 'ลบ'; del.onclick = () => { const live = findItem(it.id); if (!live) return; const before = clone(S.page.items || []); setItems(before.filter((t) => t.id !== it.id), before); SCN.delete(it.id); }; sb2.appendChild(del);
     sb2.appendChild(fold);
-    [...d.children].filter((x) => x !== cv).forEach((x) => pill.appendChild(x));
+    [...d.children].filter((x) => x !== cv && x !== r.box).forEach((x) => pill.appendChild(x));
     d.appendChild(hb); d.appendChild(pill);
   }
 }
+/* a model of bodies starts without a frame, out on the paper (owner 22 พ.ย. 2569: no frame by default, only what moves;
+   the frame is the user's choice) */
+function scNoFrame(sp) { return pwOn() && (typeof frameOn !== 'function' || frameOn()) && sp && sp.domain === 'phys' && sp.dim !== 3 && !sp.bare; }
 function insertScene(spec, at) {
   if (!S.page) return; const w = 520; const [x, y] = at || viewSpot(w, 520);
-  addItem({ type: 'scene', spec: scClean(spec), x, y, w });
+  const sp = scClean(spec); addItem(Object.assign({ type: 'scene', spec: sp, x, y, w }, scNoFrame(sp) ? { fr: 0 } : {}));
   toast('วางแบบจำลองแล้ว กดเล่น เปิดปิดแผนภาพแรงและกราฟได้ เลื่อนแถบเพื่อเปลี่ยนค่า', 3000);
 }
 
@@ -1118,7 +1228,9 @@ function motionWords(t) {
    A stick figure is recognised by its shape, so with two drawings the other one is the bird, the car, the ball ... */
 const MV_NOUNS = [['person', /คน|ผู้ชาย|ผู้หญิง|เด็ก|นักเรียน|ครู|ชาย|หญิง/], ['flyer', /นก|ผีเสื้อ|ค้างคาว|เครื่องบิน|แมลง|ผึ้ง/], ['fish', /ปลา/], ['car', /รถ/], ['animal', /หมา|แมว|ม้า|ช้าง|วัว|กระต่าย|กบ|สุนัข/], ['ball', /ลูกบอล|บอล|ก้อน|วงกลม|ลูก/]];
 function motionTargeted(text, pieces) {
-  if (pieces.length < 2) return null;
+  /* out on the paper (pagewalk.js) it can also go to an animal on the page, named in the words ("นกบินโฉบไปที่วัว") */
+  const pageAn = typeof pwOn === 'function' && pwOn() ? pwThings([]).filter((o) => o.title) : [];
+  if (pieces.length < 2 && !pageAn.some((o) => text.indexOf(o.title) > 0)) return null;
   const found = []; for (const [kind, re] of MV_NOUNS) { const m = re.exec(text); if (m) found.push([kind, m.index]); }
   if (!found.length) return null; found.sort((a, b) => a[1] - b[1]);
   const isPerson = (p) => { try { const st = p.refs.map(findStroke).filter(Boolean); if (st.length < 4) return false; const rg = ipRig(st); return !!(rg.headC && rg.legs.filter(Boolean).length === 2); } catch (e) { return false; } };
@@ -1128,6 +1240,7 @@ function motionTargeted(text, pieces) {
   const tm = /(?:ที่|หา|ใส่|ไปยัง|เข้าหา|ถึง|ไล่|ตาม)\s*(?:ตัว)?\s*([^\s]+)/.exec(text.slice(found[0][1] + 1));
   let target = null; if (tm) { const nk = MV_NOUNS.find(([, re]) => re.test(tm[1])); if (nk) target = pick(nk[0], subj); }
   if (!target && found[1]) target = pick(found[1][0], subj);
+  if (!target) { const after = text.slice(found[0][1] + 1); let best = null; for (const o of pageAn) { const i = after.indexOf(o.title); if (i >= 0 && (!best || i < best[0] || (i === best[0] && o.title.length > best[1].title.length))) best = [i, o]; } if (best) target = { n: null, box: best[1].box }; }
   const w = motionWords(text), flyer = found[0][0] === 'flyer' || w.k === 'flap', sub = flyer ? 'flap' : found[0][0] === 'fish' ? 'swim' : found[0][0] === 'animal' ? 'walk4' : found[0][0] === 'person' ? undefined : w.k;
   const plan = pieces.map((p) => ({ n: p.n, group: p.n, k: 'none' }));
   const me = plan.find((q) => q.n === subj.n);
@@ -1165,6 +1278,7 @@ async function motionPlan(text, sp, pieces) {
         + '- "preset": one of these behaviours when it fits well: ' + kinds + '.\n'
         + '- "path": any other movement described (circle around, climb up then come down, jump onto something, wave, spin three times, grow, shrink, go to a place). Give path.keys as a list of key frames {t seconds from start, dx, dy offset in page units from where it is drawn, rot degrees, scale}, first key t 0 with dx 0 dy 0, and loop true or false; path.anim is the behaviour the body keeps doing while it follows the path (flap for a bird beating its wings, walk4, swim, wiggle, or none). To go to another piece (swoop at it, run to it, chase it), aim the keys at that piece using the boxes above. Use enough keys (6 to 20) for a smooth natural motion and keep it on the page.\n'
         + 'Only the pieces the teacher asks to move should move; every other piece gets mode "none" (it may still react when something hits it).\n'
+        + (typeof pwOn === 'function' && pwOn() ? 'Out on the page every moving thing (presets with touch true, and physics) by itself walks on the drawn lines and on the top of boxes, turns back at the side of a box or a steep line, and meets the animals and other moving things as the real thing would (a bird flies off, a car stops and waits, a ball is pushed along). So prefer a preset or physics with touch true when it should just live and move about on the page; use path only for a route the teacher asks for. A path is followed as given, but waits while an animal or a box is in its way, and walks on the lines under it when it goes along the ground. Other things on the page now (page units): ' + (pwThings(sp.items).map((o) => o.what + ': x ' + o.box[0] + ' to ' + o.box[2] + ', y ' + o.box[1] + ' to ' + o.box[3]).join('; ') || 'none') + '. To go to one of them (an animal named in the request, for example), aim the path keys at its box.\n' : '')
         + 'A drawn person, face, animal or any thing given a voice (a talking sun, a singing flower) can also show a feeling or make a sound: give "expr" one of shout, talk, laugh, happy, sad, cry, surprise, angry when the teacher asks for it or it clearly fits (shouting, calling out, cheering = shout; speaking, greeting, explaining, singing = talk), even when no mouth or eyes were drawn. The app then draws or redraws the mouth, eyes and eyebrows to match (on the face when there is one, at the front when there is not) and adds sound lines, tears or the like, so the face really changes; pick a body motion that suits it (breathe or wiggle when standing, a path when it goes somewhere). Put all pieces of one person in one group.\n'
         + 'Make every thing, whatever it is, believable with "fx": a list (at most 5) of what the real thing would show while doing what was asked, each {"type", "at", "text"}. type is one of ' + LIFE_FX.join(', ') + ' (sound = sound lines, say = the sound word written by it, mouth = its mouth opening and closing as it makes the sound, notes = music notes, zzz = sleeping, steam = hot steam, drops = dripping water, glow = light, shine = a glint, speed = speed lines, shake = trembling marks). at is front, back, top, bottom, center, mouth, or [u, v] in the piece box (0 to 1 from the drawn left and top, the way it was drawn). text is the Thai sound word for say, at most 8 letters (a dog barking: โฮ่ง!, a car horn: ปี๊น!, a cat: เหมียว, a rooster: เอ้กอี๊!, a bell: กริ๊ง). For example: a dog barking gets mouth at its head, sound and say; a kettle boiling gets steam at the spout; a sleeping cat gets zzz; a singing bird gets notes and mouth; a car racing gets speed and dust; a lamp turned on gets glow. Add nothing that the teacher would not expect.\n'
         + 'Also give "plan": one short Thai sentence saying what will happen, written for the teacher (mention anything you added to make it natural).\n'
@@ -1287,6 +1401,7 @@ async function placeMotion(sp, make, person) {
   const keepImgs = sp.items.map(findItem).filter(Boolean).map(clone);
   const before = clone(S.page.items || []);
   const item = { id: 'i' + uid(), by: DEV, type: 'scene', spec: scClean(spec), x, y, w, ink: sp.ink.slice(0, 400), pics: keepImgs.slice(0, 6) };
+  if (scNoFrame(item.spec)) item.fr = 0;
   const extra = person ? [] : await mvApply(item, {}); delete item.under; if (item.orig) { item.ink = item.orig; delete item.orig; }
   setItems(before.filter((t) => !sp.items.includes(t.id)).concat([item], extra), before);
   clearSel();
@@ -1416,21 +1531,41 @@ function ipSense(it, r) {
   const mv = r.pcx == null ? 0 : cx - r.pcx; r.pcx = cx; if (Math.abs(mv) > 0.01) r.pdir = Math.sign(mv); const dir = r.pdir || 0; if (!dir) return;
   const reach = Math.max(8, bw * 0.25), f0 = dir > 0 ? box[2] : box[0], za = Math.min(f0, f0 + dir * reach), zb = Math.max(f0, f0 + dir * reach);
   const yTop = box[1] + bh * 0.05, feet = box[3];
+  /* out on the paper (pagewalk.js) a person steps up onto what is lower than a small step: that is not in its way */
+  const low = typeof pwOn === 'function' && pwOn() ? Math.max(3, 0.15 * (b.hgt || 1.7) * K) : 3;
   let hit = false;
   for (const rr of allStrokes()) {
     const q = sbox(rr.s), w = q[2] - q[0], h = q[3] - q[1], ground = (w > 2.5 * h && w > 60) || w > 260;
-    const yb = ground ? feet - bh * 0.35 : feet - 3;
+    const yb = ground ? feet - bh * 0.35 : feet - low;
     if (q[2] < za || q[0] > zb || q[3] < yTop || q[1] > yb) continue;
     if (typeof lifeTopIn === 'function' && lifeTopIn(rr.s, za, zb, yTop, yb) == null) continue;
     hit = true; break;
   }
   if (!hit) for (const o of (S.page && S.page.items) || []) {
-    if (o.id === it.id || o.lock) continue; const q = o.type === 'life' && o.B && typeof LIFE !== 'undefined' && LIFE.get(o.id) ? lifeBox(o, LIFE.get(o.id)) : (o.spec && o.spec.bare) ? null : itemBox(o);
-    if (!q || q[2] - q[0] < 4) continue; if (q[2] < za || q[0] > zb || q[3] < yTop || q[1] > feet - 3) continue; hit = true; break;
+    if (o.id === it.id || o.lock) continue; const q = o.type === 'life' && o.B && typeof LIFE !== 'undefined' && LIFE.get(o.id) ? lifeBox(o, LIFE.get(o.id)) : (o.spec && o.spec.bare) ? null : (o.spec && o.spec.animal && o.spec.clean && typeof anVis === 'function') ? anVis(o.id) : itemBox(o); /* an animal out on the paper: its body, not its empty box */
+    if (!q || q[2] - q[0] < 4) continue; if (q[2] < za || q[0] > zb || q[3] < yTop || q[1] > feet - (o.spec && o.spec.animal ? 3 : low)) continue; hit = true; break;
   }
   if (!hit) return;
   /* stop, a short startled pause, then turn round (the pause leads into the turn) */
   r.peek = 0.45;
+}
+/* every drawn picture that walks or rolls on the page (a person, a car, a ball): where it is on the page now, for the
+   animals out on the paper (animals.js anActors) */
+function ipActors() {
+  const out = [];
+  for (const [id, r] of SCN) {
+    const it = findItem(id); if (!it || !it.spec || !r.st || !r.st.bodies || !r.cv || !r.cv.isConnected) continue;
+    /* the bodies of a model out on the paper (frameless, pagewalk.js): each one where it is drawn now */
+    if (!it.spec.bare && r.pageOut && r.org && r.map) { for (const b of r.st.bodies) { if (b.fixed || b.shape === 'person') continue; const sc = r.map.sc, R = b.shape === 'ball' ? b.r * sc : Math.max(b.w, b.h) * sc / 2, X = r.org[0] + r.map.X(b.x), Y = r.org[1] + r.map.Y(b.y); out.push({ id, kind: b.shape === 'ball' ? 'ball' : 'thing', box: [X - R, Y - R, X + R, Y + R], vx: (b.vx || 0) * sc }); } continue; }
+    if (!it.spec.bare) continue;
+    const b = r.st.bodies.find((q) => q.shape === 'person' || !q.fixed); if (!b) continue;
+    const K = W / Math.max(1e-6, it.spec.world.w || 1), m = r.mir || { s: 1, O: 0 }, b0 = (it.spec.bodies || []).find((q) => q.id === b.id) || b;
+    if (!r.actB) r.actB = ipBox(it.ink || [], it.pics || []);
+    const B = r.actB, dx = m.s * b.x * K + m.O - b0.x * K, dy = -((b.y || 0) - (b0.y || 0)) * K;
+    const kind = it.rig && it.rig.kind === 'person' ? 'person' : it.rig && it.rig.wheels && it.rig.wheels.length ? 'vehicle' : b.shape === 'ball' ? 'ball' : 'thing';
+    out.push({ id, kind, box: [B[0] + dx, B[1] + dy, B[2] + dx, B[3] + dy], vx: (b.vx || 0) * K * m.s });
+  }
+  return out;
 }
 function ipShift(r, b, dx) { if (b.shape === 'person') b.x0 += dx; b.x += dx; }
 function ipTurn(it, r) {
@@ -1618,7 +1753,11 @@ function renderScenePicker(box, dom, q) {
   const ai = document.createElement('div'); ai.className = 'scnai';
   ai.innerHTML = '<label class="field"><span>ไม่มีแบบที่ต้องการ อธิบายสิ่งที่อยากให้ขยับ แล้วให้ AI สร้าง</span><textarea rows="2" placeholder="เช่น กล่อง 2 kg ถูกดึงด้วยแรง 10 N ทำมุม 30 องศา บนพื้นที่มีแรงเสียดทาน 0.2"></textarea></label><button class="btn solid" type="button">สร้างแบบจำลอง</button><div class="note small">หรือวาดภาพบนหน้า วงรอบด้วยบ่วงเลือก แล้วกด "ขยับได้"</div>';
   ai.querySelector('button').onclick = async () => {
-    const t = ai.querySelector('textarea').value.trim(); if (!t) return; if (!needAI('gen')) return; if (typeof convNote === 'function') convNote('asked', t);
+    const t = ai.querySelector('textarea').value.trim(); if (!t) return;
+    /* task 8.19: a problem of a clear kind (free fall, projectile, incline, spring, pendulum) is built here with its numbers, no AI */
+    let loc = null; try { loc = typeof stScene === 'function' ? stScene(t) : null; } catch (e) { loc = null; }
+    if (loc) { $('#simSheet').hidden = true; insertScene(loc); toast('สร้างแบบจำลองจากตัวเลขในโจทย์แล้ว ' + (loc.note || ''), 4000); return; }
+    if (!needAI('gen')) return; if (typeof convNote === 'function') convNote('asked', t);
     const bt = ai.querySelector('button'); bt.disabled = true;
     const wt = document.createElement('div'); bt.after(wt); waitCard(wt, 'AI กำลังสร้างแบบจำลอง', ['อ่านคำอธิบาย', 'สร้างตามหลักวิชา'], { cancel: false });
     try { const spec = await sceneFromAI(t, null); $('#simSheet').hidden = true; insertScene(spec); } catch (e) { toast('สร้างไม่สำเร็จ ลองอธิบายให้ชัดขึ้น', 3000); }
@@ -1627,7 +1766,7 @@ function renderScenePicker(box, dom, q) {
   const doms = q ? SCENE_SUBJ.map((x) => x[0]) : [dom];
   let shown = 0;
   for (const d of doms) {
-    const list = (SCENE_TPL[d] || []).filter(([name, hint]) => !q || (name + ' ' + hint).toLowerCase().includes(q));
+    const list = (SCENE_TPL[d] || []).filter(([name, hint, , kw]) => !q || (name + ' ' + hint + ' ' + (kw || '')).toLowerCase().includes(q));
     if (q && list.length) { const h = document.createElement('h3'); h.textContent = (SCENE_SUBJ.find((x) => x[0] === d) || [0, ''])[1]; box.appendChild(h); }
     const grid = document.createElement('div'); grid.className = 'simgrid';
     for (const [name, hint, spec] of list) {
@@ -1651,6 +1790,127 @@ function renderScenePicker(box, dom, q) {
   box.appendChild(ai);
 }
 
+/* ---------- a typed problem with a clear form becomes a moving model with no AI (task 8.19 group 6). Built into the part
+   "scene" after scene.js, so it starts from the same ready-made models (SCENE_TPL). The kinds read here:
+     free fall (ตกอิสระ, ปล่อยจากที่สูง h, โยนขึ้น or ลง with a speed), a projectile (โพรเจกไทล์, ขว้าง, ยิง with a
+     speed and an angle, from the ground or from a height), a box on an incline (angle, μ, mass, length), a mass on a
+     spring (k, m, amplitude) and a simple pendulum (length, angle, mass)
+   The numbers of the problem go into the model, and what the laws give is worked out here for the note under it:
+   time of flight, range, highest point, speed at the ground, acceleration down the incline, period.
+   Anything else returns null and the AI makes the model as before. "scenetext" in flags.json turns it off (or
+   "localcalc") ---------- */
+function stOn() { return flagOn('scenetext') && flagOn('localcalc'); }
+const stR = (v) => { if (!isFinite(v)) return String(v); return Number(v.toPrecision(Math.abs(v) >= 100 ? 4 : 3)).toString(); };
+function stClean(t) {
+  return String(t || '').replace(/\$/g, ' ').replace(/\\text\{([^}]*)\}|\\mathrm\{([^}]*)\}/g, '$1$2').replace(/\^\s*\{?\\circ\}?|\\degree/g, '°').replace(/\\(?:theta|mu|,|;| )/g, (m) => (m === '\\theta' ? 'θ' : m === '\\mu' ? 'μ' : ' '))
+    .replace(/[{}]/g, '').replace(/[−–]/g, '-').replace(/[๐-๙]/g, (d) => '๐๑๒๓๔๕๖๗๘๙'.indexOf(d)).replace(/\s+/g, ' ').trim();
+}
+const ST_N = '(\\d+(?:\\.\\d+)?)';
+/* the number written with one of these units, or after one of these names */
+function stVal(t, units, names) {
+  if (names) for (const n of names) { const m = t.match(new RegExp('(?:^|[^A-Za-z])' + n + '\\s*(?:=|:|เท่ากับ|คือ)?\\s*' + ST_N)); if (m) return +m[1]; }
+  if (units) { const m = t.match(new RegExp(ST_N + '\\s*(?:' + units + ')(?![A-Za-z/])')); if (m) return +m[1]; }
+  return null;
+}
+const stSpeed = (t) => stVal(t, 'm/s|เมตร\\s*ต่อ\\s*วินาที|เมตร/วินาที', ['v_?0', 'u', 'v', 'อัตราเร็ว(?:ต้น)?', 'ความเร็ว(?:ต้น)?']);
+const stAngle = (t) => stVal(t, '°|องศา|deg', ['θ', 'มุม']);
+const stLen = (t, names) => stVal(t, null, names);
+const stMeters = (t) => { const m = t.match(new RegExp(ST_N + '\\s*(?:m|เมตร)(?![A-Za-z/])(?!\\s*ต่อ)')); return m ? +m[1] : null; };
+function stG(t) { const g = stVal(t, null, ['g']); return g && g > 0 && g < 50 ? g : 9.8; }
+function stMass(t) { const m = stVal(t, 'kg|กิโลกรัม', ['m']); return m && m > 0 ? m : null; }
+const stCopy = (name) => { for (const k in SCENE_TPL) { const x = (SCENE_TPL[k] || []).find((r) => r[0] === name); if (x) return JSON.parse(JSON.stringify(x[2])); } return null; };
+
+function stProjectile(t, g) {
+  const v = stSpeed(t); if (!v || v <= 0) return null;
+  const horiz = /แนวระดับ|แนวนอน|horizontal/i.test(t);
+  let ang = stAngle(t); if (ang == null) ang = horiz ? 0 : null; if (ang == null || ang < 0 || ang >= 90) return null;
+  const h0 = /สูง|หน้าผา|ตึก|height|cliff|tower/i.test(t) ? (stLen(t, ['h', 'ความสูง', 'สูง']) || stMeters(t) || 0) : 0;
+  const vx = v * Math.cos(ang * Math.PI / 180), vy = v * Math.sin(ang * Math.PI / 180);
+  const tf = (vy + Math.sqrt(vy * vy + 2 * g * h0)) / g, R = vx * tf, H = h0 + vy * vy / (2 * g);
+  const W = Math.max(R * 1.2 + 2, 6), Hh = Math.max(H * 1.35 + 1, 3), r = Math.max(0.12, W / 90);
+  const sp = stCopy('โพรเจกไทล์'); if (!sp) return null;
+  const x0 = h0 > 0 ? 0.08 * W : 0.04 * W;
+  sp.title = 'โพรเจกไทล์ v = ' + stR(v) + ' m/s มุม ' + stR(ang) + '°' + (h0 ? ' จากสูง ' + stR(h0) + ' m' : '');
+  sp.world = { w: W, h: Hh, g };
+  sp.bodies[0] = Object.assign(sp.bodies[0], { r, x: x0, y: h0 + r, vx, vy, e: 0 });
+  /* a rough ground, so the ball stops near where it lands and the range reads from the picture */
+  sp.surfaces = [{ x1: 0, y1: 0, x2: W, y2: 0, mu: 0.9, mus: 1 }].concat(h0 > 0 ? [{ x1: 0, y1: h0, x2: x0 + r * 1.5, y2: h0 }, { x1: x0 + r * 1.5, y1: h0, x2: x0 + r * 1.5, y2: 0 }] : []);
+  sp.params = [{ key: 'A.vx', label: 'ความเร็วต้นแนวราบ (m/s)', min: 0, max: Math.ceil(v * 2), step: 0.5 }, { key: 'A.vy', label: 'ความเร็วต้นแนวดิ่ง (m/s)', min: 0, max: Math.ceil(v * 2), step: 0.5 }, { key: 'g', label: 'g (m/s²)', min: 1, max: 20, step: 0.1 }];
+  sp.note = 'ลอยอยู่ ' + stR(tf) + ' s ตกไกล ' + stR(R) + ' m สูงสุด ' + stR(H) + ' m จากพื้น (คิดในเครื่อง ไม่คิดแรงต้านอากาศ)';
+  return sp;
+}
+function stFall(t, g) {
+  const h0 = stLen(t, ['h', 'ความสูง', 'สูง']) || stMeters(t); if (!h0 || h0 <= 0) return null;
+  const v = stSpeed(t) || 0, up = /ขึ้น|upward|\bup\b/i.test(t), vy = up ? v : -v;
+  const tf = (vy + Math.sqrt(vy * vy + 2 * g * h0)) / g, vEnd = Math.sqrt(vy * vy + 2 * g * h0), H = h0 + (vy > 0 ? vy * vy / (2 * g) : 0);
+  const sp = stCopy('โพรเจกไทล์'); if (!sp) return null;
+  const Hh = H * 1.25 + 1, W = Math.max(4, Hh * 0.6), r = Math.max(0.12, Hh / 60);
+  sp.title = (v ? (up ? 'โยนขึ้น ' : 'ขว้างลง ') + stR(v) + ' m/s ' : 'ปล่อยให้ตก ') + 'จากสูง ' + stR(h0) + ' m';
+  sp.world = { w: W, h: Hh, g };
+  sp.bodies[0] = Object.assign(sp.bodies[0], { r, x: W / 2, y: h0 + r, vx: 0, vy, e: 0 });
+  sp.surfaces = [{ x1: 0, y1: 0, x2: W, y2: 0 }];
+  sp.params = [{ key: 'A.vy', label: 'ความเร็วต้น (m/s) บวกคือขึ้น', min: -Math.ceil(v * 2 + 10), max: Math.ceil(v * 2 + 10), step: 0.5 }, { key: 'g', label: 'g (m/s²)', min: 1, max: 20, step: 0.1 }];
+  sp.show = Object.assign({}, sp.show, { v: true, graph: 'vy' });
+  sp.note = 'ถึงพื้นใน ' + stR(tf) + ' s ด้วยอัตราเร็ว ' + stR(vEnd) + ' m/s' + (vy > 0 ? ' ขึ้นได้สูงสุด ' + stR(H) + ' m จากพื้น' : '') + ' (คิดในเครื่อง ไม่คิดแรงต้านอากาศ)';
+  return sp;
+}
+function stIncline(t, g) {
+  const ang = stAngle(t); if (ang == null || ang <= 0 || ang >= 80) return null;
+  const mu = stVal(t, null, ['μ_?k', 'μ', 'mu', 'สัมประสิทธิ์ความเสียดทาน(?:จลน์)?']) || 0, mus = stVal(t, null, ['μ_?s']) || Math.max(mu, mu * 1.2);
+  const m = stMass(t) || 2, L = stLen(t, ['L', 'ยาว', 'ความยาว']) || 4, th = ang * Math.PI / 180;
+  const d = L * Math.cos(th), hgt = L * Math.sin(th), x1 = 0.5, y1 = 0.4 + hgt, x2 = x1 + d, y2 = 0.4, W = x2 + 1.6, Hh = y1 + 1;
+  const sp = stCopy('พื้นเอียงมีแรงเสียดทาน'); if (!sp) return null;
+  /* the box: a fifth of the way down, its centre half its height above the slope along the normal */
+  const bw = Math.min(0.8, L / 5), bh = bw * 0.6, s = 0.2 * L, px = x1 + s * Math.cos(th), py = y1 - s * Math.sin(th), nx = Math.sin(th), ny = Math.cos(th);
+  sp.title = 'กล่องบนพื้นเอียง ' + stR(ang) + '°';
+  sp.world = { w: W, h: Hh, g };
+  sp.bodies[0] = Object.assign(sp.bodies[0], { m, w: bw, h: bh, x: px + nx * bh / 2, y: py + ny * bh / 2 });
+  sp.surfaces = [{ x1, y1, x2, y2, mu, mus }, { x1: 0, y1: 0.4, x2: W, y2: 0.4, mu: 0.4 }, { x1: W - 0.05, y1: 0.4, x2: W - 0.05, y2: 1.6 }];
+  const slides = Math.tan(th) > mus, a = g * (Math.sin(th) - mu * Math.cos(th));
+  sp.note = slides ? 'กล่องไถลลงด้วยความเร่ง ' + stR(Math.max(0, a)) + ' m/s² (g sinθ − μg cosθ คิดในเครื่อง)' : 'กล่องไม่ไถล เพราะ tanθ = ' + stR(Math.tan(th)) + ' ไม่เกิน μs = ' + stR(mus) + ' (คิดในเครื่อง)';
+  return sp;
+}
+function stSpring(t) {
+  const k = stVal(t, 'N/m|นิวตัน\\s*ต่อ\\s*เมตร', ['k']); if (!k || k <= 0) return null;
+  const m = stMass(t) || 1, A = stVal(t, null, ['A', 'แอมพลิจูด', 'ดึงออก', 'ยืดออก']) || stMeters(t) || 0.4;
+  const sp = stCopy('มวลติดสปริง'); if (!sp) return null;
+  const L0 = 1.8, Aa = Math.min(Math.max(A, 0.05), 1.4);
+  sp.title = 'มวล ' + stR(m) + ' kg ติดสปริง k = ' + stR(k) + ' N/m';
+  sp.world = { w: Math.max(4, 0.2 + L0 + Aa + 1), h: 1.6, g: 9.8 };
+  sp.bodies[0] = Object.assign(sp.bodies[0], { m, x: 0.2 + L0 + Aa });
+  sp.springs[0] = Object.assign(sp.springs[0], { k, L0 });
+  sp.params = [{ key: 'K1.k', label: 'k (N/m)', min: Math.max(1, Math.floor(k / 4)), max: Math.ceil(k * 3), step: Math.max(1, Math.round(k / 40)) }, { key: 'A.m', label: 'มวล (kg)', min: 0.1, max: Math.ceil(m * 4), step: 0.1 }];
+  const T = 2 * Math.PI * Math.sqrt(m / k);
+  sp.note = 'คาบ T = 2π√(m/k) = ' + stR(T) + ' s ความถี่ ' + stR(1 / T) + ' Hz อัตราเร็วสูงสุด ' + stR(Aa * Math.sqrt(k / m)) + ' m/s (คิดในเครื่อง)';
+  return sp;
+}
+function stPendulum(t, g) {
+  const L = stLen(t, ['L', 'ยาว', 'ความยาว', 'เชือกยาว']) || stMeters(t); if (!L || L <= 0) return null;
+  const ang = stAngle(t) || 15, m = stMass(t) || 0.5, th = Math.min(80, Math.max(2, ang)) * Math.PI / 180;
+  const sp = stCopy('ลูกตุ้มอย่างง่าย'); if (!sp) return null;
+  const W = 2.4 * L + 0.8, Hh = L + 0.8, ax = W / 2, ay = Hh - 0.3, r = Math.max(0.05, L / 18);
+  sp.title = 'ลูกตุ้มยาว ' + stR(L) + ' m';
+  sp.world = { w: W, h: Hh, g };
+  sp.bodies[0] = Object.assign(sp.bodies[0], { m, r, x: ax + L * Math.sin(th), y: ay - L * Math.cos(th) });
+  sp.ropes[0] = Object.assign(sp.ropes[0], { ax, ay });
+  const T = 2 * Math.PI * Math.sqrt(L / g);
+  sp.note = 'คาบ T = 2π√(L/g) ≈ ' + stR(T) + ' s (มุมเล็ก คิดในเครื่อง) ความเร็วสูงสุดที่จุดต่ำสุด ' + stR(Math.sqrt(2 * g * L * (1 - Math.cos(th)))) + ' m/s';
+  return sp;
+}
+/* the model for a typed problem, or null (the AI makes it as before) */
+function stScene(text) {
+  if (!stOn()) return null;
+  const t = stClean(text); if (!t || t.length > 400) return null;
+  const g = stG(t);
+  let sp = null;
+  if (/ลูกตุ้ม|pendulum/i.test(t)) sp = stPendulum(t, g);
+  else if (/สปริง|spring/i.test(t)) sp = stSpring(t);
+  else if (/พื้นเอียง|incline|ทางลาด/i.test(t)) sp = stIncline(t, g);
+  else if (/โพรเจกไทล์|projectile|ขว้าง|ยิง|เตะ|ทำมุม/i.test(t) && (stAngle(t) != null || /แนวระดับ|แนวนอน|horizontal/i.test(t))) sp = stProjectile(t, g);
+  else if (/ตกอิสระ|ปล่อย|ตกจาก|free\s*fall|โยน|ขว้างลง|drop|throw/i.test(t)) sp = stFall(t, g);
+  return sp ? scClean(sp) : null;
+}
+
 
 /* ---------- living models in three dimensions: z is up. Physics (bodies, planes, ropes, springs, fields),
    particles in a box (chemistry, biology) and surfaces or curves (maths). Drag to turn, pinch or wheel to zoom. ---------- */
@@ -1662,6 +1922,8 @@ function sc3Clean(sp, o) {
   o.dim = 3;
   if (sp.clean) o.clean = true; /* no frame: the model sits on the paper like a drawing */
   if (sp.pen) o.pen = true; /* coloured as if with coloured pencils */
+  /* an animal of the curriculum (task 9.10, m/animals.js): which one, and the colour chosen for it ('' as in nature) */
+  if (typeof sp.animal === 'string' && sp.animal) { o.domain = 'bio'; o.animal = sp.animal.replace(/[^a-z0-9]/g, '').slice(0, 20); o.col = /^#[0-9a-fA-F]{6}$/.test(String(sp.col || '')) ? sp.col : ''; o.mark = 'ani'; o.params = []; if (sp.stay === true) o.stay = true; /* out on the paper or kept at its place (switch onpage) */ return o; }
   if (o.domain === 'phys') {
     const wd = sp.world || {};
     o.world = { size: scNum(wd.size, 4, 0.1, 1e9), g: scNum(wd.g, 9.8, 0, 1000), ground: wd.ground !== false, mu: scNum(wd.mu, 0.3, 0, 5), tz: scNum(wd.tz, 0, -1e9, 1e9) };
@@ -1685,7 +1947,10 @@ function sc3Clean(sp, o) {
     const t = sp.t || {}; o.t = { min: scNum(t.min, 0, -1e6, 1e6), max: scNum(t.max, 6.2832, -1e6, 1e6), speed: scNum(t.speed, 1, 0, 1e4), loop: t.loop !== false };
     o.vars = {}; for (const [k, v] of Object.entries(sp.vars || {}).slice(0, 8)) if (/^[a-zA-Z]\w{0,9}$/.test(k) && !/^(t|x|y|z|e|pi)$/.test(k)) o.vars[k] = scNum(v, 1, -1e9, 1e9);
     const ex = (s) => scTxt(s, 140).replace(/[^0-9A-Za-z_+\-*/^().,\s<>=!]/g, '');
-    o.items = (Array.isArray(sp.items) ? sp.items : []).slice(0, 8).map((it, i) => ({ type: ['surface', 'curve', 'point', 'vector', 'tangent', 'orbital'].includes(it.type) ? it.type : 'surface', o: scTxt(it.o, 60).replace(/[^a-z0-9,]/g, ''), dir: it.dir ? v3(it.dir) : null, pick: /^[a-zA-Z]\w{0,9}$/.test(it.pick || '') ? it.pick : '', col2: scCol(it.col2, '#E39B2D'), color: scCol(it.color, SC_PAL[i % SC_PAL.length]), label: scTxt(it.label, 24), expr: ex(it.expr), x: ex(it.x), y: ex(it.y), z: ex(it.z), s0: ex(it.s0), s1: ex(it.s1), n: Math.round(scNum(it.n, 26, 6, 48)), range: Array.isArray(it.range) ? it.range.slice(0, 4).map((v) => scNum(v, 0, -1e6, 1e6)) : null, trace: !!it.trace }));
+    o.items = (Array.isArray(sp.items) ? sp.items : []).slice(0, 8).map((it, i) => Object.assign({ type: ['surface', 'curve', 'point', 'vector', 'tangent', 'orbital'].includes(it.type) ? it.type : 'surface', o: scTxt(it.o, 60).replace(/[^a-z0-9,]/g, ''), dir: it.dir ? v3(it.dir) : null, pick: /^[a-zA-Z]\w{0,9}$/.test(it.pick || '') ? it.pick : '', col2: scCol(it.col2, '#E39B2D'), color: scCol(it.color, SC_PAL[i % SC_PAL.length]), label: scTxt(it.label, 24), expr: ex(it.expr), x: ex(it.x), y: ex(it.y), z: ex(it.z), s0: ex(it.s0), s1: ex(it.s1), n: Math.round(scNum(it.n, 26, 6, 48)), range: Array.isArray(it.range) ? it.range.slice(0, 4).map((v) => scNum(v, 0, -1e6, 1e6)) : null, trace: !!it.trace },
+      /* an orbital drawn with the pen tool keeps the way it was drawn on the page: its own axes x y z, as three rows (task 9.9) */
+      Array.isArray(it.fr) && it.fr.length === 9 ? { fr: it.fr.map((v) => scNum(v, 0, -1, 1)) } : {}));
+    if (sp.mark === 'orb') o.mark = 'orb';
   }
   return o;
 }
@@ -1886,8 +2151,9 @@ function orb3Draw(g, it, sp, L, rt) {
   if (it.pick && sp.vars && list.length > 1) o = list[clamp(Math.round(sp.vars[it.pick]) - 1, 0, list.length - 1)];
   const many = sp.items.filter((x) => x.type === 'orbital').length, n1 = many > 2 ? 20 : 26, n2 = many > 2 ? 30 : 40, R = L * 0.85, dir = it.dir; /* fewer faces when several orbitals turn together (iPad) */
   /* the biggest value over all directions sets the size, so every orbital fills the same space */
+  const fr = it.fr, loc = fr ? (u) => [u[0] * fr[0] + u[1] * fr[1] + u[2] * fr[2], u[0] * fr[3] + u[1] * fr[4] + u[2] * fr[5], u[0] * fr[6] + u[1] * fr[7] + u[2] * fr[8]] : (u) => u;
   let mx = 0; const U = [];
-  for (let i = 0; i <= n1; i++) { U.push([]); const th = Math.PI * i / n1; for (let j = 0; j <= n2; j++) { const ph = 2 * Math.PI * j / n2, u = [Math.sin(th) * Math.cos(ph), Math.sin(th) * Math.sin(ph), Math.cos(th)], v = orbPsi(o, u, dir); U[i].push([u, v]); mx = Math.max(mx, v * v); } }
+  for (let i = 0; i <= n1; i++) { U.push([]); const th = Math.PI * i / n1; for (let j = 0; j <= n2; j++) { const ph = 2 * Math.PI * j / n2, u = [Math.sin(th) * Math.cos(ph), Math.sin(th) * Math.sin(ph), Math.cos(th)], v = orbPsi(o, loc(u), dir); U[i].push([u, v]); mx = Math.max(mx, v * v); } }
   const k = R / (mx || 1), cm = rt.cam || CAM0, V = [Math.sin(cm.yaw) * Math.cos(cm.pitch), -Math.cos(cm.yaw) * Math.cos(cm.pitch), Math.sin(cm.pitch)];
   const Lt = vUnit(vAdd(V, [0.25, -0.15, 0.45])), P = (e) => vMul(e[0], e[1] * e[1] * k);
   const hex = (c) => (/^#[0-9a-f]{6}$/i.test(c) ? c : '#2F4BB8'), c1 = hex(it.color), c2 = hex(it.col2);
@@ -1903,7 +2169,9 @@ function orb3Draw(g, it, sp, L, rt) {
   }
   if (sp.pen) g.ball([0, 0, 0], L * 0.02, '#3A3F48'); else g.ball([0, 0, 0], L * 0.025, '#333333');
   const nm = list.length > 1 && !it.pick ? list.map((x) => ORB_NAMES[x] || x).join(', ') : (ORB_NAMES[o] || o);
-  rt.read = [['ออร์บิทัล', nm], ['สี', 'น้ำเงิน เฟสบวก, ส้ม เฟสลบ']];
+  /* the names of the colours chosen for the two phases (scene.js ORB_COLS); a colour not in the list keeps the old words */
+  const cn = { '#2F4BB8': 'น้ำเงิน', '#E39B2D': 'ส้ม', '#C62828': 'แดง', '#2E7D32': 'เขียว', '#6A1B9A': 'ม่วง', '#F9A825': 'เหลือง', '#00838F': 'ฟ้า', '#D81B60': 'ชมพู', '#37474F': 'เทาเข้ม', '#90A4AE': 'เทาอ่อน' };
+  rt.read = [['ออร์บิทัล', nm], ['สี', (cn[String(c1).toUpperCase()] || 'น้ำเงิน') + ' เฟสบวก, ' + (cn[String(c2).toUpperCase()] || 'ส้ม') + ' เฟสลบ']];
 }
 /* ----- coloured pencil: the shape is drawn on a layer of its own, its colour broken into short slanted strokes so the
    paper shows through, with a soft pencil line round the outside. The grain stays put on the paper while the shape turns ----- */
@@ -1938,6 +2206,7 @@ function pencilDraw(c, w, h, gp, rt) {
 }
 /* ----- one entry for the runtime ----- */
 function sc3Reset(sp, r) {
+  if (sp.animal) { r.st = { t: 0 }; return; }
   if (sp.domain === 'phys') {
     r.st = p3Init(sp); let mf = 0; for (const B of r.st.bodies) mf = Math.max(mf, B.b.m * sp.world.g); if (sp.fields.central) for (const B of r.st.bodies) { const d = vLen(vSub(B.p, sp.fields.central.p)); mf = Math.max(mf, sp.fields.central.GM * B.b.m / Math.max(d * d, 1e-9)); }
     if (sp.fields.B) for (const B of r.st.bodies) mf = Math.max(mf, Math.abs(B.b.q) * vLen(vCross(B.v, sp.fields.B))); for (const s of sp.springs) mf = Math.max(mf, s.k * sp.world.size * 0.3); for (const f of sp.forces) mf = Math.max(mf, vLen(f.f));
@@ -1945,13 +2214,31 @@ function sc3Reset(sp, r) {
   } else if (sp.domain === 'math') r.st = { t: sp.t.min };
   else r.st = c3Init(sp);
 }
-function sc3Tick(sp, r, dtw) {
+/* animals (task 9.10): their part is loaded the first time one is drawn; "animals" in flags.json turns it off */
+function sc3AnLoad(r) {
+  if (r.anTry) return; r.anTry = 1;
+  need('animals').then(() => { for (const [id, R] of SCN) if (R === r) { const it = findItem(id); if (it) scRender(it, r); } }, () => { r.anOff = 1; for (const [id, R] of SCN) if (R === r) { const it = findItem(id); if (it) scRender(it, r); } });
+}
+function sc3Tick(sp, r, dtw, it) {
+  if (sp.animal) {
+    if (typeof anTick !== 'function') { sc3AnLoad(r); return false; }
+    /* frameless: out on the paper (switch "onpage"), it walks over the page and its box goes with it */
+    const pm = it && typeof anPage === 'function' ? anPage(it, r, dtw * (r.slow ? 0.25 : 1)) : false;
+    if (pm) return pm === 'draw';
+    anTick(sp, r, dtw * (r.slow ? 0.25 : 1));
+    /* drawn about 30 times a second: smooth enough, and light on an iPad */
+    r.anAcc = (r.anAcc || 0) + dtw; if (r.anAcc < (r.anMs > 14 ? 0.05 : 0.03)) return false; /* a slow device: 20 a second */ r.anAcc = 0; return true;
+  }
   const sim = dtw * (sp.speed || 1) * (r.slow ? 0.25 : 1);
   if (sp.domain === 'phys') { const n = Math.max(1, Math.ceil(sim / 0.002)); for (let i = 0; i < n; i++) p3Step(sp, r.st, sim / n); for (const B of r.st.bodies) { B.trail.push(B.p.slice()); if (B.trail.length > 500) B.trail.shift(); } }
   else if (sp.domain === 'math') { r.st.t += dtw * sp.t.speed * (r.slow ? 0.25 : 1); if (r.st.t > sp.t.max) { if (sp.t.loop) { r.st.t = sp.t.min; r.traces = {}; } else { r.st.t = sp.t.max; r.playing = false; r.ended = true; } } }
   else { const s2 = dtw * (r.slow ? 0.25 : 1), n = Math.max(1, Math.ceil(s2 / 0.01)); for (let i = 0; i < n; i++) c3Step(sp, r.st, s2 / n); if (r.st.t - r.st.lastH > 0.2) { r.st.lastH = r.st.t; r.st.hist.push([r.st.t].concat(sp.species.map((_, i) => r.st.P.filter((q) => q.s === i).length))); if (r.st.hist.length > 500) r.st.hist.shift(); } }
 }
 function sc3Render(c, w, h, sp, r) {
+  if (sp.animal) {
+    if (typeof anDraw === 'function') return anDraw(c, w, h, sp, r);
+    c.fillStyle = '#5A6472'; c.font = '14px Sarabun, sans-serif'; c.fillText(r.anOff ? 'ส่วนสัตว์สามมิติปิดใช้ชั่วคราว' : 'กำลังโหลด', 16, 24); sc3AnLoad(r); r.read = []; return true;
+  }
   if (sp.domain === 'phys') {
     p3Draw(c, w, h, sp, r.st, r);
     const live = r.st.bodies.filter((B) => !B.b.fixed);
@@ -1963,12 +2250,23 @@ function sc3Render(c, w, h, sp, r) {
 }
 /* drag to turn, two fingers or the wheel to zoom, double tap to face front */
 function sc3Bind(cv, it, r) {
-  const pts = new Map(); let pinch0 = 0, zoom0 = 1, lastTap = 0; cv.style.touchAction = 'none';
+  const pts = new Map(); let pinch0 = 0, zoom0 = 1, lastTap = 0, down = null; cv.style.touchAction = 'none';
   const cam = () => r.cam || (r.cam = Object.assign({}, CAM0));
   const redraw = () => { if (!r.playing) scRender(findItem(it.id) || it, r); };
-  cv.addEventListener('pointerdown', (e) => { e.stopPropagation(); try { cv.setPointerCapture(e.pointerId); } catch (x) { /* fine */ } pts.set(e.pointerId, [e.clientX, e.clientY]); if (pts.size === 2) { const [a, b] = [...pts.values()]; pinch0 = Math.hypot(a[0] - b[0], a[1] - b[1]); zoom0 = cam().zoom; } const t = now(); if (pts.size === 1 && t - lastTap < 320) { r.cam = Object.assign({}, CAM0); redraw(); } lastTap = t; });
-  cv.addEventListener('pointermove', (e) => { if (!pts.has(e.pointerId)) return; e.stopPropagation(); const p0 = pts.get(e.pointerId), dx = e.clientX - p0[0], dy = e.clientY - p0[1]; pts.set(e.pointerId, [e.clientX, e.clientY]); const c = cam(); if (pts.size >= 2) { const [a, b] = [...pts.values()]; if (pinch0) c.zoom = clamp(zoom0 * Math.hypot(a[0] - b[0], a[1] - b[1]) / pinch0, 0.4, 4); } else { c.yaw -= dx * 0.009; c.pitch = clamp(c.pitch + dy * 0.009, -1.5707, 1.5707); } redraw(); });
+  cv.addEventListener('pointerdown', (e) => { e.stopPropagation(); try { cv.setPointerCapture(e.pointerId); } catch (x) { /* fine */ } if (e.isPrimary) for (const [k, v] of pts) if (v[2] === e.pointerType) pts.delete(k); /* a first finger: no other finger is still down (task 9.9) */ pts.set(e.pointerId, [e.clientX, e.clientY, e.pointerType]); down = pts.size === 1 ? [e.clientX, e.clientY, now(), e.pointerId] : null; if (pts.size === 2) { const [a, b] = [...pts.values()]; pinch0 = Math.hypot(a[0] - b[0], a[1] - b[1]); zoom0 = cam().zoom; } const t = now(); if (pts.size === 1 && t - lastTap < 320) { r.cam = Object.assign({}, CAM0); redraw(); } lastTap = t; });
+  cv.addEventListener('pointermove', (e) => { if (!pts.has(e.pointerId)) return; e.stopPropagation(); const p0 = pts.get(e.pointerId), dx = e.clientX - p0[0], dy = e.clientY - p0[1]; pts.set(e.pointerId, [e.clientX, e.clientY, e.pointerType]); const c = cam(); if (pts.size >= 2) { const [a, b] = [...pts.values()]; if (pinch0) c.zoom = clamp(zoom0 * Math.hypot(a[0] - b[0], a[1] - b[1]) / pinch0, 0.4, 4); } else { c.yaw -= dx * 0.009; c.pitch = clamp(c.pitch + dy * 0.009, -1.5707, 1.5707); } redraw(); });
   const up = (e) => { pts.delete(e.pointerId); if (pts.size < 2) pinch0 = 0; }; cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
+  /* an animal (task 9.10): a tap (not a drag that turns it) and it answers the way the real one does */
+  cv.addEventListener('pointerup', (e) => {
+    const d0 = down; down = null; if (!d0 || d0[3] !== e.pointerId || pts.size) return;
+    if (Math.hypot(e.clientX - d0[0], e.clientY - d0[1]) > 10 || now() - d0[2] > 450) return;
+    const live = findItem(it.id) || it; if (!live.spec || !live.spec.animal || typeof anTap !== 'function') return;
+    const rc = cv.getBoundingClientRect(), m = r.box && r.anM ? r.anM : [0, 0], x = (e.clientX - rc.left) * (cv.clientWidth / (rc.width || 1)) - m[0], y = (e.clientY - rc.top) * (cv.clientHeight / (rc.height || 1)) - m[1];
+    const bw = r.box && r.anM ? r.box.clientWidth : cv.clientWidth, bh = r.box && r.anM ? r.box.clientHeight : cv.clientHeight; /* an animal: the size of its box, the canvas lies over it with room round it */
+    if (!anTap(live.spec, r, x, y, bw, bh)) return;
+    if (!r.playing) { r.playing = true; const pb = itemsEl.querySelector('.item[data-id="' + it.id + '"] [data-s="play"]'); if (pb) pb.textContent = 'หยุด'; }
+    if (!scnRaf) scnRaf = requestAnimationFrame(scTick);
+  });
   cv.addEventListener('wheel', (e) => { e.preventDefault(); e.stopPropagation(); const c = cam(); c.zoom = clamp(c.zoom * Math.exp(-e.deltaY * 0.0015), 0.4, 4); redraw(); }, { passive: false });
 }
 const SCENE_TPL3 = [
@@ -1997,6 +2295,29 @@ SCENE_TPL3.push(
   ['ไฮบริด sp³', 'สี่ออร์บิทัลชี้ไปมุมทรงสี่หน้า มุม 109.5 องศา เช่น CH4', { domain: 'math', dim: 3, title: 'ไฮบริด sp³', view: { L: 1.6 }, t: { min: 0, max: 1, speed: 0 }, items: SP3.map((d, i) => ({ type: 'orbital', o: 'sp3', dir: d, color: ['#2F4BB8', '#2E8B57', '#8E44AD', '#B23A3A'][i] })) }]
 );
 SCENE_TPL['3d'] = SCENE_TPL3;
+/* ----- an orbital drawn with the pen tool (chem.js marks os op od odz osp3) becomes a solid orbital on the paper that
+   turns under a finger (task 9.9). It starts the way it was dragged: the axis along the drag, its size the drag length,
+   the nucleus where the drag began, in the starting view (CAM0) that a double tap goes back to ----- */
+const ORB_MARK = { os: ['s', 'ออร์บิทัล s', 0.75], op: ['px', 'ออร์บิทัล p', 1], od: ['dx2y2', 'ออร์บิทัล d', 1], odz: ['dz2', 'ออร์บิทัล dz²', 1], osp3: ['sp3', 'ไฮบริด sp³', 1] };
+function orb3Mark(kind, a, b) {
+  const m = ORB_MARK[kind]; if (!m) return null;
+  const drag = Math.hypot(b[0] - a[0], b[1] - a[1]);
+  const snapT = (t) => { const s = Math.round(t / (Math.PI / 12)) * (Math.PI / 12); return Math.abs(s - t) < 0.09 ? s : t; };
+  const t = drag >= 8 ? snapT(Math.atan2(b[1] - a[1], b[0] - a[0])) : (kind === 'odz' ? -Math.PI / 2 : 0);
+  const L = drag >= 8 ? clamp(drag, 15, 260) : 45;
+  /* a direction on the screen (right, down) as a direction in the model, seen from the starting view */
+  const cy = Math.cos(CAM0.yaw), sy = Math.sin(CAM0.yaw), cp = Math.cos(CAM0.pitch), spp = Math.sin(CAM0.pitch);
+  const R = [cy, sy, 0], U = [-sy * spp, cy * spp, cp], d = (th) => vUnit(vSub(vMul(R, Math.cos(th)), vMul(U, Math.sin(th))));
+  let e1 = d(t), e2 = d(t + Math.PI / 2), e3 = vCross(e1, e2);
+  if (kind === 'odz') { e3 = d(t); e1 = d(t + Math.PI / 2); e2 = vCross(e3, e1); } /* dz² stands along the drag */
+  const fr = e1.concat(e2, e3).map((v) => Math.round(v * 1e4) / 1e4);
+  /* the model fills about a third of its square (cam3 with view L 1.6), so the lobe on the page is as long as the drag */
+  const side = Math.round(clamp(L * m[2] / 0.326, 110, 800));
+  const item = { type: 'orbital', o: m[0], color: '#2F4BB8', col2: '#E39B2D', fr };
+  if (kind === 'osp3') item.dir = [1, 0, 0];
+  const spec = { domain: 'math', dim: 3, title: m[1], view: { L: 1.6 }, t: { min: 0, max: 1, speed: 0 }, items: [item], clean: true, pen: true, mark: 'orb' };
+  return { spec, x: Math.round(a[0] - side / 2), y: Math.round(a[1] - side / 2), w: side };
+}
 
 
 /* ---------- living pictures, like the moving photographs of a wizarding newspaper: any drawing gets a behaviour that loops
@@ -2214,10 +2535,22 @@ function lifeTarget(it, rt) {
 const LIFE_GROUND = ['walk4', 'drive', 'roll', 'hop', 'wiggle'];
 let lifeWorld = { t: 0, strokes: [], boxes: [] };
 function lifeWorldNow() {
-  const now = performance.now(); if (now - lifeWorld.t < 400) return lifeWorld;
+  const now = performance.now(), pw = pwOn();
+  /* out on the paper (pagewalk.js): a line or a box added or taken away is seen at once, not up to 0.4 s later */
+  const n = pw ? pwKey() : '';
+  if (now - lifeWorld.t < 400 && (!pw || lifeWorld.n === n)) return lifeWorld;
   const strokes = []; for (const r of allStrokes()) { const b = sbox(r.s), w = b[2] - b[0], h = b[3] - b[1]; strokes.push({ b, s: r.s, ground: (w > 2.5 * h && w > 60) || w > 260 }); }
-  const boxes = []; for (const it of (S.page && S.page.items) || []) { if (it.type === 'life' || it.lock || (it.spec && it.spec.bare)) continue; const b = itemBox(it); if (b[2] - b[0] > 4 && b[3] - b[1] > 4) boxes.push(b); }
-  lifeWorld = { t: now, strokes, boxes }; return lifeWorld;
+  /* out on the paper a frameless picture (an animal's empty box) is not a wall: the animal's body is met where it is (lifeMet) */
+  const boxes = []; for (const it of (S.page && S.page.items) || []) { if (it.type === 'life' || it.lock || (it.spec && it.spec.bare) || (pw && (isBgItem(it) || pwWalker(it)))) continue; const b = pw && (!it.type || it.type === 'text') ? tightItemBox(it) : itemBox(it); if (b[2] - b[0] > 4 && b[3] - b[1] > 4) boxes.push(b); }
+  lifeWorld = { t: now, strokes, boxes, n }; return lifeWorld;
+}
+/* the moving things out on the paper a living picture meets (pagewalk.js): the animals' bodies and the drawings that move
+   by physics, as [box, vx, kind] */
+function lifeMet() {
+  if (!pwOn()) return [];
+  const out = []; for (const A of pwAnimals()) out.push([A.box, A.vx, 'animal', A.id]);
+  if (typeof ipActors === 'function') { try { for (const o of ipActors()) out.push([o.box, o.vx || 0, o.kind, o.id]); } catch (e) { /* not ready */ } }
+  return out;
 }
 /* where this picture is on the page right now, roughly */
 function lifeBox(it, rt) { const B = it.B; if (it.beh && (it.beh.k === 'phys' || it.beh.k === 'path')) { const px = rt.px || 0, py = rt.py || 0; return [B[0] + px, B[1] + py, B[2] + px, B[3] + py]; } return [B[0] + (rt.dx || 0), B[1] + (rt.gy || 0) + (rt.alt || 0), B[2] + (rt.dx || 0), B[3] + (rt.gy || 0) + (rt.alt || 0)]; }
@@ -2239,6 +2572,8 @@ function lifeSense(it, rt, dt) {
   if (LIFE_GROUND.includes(k)) {
     const g0 = rt.gy || 0, up = Math.max(bh * 2, 120), xa = box[0] + bw * 0.25, xb = box[2] - bw * 0.25, ya = Math.max(B[3] - up, B[3] + g0 - bh * 0.6), yb = Math.min(B[3] + bh * 0.25, B[3] + g0 + bh * 0.25); let top = null;
     for (const o of Wd.strokes) { if (!o.ground) continue; const q = o.b; if (q[2] < xa || q[0] > xb || q[3] < ya || q[1] > yb) continue; const y = lifeTopIn(o.s, xa, xb, ya, yb); if (y != null && (top == null || y < top)) top = y; }
+    /* out on the paper the top of a box is ground too (pagewalk.js) */
+    if (pwOn()) for (const q of Wd.boxes) { if (q[2] < xa || q[0] > xb || q[1] < ya || q[1] > yb) continue; if (top == null || q[1] < top) top = q[1]; }
     /* with no line under it, it settles back down to where it was drawn */
     const tgt = top == null ? (g0 < 0 ? Math.min(0, g0 + bh * 0.25) : 0) : top - B[3];
     rt.gy = (rt.gy || 0) + (tgt - (rt.gy || 0)) * Math.min(1, dt * 8);
@@ -2256,18 +2591,23 @@ function lifeSense(it, rt, dt) {
     const topY = lifeTopIn(o.s, sa, sb, yTop, yb2);
     if (topY != null && tall(topY)) { hit = true; break; } }
   if (!hit) for (const q of Wd.boxes) { if (q[2] < za || q[0] > zb || q[3] < yTop || q[1] > yBot) continue; if (dir > 0 ? q[0] < box[2] - 4 : q[2] > box[0] + 4) continue; if (tall(q[1])) { hit = true; break; } }
+  /* an animal out on the paper or a drawing moving by physics in the way (pagewalk.js): each answers as the real thing would */
+  let met = null;
+  if (!hit) for (const m of lifeMet()) { const q = m[0]; if (q[2] < za || q[0] > zb || q[3] < yTop || q[1] > yBot) continue; if (dir > 0 ? q[0] + q[2] < box[0] + box[2] : q[0] + q[2] > box[0] + box[2]) continue; /* behind it */ if (!tall(q[1])) continue; hit = true; met = m; rt.met = m[3]; break; }
   if (!hit) for (const [id2, r2] of LIFE) { if (id2 === it.id) continue; const o = findItem(id2); if (!o || !o.beh || !o.B) continue; const q = lifeBox(o, r2);
     /* a loose physical thing in the way gets kicked or pushed along instead of being walked through */
     if (o.beh.k === 'phys') { if (q[2] < za || q[0] > zb || q[3] < yTop || q[1] > yBot) continue; if (r2.px == null) continue; if ((dir > 0 ? q[0] - box[2] : box[0] - q[2]) < -3) { hit = true; rt.met = id2; break; } /* it cannot move any further: it is in the way */ const push = Math.max(rt.v || 0, 60) * 1.6; if (dir > 0 ? r2.vx < push : r2.vx > -push) { r2.vx = dir * push; r2.vy = Math.min(r2.vy || 0, -push * 0.25); r2.sleep = 0; } rt.v *= 0.6; continue; } if (q[2] < za || q[0] > zb || q[3] < yTop || q[1] > yBot) continue; if (dir > 0 ? q[0] < box[2] - 4 : q[2] > box[0] + 4) continue; hit = true; rt.met = id2; break; }
   if (!hit) return;
   if (k === 'hop' && rt.hp % 1 > 0.05) return;
-  lifeReact(it, rt, k, 1);
+  lifeReact(it, rt, k, 1, met && met[2]);
 }
 
 /* how a living picture reacts when it runs into something, like the real thing would. Nothing passes through anything:
    boxed in on both sides it waits and looks around instead of walking through */
-function lifeReact(it, rt, k, hard) {
+function lifeReact(it, rt, k, hard, who) {
   if (rt.state === 'turn' || (rt.scare || 0) > 0.6) return;
+  /* a car that comes to an animal or a person stops and waits for it to go by (the second time it turns back) */
+  if (k === 'drive' && (who === 'animal' || who === 'person') && rt.t - (rt.lastWait || -9) > 4) { rt.lastWait = rt.t; rt.v = 0; rt.state = 'rest'; rt.st0 = rt.t; rt.restFor = 1.6; rt.turnAfter = false; rt.bump = 0.5; return; }
   const boxed = rt.t - (rt.lastBump || -9) < 1.2; rt.lastBump = rt.t;
   rt.bump = 1; rt.scare = Math.min(1, (rt.scare || 0) + 0.8 * hard);
   const bw = it.B[2] - it.B[0];
@@ -2284,18 +2624,72 @@ function lifeThreat(it, rt, dt) {
   if (rt.flinch) rt.flinch = Math.max(0, rt.flinch - dt * 1.4);
   const b = it.beh; if ((b.move && b.edge !== 'stay') || !lifeTouch(b)) return;
   const me = lifeBox(it, rt), cx = (me[0] + me[2]) / 2, cy = (me[1] + me[3]) / 2, sz = Math.max(me[2] - me[0], me[3] - me[1]);
-  for (const [id2, r2] of LIFE) {
-    if (id2 === it.id) continue; const o = findItem(id2); if (!o || !o.beh || !o.B) continue;
-    const q = lifeBox(o, r2), ox = (q[0] + q[2]) / 2, oy = (q[1] + q[3]) / 2, d = Math.hypot(ox - cx, oy - cy) - (sz + Math.max(q[2] - q[0], q[3] - q[1])) / 2;
+  /* an animal out on the paper or a moving drawing coming at it too (pagewalk.js) */
+  const near = []; for (const [id2, r2] of LIFE) { if (id2 === it.id) continue; const o = findItem(id2); if (!o || !o.beh || !o.B) continue; near.push([id2, lifeBox(o, r2)]); }
+  for (const m of lifeMet()) near.push([m[3], m[0]]);
+  for (const [id2, q] of near) {
+    const ox = (q[0] + q[2]) / 2, oy = (q[1] + q[3]) / 2, d = Math.hypot(ox - cx, oy - cy) - (sz + Math.max(q[2] - q[0], q[3] - q[1])) / 2;
     const seen = rt.seen || (rt.seen = {}), prev = seen[id2]; seen[id2] = [ox, oy];
     if (d > sz * 0.7 || !prev) continue;
     const closing = Math.hypot(prev[0] - cx, prev[1] - cy) - Math.hypot(ox - cx, oy - cy);
     if (closing > 0.3 || (d < 0 && closing > 0.05)) { rt.flinch = 1; rt.flinchDir = ox > cx ? -1 : 1; rt.flinchUp = oy < cy; }
   }
 }
+/* a path the AI or the teacher's words gave, out on the paper (pagewalk.js): it is followed as given, but its own clock
+   (rt.pt) waits while an animal, a moving drawing or a box is in the way of its next step (it startles and waits for an
+   animal to go by; a box that stays there is gone round by skipping on along the path after a while), and a path along the
+   ground walks on the drawn lines and the tops of boxes under it */
+function lifePathPage(it, rt, dt) {
+  const b = it.beh, B = it.B, bw = B[2] - B[0], bh = B[3] - B[1], sp = b.sp || 1;
+  if (rt.pt == null) { rt.pt = 0; rt.pgy = 0; rt.pblock = 0; }
+  const keys = (b.path && Array.isArray(b.path.keys)) ? b.path.keys : [], flat = keys.every((k) => Math.abs(+k.dy || 0) < 2), sub = b.sub || 'walk4';
+  const at = (t) => { const q = lifePathAt(it, t); return [B[0] + q.dx, B[1] + q.dy + (rt.pgy || 0), B[2] + q.dx, B[3] + q.dy + (rt.pgy || 0)]; };
+  const ov = (a, q) => a[0] < q[2] && a[2] > q[0] && a[1] < q[3] && a[3] > q[1];
+  const now = at(rt.pt), next = at(rt.pt + dt * sp), Wd = lifeWorldNow(), m = Math.min(bw, bh) * 0.12;
+  const shrink = (q) => [q[0] + m, q[1] + m, q[2] - m, q[3] - m];
+  let who = null;
+  /* in the way: what its next step would go into, or (when an animal has come up against it) closer into */
+  const cen = (q) => [(q[0] + q[2]) / 2, (q[1] + q[3]) / 2], closer = (q) => { const a = cen(now), z = cen(next), c = cen(q); return Math.hypot(z[0] - c[0], z[1] - c[1]) < Math.hypot(a[0] - c[0], a[1] - c[1]) - 1e-6; };
+  for (const o of lifeMet()) if (ov(shrink(next), o[0]) && (!ov(shrink(now), o[0]) || closer(o[0]))) { who = o; break; }
+  const walks = flat && LIFE_GROUND.includes(sub);
+  let wall = false; if (!who) for (const q of Wd.boxes) if (ov(shrink(next), q) && !ov(shrink(now), q) && !(walks && q[1] > next[3] - bh * 0.6)) { wall = true; break; } /* a low box under its feet is ground, not a wall */
+  if (who || wall) {
+    rt.pblock += dt; rt.met = who ? who[3] : rt.met;
+    if (rt.pblock < dt * 1.5) { rt.scare = Math.min(1, (rt.scare || 0) + 0.7); rt.bump = 1; }
+    /* an animal goes by in a few seconds; a box stays: after a while it goes on along its path past it */
+    if (rt.pblock > (wall ? 1.2 : 5)) { const dur = Math.max(0.2, ...keys.map((k) => +k.t || 0)); let t = rt.pt, clear = null; for (let i = 0; i < 80 && t < rt.pt + dur; i++) { t += 0.1; const q = at(t); if (!Wd.boxes.some((x) => ov(shrink(q), x)) && !lifeMet().some((o) => ov(shrink(q), o[0]))) { clear = t; break; } } if (clear != null) rt.pt = clear; rt.pblock = 0; } /* no clear place further along (its path ends in the thing): it keeps waiting, never into it */
+  } else { rt.pt += dt * sp; rt.pblock = 0; }
+  /* along the ground: up onto a drawn line or the top of a box under it, as a walking picture does */
+  if (walks) {
+    const q = lifePathAt(it, rt.pt), xa = B[0] + q.dx + bw * 0.25, xb = B[2] + q.dx - bw * 0.25, g0 = rt.pgy || 0, up = Math.max(bh * 2, 120), ya = Math.max(B[3] - up, B[3] + g0 - bh * 0.6), yb = Math.min(B[3] + bh * 0.25, B[3] + g0 + bh * 0.25); let top = null;
+    for (const o of Wd.strokes) { if (!o.ground) continue; const r = o.b; if (r[2] < xa || r[0] > xb || r[3] < ya || r[1] > yb) continue; const y = lifeTopIn(o.s, xa, xb, ya, yb); if (y != null && (top == null || y < top)) top = y; }
+    for (const r of Wd.boxes) { if (r[2] < xa || r[0] > xb || r[1] < ya || r[1] > yb) continue; if (top == null || r[1] < top) top = r[1]; }
+    const tgt = top == null ? (g0 < 0 ? Math.min(0, g0 + bh * 0.25) : 0) : top - B[3]; rt.pgy = g0 + (tgt - g0) * Math.min(1, dt * 8);
+  } else rt.pgy = 0;
+  if (rt.scare) rt.scare = Math.max(0, rt.scare - dt * 0.9); if (rt.bump) rt.bump = Math.max(0, rt.bump - dt * 4);
+  const q = lifePathAt(it, rt.pt); rt.px = q.dx; rt.py = q.dy + rt.pgy; rt.dx = 0;
+  /* legs and wings keep going while it walks along (their clocks follow its own) */
+  if (rt.hp == null) { rt.hp = 0; rt.gp = 0; rt.v = 0; rt.alt = 0; }
+  rt.gp += dt * sp * (rt.pblock ? 0.3 : 2.2); rt.hp += dt * sp / 0.95;
+}
+/* a shy one (a bird, a fish, a hopping thing) out on the paper does not wait to be bumped: something coming at it (another
+   picture, an animal, a thing moved by physics) startles it before it gets there, as the real one would (pagewalk.js) */
+function lifeShy(it, rt, dt) {
+  rt.shyT = Math.max(0, (rt.shyT || 0) - dt); if (rt.shyT > 0 || rt.state !== 'go') return;
+  const me = lifeBox(it, rt), cx = (me[0] + me[2]) / 2, cy = (me[1] + me[3]) / 2, sz = Math.max(me[2] - me[0], me[3] - me[1]);
+  const near = []; for (const [id2, r2] of LIFE) { if (id2 === it.id) continue; const o = findItem(id2); if (!o || !o.beh || !o.B) continue; if (!(o.beh.move || o.beh.k === 'phys' || o.beh.k === 'path')) continue; near.push([id2, lifeBox(o, r2)]); }
+  for (const m of lifeMet()) near.push([m[3], m[0]]);
+  const seen = rt.shySeen || (rt.shySeen = {});
+  for (const [id2, q] of near) {
+    const ox = (q[0] + q[2]) / 2, oy = (q[1] + q[3]) / 2, d = Math.hypot(ox - cx, oy - cy) - (sz + Math.max(q[2] - q[0], q[3] - q[1])) / 2, prev = seen[id2]; seen[id2] = [ox, oy];
+    if (!prev || d > sz * 0.8) continue;
+    const closing = Math.hypot(prev[0] - cx, prev[1] - cy) - Math.hypot(ox - cx, oy - cy);
+    if (closing > 0.4) { rt.shyT = 2.5; rt.met = id2; if (rt.dir === (ox > cx ? -1 : 1)) { rt.scare = 1; if (it.beh.k === 'flap') rt.climb = 1; else if (it.beh.k === 'swim') rt.dart = 1; else rt.v = Math.max(rt.v || 0, (LIFE_SPEED[it.beh.k] || 60) * 2); } else lifeReact(it, rt, it.beh.k, 0.6); return; }
+  }
+}
 function lifeMove(it, rt, dt) {
   if (it.beh.k === 'phys') { lifePhys(it, rt, dt); return; }
-  if (it.beh.k === 'path') { const q = lifePathAt(it, rt.t); rt.px = q.dx; rt.py = q.dy; rt.dx = 0; return; }
+  if (it.beh.k === 'path') { if (pwOn() && lifeTouch(it.beh)) { lifePathPage(it, rt, dt); return; } const q = lifePathAt(it, rt.t); rt.px = q.dx; rt.py = q.dy; rt.dx = 0; return; }
   lifeThreat(it, rt, dt);
   const b = it.beh, k = b.k, B = it.B, bw = B[2] - B[0], base = (LIFE_SPEED[k] || 60) * (b.sp || 1);
   if (rt.seed == null) rt.seed = Math.random() * 50;
@@ -2314,6 +2708,7 @@ function lifeMove(it, rt, dt) {
   if (k === 'walk4') { const L = (rt.legs && rt.legs.L) || bw * 0.3; rt.gp += dt * rt.v / (0.242 * L); }
   if (k === 'flap') { const fl = ((rt.t + rt.seed) % 3.4) < 2.3; rt.alt = clamp(rt.alt + (fl ? -1 : 0.7) * dt * (B[3] - B[1]) * 0.22, -(B[3] - B[1]) * 0.7, (B[3] - B[1]) * 0.5); }
   if (lifeTouch(b)) { try { lifeSense(it, rt, dt); } catch (e) { /* keep moving without sensing */ } } else rt.gy = 0;
+  if (lifeTouch(b) && pwOn() && (k === 'flap' || k === 'swim' || k === 'hop')) lifeShy(it, rt, dt);
   if (rt.bump) rt.bump = Math.max(0, rt.bump - dt * 4);
   if (rt.recoil) { const step = rt.recoil * Math.min(1, dt * 10); rt.dx += step; rt.recoil -= step; if (Math.abs(rt.recoil) < 0.3) rt.recoil = 0; }
   if (rt.scare) rt.scare = Math.max(0, rt.scare - dt * 0.9);
@@ -2326,10 +2721,26 @@ function lifeMove(it, rt, dt) {
   else if (b.edge === 'bounce') { const ahead = rt.v * rt.v / (2 * Math.max(1, acc * base * 0.6)); if ((rt.dir > 0 && right + ahead > W - 6) || (rt.dir < 0 && left - ahead < 6)) { if (k === 'hop' && rt.hp % 1 > 0.05) return; rt.state = 'turn'; rt.tp = 0; rt.flipped = false; } }
   else if (b.edge === 'peek') { if ((rt.dir > 0 && left + bw * 0.55 > W) || (rt.dir < 0 && right - bw * 0.55 < 0)) { rt.state = 'peek'; rt.st0 = rt.t; } }
 }
+/* does this picture leave the place where it was drawn (it travels, falls, follows a path, or climbs onto a line) */
+function lifeRoams(it) { const b = it.beh || {}, k = b.k; return k === 'phys' || k === 'path' || (b.move && b.edge !== 'stay') || (lifeTouch(b) && LIFE_GROUND.includes(k)); }
+/* the room round a picture its own movements and effects need, [left, top, right, bottom] (as its fixed region had) */
+function lifeMargin(it) {
+  const B = it.B, b = it.beh || {}, k = b.k === 'path' && b.sub ? b.sub : b.k, bw = B[2] - B[0], bh = B[3] - B[1], A = Math.max(1, +b.amp || 1), fx = Array.isArray(b.fx) && b.fx.length;
+  if (b.k === 'phys') { const R = Math.hypot(bw, bh) / 2, ex = (fx ? bw * 0.9 + 50 : 0); return [R - bw / 2 + 30 + ex, R - bh / 2 + 30 + (fx ? bh * 0.9 + 50 : 0), R - bw / 2 + 30 + ex, R - bh / 2 + 30]; }
+  let grow = 0; if (b.k === 'path' && b.path && Array.isArray(b.path.keys)) for (const q of b.path.keys) grow = Math.max(grow, (Math.max(0.2, +q.scale || +q.s || 1) - 1) * Math.max(bw, bh) / 2);
+  const up = (k === 'hop' ? bh * 1.3 * A : k === 'flap' ? bh * 1.1 * A : k === 'bob' ? bh * 0.35 * A : k === 'flicker' ? bh * 1.2 * A + 30 : k === 'swim' ? bh * 0.9 * A : bh * 0.35) + bh * 0.2 + 24 + (fx ? bh * 0.9 + 50 : 0) + grow;
+  const side = bw * (fx ? 0.9 : 0.45) + 24 + grow;
+  return [side, up, side, bh * 0.3 + 24 + grow];
+}
 function lifeDraw(it, rt) {
-  const cv = rt.cv; if (!cv) return; const w = it.w, h = it.h, dpr = Math.min(3, (window.devicePixelRatio || 1) * Math.max(1, (S.base || 1) * (S.zoom || 1))), cap = Math.min(dpr, Math.sqrt(6e6 / Math.max(1, w * h)));
+  const cv = rt.cv; if (!cv) return; let w = it.w, h = it.h, x0 = it.x, y0 = it.y;
+  /* out on the paper (pagewalk.js): a picture that goes about has a canvas that goes with it, so it is drawn whole wherever
+     it goes on the page (its region was a band, and a picture that climbed or flew past it was cut) */
+  if (pwOn() && it.B && lifeRoams(it) && cv.closest('#items')) { const win = pwWin(cv, cv.parentNode, it, lifeBox(it, rt), lifeMargin(it)); x0 = win[0]; y0 = win[1]; w = win[2]; h = win[3]; rt.win = win; }
+  else if (cv._pw) { cv._pw = null; cv.style.position = ''; cv.style.left = ''; cv.style.top = ''; cv.style.width = '100%'; cv.style.height = (it.h || 100) + 'px'; rt.win = null; }
+  const dpr = Math.min(3, (window.devicePixelRatio || 1) * Math.max(1, (S.base || 1) * (S.zoom || 1))), cap = Math.min(dpr, Math.sqrt(6e6 / Math.max(1, w * h)));
   if (cv.width !== Math.round(w * cap) || cv.height !== Math.round(h * cap)) { cv.width = Math.round(w * cap); cv.height = Math.round(h * cap); }
-  const c = cv.getContext('2d'); c.setTransform(cap, 0, 0, cap, 0, 0); c.clearRect(0, 0, w, h); c.translate(-it.x, -it.y);
+  const c = cv.getContext('2d'); c.setTransform(cap, 0, 0, cap, 0, 0); c.clearRect(0, 0, w, h); c.translate(-x0, -y0);
   if (rt.seed == null) rt.seed = Math.random() * 50;
   const B = it.B, b = it.beh, A = (b.amp || 1) * (1 + (b.k === 'flap' ? 0.5 * (rt.scare || 0) : 0)), T0 = rt.t, t = T0 + rt.seed + (b.k === 'flap' ? (rt.wingX = (rt.wingX || 0) + (rt.scare || 0) * 0.03) : 0), bw = B[2] - B[0], bh = B[3] - B[1], cx = (B[0] + B[2]) / 2, cy = (B[1] + B[3]) / 2, TAU = Math.PI * 2;
   const face = b.face || 1, moving = b.move && b.edge !== 'stay', isPath = b.k === 'path', k = isPath && b.sub ? b.sub : b.k, base = (LIFE_SPEED[k] || 60) * (b.sp || 1), vr = moving ? clamp((rt.v || 0) / Math.max(1, base), 0, 1.6) : 1;
@@ -2362,7 +2773,7 @@ function lifeDraw(it, rt) {
   if (k === 'phys') { ox = rt.px || 0; oy = rt.py || 0; rot = rt.ang || 0; px = cx; py = cy; sx = sy = 1; }
   /* a path the AI or the teacher's words gave: the body follows it while its own movement (wings beating, legs walking) goes on */
   let pathDir = 0;
-  if (isPath) { const q = lifePathAt(it, T0), q2 = lifePathAt(it, T0 + 0.06); pathDir = Math.abs(q2.dx - q.dx) > 0.2 ? Math.sign(q2.dx - q.dx) : (rt.pathDir || 0); rt.pathDir = pathDir; const wob = k === 'flap' ? Math.sin(t * 9 + Math.PI) * bh * 0.05 * A : 0; ox = q.dx; oy = q.dy + wob; rot = q.rot + (k === 'flap' ? -(pathDir || face) * clamp((q2.dy - q.dy) * 0.02, -0.35, 0.35) : 0); sx = sy = q.s; px = cx; py = cy; }
+  if (isPath) { const PT = rt.pt != null ? rt.pt : T0, q = lifePathAt(it, PT), q2 = lifePathAt(it, PT + 0.06); pathDir = Math.abs(q2.dx - q.dx) > 0.2 ? Math.sign(q2.dx - q.dx) : (rt.pathDir || 0); rt.pathDir = pathDir; const wob = k === 'flap' ? Math.sin(t * 9 + Math.PI) * bh * 0.05 * A : 0; ox = q.dx; oy = q.dy + (rt.pgy || 0) + wob; rot = q.rot + (k === 'flap' ? -(pathDir || face) * clamp((q2.dy - q.dy) * 0.02, -0.35, 0.35) : 0); sx = sy = q.s; px = cx; py = cy; }
   if (lifeTouch(b) && LIFE_GROUND.includes(k)) oy += rt.gy || 0;
   if (rt.bump) { const q = rt.bump; sx *= 1 - 0.12 * q; sy *= 1 + 0.08 * q; }
   /* the body goes with the face: leaning in to shout, shaking with laughter, slumping when sad, jumping back when surprised */
@@ -2385,7 +2796,7 @@ function lifeDraw(it, rt) {
   /* a soft shadow on the ground under anything off the ground, smaller and fainter the higher it is */
   if (['flap', 'hop', 'phys', 'bob'].includes(k) || isPath) {
     const gy = lifeGroundBelow(cx + ox, B[3] + Math.max(0, oy)), lift = gy - (B[3] + oy);
-    if (lift > 2 && lift < 600) { const f = clamp(1 - lift / 400, 0.15, 1); c.save(); c.globalAlpha = 0.16 * f; c.fillStyle = '#1B2230'; c.beginPath(); c.ellipse(cx + ox, gy - 2, bw * 0.42 * (0.6 + 0.4 * f), Math.max(2, bh * 0.08 * f), 0, 0, 6.2832); c.fill(); c.restore(); }
+    if (lift > 2 && lift < 600 && (!rt.win || gy + Math.max(2, bh * 0.08) + 3 < y0 + h)) { const f = clamp(1 - lift / 400, 0.15, 1); c.save(); c.globalAlpha = 0.16 * f; c.fillStyle = '#1B2230'; c.beginPath(); c.ellipse(cx + ox, gy - 2, bw * 0.42 * (0.6 + 0.4 * f), Math.max(2, bh * 0.08 * f), 0, 0, 6.2832); c.fill(); c.restore(); }
   }
   /* a hard landing or a bounce squashes the body a little along the hit, then it springs back */
   if (rt.sq) { const d = rt.sqN || [0, 1], ang = Math.atan2(d[1], d[0]), q = rt.sq; c.translate(cx + ox, cy + oy); c.rotate(ang); c.scale(1 - 0.22 * q, 1 + 0.12 * q); c.rotate(-ang); c.translate(-cx - ox, -cy - oy); }
@@ -2445,7 +2856,7 @@ function lifeDraw(it, rt) {
   /* what the real thing would bring with it, drawn around the picture in the same light hand: sparks and smoke over a flame,
      bubbles from a fish, dust where feet land, exhaust and speed lines behind a car, pulse rings round a beating heart,
      wind through a tree, and a startled "!" with a drop of sweat when something rushes at it */
-  if (b.fx !== 0) { c.setTransform(cap, 0, 0, cap, 0, 0); c.translate(-it.x, -it.y); lifeFx(c, it, rt, { k, t, T0, A, B, bw, bh, cx, cy, ox, oy, face: flip ? -face : face, moving, vr }); }
+  if (b.fx !== 0) { c.setTransform(cap, 0, 0, cap, 0, 0); c.translate(-x0, -y0); lifeFx(c, it, rt, { k, t, T0, A, B, bw, bh, cx, cy, ox, oy, face: flip ? -face : face, moving, vr }); }
 }
 
 /* ----- faces: a drawn person can shout, talk, laugh, smile, be sad, cry, be surprised or angry; the drawn mouth (and for
@@ -2627,6 +3038,9 @@ function lifeFx(c, it, rt, o) {
     const f = p.age / p.life; p.x += p.vx * dt; p.y += p.vy * dt;
     if (p.ty === 'bubble') p.x += Math.sin((p.age + q) * 6) * 0.4;
     if (p.ty === 'dust') p.vy += 60 * dt;
+    /* out on the paper the canvas goes with the picture (pagewalk.js): a bubble or a puff it has left behind is not drawn
+       once it reaches the edge of the canvas, instead of being drawn cut */
+    if (rt.win) { const m = (p.r || 4) * 3 + 6, w0 = rt.win; if (p.x - m < w0[0] || p.x + m > w0[0] + w0[2] || p.y - m < w0[1] || p.y + m > w0[1] + w0[3]) continue; }
     c.save();
     if (p.ty === 'ember') { c.globalAlpha = (1 - f) * 0.9; c.fillStyle = f < 0.4 ? '#F4A23B' : '#D9602A'; c.beginPath(); c.arc(p.x + Math.sin(p.age * 9 + q) * 2, p.y, p.r * (1 - f * 0.5), 0, 6.2832); c.fill(); }
     else if (p.ty === 'smoke') { c.globalAlpha = 0.08 * Math.sin(Math.PI * f); c.fillStyle = '#6B7280'; c.beginPath(); c.arc(p.x + Math.sin(p.age * 2 + q) * 5, p.y, p.r * (1 + f * 2.8), 0, 6.2832); c.fill(); }
@@ -2694,6 +3108,8 @@ function lifeSegs(box) {
   for (const q of Wd.boxes) if (!(q[2] < box[0] || q[0] > box[2] || q[3] < box[1] || q[1] > box[3])) rect(q, 0, 0);
   /* other moving pictures that are not physical bodies push like a moving wall */
   for (const [id2, r2] of LIFE) { const o = findItem(id2); if (!o || !o.beh || !o.B || o.beh.k === 'phys') continue; if (!(o.beh.move || o.beh.k === 'path')) continue; const q = lifeBox(o, r2); if (q[2] < box[0] || q[0] > box[2] || q[3] < box[1] || q[1] > box[3]) continue; const ux = o.beh.k === 'path' ? 0 : (r2.dir || 1) * (r2.v || 0); rect(q, ux, 0, id2); }
+  /* an animal out on the paper (and a drawing moving by physics) is a wall that moves: a ball it walks into is kicked on */
+  for (const m of lifeMet()) { const q = m[0]; if (q[2] < box[0] || q[0] > box[2] || q[3] < box[1] || q[1] > box[3]) continue; rect(q, m[1], 0, null); }
   segs.push([0, H, W, H, 0, 0, 0], [0, 0, 0, H, 0, 0, 0], [W, 0, W, H, 0, 0, 0], [0, 0, W, 0, 0, 0, 0]);
   return segs;
 }
@@ -2788,4 +3204,171 @@ async function lifeAuto(sp) {
 }
 /* started from the app's play-all button: the moving drawings and models that were waiting start again */
 function animKick(on) { if (on && !lifeRaf && LIFE.size) lifeRaf = requestAnimationFrame(lifeTick); if (on && !scnRaf && SCN.size) scnRaf = requestAnimationFrame(scTick); }
+
+/* ----- every moving picture out on the paper (owner 23 พ.ย. 2569, switch "pagemove", the part after the animals): the
+   living pictures (life.js) and the drawings made to move by the rules of physics (scene.js, spec.bare) stand on any line
+   of ink and on the top of any box, are stopped by the side of a box or a steep line, meet the animals out on the paper and
+   each other, and are always drawn whole. Built on the same idea as the animals' page (animals.js anEnv anSupport anHits):
+   the page as segments, built again when a line or a box is added or taken away, and looked at again twice a second.
+   The parts live in separate scopes, so this is the same work done here for the pictures; the animals keep their own ----- */
+function pwOn() { return typeof flagOn !== 'function' || flagOn('pagemove'); }
+/* what walks by itself on the page: it is not ground or a wall for the others (they meet it as a moving thing) */
+function pwWalker(it) { return !!(it && (it.type === 'life' || (it.spec && (it.spec.bare || it.spec.clean)) || (it.type === 'scene' && it.fr === 0 && it.spec && it.spec.domain === 'phys' && it.spec.dim !== 3))); }
+let PW_ENV = null, PW_T = 0;
+function pwEnvSig() {
+  let n = 0, a = 0; for (const r of allStrokes()) { const p = r.s.p || []; n++; a = (a * 31 + p.length + (p[0] | 0) + (p[1] | 0)) % 2147483647; }
+  let b = 0; for (const it of visibleItems()) { if (pwWalker(it)) continue; b = (b * 17 + Math.round((it.x || 0) + (it.y || 0) * 3 + (it.w || 0) * 7 + (it.h || 0) * 11)) % 2147483647; }
+  return n + ':' + a + ':' + b + ':' + S.pid;
+}
+/* the page as segments: lines of ink (a line written on a moving picture rides on it and is left out), and the top and
+   sides of every box (a text box only where its words are) */
+/* a cheap key that changes at once when a line or a box is added or taken away (or another page is open) */
+function pwKey() {
+  const its = (S.page && S.page.items) || [], lm = S.mine[S.mine.length - 1], li = its[its.length - 1]; let o = 0;
+  for (const k in S.others) o += S.others[k].length;
+  return S.pid + ':' + S.mine.length + ':' + (lm ? lm.id : '') + ':' + its.length + ':' + (li ? li.id : '') + ':' + o;
+}
+function pwEnv() {
+  const n = pwKey(), now = performance.now();
+  if (PW_ENV && PW_ENV.n === n && PW_ENV.pid === S.pid && now - PW_T < 400) return PW_ENV;
+  PW_T = now; const sig = pwEnvSig(); if (PW_ENV && PW_ENV.sig === sig) { PW_ENV.n = n; return PW_ENV; }
+  const walk = new Set(); for (const it of visibleItems()) if (pwWalker(it)) walk.add(it.id);
+  const L = [];
+  for (const r of allStrokes()) {
+    const st = r.s, p = st.p || []; if (st.on && walk.has(st.on)) continue; if (p.length < 3) continue;
+    const seg = []; let x0 = p[0] / 10, x1 = x0, y0 = p[1] / 10, y1 = y0, px = x0, py = y0;
+    const step = p.length > 900 ? 9 : p.length > 180 ? 6 : 3;
+    for (let i = step; i < p.length; i += step) { const j = Math.min(i, p.length - 3), x = p[j] / 10, y = p[j + 1] / 10; if (Math.hypot(x - px, y - py) > 0.5) { seg.push([px, py, x, y]); px = x; py = y; } if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; if (j >= p.length - 3) break; }
+    if (!seg.length) seg.push([px - 0.5, py, px + 0.5, py]); /* a dot is still something */
+    L.push({ b: [x0, y0, x1, y1], seg, w: (st.w || 3) / 2, s: st });
+  }
+  const R = [];
+  for (const it of visibleItems()) {
+    if (pwWalker(it) || isBgItem(it)) continue;
+    const el = itemsEl.querySelector('[data-id="' + it.id + '"]'); if (!el || el.hidden || !el.offsetHeight) continue;
+    const b = !it.type || it.type === 'text' ? tightItemBox(it) : itemBox(it); if (b[2] - b[0] < 4 || b[3] - b[1] < 4) continue;
+    R.push({ id: it.id, b, seg: [[b[0], b[1], b[2], b[1]], [b[0], b[1], b[0], b[3]], [b[2], b[1], b[2], b[3]], [b[0], b[3], b[2], b[3]]] });
+  }
+  PW_ENV = { sig, n, pid: S.pid, L, R }; return PW_ENV;
+}
+/* the segments that come near a rectangle [x0, y0, x1, y1] */
+function pwNear(r, skip) {
+  const E = pwEnv(), out = [];
+  for (const l of E.L) { const b = l.b; if (b[2] < r[0] || b[0] > r[2] || b[3] < r[1] || b[1] > r[3]) continue; for (const q of l.seg) if (Math.max(q[0], q[2]) >= r[0] && Math.min(q[0], q[2]) <= r[2] && Math.max(q[1], q[3]) >= r[1] && Math.min(q[1], q[3]) <= r[3]) out.push(q); }
+  for (const o of E.R) { const b = o.b; if (skip && skip.has(o.id)) continue; if (b[2] < r[0] || b[0] > r[2] || b[3] < r[1] || b[1] > r[3]) continue; for (const q of o.seg) out.push(q); }
+  return out;
+}
+/* the animals out on the paper now: their bodies (not their empty boxes) and how fast they go, in points a second */
+function pwAnimals() {
+  const out = []; if (typeof anVis !== 'function') return out;
+  for (const it of visibleItems()) { if (it.type !== 'scene' || !it.spec || !it.spec.animal) continue; const q = anVis(it.id); if (q) out.push({ id: it.id, box: [q[0], q[1], q[2], q[3]], vx: clamp(q[4] || 0, -600, 600) }); }
+  return out;
+}
+/* a moving picture's window on the page: the part of the page its canvas covers now, round where the picture is, with
+   the room its own movements and effects need (so nothing of it is ever cut). Its size stays the same, only its place
+   follows the picture (a small canvas that moves, not one as wide as the page) */
+function pwWin(cv, el, it, box, m) {
+  const x = Math.round(box[0] - m[0]), y = Math.round(box[1] - m[1]), w = Math.round(box[2] - box[0] + m[0] + m[2]), h = Math.round(box[3] - box[1] + m[1] + m[3]);
+  const k = [x - (it.x || 0), y - (it.y || 0), w, h].join();
+  if (cv._pw !== k) { cv._pw = k; cv.style.position = 'absolute'; cv.style.left = (x - (it.x || 0)) + 'px'; cv.style.top = (y - (it.y || 0)) + 'px'; cv.style.width = w + 'px'; cv.style.height = h + 'px'; if (el) el.classList.add('pwmove'); }
+  return [x, y, w, h];
+}
+/* the page's segments as surfaces of a drawing that moves by physics (spec.bare): only those near its bodies, so a page
+   full of writing stays light; animals are walls that move */
+function pwSurfaces(it, r, sp) {
+  /* the page and its world as it was last drawn (phDraw's map); a drawn person that turned back is drawn mirrored about
+     where it turned (ipTurn), and the page is seen the same way */
+  const mp = r.map || { sc: W / Math.max(1e-6, sp.world.w || 1), ox: 0, oy: 0, x0: 0, y0: 0, h: it.h || 0 }, K = mp.sc, m = r.mir || { s: 1, O: 0 }, out = [];
+  const bx = r.org ? r.org[0] : it.x || 0, by = (r.org ? r.org[1] : it.y || 0) + mp.h - mp.oy; /* r.org: where the model's canvas begins on the page (scOutDraw) */
+  const px = (x) => bx + m.s * (mp.ox + (x - mp.x0) * K) + m.O, py = (y) => by - (y - mp.y0) * K;
+  const toW = (x, y) => [((x - bx - m.O) / m.s - mp.ox) / K + mp.x0, (by - y) / K + mp.y0];
+  /* the boxes it was drawn over (or that were put over it) are not in its way, as with an animal */
+  if (!r.pwSkip) { r.pwSkip = new Set(); for (const b of r.st.bodies) { if (b.fixed) continue; const cx = px(b.x), cy = py(b.y); for (const o of pwEnv().R) if (cx > o.b[0] && cx < o.b[2] && cy > o.b[1] && cy < o.b[3]) r.pwSkip.add(o.id); } }
+  for (const b of r.st.bodies) {
+    if (b.fixed) continue;
+    let rect;
+    if (b.shape === 'person') { const hx = px(b.x), H0 = (b.hgt || 1.7) * K; rect = [hx - 0.6 * H0, py(b.y + 0.8 * b.hgt), hx + 0.6 * H0, py(b.y) + 1.6 * H0]; }
+    else { const rr = ((b.hsz || Math.max(b.w || 0, b.h || 0, 2 * (b.r || 0)))) * K + Math.hypot(b.vx || 0, b.vy || 0) * K * 0.05 + 30, cx = px(b.x), cy = py(b.y); rect = [cx - rr, cy - rr, cx + rr, cy + rr]; }
+    for (const q of pwNear(rect, r.pwSkip)) { const a = toW(q[0], q[1]), z = toW(q[2], q[3]); out.push({ x1: a[0], y1: a[1], x2: z[0], y2: z[1], mu: 0.4, mus: 0.5, _pg: 1 }); }
+    /* every other moving thing is solid too: the living pictures, the drawings moved by physics and the bodies of other
+       models (owner 23 พ.ย. 2569: every thing answers every other as the real thing would) */
+    const bc = [px(b.x), py(b.y)];
+    for (const q of pwMovers(it.id)) { if (q[2] < rect[0] || q[0] > rect[2] || q[3] < rect[1] || q[1] > rect[3]) continue; if (bc[0] > q[0] && bc[0] < q[2] && bc[1] > q[1] && bc[1] < q[3]) continue; /* already over it (drawn there): not pushed out */ for (const s of [[q[0], q[3], q[0], q[1]], [q[0], q[1], q[2], q[1]], [q[2], q[1], q[2], q[3]], [q[2], q[3], q[0], q[3]]]) { const a = toW(s[0], s[1]), z = toW(s[2], s[3]); out.push({ x1: a[0], y1: a[1], x2: z[0], y2: z[1], mu: 0.3, mus: 0.4, _pg: 1, _an: 1 }); } }
+    for (const A of pwAnimals()) { const q = A.box; if (q[2] < rect[0] || q[0] > rect[2] || q[3] < rect[1] || q[1] > rect[3]) continue; const c = [[q[0], q[3], q[0], q[1]], [q[0], q[1], q[2], q[1]], [q[2], q[1], q[2], q[3]]]; for (const s of c) { const a = toW(s[0], s[1]), z = toW(s[2], s[3]); out.push({ x1: a[0], y1: a[1], x2: z[0], y2: z[1], mu: 0.3, mus: 0.4, _pg: 1, _an: 1 }); } }
+  }
+  return out;
+}
+/* the model as it is plus the page round its bodies: the same spec seen with more surfaces (nothing is saved) */
+function pwSpec(it, r, sp) {
+  const extra = pwSurfaces(it, r, sp), p = r.st.bodies.find((b) => b.shape === 'person'); if (!extra.length && !p) return sp;
+  const v = Object.create(sp); v.surfaces = extra.length ? sp.surfaces.concat(extra) : sp.surfaces;
+  /* a person stands on what is under its feet: a line or a box up to a small step higher, not one over its head */
+  if (p && p.kin) { v._gl = Math.min(p.kin.fl[1], p.kin.fr[1]); v._gs = 0.15 * (p.hgt || 1.7); }
+  return v;
+}
+/* what else is on the page, for a request in words (motionPlan with AI, motionTargeted without): the animals out on the
+   paper by their Thai names, the moving pictures, and the boxes of text and pictures, with where each one is now */
+function pwThings(skip) {
+  const out = [];
+  for (const it of visibleItems()) {
+    if (skip && skip.includes(it.id)) continue;
+    let box = null, what = '';
+    if (it.type === 'scene' && it.spec && it.spec.animal) { box = typeof anVis === 'function' ? anVis(it.id) : null; if (!box) box = itemBox(it); what = 'animal ' + (it.spec.title || it.spec.animal) + ' (' + it.spec.animal + ')'; }
+    else if (it.type === 'life' && it.B && typeof LIFE !== 'undefined' && LIFE.get(it.id)) { box = lifeBox(it, LIFE.get(it.id)); what = 'moving picture'; }
+    else if (pwWalker(it) || isBgItem(it)) continue;
+    else if (!it.type || it.type === 'text') { box = tightItemBox(it); what = 'text box "' + String(it.md || '').replace(/\s+/g, ' ').slice(0, 30) + '"'; }
+    else { box = itemBox(it); what = it.type === 'img' ? 'picture' : it.type + ' box'; }
+    if (box && box[2] - box[0] > 2) out.push({ id: it.id, what, title: it.spec && it.spec.animal ? it.spec.title || '' : '', box: box.slice(0, 4).map(Math.round) });
+    if (out.length >= 24) break;
+  }
+  return out;
+}
+/* the boxes of the other moving things on the page now (not the animals: pwAnimals), leaving out the one asking */
+function pwMovers(self) {
+  const out = [];
+  if (typeof LIFE !== 'undefined') for (const [id, rt] of LIFE) { if (id === self) continue; const o = findItem(id); if (!o || !o.B || !o.beh || !rt.cv || !rt.cv.isConnected) continue; const q = lifeBox(o, rt), m = Math.min(q[2] - q[0], q[3] - q[1]) * 0.1; out.push([q[0] + m, q[1] + m, q[2] - m, q[3] - m]); }
+  try { for (const o of ipActors()) if (o.id !== self) out.push(o.box); } catch (e) { /* not ready */ }
+  return out;
+}
+/* a tap of a finger or the mouse on something that moves (owner 23 พ.ย. 2569: every thing and every happening answers as the
+   real thing would): a living picture startles and runs, flies or darts away from the finger (a standing one flinches), a
+   ball or a thing moved by physics is knocked away from it, a drawn person stops and turns. The animals answer taps
+   themselves (anTap). Nothing is saved */
+function pwTap(x, y) {
+  if (!pwOn() || S.show) return false;
+  const near = (q, m) => x >= q[0] - m && x <= q[2] + m && y >= q[1] - m && y <= q[3] + m;
+  /* the bodies of models and the drawings moved by physics */
+  for (const [id, r] of SCN) {
+    const it = findItem(id); if (!it || !it.spec || it.spec.dim === 3 || it.spec.domain !== 'phys' || !r.st || !r.map || !r.cv || !r.cv.isConnected) continue;
+    const mp = r.map, m = r.mir || { s: 1, O: 0 }, org = r.org || [it.x || 0, it.y || 0];
+    for (const b of r.st.bodies) {
+      if (b.fixed) continue;
+      const X = org[0] + m.s * mp.X(b.x) + m.O, Y = org[1] + mp.Y(b.y), R = b.shape === 'person' ? (b.hgt || 1.7) * mp.sc * 0.5 : (b.shape === 'ball' ? b.r : (b.hsz || Math.max(b.w || 0, b.h || 0) / 2)) * mp.sc;
+      if (Math.hypot(x - X, y - (b.shape === 'person' ? Y - R * 0.3 : Y)) > R + 10) continue;
+      if (b.shape === 'person') { if (!r.turning && !r.peek) r.peek = 0.45; }
+      else { const d = x < X ? 1 : -1, k = Math.max(1, Math.min(4, 120 / Math.max(10, R))); b.vx = (b.vx || 0) + d * 1.8 * k; b.vy = Math.max(b.vy || 0, 0) + 2.2 * k; if (b.om != null) b.om += -d * 3; }
+      if (!r.playing) { r.playing = true; if (!scnRaf) scnRaf = requestAnimationFrame(scTick); }
+      return true;
+    }
+  }
+  /* the living pictures */
+  if (typeof LIFE !== 'undefined') for (const [id, rt] of LIFE) {
+    const it = findItem(id); if (!it || !it.B || !it.beh || !rt.cv || !rt.cv.isConnected) continue;
+    const q = lifeBox(it, rt); if (!near(q, 6)) continue;
+    const b = it.beh, k = b.k, cx = (q[0] + q[2]) / 2, away = x < cx ? 1 : -1;
+    if (k === 'phys') { rt.vx = (rt.vx || 0) + away * 420; rt.vy = Math.min(rt.vy || 0, 0) - 520; rt.w = (rt.w || 0) + away * 6; rt.sleep = 0; }
+    else if (k === 'path') { rt.scare = 1; rt.bump = 1; rt.pblock = 0; }
+    else if (b.move && b.edge !== 'stay') {
+      rt.scare = 1; rt.jolt = 1;
+      if (k === 'flap') { rt.climb = 1; if (rt.dir !== away) { rt.state = 'turn'; rt.tp = 0; rt.flipped = false; } }
+      else if (k === 'swim') { rt.dart = 1; if (rt.dir !== away) { rt.state = 'turn'; rt.tp = 0.2; rt.flipped = false; } }
+      else if (rt.dir === away) { rt.state = 'go'; rt.v = Math.max(rt.v || 0, (LIFE_SPEED[k] || 60) * (b.sp || 1) * 2.2); } /* the finger behind it: it runs on */
+      else { rt.state = 'turn'; rt.tp = 0; rt.flipped = false; rt.recoil = away * Math.min(24, (q[2] - q[0]) * 0.15); } /* in front: it jumps back and turns */
+    } else { rt.flinch = 1; rt.flinchDir = away; rt.flinchUp = y < (q[1] + q[3]) / 2; rt.scare = Math.max(rt.scare || 0, 0.8); }
+    if (!rt.playing && typeof animOn === 'function' && animOn()) rt.playing = true;
+    if (!lifeRaf) lifeRaf = requestAnimationFrame(lifeTick);
+    return true;
+  }
+  return false;
+}
 
