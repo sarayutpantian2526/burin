@@ -225,6 +225,8 @@ async function solveShow() {
   try { r = await casRun(SOLVE.src, SOLVE.opt); }
   catch (e) { P.body.innerHTML = '<div class="note err">' + (e && e.message === 'cas' || /load/.test(String(e && e.message)) ? 'โหลดตัวแก้สมการไม่สำเร็จ ตรวจอินเทอร์เน็ต' : 'อ่านสมการนี้ไม่ได้ ตรวจรูปแบบในช่องด้านบน') + '</div>'; return; }
   SOLVE.res = r;
+  /* task 8.19: steps the app can write itself (steps.js) need no AI */
+  let ws = null; try { ws = typeof wsSteps === 'function' ? wsSteps(r) : null; } catch (e) { ws = null; }
   let h = '';
   if (r.kind === 'solve' && r.vars.length > 1) h += '<div class="spk"><span>หาค่า</span>' + r.vars.map((v) => '<button type="button" class="chip" data-v="' + esc(v) + '" aria-pressed="' + (v === r.unknowns[0]) + '">' + esc(v) + '</button>').join('') + '</div>';
   if (r.kind === 'matrix' && r.mats === 1) h += '<div class="spk"><span>ทำอะไร</span>' + [['det', 'ดีเทอร์มิแนนต์'], ['inv', 'อินเวอร์ส'], ['transpose', 'ทรานสโพส'], ['rank', 'แรงก์'], ['rref', 'ขั้นบันไดลดรูป'], ['eig', 'ค่าเฉพาะ']].map(([k, n]) => '<button type="button" class="chip" data-op="' + k + '" aria-pressed="' + (k === r.mop) + '">' + n + '</button>').join('') + '</div>';
@@ -234,7 +236,7 @@ async function solveShow() {
     h += '<div class="spres">' + r.rows.map((x) => '<div>$' + (x.of != null ? (x.lhs ? x.lhs + '\\left(' + x.of + '\\right)' : x.of) + ' = ' : (x.lhs ? x.lhs + ' = ' : '')) + x.tex + '$' + (x.approx ? ' <span class="spa">$\\approx ' + x.approx + '$</span>' : '') + '</div>').join('') + '</div>';
   }
   if (r.note) h += '<div class="note">' + esc(r.note) + '</div>';
-  h += '<div class="row2">' + (r.rows.length ? '<button type="button" class="btn solid" data-a="put">วางคำตอบลงหน้า</button>' : '') + (solveGraphable(r) ? '<button type="button" class="btn" data-a="graph">วาดกราฟ</button>' : '') + (r.rows.length && AI.ready('gen') ? '<button type="button" class="btn" data-a="why">ให้ AI อธิบายวิธีทำ</button>' : '') + '</div><div class="spwhy"></div>';
+  h += '<div class="row2">' + (r.rows.length ? '<button type="button" class="btn solid" data-a="put">วางคำตอบลงหน้า</button>' : '') + (solveGraphable(r) ? '<button type="button" class="btn" data-a="graph">วาดกราฟ</button>' : '') + (r.rows.length && (ws || AI.ready('gen')) ? '<button type="button" class="btn" data-a="why">' + (ws ? 'แสดงวิธีทำ' : 'ให้ AI อธิบายวิธีทำ') + '</button>' : '') + '</div><div class="spwhy"></div>';
   P.body.innerHTML = h;
   typeset(P.body.querySelector('.spres') || P.body);
   if (r.svg) { const g = document.createElement('div'); g.className = 'spsvg'; const im = new Image(); im.alt = 'กราฟคำตอบ'; im.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(r.svg); g.appendChild(im); (P.body.querySelector('.spres') || P.body.firstChild).after(g); }
@@ -242,7 +244,7 @@ async function solveShow() {
   P.body.querySelectorAll('[data-op]').forEach((b) => { b.onclick = () => { SOLVE.opt.op = b.dataset.op; solveShow(); }; });
   const put = P.body.querySelector('[data-a="put"]'); if (put) put.onclick = () => solvePut(r);
   const gr = P.body.querySelector('[data-a="graph"]'); if (gr) gr.onclick = () => solveGraph(r);
-  const why = P.body.querySelector('[data-a="why"]'); if (why) why.onclick = () => solveWhy(r, P.body.querySelector('.spwhy'));
+  const why = P.body.querySelector('[data-a="why"]'); if (why) why.onclick = () => (ws ? wsShow(ws, r, P.body.querySelector('.spwhy')) : solveWhy(r, P.body.querySelector('.spwhy')));
 }
 const casRowTex = (x) => (x.of != null ? (x.lhs ? x.lhs + '\\left(' + x.of + '\\right)' : x.of) + ' = ' : (x.lhs ? x.lhs + ' = ' : '')) + x.tex;
 function solveLines(r) {
@@ -274,6 +276,8 @@ function solveGraph(r) {
   if (xv === 't') g.x0 = 0;
   loadLib('math').then(() => placeGraph(g, SOLVE.box || [W / 2 - 280, 200, W / 2 + 280, 260])).catch(() => toast('โหลดตัววาดกราฟไม่สำเร็จ', 2500));
 }
+/* worked steps put on the page under the writing (from the AI, or written here by steps.js) */
+function solvePutSteps(md) { const w = 620, b = SOLVE.box || [40, 200, 40, 200], md0 = md, at = placeNear(b, w, estTextH(md0, w, 22) + 10) || [clamp(b[0], PAGE_M, W - w - PAGE_M), Math.min(b[3] + 16, H - 300)]; addItem({ type: 'text', x: Math.round(at[0]), y: Math.round(at[1]), w, fs: 22, md: md0 }); toast('วางวิธีทำลงหน้าแล้ว', 1500); }
 async function solveWhy(r, out) {
   waitCard(out, 'AI กำลังเขียนวิธีทำ', null, { cancel: false });
   try {
@@ -284,7 +288,7 @@ async function solveWhy(r, out) {
     const res = await AI.run('gen', 'A teacher wants the worked steps for this problem: ' + r.input.join('; ') + '\nThe correct final answer, already checked by a computer algebra system, is: ' + ans + '\nWrite the steps in Thai, short and clear, the way a teacher writes them on the board, one step per line, math as LaTeX between $ signs. End with the same final answer. No headings.', { maxTokens: 900, onPartial });
     out.innerHTML = '<div class="spsteps">' + mdToHtml(String(res.text || '').trim()) + '</div><div class="row2"><button type="button" class="btn" data-a="putw">วางวิธีทำลงหน้า</button></div>';
     typeset(out);
-    out.querySelector('[data-a="putw"]').onclick = () => { const w = 620, b = SOLVE.box || [40, 200, 40, 200], md0 = String(res.text || '').trim(), at = placeNear(b, w, estTextH(md0, w, 22) + 10) || [clamp(b[0], PAGE_M, W - w - PAGE_M), Math.min(b[3] + 16, H - 300)]; addItem({ type: 'text', x: Math.round(at[0]), y: Math.round(at[1]), w, fs: 22, md: String(res.text || '').trim() }); toast('วางวิธีทำลงหน้าแล้ว', 1500); };
+    out.querySelector('[data-a="putw"]').onclick = () => solvePutSteps(String(res.text || '').trim());
   } catch (e) { out.innerHTML = '<div class="note err">' + esc(aiErr(e)) + '</div>'; }
 }
 
@@ -603,5 +607,163 @@ function casEigvec(rows, lam) {
   for (let c = 0; c < n && r < n; c++) { let p = r; for (let k = r + 1; k < n; k++) if (Math.abs(M[k][c]) > Math.abs(M[p][c])) p = k; if (Math.abs(M[p][c]) < 1e-9) continue; [M[p], M[r]] = [M[r], M[p]]; const v = M[r][c]; M[r] = M[r].map((x) => x / v); for (let k = 0; k < n; k++) if (k !== r) { const f = M[k][c]; M[k] = M[k].map((x, j) => x - f * M[r][j]); } piv.push(c); r++; }
   const free = []; for (let c = 0; c < n; c++) if (!piv.includes(c)) free.push(c);
   return free.map((fc) => { const x = new Array(n).fill(0); x[fc] = 1; piv.forEach((pc, k) => { x[pc] = -M[k][fc]; }); return x; });
+}
+
+/* ---------- worked steps written here, with no AI (task 8.19 group 3). Built into the part "cas" after cas.js; "steps"
+   in flags.json turns it off (or "localcalc"): the steps come from the AI as before. The kinds the app writes itself:
+     a linear equation in one unknown (letters allowed as coefficients): gather, move, divide
+     a quadratic with number coefficients: the standard form, the discriminant, factors when the roots are rational,
+       otherwise the formula
+     a linear system of two unknowns (elimination, or substitution when one equation has one unknown) or three (Cramer)
+     the derivative and the integral of a polynomial, term by term
+   The last line is always the answer the solver found, so the steps and the answer cannot disagree. Anything else
+   returns null and the AI writes the steps as before ---------- */
+function wsOn() { return flagOn('steps') && flagOn('localcalc'); }
+const wsN = (s) => { try { return nerdamer(String(s)); } catch (e) { return null; } };
+const wsS = (s) => { const n = wsN(s); return n ? String(n) : String(s); };
+const wsT = (s) => casTex(wsS(s));
+/* a number (exact) or null when the expression still has letters */
+function wsNum(s) { const n = wsN(s); if (!n) return null; try { if (n.variables().length) return null; } catch (e) { return null; } const v = casNum(String(n)); return v == null ? null : v; }
+/* coefficients of a polynomial in v, lowest power first; null when it is not one */
+function wsCoeffs(f, v) {
+  let c; try { c = nerdamer.coeffs(wsS('expand(' + f + ')'), v); } catch (e) { return null; }
+  const a = []; try { for (let i = 0; i < 20; i++) { const e = c.symbol && c.symbol.elements ? c.symbol.elements : c.elements || c, x = e[i]; if (x == null) break; a.push(String(x)); } } catch (e) { return null; }
+  if (!a.length || a.some((x) => { const n = wsN(x); try { return !n || n.variables().indexOf(v) >= 0; } catch (e) { return true; } })) return null;
+  /* a polynomial gives back the same expression from its coefficients */
+  const back = a.map((x, i) => '(' + x + ')*' + v + '^' + i).join('+');
+  try { if (String(nerdamer('expand((' + f + ')-(' + back + '))')) !== '0') return null; } catch (e) { return null; }
+  while (a.length > 1 && wsS(a[a.length - 1]) === '0') a.pop();
+  return a;
+}
+const wsSplit = (eq) => { const i = eq.indexOf('='); return [eq.slice(0, i), eq.slice(i + 1)]; };
+/* a term c·v^n as TeX: 3x^{2}, -x, 5 */
+function wsTerm(c, v, n) { return wsT('(' + c + ')*' + v + (n === 1 ? '' : '^' + n)); }
+function wsLinear(eq, v, r) {
+  const [L, R] = wsSplit(eq), f = '(' + L + ')-(' + R + ')', c = wsCoeffs(f, v);
+  if (!c || c.length !== 2) return null;
+  /* a leading minus is turned round first (both sides times -1), as on the board */
+  const neg = /^-/.test(wsS(c[1])), a = wsS(neg ? '-(' + c[1] + ')' : c[1]), b = wsS(neg ? '-(' + c[0] + ')' : c[0]), out = ['โจทย์ $' + wsT(L) + ' = ' + wsT(R) + '$'];
+  out.push('ย้ายทุกพจน์ไปข้างเดียวกันแล้วรวมพจน์ $' + wsT(neg ? '-(' + f + ')' : f) + ' = 0$');
+  out.push('ย้ายพจน์ที่ไม่มี $' + casTex(v) + '$ ไปข้างขวา $' + wsTerm(a, v, 1) + ' = ' + wsT('-(' + b + ')') + '$');
+  if (a !== '1') out.push('หารทั้งสองข้างด้วย $' + wsT(a) + '$ ได้ $' + casTex(v) + ' = ' + wsT('(-(' + b + '))/(' + a + ')') + '$');
+  return out;
+}
+function wsQuad(eq, v, r) {
+  const [L, R] = wsSplit(eq), f = '(' + L + ')-(' + R + ')', c = wsCoeffs(f, v);
+  if (!c || c.length !== 3 || c.some((x) => wsNum(x) == null)) return null;
+  const [cc, b, a] = c.map(wsS), V = casTex(v), out = ['โจทย์ $' + wsT(L) + ' = ' + wsT(R) + '$'];
+  out.push('จัดให้อยู่ในรูป $a' + V + '^{2} + b' + V + ' + c = 0$ ได้ $' + wsT(f + '') + ' = 0$ จึงได้ $a = ' + wsT(a) + ',\\ b = ' + wsT(b) + ',\\ c = ' + wsT(cc) + '$');
+  const D = wsS('(' + b + ')^2-4*(' + a + ')*(' + cc + ')'), Dn = wsNum(D);
+  const par = (x) => (wsNum(x) < 0 ? '(' + wsT(x) + ')' : wsT(x));
+  out.push('ดิสคริมิแนนต์ $D = b^{2} - 4ac = ' + par(b) + '^{2} - 4 \\cdot ' + par(a) + ' \\cdot ' + par(cc) + ' = ' + wsT(D) + '$');
+  if (Dn < 0) { out.push('$D < 0$ สมการนี้ไม่มีคำตอบเป็นจำนวนจริง คำตอบเป็นจำนวนเชิงซ้อนจากสูตร $' + V + ' = \\frac{-b \\pm \\sqrt{D}}{2a}$'); return out; }
+  /* rational roots: the square root of D is rational, so the expression factors */
+  const sq = wsS('sqrt(' + D + ')'), rational = Dn >= 0 && !/sqrt/.test(sq) && wsNum(sq) != null;
+  if (rational) {
+    let fac = ''; try { fac = casTex(String(nerdamer('factor(' + wsS('expand(' + f + ')') + ')'))); } catch (e) { fac = ''; }
+    if (fac && /\\left\(|\(/.test(fac)) { out.push('แยกตัวประกอบ $' + fac + ' = 0$'); return out; }
+  }
+  out.push('ใช้สูตร $' + V + ' = \\frac{-b \\pm \\sqrt{D}}{2a} = \\frac{' + wsT('-(' + b + ')') + ' \\pm \\sqrt{' + wsT(D) + '}}{' + wsT('2*(' + a + ')') + '}$');
+  return out;
+}
+/* a x + b y + ... = k for each equation; null unless every coefficient is a number */
+function wsRows(eqs, vars) {
+  const rows = [];
+  for (const eq of eqs) {
+    const [L, R] = wsSplit(eq); let rest = wsS('expand((' + L + ')-(' + R + '))'); const co = [];
+    for (const v of vars) { const c = wsCoeffs(rest, v); if (!c || c.length > 2) return null; co.push(wsS(c[1] || '0')); rest = wsS(c[0]); }
+    if (wsNum(rest) == null || co.some((x) => wsNum(x) == null)) return null;
+    rows.push({ co, k: wsS('-(' + rest + ')'), src: eq });
+  }
+  return rows;
+}
+function wsEqTex(co, k, vars) {
+  let s = ''; co.forEach((c, i) => { const n = wsNum(c); if (!n) return; const t = wsTerm(c, vars[i], 1); s += (s && !/^-/.test(t) ? ' + ' : s ? ' ' : '') + t; });
+  return (s || '0') + ' = ' + wsT(k);
+}
+function wsSys2(eqs, vars) {
+  const R = wsRows(eqs, vars); if (!R) return null;
+  const [x, y] = vars, X = casTex(x), Y = casTex(y), [p, q] = R, out = [];
+  out.push('สมการ (1) $' + wsEqTex(p.co, p.k, vars) + '$');
+  out.push('สมการ (2) $' + wsEqTex(q.co, q.k, vars) + '$');
+  const zero = (s) => wsNum(s) === 0;
+  /* one equation with one unknown: solve it, then put the value into the other */
+  for (const [one, other, n1, n2] of [[p, q, 1, 2], [q, p, 2, 1]]) {
+    for (const j of [0, 1]) {
+      if (!zero(one.co[1 - j]) || zero(one.co[j])) continue;
+      const vj = vars[j], vk = vars[1 - j], val = wsS('(' + one.k + ')/(' + one.co[j] + ')');
+      out.push('จาก (' + n1 + ') $' + casTex(vj) + ' = ' + wsT(val) + '$');
+      const rest = wsS('(' + other.k + ')-(' + other.co[j] + ')*(' + val + ')');
+      out.push('แทนใน (' + n2 + ') $' + wsTerm(other.co[1 - j], vk, 1) + ' = ' + wsT(rest) + '$' + (wsS(other.co[1 - j]) === '1' ? '' : ' จึงได้ $' + casTex(vk) + ' = ' + wsT('(' + rest + ')/(' + other.co[1 - j] + ')') + '$'));
+      return out;
+    }
+  }
+  if (zero(p.co[1]) || zero(q.co[1])) return null;
+  /* eliminate y: multiply so its coefficients have the same size, then subtract (same sign) or add (opposite signs) */
+  let m1 = wsS('abs(' + q.co[1] + ')'), m2 = wsS('abs(' + p.co[1] + ')');
+  const i1 = wsNum(m1), i2 = wsNum(m2), same = (wsNum(p.co[1]) > 0) === (wsNum(q.co[1]) > 0), op = same ? '-' : '+';
+  if (Number.isInteger(i1) && Number.isInteger(i2)) { const g = (a, b) => (b ? g(b, a % b) : Math.abs(a)); const d = g(i1, i2) || 1; m1 = String(i1 / d); m2 = String(i2 / d); }
+  const mul = (row, m) => ({ co: row.co.map((c) => wsS('(' + c + ')*(' + m + ')')), k: wsS('(' + row.k + ')*(' + m + ')') });
+  const A = mul(p, m1), B = mul(q, m2);
+  if (m1 !== '1') out.push('(1) คูณด้วย $' + wsT(m1) + '$ ได้ $' + wsEqTex(A.co, A.k, vars) + '$ ... (3)'); else out.push('ให้ (1) เป็นสมการ (3)');
+  if (m2 !== '1') out.push('(2) คูณด้วย $' + wsT(m2) + '$ ได้ $' + wsEqTex(B.co, B.k, vars) + '$ ... (4)'); else out.push('ให้ (2) เป็นสมการ (4)');
+  const ax = wsS('(' + A.co[0] + ')' + op + '(' + B.co[0] + ')'), kx = wsS('(' + A.k + ')' + op + '(' + B.k + ')');
+  if (wsNum(ax) === 0) return null;
+  out.push('(3) ' + (same ? 'ลบ' : 'บวก') + ' (4) กำจัด $' + Y + '$ ได้ $' + wsTerm(ax, x, 1) + ' = ' + wsT(kx) + '$' + (ax === '1' ? '' : ' จึงได้ $' + X + ' = ' + wsT('(' + kx + ')/(' + ax + ')') + '$'));
+  const xv = wsS('(' + kx + ')/(' + ax + ')'), ry = wsS('(' + p.k + ')-(' + p.co[0] + ')*(' + xv + ')');
+  out.push('แทน $' + X + ' = ' + wsT(xv) + '$ ใน (1) $' + wsTerm(p.co[1], y, 1) + ' = ' + wsT(ry) + '$' + (wsS(p.co[1]) === '1' ? '' : ' จึงได้ $' + Y + ' = ' + wsT('(' + ry + ')/(' + p.co[1] + ')') + '$'));
+  return out;
+}
+function wsDet(m) { return m.length === 2 ? wsS('(' + m[0][0] + ')*(' + m[1][1] + ')-(' + m[0][1] + ')*(' + m[1][0] + ')') : wsS([0, 1, 2].map((j) => '(' + (j % 2 ? '-' : '') + '(' + m[0][j] + ')*(' + wsDet(m.slice(1).map((r) => r.filter((_, c) => c !== j))) + '))').join('+')); }
+const wsMat = (m) => '\\begin{vmatrix} ' + m.map((r) => r.map(wsT).join(' & ')).join(' \\\\ ') + ' \\end{vmatrix}';
+function wsSys3(eqs, vars) {
+  const R = wsRows(eqs, vars); if (!R) return null;
+  const A = R.map((r) => r.co), k = R.map((r) => r.k), D = wsDet(A);
+  if (wsNum(D) === 0) return null;
+  const out = R.map((r, i) => 'สมการ (' + (i + 1) + ') $' + wsEqTex(r.co, r.k, vars) + '$');
+  out.push('ใช้กฎของคราเมอร์ $D = ' + wsMat(A) + ' = ' + wsT(D) + '$');
+  vars.forEach((v, j) => {
+    const M = A.map((row, i) => row.map((c, c2) => (c2 === j ? k[i] : c))), Dj = wsDet(M);
+    out.push('$D_{' + casTex(v) + '} = ' + wsMat(M) + ' = ' + wsT(Dj) + '$ จึงได้ $' + casTex(v) + ' = \\frac{D_{' + casTex(v) + '}}{D} = ' + wsT('(' + Dj + ')/(' + D + ')') + '$');
+  });
+  return out;
+}
+/* a polynomial, term by term: the power rule for a derivative, or for an integral */
+function wsCalc(expr, v, op) {
+  const c = wsCoeffs(expr, v); if (!c) return null;
+  const V = casTex(v), out = [];
+  if (op === 'diff') {
+    out.push('ใช้กฎ $\\frac{d}{d' + V + '}\\left(' + V + '^{n}\\right) = n' + V + '^{n-1}$ และอนุพันธ์ของค่าคงที่เป็น $0$ ทีละพจน์');
+    for (let n = c.length - 1; n >= 0; n--) { if (wsS(c[n]) === '0') continue; out.push('$\\frac{d}{d' + V + '}\\left(' + wsTerm(c[n], v, n) + '\\right) = ' + (n ? wsT('(' + c[n] + ')*' + n + '*' + v + '^' + (n - 1)) : '0') + '$'); }
+  } else {
+    out.push('ใช้กฎ $\\int ' + V + '^{n}\\,d' + V + ' = \\frac{' + V + '^{n+1}}{n+1} + C$ ทีละพจน์');
+    for (let n = c.length - 1; n >= 0; n--) { if (wsS(c[n]) === '0') continue; out.push('$\\int ' + wsTerm(c[n], v, n) + '\\,d' + V + ' = ' + wsT('(' + c[n] + ')*' + v + '^' + (n + 1) + '/' + (n + 1)) + '$'); }
+  }
+  return out;
+}
+/* the steps for a result of casRun, as Markdown lines (the same form the AI writes), or null */
+function wsSteps(r) {
+  if (!wsOn() || !r || !r.rows || !r.rows.length) return null;
+  let out = null;
+  try {
+    const eqs = (r.input || []).filter((p) => /[^<>!=]=[^=]/.test(p));
+    if (r.kind === 'solve' && eqs.length === 1 && r.unknowns.length === 1) out = wsLinear(eqs[0], r.unknowns[0], r) || wsQuad(eqs[0], r.unknowns[0], r);
+    else if (r.kind === 'system' && eqs.length === 2 && r.unknowns.length === 2 && r.vars.length === 2) out = wsSys2(eqs, r.unknowns);
+    else if (r.kind === 'system' && eqs.length === 3 && r.unknowns.length === 3 && r.vars.length === 3) out = wsSys3(eqs, r.unknowns);
+    else if ((r.kind === 'diff' || r.kind === 'integrate') && r.input.length === 1 && !eqs.length) out = wsCalc(r.input[0], r.unknowns[0], r.kind);
+  } catch (e) { out = null; }
+  if (!out || !out.length) return null;
+  const ans = solveLines(r);
+  out.push('ดังนั้น ' + ans.join(r.kind === 'system' ? ' และ ' : r.kind === 'solve' ? ' หรือ ' : ' '));
+  return out;
+}
+/* the steps in the solve panel, with the same buttons as the AI's: put them on the page, or ask the AI to say more */
+function wsShow(lines, r, out) {
+  const md = lines.join('\n');
+  out.innerHTML = '<div class="spsteps">' + mdToHtml(md) + '</div><div class="note small">แอปเขียนวิธีทำเองตามหลักคณิตศาสตร์ ไม่ใช้ AI</div><div class="row2"><button type="button" class="btn" data-a="putw">วางวิธีทำลงหน้า</button>'
+    + (AI.ready('gen') ? '<button type="button" class="btn" data-a="aiw">ให้ AI อธิบายเพิ่ม</button>' : '') + '</div>';
+  typeset(out);
+  out.querySelector('[data-a="putw"]').onclick = () => solvePutSteps(md);
+  const ai = out.querySelector('[data-a="aiw"]'); if (ai) ai.onclick = () => solveWhy(r, out);
 }
 
