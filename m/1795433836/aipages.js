@@ -380,6 +380,11 @@ async function ikPut(key, vals) {
   for (const k in vals) if (vals[k] !== undefined) r[k] = vals[k];
   await apPut('i' + key.h, { h: key.h, at: now(), pid: key.pid, ids: key.ids.slice(0, 800), r });
 }
+/* a photo of a board (task 8.20): its blocks as the AI read them, keyed by the picture; with v, kept */
+async function ikBoard(h, v) {
+  if (v === undefined) { const m = await apMem(), r = m.get('b' + h); return r && Array.isArray(r.r) ? r.r : null; }
+  await apPut('b' + h, { h, at: now(), r: v });
+}
 /* the reading of a whole page (task 8.10) when it is still what the page holds, '' otherwise */
 async function ikPage(pid) { AP.lk = null; return apReading(pid); }
 /* a page read by other work (the question maker, the slides): kept like a page read by the AI pages, when the
