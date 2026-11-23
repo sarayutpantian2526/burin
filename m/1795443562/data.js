@@ -220,6 +220,11 @@ async function unitCheck() {
   /* handwriting read before (task 8.16): the lines read for this check are used again at once; another reading of
      the same ink goes to the AI as text, with no picture */
   const m = refs.length ? await inkGet('unit', refs) : null, kept = !texts && m && typeof m.own === 'string' && m.own ? m.own : '', rd = !kept && m && m.text ? m.text : '';
+  /* task 8.19: calculation lines in that reading are checked here, with no AI (as typed lines are) */
+  if (rd && !texts && await lcReady()) {
+    let L = null; try { await loadLib('math'); L = tySteps(rd); } catch (e) { L = null; }
+    if (L && L.steps.length && (!L.miss || !AI.ready('read'))) { openAI(); ucShow(aiCard(''), L.steps, box, L.miss); return; }
+  }
   if (!kept && !needAIInk('read', refs.length)) return;
   openAI(); const B = busyCard('ตรวจหน่วยและเลขนัยสำคัญ');
   try {

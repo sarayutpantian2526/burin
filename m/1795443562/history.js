@@ -242,16 +242,17 @@ function histDraw(host, v) {
   const pg = histEl('div', 'histin'); pg.style.width = pw + 'px'; pg.style.height = ph + 'px'; pg.style.transform = 'scale(' + k + ')';
   const cv = document.createElement('canvas'), r = Math.min(2, (window.devicePixelRatio || 1)) * k;
   cv.width = Math.max(1, Math.round(pw * r)); cv.height = Math.max(1, Math.round(ph * r)); cv.style.width = pw + 'px'; cv.style.height = ph + 'px';
-  const x = cv.getContext('2d'), keep = [W, H];
+  const x = cv.getContext('2d'), keep = [W, H]; let top = [];
   try {
     W = pw; H = ph; x.setTransform(r, 0, 0, r, 0, 0); x.fillStyle = '#FFFFFF'; x.fillRect(0, 0, pw, ph); paper(x, v.paper || 'grid');
     const list = []; for (const l in v.ink) for (const s of v.ink[l]) list.push({ s, layer: l });
-    drawInto(x, list, null);
+    const sp = typeof inkSplitItems === 'function' ? inkSplitItems(v.items, list) : [list, []]; top = sp[1];
+    drawInto(x, sp[0], null);
   } catch (e) { /* the boxes still show */ } finally { [W, H] = keep; }
   pg.appendChild(cv);
   const its = histEl('div', 'histitems');
   for (const it of v.items) { try { its.appendChild(buildItemEl(it, true)); } catch (e) { /* a box that cannot be drawn here */ } }
-  pg.appendChild(its); box.appendChild(pg); host.appendChild(box);
+  pg.appendChild(its); { const tc = top.length ? inkTopCanvas(top, pw, ph, r) : null; if (tc) pg.appendChild(tc); } box.appendChild(pg); host.appendChild(box);
   try { typeset(its); } catch (e) { /* no maths */ }
 }
 function histRow(x, i, on) {
