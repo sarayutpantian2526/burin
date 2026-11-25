@@ -164,6 +164,11 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .acct.big { min-height: 38px; font-size: 13.5px; max-width: 320px; }
 .acct.big i { flex-basis: 30px; width: 30px; height: 30px; }
 @media (max-width: 1100px) { .top .acct span { display: none; } .top .acct { padding: 0 3px; } }
+.plancard { padding: 10px 12px; border: 1px solid var(--line); border-radius: 14px; margin: -4px 0 12px; }
+.plancard b { display: block; font-size: 15px; }
+.plancard small { display: block; color: var(--muted); margin-top: 2px; line-height: 1.5; }
+.plock { color: var(--muted); }
+.shp.plocked { opacity: .45; }
 .acard { display: flex; gap: 12px; align-items: center; padding: 12px; border: 1px solid var(--line); border-radius: 14px; margin: 6px 0 12px; }
 .acard i { flex: 0 0 44px; width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-style: normal; font-weight: 700; font-size: 20px; color: #FFFFFF; background: var(--av, #6B7280); }
 .acard b { display: block; font-size: 15px; word-break: break-all; }
@@ -171,6 +176,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .devlist { display: grid; gap: 6px; margin: 6px 0 12px; }
 .devlist > div { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; font-size: 13.5px; }
 .devlist > div > span { flex: 1; min-width: 0; }
+.devlist .nw { white-space: nowrap; }
 .devlist small { color: var(--muted); display: block; }
 .devlist .me { flex: 0 0 auto !important; font-size: 11.5px; padding: 2px 8px; border-radius: 999px; background: #E6ECFA; color: #2F4BB8; }
 .acctlist { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 12px; }
@@ -3372,6 +3378,27 @@ async function migRun(sbNew, user, say) {
   store_ls.set(done, '1');
   return n;
 }
+/* ----- devices of an account (task 4.2, switch "limits"): the database gives each sign-in a seat, at most
+   devices_max of them (3 on the central cloud); a newer device waits, reading and writing nothing of the account,
+   until one is signed out from it. A device that only shows (present mode) and finds no seat is let in as a screen,
+   which reads and follows the room but writes nothing. Asked in makeCloudStore before the first pull; a database
+   without device_hello, or with no limit, answers 'off' and everything is as before ----- */
+const DEVS = { state: '', max: 0, used: 0 };
+const devOn = () => flagOn('limits') && DBV.v >= 2;
+const devScreen = () => !!S.present || store_ls.get('tp-present') === '1' || (location.hash || '') === '#present';
+const devWaits = () => DEVS.state === 'full' || DEVS.state === 'gone';
+async function devHello(sb) {
+  if (!devOn()) return 'off';
+  const ask = (screen) => sb.rpc('device_hello', { p_name: devName(), p_kind: devGuess(), p_screen: screen });
+  try {
+    let r = await ask(false);
+    if (r && !r.error && r.data && r.data.state === 'full' && devScreen()) r = await ask(true);
+    if (!r || r.error || !r.data || !r.data.state) return DEVS.state || 'off';
+    Object.assign(DEVS, { state: String(r.data.state), max: +r.data.max || 0, used: +r.data.used || 0 });
+  } catch (e) { /* offline: as it was */ }
+  return DEVS.state || 'off';
+}
+function devBlocked() { need('account').then(() => devFullOpen()).catch(() => toast('บัญชีนี้ใช้ครบ ' + DEVS.max + ' เครื่องแล้ว เปิดแอปอีกครั้งเมื่อมีอินเทอร์เน็ต', 6000)); }
 async function makeCloudStore(sb, user) {
   const me = user.id, PFX = 'cloud:' + me + ':', QK = 'tp-cq-' + me;
   let data = {};
@@ -3388,13 +3415,15 @@ async function makeCloudStore(sb, user) {
   const subs = new Set(); let notifyT = 0;
   const notify = () => { if (notifyT) return; notifyT = setTimeout(() => { notifyT = 0; subs.forEach((f) => { try { f(); } catch (e) { console.error(e); } }); }, 0); };
   let flushing = false, retryT = 0, offline = false, full = false, rtStatus = 'CONNECTING';
-  const pend = () => Object.keys(pending).length;
+  const pend = () => Object.keys(pending).filter((k) => !refused.has(k)).length;
+  let wait = false;
   const status = () => setSync(offline ? 'offline' : full ? 'full' : pend() ? 'saving' : 'saved');
+  const refused = new Set(); /* rows the plan does not take (a class beyond it): kept here, tried again next time the app opens */
   async function flush() {
-    if (flushing) return; flushing = true; clearTimeout(retryT);
+    if (flushing || wait) return; flushing = true; clearTimeout(retryT);
     try {
       const snap = Object.assign({}, pending);
-      const keys = Object.keys(snap);
+      const keys = Object.keys(snap).filter((k) => !refused.has(k));
       let sets = keys.filter((k) => snap[k].op === 'set' && data[k] != null);
       const dels = keys.filter((k) => !sets.includes(k));
       /* an account that has used all its space (database version 2) may still write these: they go first, so live
@@ -3405,8 +3434,13 @@ async function makeCloudStore(sb, user) {
         let chunk = sets.slice(i, i + 20);
         if (full && chunk.some((k) => QUOTA_FREE.test(k)) && chunk.some((k) => !QUOTA_FREE.test(k))) { chunk = chunk.filter((k) => QUOTA_FREE.test(k)); i -= 20 - chunk.length; }
         const rows = chunk.map((k) => ({ owner: me, path: k, parent: parent(k), data: data[k], updated_at: new Date(stamp[k] || now()).toISOString() }));
-        const { error } = await sb.from('docs').upsert(rows, { onConflict: 'owner,path' });
+        let { error } = await sb.from('docs').upsert(rows, { onConflict: 'owner,path' });
         if (error && quotaErr(error)) { full = true; left = true; break; }
+        if (error && limitErr(error)) {
+          /* one by one, so only the row the plan refuses waits and the rest goes up */
+          error = null;
+          for (const r of rows) { const x = await sb.from('docs').upsert([r], { onConflict: 'owner,path' }); if (x.error && limitErr(x.error)) { refused.add(r.path); chunk = chunk.filter((k) => k !== r.path); limitTell(x.error); } else if (x.error) { error = x.error; break; } }
+        }
         if (error) throw error;
         for (const k of chunk) if (pending[k] && pending[k].n === snap[k].n) delete pending[k];
       }
@@ -3433,12 +3467,16 @@ async function makeCloudStore(sb, user) {
     savePending(); flushLater(); notify();
   };
   async function pull() {
+    if (wait) return;
     const rows = [];
     for (let from = 0; ; from += 500) {
       const { data: r, error } = await sb.from('docs').select('path,data,updated_at').eq('owner', me).range(from, from + 499);
       if (error) throw error;
       rows.push(...r); if (r.length < 500) break;
     }
+    /* nothing at all while this device holds notebooks: a device signed out from another one, or without a seat, reads
+       nothing (task 4.2). Asked before what is here is let go */
+    if (!rows.length && Object.keys(data).length && DEVS.max && devOn()) { await devHello(sb); if (devWaits()) { wait = true; offline = true; status(); devBlocked(); return; } }
     const seen = new Set();
     for (const r of rows) {
       seen.add(r.path);
@@ -3456,6 +3494,7 @@ async function makeCloudStore(sb, user) {
   }
   /* version 2 of the database lets only this account on its docs- channel, as a private channel */
   await dbVersion(sb, store_ls.get(dbvKey()) ? 1500 : 5000);
+  if (devOn()) { await devHello(sb); if (devWaits()) { wait = true; offline = true; setTimeout(devBlocked, 0); } }
   const priv = dbvPrivate();
   if (priv) await dbvAuth(sb);
   sb.channel('docs-' + me, priv ? { config: { private: true } } : undefined)
@@ -3507,6 +3546,25 @@ function quotaTell() {
   CLOUD.full = true;
   if (Date.now() - quotaToldAt < 10 * 60e3) return; quotaToldAt = Date.now();
   toast('พื้นที่ของบัญชีเต็มแล้ว งานที่เขียนยังเก็บในเครื่องนี้ ไม่หาย แต่ยังไม่ขึ้นคลาวด์ ลบสมุด รูป หรือวิดีโอที่ไม่ใช้ แล้วลบถาวรในถังขยะ ระบบจะส่งขึ้นให้เอง', 9000);
+}
+/* a class of the gradebook or open work beyond the plan (task 4.2): the database answers BURIN_PLAN with the number
+   the plan allows. What is there stays and can be changed; only one more is refused */
+const limitErr = (e) => !!e && (/BURIN_PLAN/.test(String(e.message || e)) || e.hint === 'rooms' || e.hint === 'work');
+function limitMsg(e) {
+  const m = String((e && e.message) || e), n = (/(\d+)/.exec(m) || [])[1] || '';
+  if (e && (e.hint === 'rooms' || /classes/.test(m))) return 'แผนของบัญชีนี้มีห้องในสมุดคะแนนได้ ' + n + '\u00a0ห้อง ห้องที่มีอยู่ใช้และแก้ได้ตามเดิม ห้องเพิ่มใช้ได้ในแผน ผู้นำเสนอ ขึ้นไป';
+  return 'แผนของบัญชีนี้เปิดรับงานพร้อมกันได้ ' + n + '\u00a0งาน ปิดรับงานที่ไม่ใช้แล้ว หรือรอให้งานเลยกำหนดส่ง แล้วลองอีกครั้ง เปิดรับได้ไม่จำกัดในแผน ผู้นำเสนอ ขึ้นไป';
+}
+let limitToldAt = 0;
+function limitTell(e) { if (Date.now() - limitToldAt < 60e3) return; limitToldAt = Date.now(); toast(limitMsg(e), 6000); }
+/* before a class is made: the database says how many the plan keeps (my_limits); no answer: made as before */
+async function clsRoomOk() {
+  if (!devOn() || !S.store || S.store.kind !== 'cloud' || !CLOUD.client) return true;
+  try {
+    const { data, error } = await CLOUD.client.rpc('my_limits'); const r = !error && Array.isArray(data) && data[0];
+    if (r && r.rooms_max != null && Math.max(+r.rooms || 0, CLS.list.length) >= +r.rooms_max) { limitToldAt = 0; limitTell({ hint: 'rooms', message: String(r.rooms_max) }); return false; }
+  } catch (e) { /* made as before; the database still says no when it is beyond */ }
+  return true;
 }
 /* a file the storage service refused: on version 2 the reason can be the space of the account */
 function quotaFile(sb, e) {
@@ -6148,7 +6206,7 @@ const PWTAP = new Map();
 vp.addEventListener('pointerdown', (e) => { if (e.pointerType !== 'pen' && !S.show) PWTAP.set(e.pointerId, [e.clientX, e.clientY, now(), !!(e.target.closest && e.target.closest('button,input,select,textarea,.scnpill,.lifepanel'))]); }, true);
 vp.addEventListener('pointerup', (e) => {
   const s0 = PWTAP.get(e.pointerId); PWTAP.delete(e.pointerId);
-  if (!s0 || s0[3] || now() - s0[2] > 350 || Math.hypot(e.clientX - s0[0], e.clientY - s0[1]) > 10 || typeof pwTap !== 'function' || !flagOn('pagemove')) return;
+  if (!s0 || s0[3] || now() - s0[2] > 350 || Math.hypot(e.clientX - s0[0], e.clientY - s0[1]) > 10 || typeof pwTap !== 'function' || !flagOn('pagemove') || !planOn('pagemove')) return;
   try { const [x, y] = toLogical(e.clientX, e.clientY); pwTap(x, y); } catch (err) { /* the tap is only a tap */ }
 }, true);
 vp.addEventListener('pointercancel', (e) => PWTAP.delete(e.pointerId), true);
@@ -7133,7 +7191,7 @@ function anCommit(kind, pt) {
   const pid = S.pid, a = pt.a, b = pt.b, drag = Math.hypot(b[0] - a[0], b[1] - a[1]) >= 24;
   const w = drag ? clamp(Math.abs(b[0] - a[0]), 160, 900) : 340, x = drag ? Math.min(a[0], b[0]) : a[0] - w / 2, y = drag ? Math.min(a[1], b[1]) : a[1] - w * 3 / 8;
   need('scene').then(() => need('animals')).then(() => {
-    if (S.pid !== pid || !S.page) return; const sp = anSpec(m[1]); if (!sp) return;
+    if (S.pid !== pid || !S.page) return; const sp = anSpec(m[1]); if (!sp || !planAnimalOk(m[1])) return;
     addItem({ type: 'scene', spec: scClean(sp), x: Math.round(Math.max(0, x)), y: Math.round(Math.max(0, y)), w: Math.round(w) });
     if (!store_ls.get('tp-antip')) { store_ls.set('tp-antip', '1'); toast('แตะตัวสัตว์แล้วมันจะตอบสนองเหมือนตัวจริง ลากเพื่อหมุนดูรอบตัว ใช้สองนิ้วย่อขยาย', 4500); }
   }, () => {});
@@ -8734,6 +8792,7 @@ async function generate(fromSel, more) {
   try { await generateRun(fromSel, more); } finally { GA.busy = false; bs.forEach((b, i) => { b.disabled = was[i]; }); }
 }
 async function generateRun(fromSel, more) {
+  if (!fromSel && !more && gaPids().length > 4 && !planGate('aibook')) return; /* task 4.1 */
   if (!needAI('gen')) return;
   openAI(); renderAIPages();
   /* more pages than go in one call: the part m/aipages.js reads them a few at a time first (task 8.10) */
@@ -10665,7 +10724,8 @@ function anShapeGrid(g) {
     b.setAttribute('aria-pressed', 'an:' + id === S.shapeKind ? 'true' : 'false');
     b.innerHTML = '<img alt=""><span></span>'; b.querySelector('span').textContent = th; b.title = hint;
     const im = b.querySelector('img'), u = anThumb(id, true); if (u) im.src = u;
-    b.onclick = () => { S.shapeKind = 'an:' + id; store_ls.set('tp-shapekind', S.shapeKind); renderShapes.tab = null; renderShapes(); closePops(); toast('แตะบนหน้าเพื่อวาง' + th + ' หรือลากเพื่อกำหนดขนาด', 2000); };
+    if (!planOn('animals') && !PLAN_FREE_ANIMALS.includes(id)) { b.classList.add('plocked'); b.title = hint + ' (ใช้ได้ในแผน ผู้สร้างสื่อ)'; }
+    b.onclick = () => { if (!planAnimalOk(id)) return; S.shapeKind = 'an:' + id; store_ls.set('tp-shapekind', S.shapeKind); renderShapes.tab = null; renderShapes(); closePops(); toast('แตะบนหน้าเพื่อวาง' + th + ' หรือลากเพื่อกำหนดขนาด', 2000); };
     g.appendChild(b); cells.push([b, (th + ' ' + hint + ' ' + kw + ' ' + gr).toLowerCase(), gr]);
   }
   const filt = () => { const q = si.value.trim().toLowerCase(); ANG.q = si.value; const vis = {}; for (const [b, t, gr] of cells) { b.hidden = !!q && !t.includes(q); if (!b.hidden) vis[gr] = 1; } for (const [h, gr] of heads) h.hidden = !vis[gr]; setTimeout(() => popFit($('#popShape')), 0); };
@@ -11005,7 +11065,7 @@ const TOPIC_EN = [
    (CURRIC), with no AI. "mediatopic" in flags.json turns it off (or "localcalc"): the AI reads the page as before */
 const MDT = { list: null };
 function mdTopic(text) {
-  if (!flagOn('mediatopic') || !flagOn('localcalc')) return null;
+  if (!flagOn('mediatopic') || !flagOn('localcalc') || !planOn('mediatopic')) return null;
   const t = String(text || ''); if (!t.trim()) return null;
   if (!MDT.list) { const L = []; for (const lv of Object.values(CURRIC)) for (const [, subs] of lv[1]) for (const [th, en] of subs) if (th.length >= 4) L.push([th, en]); MDT.list = L.sort((x, y) => y[0].length - x[0].length); }
   /* the longest topic name found in the text: การถ่ายโอนความร้อน before ความร้อน */
@@ -11884,6 +11944,80 @@ const FLAGS = { off: {}, told: {} };
 FLAGS.ready = (location.protocol === 'file:' || (window.claude && window.claude.use) ? Promise.resolve() : fetch('flags.json', { cache: 'no-store' }).then((r) => (r.ok ? r.json() : null)).then((j) => { if (j && Array.isArray(j.off)) j.off.forEach((n) => { if (typeof n === 'string') FLAGS.off[n] = true; }); }).catch(() => { /* no switches: everything on */ }));
 function flagOn(name) { return !FLAGS.off[name]; }
 function flagsReady() { return Promise.race([FLAGS.ready, new Promise((r) => setTimeout(r, 2500))]); }
+/* ----- plans (task 4.1): free (เริ่มต้น), presenter (ผู้นำเสนอ), creator (ผู้สร้างสื่อ). Only on a site whose config.js says
+   plans: true (the central cloud), and off with "plans" in flags.json: everywhere else everything stays open as before.
+   The plan comes from my_plan() of the cloud of the site (sql/005_plans.sql), remembered per account for offline use;
+   not signed in to it (only this device, or a person's own Supabase) is free; a database without my_plan() is open.
+   planOn(name) closes only what makes something here: what a presenter made is seen and played in full on the learners'
+   side, on the audience screen and the screen of the room. What costs the server is checked by the database (task 4.2). ----- */
+const PLAN_NAMES = { free: 'เริ่มต้น', presenter: 'ผู้นำเสนอ', creator: 'ผู้สร้างสื่อ' };
+const PLAN_RANK = { free: 0, presenter: 1, creator: 2 };
+/* the lowest plan for each thing, and what it is called in the message (PLAN.md step 4, Plans and prices) */
+const PLAN_NEED = {
+  aibook: ['presenter', 'สร้างโจทย์จากหลายหน้าเกิน 4 หน้า'], boardread: ['presenter', 'ให้ AI อ่านกระดานเป็นตัวพิมพ์'],
+  hwmore: ['presenter', 'เพิ่มข้อ ขยายเวลารายคน และข้อความถึงนักเรียน'], hwshow: ['presenter', 'ตั้งเวลาที่ผู้เรียนเห็นงาน'],
+  quantum: ['presenter', 'ระดับพลังงานที่แอปคำนวณเอง'], figs: ['presenter', 'รูปจากตัวเลขที่แอปคำนวณเอง'], mols: ['presenter', 'ชื่อสารเป็นโครงสร้างที่แอปวาดเอง'],
+  audience: ['presenter', 'จอผู้ชมและจอแสดงผลของห้อง'], exam: ['presenter', 'ชุดโจทย์ แบบฝึก คลังข้อสอบ และตรวจอัตโนมัติ'],
+  scenetext: ['creator', 'โจทย์การเคลื่อนที่ที่พิมพ์เป็นแบบจำลอง'], mediatopic: ['creator', 'คำค้นสื่อจากหลักสูตร'],
+  sims: ['creator', 'แบบจำลองเกิน 3 แบบต่อสมุด'], animals: ['creator', 'สัตว์ชนิดอื่นนอกจาก แมว ไก่ ปลา กบ และผีเสื้อ'], onpage: ['creator', 'สัตว์เดินบนหน้า'],
+  pagemove: ['creator', 'ภาพเคลื่อนไหวบนหน้า'], story: ['creator', 'สตอรี่บอร์ด'], ar: ['creator', 'ลองดูในห้องจริง (AR)']
+};
+/* what is seen, not made: open on the learners' side */
+const PLAN_SEE = { onpage: 1, pagemove: 1 };
+const PLAN_FREE_SIMS = 3, PLAN_FREE_ANIMALS = ['cat', 'chicken', 'fish', 'frog', 'butterfly'];
+const PLAN = { plan: 'free', paid: '', until: null, skew: 0, none: false, q: null, uid: '' };
+function plansOn() { return !!(window.BURIN_CONFIG && window.BURIN_CONFIG.plans) && flagOn('plans'); }
+/* signed in to the cloud of the site (not a person's own Supabase) */
+const planCloud = () => !!(CLOUD.state === 'on' && CLOUD.user && CLOUD.cfg.site && CLOUD.cfg.url.replace(/\/+$/, '') === CLOUD.cfg.site.url);
+function planNow() {
+  if (!plansOn() || PLAN.none) return 'creator';
+  if (!planCloud()) return 'free';
+  let p = PLAN_RANK[PLAN.plan] != null ? PLAN.plan : 'free';
+  if (p !== 'free' && PLAN.until && Date.parse(PLAN.until) <= now() + PLAN.skew) p = 'free';
+  return p;
+}
+function planOn(name) {
+  const need = PLAN_NEED[name];
+  if (!need || !plansOn() || S.show || S.present) return true;
+  if (PLAN_SEE[name] && isStudentSide()) return true;
+  return PLAN_RANK[planNow()] >= PLAN_RANK[need[0]];
+}
+function planTell(name) {
+  const need = PLAN_NEED[name]; if (!need) return;
+  toast(need[1] + ' ใช้ได้ในแผน ' + PLAN_NAMES[need[0]] + (need[0] === 'presenter' ? ' ขึ้นไป' : '') + (planCloud() ? ' ซื้อแผนได้ในแอปบน iPad และมือถือ' : ' เข้าระบบบัญชีที่มีแผนนี้แล้วใช้ได้ทันที'), 5000);
+}
+function planGate(name) { if (planOn(name)) return true; planTell(name); return false; }
+/* a line that stands where a closed part would be */
+function planLock(name) { const d = document.createElement('div'); d.className = 'note small plock'; const n = PLAN_NEED[name]; d.textContent = n ? n[1] + ' ใช้ได้ในแผน ' + PLAN_NAMES[n[0]] + (n[0] === 'presenter' ? ' ขึ้นไป' : '') : ''; return d; }
+const planKey = (id) => 'tp-plan-' + id;
+/* asked when the app knows the account, and again when asked (force); the answer is remembered for offline use */
+function planLoad(force) { planCache(); return flagsReady().then(() => planAsk(force)); }
+/* the plan this device was told last time, at once (offline, and before the cloud answers) */
+function planCache() {
+  if (!planCloud() || PLAN.uid === CLOUD.user.id) return;
+  const id = CLOUD.user.id; PLAN.uid = id; PLAN.q = null; PLAN.none = false;
+  let c = null; try { c = JSON.parse(store_ls.get(planKey(id)) || 'null'); } catch (e) { c = null; }
+  Object.assign(PLAN, { plan: (c && c.plan) || 'free', paid: (c && c.paid) || '', until: (c && c.until) || null, skew: (c && +c.skew) || 0 });
+}
+function planAsk(force) {
+  if (!plansOn() || !planCloud()) return Promise.resolve(planNow());
+  planCache(); const id = CLOUD.user.id;
+  if (PLAN.q && !force) return PLAN.q;
+  PLAN.q = (async () => {
+    let r = null;
+    try { r = await Promise.race([Promise.resolve(CLOUD.client.rpc('my_plan')), new Promise((res) => setTimeout(() => res(null), 8000))]); } catch (e) { r = null; }
+    if (r && !r.error) {
+      const row = (Array.isArray(r.data) ? r.data[0] : r.data) || {};
+      const sn = Date.parse(row.server_now || ''), skew = isFinite(sn) ? sn - now() : 0;
+      Object.assign(PLAN, { plan: PLAN_RANK[row.plan] != null ? row.plan : 'free', paid: row.paid || '', until: row.until || null, skew, none: false });
+      store_ls.set(planKey(id), JSON.stringify({ plan: PLAN.plan, paid: PLAN.paid, until: PLAN.until, skew, at: now() }));
+    } else if (dbvGone(r)) PLAN.none = true; /* a database without plans: open */
+    else PLAN.q = null; /* no answer: the remembered plan, asked again next time */
+    document.body.dataset.plan = planNow();
+    return planNow();
+  })();
+  return PLAN.q;
+}
 /* writing on a box: the line being written shows above the boxes (off with "boxink" in flags.json) */
 flagsReady().then(() => { document.body.classList.toggle('boxink', flagOn('boxink')); if (!flagOn('boxink')) drawInk(); }).catch(() => {});
 /* each release keeps its parts in m/<build>/, so a page left open (in the middle of a class) keeps getting the
@@ -11895,10 +12029,10 @@ async function tyReady() { if (!flagOn('typed')) return false; try { await need(
    the AI read before is used as text). Off with "localcalc" in flags.json (or "typed"): the work goes to the AI as before */
 async function lcReady() { return flagOn('localcalc') && await tyReady(); }
 /* task 8.19 group 2: atoms by the rules of quantum chemistry (m/quantum.js); "quantum" in flags.json turns it off */
-async function qnReady() { if (!flagOn('quantum') || !await lcReady()) return false; try { await need('quantum'); return true; } catch (e) { return false; } }
+async function qnReady() { if (!flagOn('quantum') || !planOn('quantum') || !await lcReady()) return false; try { await need('quantum'); return true; } catch (e) { return false; } }
 /* the figure of an element, an ion, a written configuration or a change of level in hydrogen, placed at once; false when the text is none of these */
 /* task 8.19 group 4: triangles, resistor circuits and forces worked out from their numbers (m/figs.js); "figs" in flags.json turns it off */
-async function fgReady() { if (!flagOn('figs') || !await lcReady()) return false; try { await need('figs'); return true; } catch (e) { return false; } }
+async function fgReady() { if (!flagOn('figs') || !planOn('figs') || !await lcReady()) return false; try { await need('figs'); return true; } catch (e) { return false; } }
 async function fgPut(text, box, note) {
   if (!text || !await fgReady()) return false;
   let f = null; try { f = fgFigure(text); } catch (e) { f = null; }
@@ -11906,7 +12040,7 @@ async function fgPut(text, box, note) {
   clearSel(); figPlace(f.svg, box, 480, f.note + (note || '')); return true;
 }
 /* task 8.19 group 5: names and formulas of substances to their structures from a table in the app (m/mols.js); "mols" in flags.json turns it off */
-async function mlReady() { if (!flagOn('mols') || !await lcReady()) return false; try { await need('mols'); return true; } catch (e) { return false; } }
+async function mlReady() { if (!flagOn('mols') || !planOn('mols') || !await lcReady()) return false; try { await need('mols'); return true; } catch (e) { return false; } }
 async function mlPut(text, box, note) {
   if (!text || !await mlReady()) return false;
   let ms = null; try { ms = mlParse(text); } catch (e) { ms = null; }
@@ -11938,13 +12072,13 @@ function need(name) {
 }
 let sbFromSel, sbPlay, sbEdit, bdOpen, bdRead, bdView, qnFigure, qnParse, fgFigure, mlParse, mlSmiles, AN_LIST, anDraw, anTick, anTap, anSpec, anThumb, anPage, anVis;
 let SCENE_TPL, SCN, LIFE, renderScenePicker, scClean, scRender, restoreInk, openMotionPick, insertScene, buildScene, buildLife, sceneDomainFor, lifeBox, animKick, scReset, orb3Mark, ipActors, pwTap;
-let findShow, findRun, findGo, tocShow, tocHeads, tocMark, keepBoot, keepRender, keepSave, keepLoad, keepBanner, trashShow, trashPurge, trashRestore, trashDrop, trashList, expRender, expSave, expLoad, histNote, histOpen, histPurge, histRestore, histVersions, apRender, apSource, apWanted, apReading, ikGet, ikPut, ikPage, ikPageKeep, ikIndex, ikTexts, ikBoard, cmdShow, cmdList, cmdFind, cmdRun, cleanStart, cleanEnd, cleanFit, arOpen, arBuild, tyGraph, tyTable, tySteps, tyTidy, tyAdvice, acStep, acSay, acVerify, acForgot, acNewPw, acDelSection, csRender, csUsage, csSwitch;
+let findShow, findRun, findGo, tocShow, tocHeads, tocMark, keepBoot, keepRender, keepSave, keepLoad, keepBanner, trashShow, trashPurge, trashRestore, trashDrop, trashList, expRender, expSave, expLoad, histNote, histOpen, histPurge, histRestore, histVersions, apRender, apSource, apWanted, apReading, ikGet, ikPut, ikPage, ikPageKeep, ikIndex, ikTexts, ikBoard, cmdShow, cmdList, cmdFind, cmdRun, cleanStart, cleanEnd, cleanFit, arOpen, arBuild, tyGraph, tyTable, tySteps, tyTidy, tyAdvice, acStep, acSay, acVerify, acForgot, acNewPw, acDelSection, devList, devFullOpen, csRender, csUsage, csSwitch;
 let texToCas, casVars, casWithUnits, casRun, casRowTex, casReady, solveSelection, openBgCut, openSketch, ST, openStats, openVideoLab, dataSelection, poolSection, poolShow, poolGot, poolEnd, openMeasure, openImgMeasure, unitCheck, openCite, captionSel, captionRenumber, hwHubOpen, hwStudentOpen, hwAssignOpen, hwBoard, hwDetail, hwPollRun;
 const MOD_EXPORTS = {
   board: ['bdOpen', 'bdRead', 'bdView'], story: ['sbFromSel', 'sbPlay', 'sbEdit'],
   scene: ['SCENE_TPL', 'SCN', 'LIFE', 'renderScenePicker', 'scClean', 'scRender', 'restoreInk', 'openMotionPick', 'insertScene', 'buildScene', 'buildLife', 'sceneDomainFor', 'lifeBox', 'animKick', 'scReset', 'orb3Mark', 'ipActors', 'pwTap'],
   cas: ['texToCas', 'casVars', 'casWithUnits', 'casRun', 'casRowTex', 'casReady', 'solveSelection'],
-  sketch: ['openBgCut', 'openSketch'], stats: ['ST', 'openStats'], video: ['openVideoLab'], data: ['dataSelection', 'poolSection', 'poolShow', 'poolGot', 'poolEnd', 'unitCheck'], measure: ['openMeasure'], imgmeas: ['openImgMeasure'], cite: ['openCite', 'captionSel', 'captionRenumber'], work: ['hwHubOpen', 'hwStudentOpen', 'hwAssignOpen', 'hwBoard', 'hwDetail', 'hwPollRun'], search: ['findShow', 'findRun', 'findGo'], toc: ['tocShow', 'tocHeads', 'tocMark'], keep: ['keepBoot', 'keepRender', 'keepSave', 'keepLoad', 'keepBanner'], trash: ['trashShow', 'trashPurge', 'trashRestore', 'trashDrop', 'trashList'], export: ['expRender', 'expSave', 'expLoad'], history: ['histNote', 'histOpen', 'histPurge', 'histRestore', 'histVersions'], aipages: ['apRender', 'apSource', 'apWanted', 'apReading', 'ikGet', 'ikPut', 'ikPage', 'ikPageKeep', 'ikIndex', 'ikTexts', 'ikBoard'], cmds: ['cmdShow', 'cmdList', 'cmdFind', 'cmdRun'], clean: ['cleanStart', 'cleanEnd', 'cleanFit'], ar: ['arOpen', 'arBuild'], typed: ['tyGraph', 'tyTable', 'tySteps', 'tyTidy', 'tyAdvice'], quantum: ['qnFigure', 'qnParse'], figs: ['fgFigure'], mols: ['mlParse', 'mlSmiles'], animals: ['AN_LIST', 'anDraw', 'anTick', 'anTap', 'anSpec', 'anThumb', 'anPage', 'anVis'], account: ['acStep', 'acSay', 'acVerify', 'acForgot', 'acNewPw', 'acDelSection'], cloudset: ['csRender', 'csUsage', 'csSwitch']
+  sketch: ['openBgCut', 'openSketch'], stats: ['ST', 'openStats'], video: ['openVideoLab'], data: ['dataSelection', 'poolSection', 'poolShow', 'poolGot', 'poolEnd', 'unitCheck'], measure: ['openMeasure'], imgmeas: ['openImgMeasure'], cite: ['openCite', 'captionSel', 'captionRenumber'], work: ['hwHubOpen', 'hwStudentOpen', 'hwAssignOpen', 'hwBoard', 'hwDetail', 'hwPollRun'], search: ['findShow', 'findRun', 'findGo'], toc: ['tocShow', 'tocHeads', 'tocMark'], keep: ['keepBoot', 'keepRender', 'keepSave', 'keepLoad', 'keepBanner'], trash: ['trashShow', 'trashPurge', 'trashRestore', 'trashDrop', 'trashList'], export: ['expRender', 'expSave', 'expLoad'], history: ['histNote', 'histOpen', 'histPurge', 'histRestore', 'histVersions'], aipages: ['apRender', 'apSource', 'apWanted', 'apReading', 'ikGet', 'ikPut', 'ikPage', 'ikPageKeep', 'ikIndex', 'ikTexts', 'ikBoard'], cmds: ['cmdShow', 'cmdList', 'cmdFind', 'cmdRun'], clean: ['cleanStart', 'cleanEnd', 'cleanFit'], ar: ['arOpen', 'arBuild'], typed: ['tyGraph', 'tyTable', 'tySteps', 'tyTidy', 'tyAdvice'], quantum: ['qnFigure', 'qnParse'], figs: ['fgFigure'], mols: ['mlParse', 'mlSmiles'], animals: ['AN_LIST', 'anDraw', 'anTick', 'anTap', 'anSpec', 'anThumb', 'anPage', 'anVis'], account: ['acStep', 'acSay', 'acVerify', 'acForgot', 'acNewPw', 'acDelSection', 'devList', 'devFullOpen'], cloudset: ['csRender', 'csUsage', 'csSwitch']
 };
 function modSet(name, x) {
   if (name === 'scene') { SCENE_TPL = x.SCENE_TPL; SCN = x.SCN; LIFE = x.LIFE; renderScenePicker = x.renderScenePicker; scClean = x.scClean; scRender = x.scRender; restoreInk = x.restoreInk; openMotionPick = x.openMotionPick; insertScene = x.insertScene; buildScene = x.buildScene; buildLife = x.buildLife; sceneDomainFor = x.sceneDomainFor; lifeBox = x.lifeBox; animKick = x.animKick; scReset = x.scReset; orb3Mark = x.orb3Mark; ipActors = x.ipActors; pwTap = x.pwTap; }
@@ -11965,7 +12099,7 @@ function modSet(name, x) {
   else if (name === 'cmds') { cmdShow = x.cmdShow; cmdList = x.cmdList; cmdFind = x.cmdFind; cmdRun = x.cmdRun; }
   else if (name === 'clean') { cleanStart = x.cleanStart; cleanEnd = x.cleanEnd; cleanFit = x.cleanFit; }
   else if (name === 'ar') { arOpen = x.arOpen; arBuild = x.arBuild; }
-  else if (name === 'account') { acStep = x.acStep; acSay = x.acSay; acVerify = x.acVerify; acForgot = x.acForgot; acNewPw = x.acNewPw; acDelSection = x.acDelSection; }
+  else if (name === 'account') { acStep = x.acStep; acSay = x.acSay; acVerify = x.acVerify; acForgot = x.acForgot; acNewPw = x.acNewPw; acDelSection = x.acDelSection; devList = x.devList; devFullOpen = x.devFullOpen; }
   else if (name === 'cloudset') { csRender = x.csRender; csUsage = x.csUsage; csSwitch = x.csSwitch; }
   else if (name === 'typed') { tyGraph = x.tyGraph; tyTable = x.tyTable; tySteps = x.tySteps; tyTidy = x.tyTidy; tyAdvice = x.tyAdvice; }
   else if (name === 'quantum') { qnFigure = x.qnFigure; qnParse = x.qnParse; }
@@ -17866,6 +18000,7 @@ function exRender() {
   if (!EX.bankAsked) { EX.bankAsked = true; bankEnsure(subjTracks()).then((n) => { EX.bankAsked = false; if (n && !$('#examSheet').hidden && !EX.run) exRender(); }); }
   exRenderNav();
   if (EX.run) return exRenderRun(body);
+  if (!isStudentSide() && !['cls', 'hw'].includes(EX.tab) && !planOn('exam')) { body.appendChild(planLock('exam')); return; } /* task 4.1 */
   if (EX.tab === 'sets') exRenderSets(body);
   else if (EX.tab === 'build') exRenderBuild(body);
   else if (EX.tab === 'practice') exRenderSetup(body);
@@ -18827,7 +18962,7 @@ function joinRecent() {
 /* only the 6-letter room code goes in the box, even when something longer is pasted */
 $('#jCodeIn').addEventListener('input', () => { const v = $('#jCodeIn').value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6); if (v !== $('#jCodeIn').value) $('#jCodeIn').value = v; });
 function leaveClass() {
-  store_ls.del('tp-live-join');
+  store_ls.del('tp-live-join'); roomSeatLeave();
   if (LIVE.ch && LIVE.role === 'student') { try { CLOUD.client.removeChannel(LIVE.ch); } catch (e) { /* closed */ } }
   LIVE.ch = null; LIVE.ready = false; if (LIVE.role === 'student') LIVE.role = null; $('#livePill').hidden = true;
   toast('ออกจากห้องแล้ว สมุดที่จดยังอยู่ครบ', 2000);
@@ -19112,6 +19247,7 @@ function liveRoomCode(nid, clsId, fresh) {
   const used = new Set(); for (const n of S.nbs || []) if (n.id !== nid) for (const v of Object.values(n.rooms || {})) used.add(v);
   for (const [kk, v] of Object.entries(rooms)) if (kk !== k) used.add(v);
   let c = !fresh && rooms[k];
+  if (c && used.has(c)) c = null; /* two notebooks never share a room: its learners would get both */
   if (!c && !fresh) { const old = liveCodes()[clsId ? 'c:' + clsId : 'n:' + nid]; if (old && !used.has(old)) c = old; }
   if (!c || !/^[A-Z2-9]{6}$/.test(c)) { do { c = newCode(); } while (used.has(c)); }
   if (rooms[k] !== c) { rooms[k] = c; if (nb) nbPatch(nid, { rooms }); }
@@ -19127,11 +19263,24 @@ function liveRename(p, anchor) {
     p.name = v; liveSend('rename', { sid: p.sid, name: v }); liveRender(); toast('เปลี่ยนชื่อเป็น ' + v + ' แล้ว', 1600);
   });
 }
+/* the class the room of this notebook opens with by default: the one it was taught to before (so its room code stays the
+   same every lesson), else no class when it was taught without one, else the class this notebook is used with; null keeps
+   the class chosen last on this device (fix 25 Nov 2026: the last class of another subject gave this notebook a new code) */
+function liveClsDefault() {
+  const rooms = (S.nb && S.nb.rooms) || {}, have = (id) => CLS.list.some((c) => c.id === id), m = nbClass();
+  if (m && rooms[m]) return m;
+  const used = Object.keys(rooms).filter((k) => k === '-' || have(k));
+  if (used.length === 1) return used[0] === '-' ? '' : used[0];
+  if (used.includes('-') && !m) return '';
+  return m || null;
+}
 function liveWhose() { const c = LIVE.clsId && CLS.list.find((x) => x.id === LIVE.clsId), nb = nbOf(LIVE.nbId || S.nid); return 'สมุด ' + ((nb && nb.title) || '') + (c ? ' ห้อง ' + classLabel(c) : ''); }
 async function liveOpen() {
   if (CLOUD.state !== 'on') { toast('ห้องเรียนสดต้องเข้าระบบคลาวด์ก่อน', 3000); return; }
   /* each class (or, with no class chosen, each notebook) has its own room code, kept for next time */
-  const sb = CLOUD.client; if (!LIVE.nbId) LIVE.nbId = S.nid; if (!LIVE.code) LIVE.code = liveRoomCode(LIVE.nbId, LIVE.clsId); store_ls.set('tp-class', LIVE.code); store_ls.set('tp-live-nb', LIVE.nbId || '');
+  /* the code always comes from the notebook (and class) the room is for: a code left from a room that closed by itself
+     never carries another notebook to its learners (fix 25 Nov 2026) */
+  const sb = CLOUD.client; if (!LIVE.nbId) LIVE.nbId = S.nid; LIVE.code = liveRoomCode(LIVE.nbId, LIVE.clsId); store_ls.set('tp-class', LIVE.code); store_ls.set('tp-live-nb', LIVE.nbId || '');
   LIVE.role = 'teacher';
   /* the room opens even when the key cannot be stored quickly (slow network): it is then simply not signed this time */
   { let r = await rkSoon(rkTeacher(LIVE.code).catch(() => false), 4000, false);
@@ -19318,7 +19467,7 @@ function liveRender() {
   if (LIVE.role !== 'teacher') {
     box.appendChild(exEl('div', 'note', 'เปิดห้องแล้วให้ผู้เรียนสแกน QR หรือเปิดลิงก์บนโทรศัพท์ แท็บเล็ต หรือคอมพิวเตอร์ ไม่ต้องสมัครบัญชี ผู้เรียนเห็นหน้าที่อาจารย์กำลังสอนพร้อมลายมือทันที และจดทับลงบนสำเนาของตัวเองได้ สมุดของผู้เรียนเก็บในเครื่องผู้เรียน หลังจบคาบยังเปิดอ่านและส่งออก PDF ได้'));
     const cf = exEl('label', 'field', '<span>ห้องเรียน (ให้ผู้เรียนยืนยันตัวด้วยรหัสหรือเลขที่ และเก็บคะแนนแบบฝึกเข้าห้องนี้)</span>'); box.appendChild(cf);
-    const fillCls = () => cf.appendChild(classSelect('liveCls', true)); if (CLS.loaded) fillCls(); else clsLoad().then(fillCls);
+    const fillCls = () => { const sel = classSelect('liveCls', true), d = liveClsDefault(); if (d != null && [...sel.options].some((o) => o.value === d)) sel.value = d; cf.appendChild(sel); }; if (CLS.loaded) fillCls(); else clsLoad().then(fillCls);
     const b = exEl('button', 'btn solid', 'เปิดห้องเรียนสด'); b.onclick = () => { LIVE.clsId = ($('#liveCls') && $('#liveCls').value) || null; LIVE.code = null; LIVE.nbId = S.nid; liveOpen(); }; box.appendChild(b);
     if (LA.last && (LIVE.pool || LIVE.set)) {
       box.appendChild(exEl('h3', '', 'ผลที่เก็บจากผู้เรียนก่อนห้องปิด'));
@@ -19330,6 +19479,12 @@ function liveRender() {
     const link = classLink(LIVE.code);
     const top = exEl('div', 'livetop', '<div class="qr" id="liveQR"></div><div class="lcode"><span>รหัสห้องของ' + esc(liveWhose()) + '</span><b>' + LIVE.code + '</b><small>' + esc(link) + '</small></div>');
     box.appendChild(top);
+    /* the teacher opened another notebook: say plainly what the learners still see, and the way back (fix 25 Nov 2026) */
+    if (liveOffNb()) {
+      const nb = nbOf(LIVE.nbId), off = exEl('div', 'note', ''); off.textContent = 'ผู้เรียนยังเห็นสมุด ' + ((nb && nb.title) || 'ที่เปิดห้องไว้') + ' สมุดที่เปิดอยู่ตอนนี้ไม่ถูกส่งไปห้องเรียน ถ้าจะสอนสมุดนี้ ปิดห้องแล้วเปิดห้องใหม่จากสมุดนี้ ผู้เรียนใช้รหัสของสมุดนี้';
+      box.appendChild(off);
+      const back = exEl('button', 'btn solid', 'กลับไปสมุดที่ผู้เรียนเห็น'); back.onclick = () => { const id = LIVE.nbId; closeSheets(); openNotebook(id); }; box.appendChild(back);
+    }
     const row = exEl('div', 'row2');
     const cp = exEl('button', 'btn', 'คัดลอกลิงก์'); cp.onclick = () => { navigator.clipboard && navigator.clipboard.writeText(link).then(() => toast('คัดลอกแล้ว', 1200)).catch(() => {}); }; row.appendChild(cp);
     const big = exEl('button', 'btn', 'วาง QR ลงหน้ากระดาษให้ทั้งห้องเห็น'); big.onclick = liveQRToPage; row.appendChild(big);
@@ -19524,12 +19679,37 @@ function showView(v) {
 }
 function showLink(code) { return location.origin + location.pathname + '#show=' + code; }
 async function showShare(win) {
+  if (!planGate('audience')) return; /* task 4.1 */
   if (LIVE.role !== 'teacher' || !LIVE.ready) { await liveOpen(); if (LIVE.role !== 'teacher') return; }
   const link = showLink(LIVE.code);
   if (win) { window.open(link, 'burin-show', 'width=1280,height=800'); toast('เปิดจอแสดงผลแบบนักเรียนในหน้าต่างใหม่แล้ว ลากไปไว้บนจอที่สอง แล้วกดเต็มจอ', 3600); return; }
   closeSheets(); const sh = $('#showSheet'); sh.hidden = false;
   $('#showCode').textContent = LIVE.code; $('#showLinkTxt').textContent = link.replace(/^https?:\/\//, '');
   drawQR($('#showQR'), link, 220);
+}
+/* a seat in the live room (task 4.2, switch "limits"): the plan of the teacher may limit how many learners are in the
+   room at once. The database keeps a seat for this device (LIVE.sid, the same on every visit) while it is renewed every
+   minute; leaving gives it back. No answer, or a database without room_seat: joined as before. A room screen does not ask */
+const SEAT = { code: null, sb: null, t: 0 };
+async function roomSeat(sb, code) {
+  if (S.show || !flagOn('limits')) return 0;
+  let r = null;
+  try { r = await Promise.race([sb.rpc('room_seat', { p_code: code, p_seat: LIVE.sid }), new Promise((ok) => setTimeout(() => ok(null), 4000))]); } catch (e) { r = null; }
+  const d = r && !r.error && r.data;
+  if (d && d.state === 'full') return +d.max || 1;
+  clearInterval(SEAT.t); SEAT.code = null;
+  if (d && d.state === 'ok' && d.max) {
+    SEAT.code = code; SEAT.sb = sb;
+    SEAT.t = setInterval(() => {
+      if (LIVE.role !== 'student' || LIVE.code !== code) { clearInterval(SEAT.t); return; }
+      if (!document.hidden) Promise.resolve(sb.rpc('room_seat', { p_code: code, p_seat: LIVE.sid })).catch(() => {});
+    }, 60000);
+  }
+  return 0;
+}
+function roomSeatLeave() {
+  clearInterval(SEAT.t); if (!SEAT.code || !SEAT.sb) return;
+  Promise.resolve(SEAT.sb.rpc('room_leave', { p_code: SEAT.code, p_seat: LIVE.sid })).catch(() => {}); SEAT.code = null;
 }
 async function studentJoin(code) {
   if (joinHidden()[code]) joinHide(code, false); /* joined again: back on the list */
@@ -19545,6 +19725,8 @@ async function studentJoin(code) {
   LIVE.nid = nid; openNotebook(nid);
   $('#livePill').hidden = false; liveStudentPill('กำลังเชื่อมต่อ'); lpFold(true);
   let sb; try { sb = await cloudClient(); } catch (e) { liveStudentPill('เชื่อมต่อไม่ได้'); return; }
+  { const full = await roomSeat(sb, code);
+    if (full) { liveStudentPill('ห้องเต็ม'); laBar('ห้อง ' + code + ' มีผู้เรียนครบ ' + full + '\u00a0คนแล้ว ตามแผนของผู้สอน สมุดที่จดยังใช้ได้ ลองอีกครั้งเมื่อมีคนออก หรือบอกผู้สอน', 'ลองอีกครั้ง', () => studentJoin(code)); return; } }
   await rkMine(); rkLoadTeacher(code, true);
   const ch = sb.channel('class-' + code, { config: { broadcast: { self: false }, presence: { key: LIVE.sid } } });
   rkOnTeacher(ch, 'page', (m) => studentGotPage(m.payload));
@@ -21993,6 +22175,7 @@ async function exRenderClasses(body) {
   body.appendChild(f);
   const go = exEl('button', 'btn solid', 'สร้างห้องใน ' + termName(CLS.term) + '/' + CLS.year); go.onclick = async () => {
     const name = $('#cName').value.trim(); if (!name) { $('#cName').focus(); return; }
+    if (!(await clsRoomOk())) return; /* task 4.2 */
     const c = { id: 'c' + uid(), name, subject: $('#cSubj').value.trim(), year: +CLS.year, term: CLS.term, roster: parseRoster($('#cRoster').value), items: [], scores: {} };
     await clsSave(c); CLS.cur = c.id; exRender();
   }; body.appendChild(go);
@@ -22271,7 +22454,7 @@ function classSelect(id, withNone) {
 }
 
 const hwLink = (id) => location.origin + location.pathname + '#hw=' + id;
-function hwSqlHint(e) { const m = String((e && (e.message || e.code)) || e); if (quotaErr(e)) return QUOTA_MSG; return /assignments|submissions|relation|schema cache|42P01|PGRST205|bucket/i.test(m) ? 'ยังไม่มีตารางสำหรับการบ้าน เปิด Supabase เมนู SQL Editor แล้วรันส่วนที่ 6 ของไฟล์ setup.sql (งานมอบหมายและการส่งงาน) ครั้งเดียว' : 'ไม่สำเร็จ ' + m; }
+function hwSqlHint(e) { const m = String((e && (e.message || e.code)) || e); if (quotaErr(e)) return QUOTA_MSG; if (limitErr(e)) return limitMsg(e); return /assignments|submissions|relation|schema cache|42P01|PGRST205|bucket/i.test(m) ? 'ยังไม่มีตารางสำหรับการบ้าน เปิด Supabase เมนู SQL Editor แล้วรันส่วนที่ 6 ของไฟล์ setup.sql (งานมอบหมายและการส่งงาน) ครั้งเดียว' : 'ไม่สำเร็จ ' + m; }
 /* ----- teacher: create (the work part) ----- */
 function openAssign(set) { return need('work').then(() => hwAssignOpen(set), () => toast('โหลดส่วนนี้ไม่สำเร็จ ตรวจอินเทอร์เน็ตแล้วลองใหม่', 3000)); }
 /* each question is "choose an answer" or "show the working"; older work without this reads it from its settings */
@@ -22728,7 +22911,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1795505107';
+const BUILD = '1795594731';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
@@ -22754,7 +22937,7 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden) chec
 setInterval(checkUpdate, 30 * 60 * 1000); setTimeout(checkUpdate, 8000);
 
 /* ---------- version and what is new ---------- */
-const VERSION = '20261124-83e5a75b';
+const VERSION = '20261125-8d0041dc';
 const NEWS = [{"id": 36, "date": "2026-11-24", "items": ["บนคอมพิวเตอร์ กดปุ่มรูปมือแล้ว ลากเมาส์เลื่อนหน้าได้ เมื่อใช้ปากกาหรือปากกาเน้นข้อความ กดอีกครั้งเมาส์กลับมาเขียน", "ช่องรหัสผ่านกับปุ่มเข้าสู่ระบบไม่ชิดกันแล้ว และเมนูไม่มีแถบเลื่อนแนวนอน"]}, {"id": 35, "date": "2026-11-24", "items": ["มอบหมายการบ้านตอนเตรียมสอนแล้วเลือกได้ว่าผู้เรียนเห็นงานเมื่อไร ทันที หลังปิดห้องเรียนสด หรือตั้งเวลา ผู้เรียนจึงไม่ทำก่อนเรียนหรือทำระหว่างเรียน ครูกด ให้ผู้เรียนเห็นตอนนี้ หรือเปลี่ยนเวลาได้ในหน้ารายละเอียดของงาน"]}, {"id": 34, "date": "2026-11-23", "items": ["ห้องที่เคยเข้า ในหน้าเข้าห้องเรียน แสดงชื่อวิชาครบทุกห้อง และมีปุ่ม ลบ ท้ายแต่ละห้อง เลือกเอาออกจากรายการโดยสมุดที่จดยังอยู่ หรือลบห้องพร้อมสมุดไปถังขยะ กู้คืนได้ภายใน 30 วัน", "การบ้านที่ครูมอบหมายตอนเตรียมสอน นักเรียนเห็นได้เลยโดยไม่ต้องรอครูเปิดห้องเรียนสด ตัวเลขบนปุ่ม งานของฉัน ขึ้นเองเมื่อเปิดแอปหรือกลับมาที่แอป พร้อมข้อความแจ้งว่ามีการบ้านใหม่"]}, {"id": 33, "date": "2026-11-23", "items": ["สตอรี่บอร์ด วงภาพร่างและข้อความด้วยบ่วงบาศก์ แล้วกด สตอรี่บอร์ด ในกลุ่ม เห็นภาพ ได้เรื่องเป็นช่องตามลำดับ แต่ละช่องมีภาพ คำบรรยาย บทพูด และมุมกล้อง แก้ ย้าย ลบ หรือเพิ่มช่องได้", "กด ต่อเป็นแอนิเมชัน แล้วช่องเล่นต่อกัน ไอลอย อากาศไหลตามลูกศร เทอร์โมมิเตอร์ลดลงตามเวลาที่แอปคำนวณเองตามกฎการเย็นตัวของนิวตัน วางเป็นหน้าใหม่แล้วกด เล่น หรือ แก้ไข ที่มุมกล่องได้ทุกเมื่อ", "ไม่มี AI ก็ทำได้ ข้อความที่พิมพ์แบ่งเป็นช่องให้ คำในเครื่องหมายคำพูดเป็นบทพูด และภาพที่วาดเป็นภาพของช่องแรก"]}, {"id": 32, "date": "2026-11-23", "items": ["เขียนเส้นทับตัวสัตว์ สัตว์ตกใจแล้วเดินพ้นเส้น ไม่ยืนติดอยู่บนเส้นที่เขียนทับ", "แมวย่องเข้าหานกแล้วกระโจนจับ นกบินหนี สัตว์ผู้ล่าหลายชนิดมีเหยื่อเพิ่มตามธรรมชาติ"]}, {"id": 31, "date": "2026-11-23", "items": ["ภาพถ่ายกระดาน ที่ปุ่ม แทรก ถ่ายกระดานไวท์บอร์ด กระดานดำ หรือจอฉาย แอปหามุมให้ ลากปรับมุมได้ ดึงภาพให้ตรง และล้างพื้นหลัง เงา และแสงสะท้อนในเครื่อง ได้หน้าใหม่ที่เขียนทับได้ทันที", "ให้ AI อ่านกระดานแล้ววางข้อความ สมการ ตาราง กราฟ และรูปที่ตัดจากภาพเป็นกล่องที่แก้ได้ในตำแหน่งเดิม ภาพกระดานจางอยู่ข้างหลังให้เทียบ เลือกดูชัด จาง ภาพถ่ายจริง หรือซ่อน ได้ที่แถบ หน้านี้ ในลิ้นชักหน้า"]}, {"id": 30, "date": "2026-11-23", "items": ["แก้การบ้านหลังมอบหมายแล้วได้ในแผงเดียว กด แก้ไขหรือลบ ที่งาน แล้วเลือก แก้ไขการบ้าน เปลี่ยนชื่อ ย้ายห้อง เลื่อนวันเวลาส่งออกหรือเข้า ขยายเวลาทั้งห้องหรือรายคน เพิ่มข้อหรือหน้าที่ต้องทำต่อท้าย และฝากข้อความถึงนักเรียน", "นักเรียนเห็นแถบ ครูแก้การบ้านนี้ ในรายการงานและในหน้างาน แล้วกด รับทราบ คนที่ส่งไปแล้วส่งเพิ่มเฉพาะข้อที่ครูเพิ่ม ครูดูได้ในหน้ารายละเอียดของงานว่าใครรับทราบแล้ว"]}, {"id": 29, "date": "2026-11-23", "items": ["แบบจำลองที่สร้างจากโจทย์ที่เขียนหรือจากภาพวาด เช่น ลูกบอลที่ขว้าง เริ่มแบบไม่มีกรอบ ลูกบอลออกจากกล่องไปตกบนเส้นที่วาดหรือบนกล่องบนหน้าได้ ถ้าใส่กรอบก็ยังเห็นทั้งลูกเมื่อเลยกรอบออกไป", "สั่งให้ภาพเคลื่อนไหวด้วยคำพูดก็รู้จักสัตว์บนหน้า เช่น นกบินโฉบไปที่วัว ภาพที่ไปตามทางรอเมื่อสัตว์ขวาง และเดินขึ้นกล่องเตี้ยระหว่างทางได้", "ทุกอย่างบนหน้าตอบสนองเหมือนจริง แตะนกที่วาดแล้วบินหนี แตะหมาที่วาดแล้วกระโดดถอยหรือวิ่งหนี แตะลูกบอลแล้วกลิ้งออกจากนิ้ว นกที่วาดบินหนีก่อนสิ่งที่เข้ามาใกล้จะถึงตัว และของที่ตกลงมาวางบนภาพวาดที่อยู่ข้างใต้ได้"]}, {"id": 28, "date": "2026-11-23", "items": ["ภาพวาดที่ทำให้มีชีวิต เช่น หมาที่วาด รถ นก ปลา และลูกบอล ออกไปได้ทั่วหน้าเหมือนสัตว์ ยืนและเดินบนเส้นที่วาดทีหลังและบนกล่องที่เตี้ย เจอกล่องที่สูงแล้วหันกลับ และเห็นเต็มตัวตลอดไม่ขาดที่ขอบ", "ภาพวาดเจอสัตว์แล้วทำตามจริง หมาที่วาดกระโดดถอยแล้วหันกลับ นกบินขึ้นหนี รถหยุดรอให้สัตว์ผ่าน ลูกบอลถูกสัตว์ที่เดินชนดันกลิ้งไป ภาพที่ยืนอยู่สะดุ้งเมื่อสัตว์เข้ามาใกล้", "ภาพที่ขยับตามหลักฟิสิกส์ตกลงบนเส้นที่วาดทีหลังและบนตัวหนังสือในกล่องข้อความ คนที่วาดเดินขึ้นกล่องเตี้ยได้ และขว้างสูงขึ้นไปก็ยังเห็นทั้งลูก"]}, {"id": 27, "date": "2026-11-22", "items": ["สัตว์แบบไม่มีกรอบออกมาเดินบนหน้ากระดาษได้ทั่วหน้า ยืนและเดินบนเส้นที่วาดหรือบนกล่อง ขึ้นลงเนินตามเส้น เจอด้านข้างของกล่อง รูป หรือเส้นชันแล้วหยุดและหันกลับ นกบินข้ามของเตี้ย ๆ ได้ สัตว์สองตัวเจอกันแล้วหยุดมองกันหรือตัวเล็กวิ่งหนี", "อยากให้สัตว์อยู่กับที่แบบเดิม แตะปุ่มสามจุดของสัตว์แล้วกด อยู่กับที่", "สัตว์เห็นเต็มตัวตลอด ส่วนที่เดินเลยกรอบออกไปไม่ขาดหาย นกที่บินหนีสูงและหมึกที่ปลาหมึกพ่นก็ไม่ขาด", "เขียนด้วยปากกาชิดสัตว์หรือรูปสามมิติที่ไม่มีกรอบได้เลย ปากกาหมุนรูปเฉพาะเมื่อแตะตรงตัวรูป", "สัตว์เจอกันแล้วทำตามธรรมชาติ ผู้ล่าย่องแล้ววิ่งไล่ เหยื่อหนีหรือหลบ จับได้ก็กินแล้วมีตัวใหม่เดินเข้ามา ช้างไล่สิงโต ฝูงเดินไปด้วยกัน ตัวที่หวงถิ่นขู่กัน อยู่คนละบรรทัดถ้ากระโดดถึงก็กระโดด ถ้าไม่ถึงก็แค่มอง และสัตว์ตอบสนองกับคน รถ และลูกบอลที่ขยับได้บนหน้าด้วย", "แต่ละชนิดมีท่าของตัวเอง เสือและแมวย่องแล้วกระโจนตะครุบ จระเข้และกบซุ่มนิ่งแล้วพุ่งงับ สุนัขเห่าก่อนวิ่งไล่ กวางยืนนิ่งมองก่อนกระโจนหนี ม้าลายเตะสู้ ฝูงควายวิ่งเข้าใส่ แพะชนหัวประลองกัน ตัวกินมดเดินไปเลียมด", "ยามว่างสัตว์แต่ละชนิดทำสิ่งที่ชอบกับของบนหน้า แมวกระโดดขึ้นไปนั่งบนกล่องข้อความ ลิงปีนสำรวจ สุนัขและหมูดมเส้นที่วาด หนูวิ่งไปหลบชิดขอบกล่อง จระเข้และเต่านอนอาบแดด ฝูงเดินไปรวมกัน สิงโตนอนพักรวมฝูง", "แต่ละชนิดทำหลายอย่างสลับกันไม่ซ้ำลำดับ นกบินไปเกาะที่อื่น ตกใจแล้วระแวงมองรอบตัวสักพัก ผู้ล่าไล่ไม่ทันก็หอบพัก กินอิ่มแล้วนอน"]}, {"id": 26, "date": "2026-11-22", "items": ["เขียนด้วยปากกาบนกล่องได้ทุกกล่อง ทั้งแบบจำลอง สัตว์ กราฟ วิดีโอ ข้อความ และรูป เส้นที่เขียนอยู่เหนือกล่องและติดไปกับกล่องเวลาย้าย ย่อขยาย ทำสำเนา หรือลบ นิ้วยังใช้หมุน ลาก และกดเล่นแบบเดิม", "ทุกกล่องใส่กรอบหรือเอากรอบออกได้ เลือกกล่องแล้วกด แสดงกรอบ หรือ ไม่มีกรอบ ในแถบที่ขึ้นมา"]}, {"id": 25, "date": "2026-11-21", "items": ["สัตว์ในหลักสูตร เป็นสามมิติแบบสีไม้ที่ใช้ชีวิตเองเป็นวง เช่น วัวเดินแล้วก้มกินหญ้า กบพองคอร้องแล้วกระโดด ผีเสื้อบินไปดูดน้ำหวาน งูดินมุดดิน แตะตัวสัตว์แล้วมันตอบสนองเหมือนตัวจริง เช่น วิ่งหนี บินหนี หดเข้าเปลือก พ่นหมึก ลากเพื่อหมุนดูรอบตัว", "เพิ่มสัตว์ที่ข้อสอบแข่งขันและสอบเข้าชอบถามอีก 20 ชนิด เช่น ฟองน้ำ ไฮดรา แมงกะพรุน พลานาเรีย ปลิง หมึกยักษ์ ดาวทะเล แมงมุม แมงป่อง ตะขาบ กิ้งกือ ฉลาม ม้าน้ำ โลมา ตุ่นปากเป็ด จิงโจ้ เพนกวิน งูเห่า ใต้ตัวสัตว์ทุกตัวมีบรรทัด จุดเด่น บอกลักษณะที่มักออกสอบ ค้นด้วยคำอย่าง ไม่ใช่แมลง หรือ ออกลูกเป็นไข่ ก็เจอ", "สัตว์ขยับลื่นขึ้น ใช้แรงเครื่องน้อยลงมาก", "เครื่องมือรูปทรงมีแท็บ สัตว์ เรียงตามกลุ่มสัตว์พร้อมภาพเล็กของแต่ละตัว และช่องค้นหา แตะสัตว์แล้วแตะหรือลากบนหน้าเพื่อวาง", "เพิ่มนกที่บินไม่ได้ (นกกระจอกเทศ นกอีมู นกคาสโซวารี นกกีวี) ตัวกินมด ตัวนิ่ม ตัวกินมดหนาม และสัตว์ที่พบบ่อยในสวนสัตว์ (ยีราฟ ม้าลาย สิงโต เสือโคร่ง หมี หมีแพนด้า ฮิปโปโปเตมัส แรด อูฐ กวาง ลิง อุรังอุตัง แมวน้ำ นกยูง นกฟลามิงโก นกแก้ว) รวมเป็น 87 ชนิด", "สัตว์เลี้ยงลูกด้วยน้ำนมและนกแยกเป็นกลุ่มย่อยตามที่เรียน เช่น ออกลูกเป็นไข่ มีกระเป๋าหน้าท้อง มีกีบ กินเนื้อ ไพรเมต นกที่บินไม่ได้", "เพิ่มอีก 16 ชนิด ได้แก่ ม้า หมู แพะ หนู จระเข้ กิ้งก่า วาฬ ปลาดุก ปลาตีน หนอนผีเสื้อ ลูกอ๊อด แมลงวัน ด้วงกว่าง ดอกไม้ทะเล เม่นทะเล นกฮูก", "หาสัตว์ด้วยชื่อไทยในแผ่นแบบจำลอง หมวดชีววิทยา ก็ได้ เลือกสีของสัตว์ได้ที่ปุ่มสามจุด"]}, {"id": 24, "date": "2026-11-21", "items": ["แถบคำสั่งหลังเลือกด้วยบ่วงบาศก์ ปุ่ม ขยับได้ เป็นปุ่มแรกทุกครั้งที่ใช้ได้ ตามด้วยคำสั่งที่ใช้บ่อยกับสิ่งที่เลือกสามปุ่มข้างหน้า ที่เหลืออยู่ในกลุ่ม แปลง เห็นภาพ ตรวจและแก้ จัดวาง แตะกลุ่มแล้วคำสั่งขึ้นในแถบเดิม บน iPad แถบเหลือแถวเดียว บนมือถือสองแถว", "ออร์บิทัล s p d และ sp³ ที่วาดด้วยเครื่องมือรูปทรง เป็นสามมิติแล้ว ลากเพื่อหมุนดูได้ทุกทิศ ใช้สองนิ้วย่อขยาย แตะสองครั้งกลับมุมเดิม", "รูปเวกเตอร์สามมิติ ย่อขยายด้วยสองนิ้วได้ และแตะสองครั้งกลับมุมเดิม", "วาดโครงสร้างเคมีแล้วต่อกันเอง แตะหรือลากจากปลายพันธะเดิมได้พันธะใหม่ที่ต่อกัน ไม่หยิบพันธะเดิมไปแล้ว พันธะที่เริ่มหรือจบใกล้อักษรอะตอมที่เขียนหรือพิมพ์ ต่อที่ขอบอักษรนั้น มุมพันธะเข้า 109.5 120 หรือ 180 องศาเมื่อลากใกล้ แตะกลางด้านของวงได้วงที่เชื่อมกัน ทั้งโมเลกุลย้ายไปด้วยกัน กด ไม่ต่อกัน ที่ขึ้นด้านล่างถ้าไม่ต้องการให้ต่อ", "ลายมือที่เคยแปลงเป็นตัวพิมพ์แล้ว สร้างรูปและตรวจหน่วยได้ทันที แอปคำนวณเองโดยไม่ต้องรอ AI ทั้งกราฟของฟังก์ชัน เวกเตอร์ และบรรทัดคำนวณ ใช้ได้แม้ยังไม่ได้เชื่อม AI", "เลือกสัญลักษณ์ธาตุ ไอออน หรือการเปลี่ยนระดับพลังงาน เช่น Fe3+ หรือ n = 3 ไป n = 2 แล้วกด สร้างรูป ได้การจัดเรียงอิเล็กตรอน กล่องออร์บิทัล เลขควอนตัม หรือแผนภาพระดับพลังงานพร้อมความยาวคลื่นทันที แอปคำนวณเองไม่ใช้ AI และตรวจการจัดเรียงที่เขียนได้", "แก้สมการแล้วกด แสดงวิธีทำ ได้ขั้นตอนทันทีโดยไม่ต้องรอ AI ทั้งสมการเชิงเส้น สมการกำลังสอง ระบบสมการสองและสามตัวแปร และอนุพันธ์กับปริพันธ์ของพหุนาม วางลงหน้าได้", "เลือกค่าที่ให้ของสามเหลี่ยม ตัวต้านทานที่ต่ออนุกรมหรือขนาน หรือแรงที่บอกขนาดและทิศ แล้วกด สร้างรูป ได้รูปตามมาตราส่วนพร้อมค่าที่คำนวณทันทีโดยไม่ใช้ AI", "เลือกชื่อสาร สูตร หรือสมการเคมี เช่น เอทานอล หรือ CH4 + 2O2 -> CO2 + 2H2O แล้วกด สร้างรูป ได้โครงสร้างโมเลกุลทันทีจากตารางสารในแอปโดยไม่ใช้ AI", "หน้าที่พิมพ์ชื่อหัวข้อในหลักสูตร กด หาสื่อ แล้วได้ภาพ GIF และวิดีโอของหัวข้อนั้นทันทีโดยไม่ต้องรอ AI", "พิมพ์โจทย์การเคลื่อนที่ เช่น ขว้างลูกบอล 20 m/s ทำมุม 30 องศา ในแผ่นแบบจำลอง ได้แบบจำลองที่ขยับได้ทันทีพร้อมเวลา ระยะ และจุดสูงสุดที่คำนวณแล้ว โดยไม่ใช้ AI", "ออร์บิทัลสามมิติแบบไม่มีกรอบ แตะปุ่มสามจุดแล้วเลือกคู่สีของสองเฟสได้ห้าแบบ และปุ่มย่อขยายจางหายเองเมื่อไม่ได้ใช้"]}, {"id": 20, "date": "2026-11-20", "items": ["ต่อสาย จอสะอาด แบบ ทั้งหน้า เห็นหน้าครบถึงขอบล่าง พอดีความสูงจอ และพื้นรอบหน้าเป็นสีดำ โปรเจกเตอร์จึงฉายแสงเฉพาะหน้ากระดาษ"]}, {"id": 19, "date": "2026-11-20", "items": ["ขยายหน้าจออยู่ มีปุ่ม หน้าใหม่ ข้างเลขหน้าที่มุมล่าง แตะครั้งเดียวได้หน้าใหม่ต่อจากหน้านี้ ขยายเท่าเดิม พร้อมเขียนที่มุมบนซ้าย"]}, {"id": 18, "date": "2026-11-19", "items": ["เขียนตอนขยายหน้าจอ เส้นไม่หดตรงมุมเมื่อยกปากกาแล้ว ตัวอักษรอยู่ตรงที่เขียนเหมือนตอนกำลังเขียน", "ขยายหน้าจอแล้วพักปากกาครู่หนึ่งขณะเขียน ตัวอักษรไม่ถูกเปลี่ยนเป็นรูปทรงอีก วาดค้างไว้ให้เป็นรูปทรงยังใช้ได้กับรูปที่ใหญ่กว่าลายมือบนหน้า", "ห้องเรียนสดที่ครูเปิด PDF แอปของนักเรียนไม่ปิดเองเพราะหน่วยความจำเต็มอีก"]}, {"id": 17, "date": "2026-11-18", "items": ["มอบหมายการบ้าน กดปุ่มแล้วขึ้น กำลังมอบหมาย และ มอบหมายแล้ว กดซ้ำไม่ได้ จึงไม่มีการบ้านซ้ำ ลิงก์กับ QR เลื่อนขึ้นมาให้เห็นทันที"]}, {"id": 16, "date": "2026-11-18", "items": ["ตั้งค่าคลาวด์ใหม่ ที่เมนู แท็บ บัญชี ซิงก์ และ AI ใช้คลาวด์ BURIN ได้ทันทีโดยไม่ต้องตั้งค่า", "ใช้ Supabase ของตัวเองได้ในหัวข้อ ขั้นสูง และสลับกลับมาคลาวด์ BURIN ได้ทุกเมื่อ สมุดทั้งสองที่ไม่หาย"]}, {"id": 15, "date": "2026-11-18", "items": ["ลืมรหัสผ่าน ตั้งรหัสใหม่ได้จากหน้าเข้าสู่ระบบ กด ลืมรหัสผ่าน แล้วทำตามอีเมลที่ได้รับ", "สมัครบัญชีใหม่แล้วยืนยันอีเมลได้ในแอป และกดส่งอีเมลยืนยันอีกครั้งได้"]}, {"id": 14, "date": "2026-11-18", "items": ["ห้องเรียนสดที่ลืมปิดปิดเอง เมื่อกลับมาที่แอปหลังห่างไปเกิน 1 ชั่วโมง ห้องไม่เปิดต่อเองและไม่ส่งสิ่งที่เขียนให้ผู้เรียน แตะ เปิดห้องเดิมอีกครั้ง ได้รหัสเดิม", "ห้องที่ไม่มีผู้เรียนและครูไม่ได้ใช้แอปนาน 30 นาทีปิดเอง มีแถบบอกก่อน 1 นาที ครูที่กำลังสอนห้องไม่ปิด แม้ผู้เรียนล็อกจอ", "ปิดห้องแล้วผู้เรียนยังส่งการบ้านได้ถึงเวลาที่กำหนด และเห็นปุ่มไปที่งานของฉัน"]}, {"id": 13, "date": "2026-11-17", "items": ["ข้อความที่พิมพ์ไม่ต้องรอ AI สมการที่พิมพ์ เช่น y = 2x + 1 สร้างกราฟได้ทันที ตารางที่พิมพ์เป็นข้อมูลได้ทันที และตรวจหน่วยของบรรทัดคำนวณที่พิมพ์ได้ทันที ใช้ได้แม้ไม่มีอินเทอร์เน็ต", "วาดใหม่ จัดเส้นตรง สี่เหลี่ยม วงกลม ในภาพร่างให้เรียบร้อยทันทีโดยไม่ใช้ AI ตัวอักษรยังเป็นลายมือเดิม ถ้าต้องการให้แก้ตามเนื้อหา กด ให้ AI วาดใหม่ตามเนื้อหา", "หลังทำแบบฝึก บทที่ยังอ่อนบอกชนิดข้อที่พลาด และความเข้าใจที่ควรแก้จากตัวเลือกที่ตอบ"]}, {"id": 12, "date": "2026-11-17", "items": ["ลายมือที่ AI อ่านแล้วไม่ต้องอ่านซ้ำ แปลงเป็นตัวพิมพ์ แก้สมการ สร้างรูป ตรวจหน่วย และสร้างโจทย์ จากลายมือเดิมใช้คำที่อ่านไว้ เร็วขึ้นและไม่ส่งภาพซ้ำ ถ้าอ่านผิด สั่งงานเดิมอีกครั้ง AI จะอ่านใหม่", "ค้นหาในทุกสมุดพบลายมือที่ AI เคยอ่านแล้วด้วย"]}, {"id": 11, "date": "2026-11-17", "items": ["ทดลองวางวัตถุสามมิติบนโต๊ะจริง (AR) ได้ที่ ปุ่ม สมุดทั้งหมด แท็บ ภาษา การเขียน และจอ หัวข้อ ลองดูในห้องจริง ใช้ได้บน iPad และ iPhone แอปสร้างไฟล์ในเครื่องเอง ไม่ใช้ AI"]}, {"id": 10, "date": "2026-11-17", "items": ["คอมที่ต่อจอที่สอง เลือก จอที่สอง ผู้ชมไม่เห็นแถบ ในเมนู นำเสนอ ครูใช้ได้ทุกคำสั่ง จอใหญ่เห็นแต่หน้ากระดาษ ไม่ต้องใช้อินเทอร์เน็ต", "ระหว่างเปิดจอผู้ชม ครูมีแถบเล็ก จอผู้ชม เลือกให้จอใหญ่เห็นทั้งหน้า พักจอ หรือปิด (ปุ่ม B บนคีย์บอร์ดหรือรีโมตก็พักจอได้)", "ต่อ iPad ออกทีวีด้วยสาย ใช้ ต่อสาย จอสะอาด ในเมนู นำเสนอ (ปุ่ม สอนและนำเสนอ)", "เริ่มแล้วจอเห็นแต่หน้ากระดาษ ไม่มีแถบหรือปุ่มใดขึ้นเลย ทั้งบน iPad และทีวี", "ก่อนเริ่ม เลือกปากกาให้แต่ละขอบจอ (สี ไฮไลต์ ยางลบ หรือเลเซอร์) ระหว่างนำเสนอ แตะขอบจอด้วยนิ้วเพื่อหยิบปากกาของขอบนั้น", "เลือกได้ว่าให้เห็นทั้งหน้า และเริ่มด้วยม่านบังครึ่งล่างที่ใช้นิ้วลากลงเพื่อเปิดทีละบรรทัด", "แตะค้างสามนิ้ว 1 วินาที เพื่อออก ใช้รีโมตนำเสนอเปลี่ยนหน้า ปุ่ม B พักจอ ปุ่ม Esc ออก", "เมนู นำเสนอ เหลือสามข้อ จอแสดงผลแบบนักเรียนบนอีกเครื่องและบนจอที่สองรวมเป็นข้อเดียว"]}, {"id": 9, "date": "2026-11-17", "items": ["แถบบนเหลือปุ่มน้อยลง ปุ่มที่ใช้นาน ๆ ครั้ง รวมอยู่ในสองกลุ่ม", "ปุ่ม ต่อยอดจากหน้า มี แปลงเป็นตัวพิมพ์ สร้างโจทย์ และ ชุดโจทย์", "ปุ่ม สอนและนำเสนอ มี ห้องสด นำเสนอ และ ห้องเรียนและโจทย์ (ฝั่งนักเรียนชื่อ ห้องเรียน มี สแกน QR และ เข้าห้องเรียน ด้วย)", "เลือกด้วยบ่วงแล้ว แถบเหนือส่วนที่เลือก แสดงคำสั่งที่ใช้บ่อยก่อน คำสั่งอื่นอยู่ที่ปุ่ม เพิ่มเติม", "หาคำสั่งไม่เจอ พิมพ์ชื่อในช่องค้นหาที่เมนู เช่น PDF หรือ สามมิติ แล้วแตะคำสั่งที่ขึ้นมา"]}, {"id": 8, "date": "2026-11-16", "items": ["สร้างโจทย์ด้วย AI จากกี่หน้าก็ได้ ทั้งเล่ม ตามบท หรือเป็นช่วงหน้า", "อยู่ที่ปุ่ม สร้างโจทย์ด้วย AI หัวข้อ หน้าที่ใช้สร้างโจทย์ แตะ ทั้งเล่ม หรือแตะชื่อบท หรือใส่ช่วงหน้า แล้วกด เลือกช่วงนี้", "หน้าที่ AI อ่านแล้ว เก็บไว้ในเครื่องนี้ ครั้งต่อไป ไม่ต้องอ่านซ้ำ จึงเร็วขึ้น และประหยัดค่า AI"]}, {"id": 7, "date": "2026-11-16", "items": ["ลบผิด หรือเขียนทับผิด ดึงหน้า เมื่อไม่กี่นาทีก่อน หรือเมื่อวาน กลับมาได้", "อยู่ที่ ลิ้นชักหน้า แตะแถบ หน้านี้ ด้านล่าง แล้วกดปุ่ม รุ่นก่อนของหน้านี้ เลือกรุ่น ดูภาพหน้าก่อน แล้วกด คืนหน้าเป็นรุ่นนี้", "หน้าก่อนคืน ถูกเก็บไว้ด้วย จึงย้อนกลับได้ แอปเก็บรุ่นก่อน ไว้ในเครื่องนี้ 30 วัน"]}, {"id": 6, "date": "2026-11-16", "items": ["บัญชีคลาวด์ ส่งออกข้อมูลทั้งบัญชี เป็นไฟล์เดียวได้ ทั้งสมุด หน้า หมึก รูป วิดีโอ เลคเชอร์ที่แชร์ การบ้าน และงานที่นักเรียนส่ง", "อยู่ที่ เมนู แท็บตั้งค่า หัวข้อ ข้อมูลทั้งบัญชี กดปุ่ม ส่งออกทั้งบัญชี", "นำเข้าไฟล์นี้ ในบัญชีอื่น หรือเครื่องใหม่ได้ การนำเข้า เพิ่มเฉพาะส่วนที่ยังไม่มี ไม่ทับ และไม่ลบ ของที่มีอยู่"]}, {"id": 5, "date": "2026-11-15", "items": ["ลบสมุด หรือลบหน้าแล้ว ยังกู้คืนได้ ภายใน 30 วัน สิ่งที่ลบ ไปอยู่ในถังขยะ ก่อนถูกลบจริง", "เปิดถังขยะ ได้ที่ เมนู สมุดทั้งหมด ปุ่มถังขยะ ใต้รายการสมุด กดกู้คืน แล้วสมุดกลับไป ที่เดิม หน้ากลับไป ตำแหน่งเดิม ในสมุด", "ลบถาวร ทีละรายการ หรือลบทั้งหมด ในถังขยะได้ ครบ 30 วัน แล้วแอปลบให้เอง"]}, {"id": 4, "date": "2026-11-15", "items": ["สำรองสมุด ทั้งหมดเป็นไฟล์เดียว ได้ที่ เมนู แท็บตั้งค่า หัวข้อ สมุดในเครื่องนี้ ไฟล์เก็บสมุดทุกเล่ม รูป และวิดีโอ ในเครื่องนี้", "นำสมุดคืน จากไฟล์สำรอง ได้ที่เดียวกัน การนำคืน เพิ่มเฉพาะส่วน ที่ยังไม่มีในเครื่อง ไม่ทับ และไม่ลบ ของที่มีอยู่", "แอปขอให้เบราว์เซอร์ เก็บสมุดในเครื่อง ไว้ถาวร และเตือนให้สำรองสมุด ที่หน้ารายการสมุด เมื่อสมุดเปลี่ยนไป ตั้งแต่สำรองครั้งล่าสุด", "บน iPad และ iPhone ใน Safari แอปชวนให้ เพิ่มลงหน้าจอโฮม เพื่อไม่ให้ Safari ลบสมุด ที่ไม่ได้เปิดนาน ให้สำรองสมุดก่อน แล้วนำคืน ในแอปบนหน้าจอโฮม"]}, {"id": 3, "date": "2026-11-14", "items": ["สารบัญ ของสมุด แตะปุ่มหน้าในสมุด ที่มุมซ้ายบน แล้วเลือก สารบัญ จะเห็นหัวเรื่อง ของทุกหน้า แตะหัวเรื่อง เพื่อไปที่หน้านั้น ได้ทันที", "หัวเรื่อง มาจากข้อความที่พิมพ์ไว้ บนสุดของหน้า หรือบรรทัด ที่ขึ้นต้นด้วย ## ลายมือที่ยังไม่ได้แปลง เป็นตัวพิมพ์ ไม่ขึ้นในสารบัญ", "ที่คั่นหน้า แตะ ปักที่คั่นหน้านี้ ในหน้าสารบัญ แล้วตั้งชื่อเองได้ หน้าที่มีที่คั่น จะมีริบบิ้นสีแดง ที่ภาพหน้า", "ที่คั่นหน้า อยู่กับสมุด ของเราเท่านั้น ผู้เรียนในห้องสด ไม่เห็นที่คั่นหน้า ของครู"]}, {"id": 2, "date": "2026-11-14", "items": ["ค้นหาข้อความ ในทุกสมุดได้แล้ว พิมพ์คำในช่องค้นหาที่เมนู แอปจะค้นทั้งชื่อสมุด ข้อความที่พิมพ์ ลายมือที่แปลงเป็นตัวพิมพ์แล้ว หัวเรื่องของหน้า และข้อความในกล่องต่าง ๆ", "แตะผลการค้นหา เพื่อไปที่หน้านั้น กล่องที่มีคำนั้นจะเรืองแสงสักครู่ ให้เห็นตำแหน่ง", "พิมพ์คำไทย ติดกันหรือเว้นวรรค ก็ค้นเจอเหมือนกัน การค้นหาอ่านสมุดอย่างเดียว ไม่แก้ไขอะไรในสมุด"]}, {"id": 1, "date": "2026-11-13", "items": ["ดูเวอร์ชันของแอปได้ที่เมนู แท็บตั้งค่า หัวข้อเกี่ยวกับแอป", "เมื่อมีเวอร์ชันใหม่ระหว่างใช้งาน แอปจะไม่รีโหลดเอง รวมถึงจอผู้ชม เวอร์ชันใหม่จะมีผล เมื่อเปิดแอปครั้งถัดไป หรือเมื่อแตะแถบ มีเวอร์ชันใหม่", "หน้าที่เปิดค้างไว้ ใช้ส่วนต่าง ๆ ของแอป จากเวอร์ชันเดียวกับตัวเองเสมอ ไม่ปนกับเวอร์ชันใหม่", "เมื่อแอปทำงานผิดพลาด แอปจะส่งรายงาน ให้ผู้พัฒนา โดยส่งเฉพาะ ข้อความแจ้งข้อผิดพลาด ตำแหน่งในโค้ด รุ่นเครื่อง และเวอร์ชันของแอป ไม่ส่งเนื้อหาสมุด ชื่อ หรืออีเมล"]}];
 const TH_MON = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
 function thDay(iso) { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || ''); return m ? (+m[3]) + ' ' + TH_MON[+m[2] - 1] + ' ' + (+m[1] + 543) : ''; }
@@ -22821,7 +23004,7 @@ function arSetShow() {
   if ((window.claude && window.claude.use) || S.present || S.show) { box.hidden = true; return; }
   flagsReady().then(() => { box.hidden = !flagOn('ar'); });
 }
-$('#bArTry').onclick = () => { need('ar').then(() => arOpen()).catch(() => {}); };
+$('#bArTry').onclick = () => { if (planGate('ar')) need('ar').then(() => arOpen()).catch(() => {}); };
 $('#bNews').onclick = () => openNews();
 $('#bNewsOk').onclick = () => { $('#newsSheet').hidden = true; };
 $('#bHist').onclick = () => { need('history').then(() => histOpen()).catch(() => {}); };
@@ -23066,7 +23249,7 @@ function devGuess() {
 const devName = () => store_ls.get('tp-devname') || devGuess();
 let devSeenAt = 0;
 function devSeen() {
-  if (!S.store || S.store.kind !== 'cloud' || Date.now() - devSeenAt < 5 * 60e3) return; devSeenAt = Date.now();
+  if (!S.store || S.store.kind !== 'cloud' || DEVS.state === 'screen' || devWaits() || Date.now() - devSeenAt < 5 * 60e3) return; devSeenAt = Date.now();
   Promise.resolve(S.store.set('devices/' + DEV, { name: devName(), kind: devGuess(), last: now(), role: S.role || 'teacher' })).catch(() => {});
 }
 document.addEventListener('visibilitychange', () => { if (!document.hidden) devSeen(); });
@@ -23148,8 +23331,39 @@ async function acctSwitch(email) {
   toast('กำลังบันทึกและออกจากระบบ', 4000);
   try { saveMine.flush(); savePage.flush(); } catch (e) { /* nothing open */ }
   try { if (S.store && S.store.flush) await S.store.flush(); } catch (e) { /* offline: the queue stays with the old account */ }
-  try { if (CLOUD.client) await CLOUD.client.auth.signOut(); } catch (e) { /* ignore */ }
+  try { if (CLOUD.client) await CLOUD.client.auth.signOut({ scope: 'local' }); } catch (e) { /* ignore */ } /* this device only: the others of the account stay signed in */
   if (email !== null) store_ls.set('tp-auth-next', email); location.reload();
+}
+/* models in this notebook: the free plan makes PLAN_FREE_SIMS (animals and orbitals are not counted), and five kinds of animal */
+const planIsSim = (it) => !!(it && it.type === 'scene' && it.spec && !it.spec.animal && it.spec.mark !== 'orb');
+function planSimCount() {
+  const pages = (S.nb && S.nb.pages) || []; let n = 0;
+  for (const pid of pages.includes(S.pid) ? pages : pages.concat(S.pid ? [S.pid] : [])) {
+    const pg = pid === S.pid ? S.page : (S.store && typeof S.store.peek === 'function' ? S.store.peek('pages/' + pid) : null);
+    n += ((pg && pg.items) || []).filter(planIsSim).length;
+  }
+  return n;
+}
+function planAnimalOk(id) { if (planOn('animals') || PLAN_FREE_ANIMALS.includes(id)) return true; planTell('animals'); return false; }
+function planSimOk(spec) {
+  if (spec && spec.animal) return planAnimalOk(spec.animal);
+  if (spec && spec.mark === 'orb') return true;
+  if (planOn('sims') || planSimCount() < PLAN_FREE_SIMS) return true;
+  planTell('sims'); return false;
+}
+/* the plan of the account in its sheet (task 4.1); buying comes with the apps (tasks 4.3, 4.4) */
+function planCard(box) {
+  const d = exEl('div', 'plancard'); box.appendChild(d);
+  const draw = () => {
+    const p = planNow(), on = planCloud(), end = PLAN.until ? Date.parse(PLAN.until) : NaN;
+    let t = '<b>แผน ' + esc(PLAN_NAMES[p]) + '</b>';
+    if (on && p !== 'free' && isFinite(end)) t += '<small>ใช้ได้ถึง ' + '<span class="nw">' + esc(new Date(end).toLocaleDateString(LOC, { dateStyle: 'long' })) + '</span>' + '</small>';
+    else if (on && p !== 'free') t += '<small>ไม่มีวันหมดอายุ</small>';
+    else if (on && PLAN.paid && PLAN.paid !== 'free' && isFinite(end)) t += '<small>แผน ' + esc(PLAN_NAMES[PLAN.paid] || PLAN.paid) + ' หมดอายุแล้วเมื่อ ' + '<span class="nw">' + esc(new Date(end).toLocaleDateString(LOC, { dateStyle: 'long' })) + '</span>' + ' สมุดและงานทั้งหมดยังอยู่ เปิดอ่านและส่งออกได้ตามเดิม</small>';
+    else if (!on) t += '<small>เข้าระบบบัญชีที่มีแผนเพื่อใช้ความสามารถของแผนนั้น</small>';
+    d.innerHTML = t;
+  };
+  draw(); planLoad(true).then(() => { if (d.isConnected) draw(); });
 }
 function openAcct() {
   closeSheets(); const box = $('#acctBody'); box.innerHTML = '';
@@ -23160,13 +23374,16 @@ function openAcct() {
   card.querySelector('b').textContent = on ? em : 'ยังไม่ได้เข้าระบบ';
   card.querySelector('small').textContent = on ? 'สมุด คะแนน และการเชื่อมต่อ AI ของบัญชีนี้ใช้ได้ทุกเครื่องที่เข้าระบบด้วยบัญชีนี้' : 'สมุดบนเครื่องนี้เก็บไว้ในเครื่องเท่านั้น เข้าระบบเพื่อใช้ได้ทุกเครื่อง';
   box.appendChild(card);
+  if (plansOn() && !S.student) planCard(box);
   const nm = exEl('label', 'field'); nm.innerHTML = '<span>ชื่อเครื่องนี้ ตั้งให้จำง่าย เช่น iPad ห้อง 2 หรือ ทีวีห้องฟิสิกส์</span><input maxlength="40">';
   const inp = nm.querySelector('input'); inp.value = devName(); inp.onchange = () => { const v = inp.value.trim().slice(0, 40); if (v) store_ls.set('tp-devname', v); else store_ls.set('tp-devname', ''); devSeenAt = 0; devSeen(); renderAcct(); };
   box.appendChild(nm);
   if (on) {
     box.appendChild(exEl('h3', '', 'เครื่องที่เข้าระบบด้วยบัญชีนี้'));
     const dl = exEl('div', 'devlist'); box.appendChild(dl);
-    Promise.resolve(S.store.list('devices')).then((rows) => {
+    /* the account has a limit of devices (task 4.2): the sign-ins themselves, and signing one out */
+    if (DEVS.max && devOn()) need('account').then(() => devList(dl)).catch(() => {});
+    else Promise.resolve(S.store.list('devices')).then((rows) => {
       rows = (rows || []).filter((r) => r && r.id).sort((a, b) => (b.id === DEV) - (a.id === DEV) || (b.last || 0) - (a.last || 0));
       if (!rows.length) { dl.appendChild(exEl('div', '', '<span>' + esc(devName()) + '</span><span class="me">เครื่องนี้</span>')); return; }
       for (const r of rows) {
@@ -23790,6 +24007,7 @@ function audienceWay() {
   return mobile ? null : 'window';
 }
 async function openAudience() {
+  if (!planGate('audience')) return; /* task 4.1 */
   const s = shellAud();
   if (!s) { openAudienceWindow(); return; }
   let ok = false; try { ok = (await s.openAudience(location.origin + location.pathname + '#present')) !== false; } catch (e) { ok = false; }
@@ -24130,7 +24348,7 @@ function quietRun(fn) {
     return p;
   };
 }
-$('#sAnim').onclick = withMod('scene', () => openMotionPick()); $('#sStory').onclick = withMod('story', () => sbFromSel()); $('#sQuiz').onclick = openQuizMaker; $('#sEq').onclick = quietRun(eqSelection); $('#sRead').onclick = quietRun(readSelection); $('#sHand').onclick = openHand; $('#sTidy').onclick = quietRun(tidySelection); $('#sProof').onclick = quietRun(proofSelection); $('#sBal').onclick = quietRun(balanceSelection); $('#sCap').onclick = quietRun(withMod('cite', () => captionSel())); $('#sImMeas').onclick = withMod('imgmeas', () => { const id = S.sel && S.sel.items.find((x) => { const it = findItem(x); return it && it.type === 'img'; }); if (id) openImgMeasure(id); }); $('#sData').onclick = quietRun(withMod('data', () => dataSelection())); $('#sUnit').onclick = quietRun(withMod('data', () => unitCheck())); $('#sGen').onclick = quietRun(() => generate(true));
+$('#sAnim').onclick = withMod('scene', () => openMotionPick()); $('#sStory').onclick = withMod('story', () => { if (planGate('story')) sbFromSel(); }); $('#sQuiz').onclick = openQuizMaker; $('#sEq').onclick = quietRun(eqSelection); $('#sRead').onclick = quietRun(readSelection); $('#sHand').onclick = openHand; $('#sTidy').onclick = quietRun(tidySelection); $('#sProof').onclick = quietRun(proofSelection); $('#sBal').onclick = quietRun(balanceSelection); $('#sCap').onclick = quietRun(withMod('cite', () => captionSel())); $('#sImMeas').onclick = withMod('imgmeas', () => { const id = S.sel && S.sel.items.find((x) => { const it = findItem(x); return it && it.type === 'img'; }); if (id) openImgMeasure(id); }); $('#sData').onclick = quietRun(withMod('data', () => dataSelection())); $('#sUnit').onclick = quietRun(withMod('data', () => unitCheck())); $('#sGen').onclick = quietRun(() => generate(true));
 $('#sFrame').onclick = () => frameToggle(); $('#sFront').onclick = () => restackSel(true); $('#sBack').onclick = () => restackSel(false);
 $('#sDup').onclick = dupSel; $('#sMore').onclick = selMore;
 $('#sKey').onclick = () => showPeek();
@@ -24269,6 +24487,7 @@ async function boot() {
       if (user) {
         CLOUD.user = user; CLOUD.state = 'on'; acctRemember(user.email);
         dbVersion(sb); /* asked now, so the answer is there by the time the notebooks load (makeCloudStore) */
+        planLoad(); /* task 4.1: the plan of the account, remembered for offline use */
         if (migOn() && store_ls.get('tp-migrated-' + user.id) !== '1') {
           const say = (t) => { $('#loadMsg').textContent = t; };
           try { const r = await migRun(sb, user, say); if (r && !r.skipped && !r.needLogin && !r.otherAccount) setTimeout(() => toast('ย้ายข้อมูลจากเซิร์ฟเวอร์เดิมครบแล้ว สมุด ' + r.docs + ' รายการ ไฟล์ ' + r.files + ' ไฟล์' + (r.skip ? ' (ข้าม ' + r.skip + ' รายการที่ย้ายไม่ได้)' : ''), 6000), 1500); }
@@ -24298,7 +24517,7 @@ async function boot() {
   if (!S.student) { watchLiveDoc(); aiCloudWatch(); devSeen(); }
   curricLoadCustom();
   if (S.store && S.store.kind === 'cloud') Promise.resolve(S.store.get('settings/curric-x')).then((d) => { if (d && d.m) { let m = {}; try { m = JSON.parse(store_ls.get('tp-curric-x') || '{}'); } catch (e) { m = {}; } store_ls.set('tp-curric-x', JSON.stringify(Object.assign(m, d.m))); curricLoadCustom(); } }).catch(() => {});
-  if (!S.student && CLOUD.state === 'on' && store_ls.get('tp-live-on') === '1' && store_ls.get('tp-class') && S.role !== 'student' && laBoot()) { LIVE.clsId = store_ls.get('tp-live-cls') || null; LIVE.nbId = store_ls.get('tp-live-nb') || null; LIVE.code = store_ls.get('tp-class'); setTimeout(() => { liveOpen().then(() => toast('ห้องเรียนสด ' + LIVE.code + ' ยังเปิดอยู่ ผู้เรียนเชื่อมต่อได้ตามเดิม', 3000)).catch(() => {}); }, 800); }
+  if (!S.student && CLOUD.state === 'on' && store_ls.get('tp-live-on') === '1' && store_ls.get('tp-class') && store_ls.get('tp-live-nb') && S.role !== 'student' && laBoot()) { LIVE.clsId = store_ls.get('tp-live-cls') || null; LIVE.nbId = store_ls.get('tp-live-nb') || null; LIVE.code = store_ls.get('tp-class'); setTimeout(() => { liveOpen().then(() => toast('ห้องเรียนสด ' + LIVE.code + ' ยังเปิดอยู่ ผู้เรียนเชื่อมต่อได้ตามเดิม', 3000)).catch(() => {}); }, 800); }
   renderAcct();
   /* after the question of teacher or student on a new device (asked a moment after opening), not on top of it */
   if (recov && CLOUD.state === 'on' && !S.student) { const ask = (n) => { if (!$('#roleSheet').hidden || (n < 8 && !store_ls.get('tp-role'))) { setTimeout(() => ask(n + 1), 400); return; } acReady().then((ok) => { if (ok) acNewPw(); }); }; setTimeout(() => ask(0), 400); }
