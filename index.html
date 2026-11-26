@@ -560,6 +560,10 @@ body.tv .toast { bottom: 112px; }
 .pselh span { display: flex; gap: 4px; }
 .pselh .btn.sm, .pselacts .btn { min-height: 34px; padding: 0 10px; font-size: 13px; }
 .pselacts { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+/* a thumbnail being dragged is smaller and see-through, so the page it will go to stays visible under it */
+.pgrid .pthumb.drag { box-shadow: none; opacity: 1; }
+.pgrid .pthumb.drag .pc { transform: scale(0.82); opacity: 0.8; box-shadow: 0 8px 22px rgba(0, 0, 0, 0.28); }
+.pgrid .pthumb.drag > span:last-child { visibility: hidden; }
 .pgrid.picking .pthumb { position: relative; }
 .pgrid.picking .pthumb .pc { opacity: 0.55; }
 .pgrid.picking .pthumb[aria-pressed="true"] .pc { opacity: 1; box-shadow: 0 0 0 2.5px var(--accent), 0 2px 6px rgba(47, 75, 184, 0.25); }
@@ -1096,6 +1100,8 @@ body.student .busy:not(.mini) .bh { pointer-events: none; }
 .skpair { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-start; justify-content: center; margin-top: 6px; }
 .skpair > * { max-width: calc(50% - 6px); height: auto; border-radius: 8px; border: 1px solid var(--line); background: #FFFFFF; }
 .busy.mini { padding: 9px 12px; }
+.expbar { height: 6px; border-radius: 3px; background: var(--line); overflow: hidden; margin: 8px 0; }
+.expbar i { display: block; height: 100%; width: 0; background: var(--accent); transition: width 0.3s; }
 .busy.mini .bh b { font-weight: 600; font-size: 14px; color: var(--muted); }
 .busy.mini { padding-left: 22px; }
 .busy.mini .spin { width: 22px; height: 19px; }
@@ -2556,7 +2562,7 @@ body.role-student .scnpill .sbtns button[data-s="back"], body.role-student .scnp
     </div>
     <h3>เกี่ยวกับแอป</h3>
     <div class="note" id="verNote"></div>
-    <div class="row2"><button class="btn" id="bNews" type="button">มีอะไรใหม่</button></div>
+    <div class="row2"><button class="btn" id="bNews" type="button">มีอะไรใหม่</button><button class="btn" id="bPdPriv" type="button" hidden>นโยบายความเป็นส่วนตัว</button><button class="btn" id="bPdTerms" type="button" hidden>ข้อตกลงการใช้</button></div>
     </div>
     <div data-mp="acc" hidden>
     <div id="cloudBox" hidden>
@@ -2676,7 +2682,7 @@ body.role-student .scnpill .sbtns button[data-s="back"], body.role-student .scnp
       <button class="insb" id="iCalc"><b>เครื่องคิดเลขและแก้สมการ</b><span>คิดพร้อมหน่วย แก้สมการ อนุพันธ์ อินทิเกรต เมทริกซ์ สมการเชิงอนุพันธ์</span></button>
       <button class="insb" id="iSim"><b>แบบจำลองการทดลอง</b><span>ทุกวิชา ฟิสิกส์ โลกและอวกาศ เคมี ชีวะ สุขภาพ คณิต สถิติ ปรับค่าแล้วกดเล่น หรือให้ AI สร้าง</span></button>
       <button class="insb" id="iLab"><b>การทดลองและตารางผล</b><span>วางแผนตัวแปร บันทึกผล พล็อตกราฟ หาความชันและค่าที่ต้องการพร้อมความไม่แน่นอน</span></button>
-      <button class="insb" id="iVid"><b>วิเคราะห์วิดีโอ</b><span>ถ่ายหรือเลือกวิดีโอ ตั้งมาตราส่วน แตะหรือให้ติดตามวัตถุเอง ได้ตาราง t x y ความเร็ว และกราฟพร้อมความชัน</span></button>
+      <button class="insb" id="iVidLab"><b>วิเคราะห์วิดีโอ</b><span>ถ่ายหรือเลือกวิดีโอ ตั้งมาตราส่วน แตะหรือให้ติดตามวัตถุเอง ได้ตาราง t x y ความเร็ว และกราฟพร้อมความชัน</span></button>
       <button class="insb" id="iStats"><b>สถิติ</b><span>สถิติเชิงพรรณนา ทดสอบสมมติฐาน ถดถอย การแจกแจงความน่าจะเป็น พร้อมแผนภาพ</span></button>
       <button class="insb" id="iProof"><b>ตารางพิสูจน์เรขาคณิต</b><span>กำหนดให้ ต้องการพิสูจน์ ข้อความกับเหตุผลทีละขั้น พร้อมเหตุผลที่ใช้บ่อย</span></button>
     </div>
@@ -2928,7 +2934,7 @@ body.role-student .scnpill .sbtns button[data-s="back"], body.role-student .scnp
     <span class="label">เส้นพื้นหลังของหน้ากระดาษ</span>
     <div class="chips" id="expLines"><button class="chip" data-v="1" aria-pressed="true">มีเส้นตามหน้ากระดาษ</button><button class="chip" data-v="0" aria-pressed="false">ไม่มีเส้น เหลือแต่สิ่งที่เขียน</button></div>
     <button class="btn solid" id="bExpGo">สร้างไฟล์ PDF</button>
-    <div id="expMsg"></div>
+    <div id="pdfOutMsg"></div>
     <h3>สไลด์นำเสนอ</h3>
     <div class="note">แปลงสิ่งที่จดหรือค้นคว้าไว้เป็นสไลด์ เลือกได้ว่านำเสนอผู้บริหาร ลูกค้า รายงานหน้าห้อง สอน หรืองานวิชาการ</div>
     <button class="btn" id="bDeck">สร้างสไลด์จากสมุดเล่มนี้</button>
@@ -3114,6 +3120,19 @@ const IDB = (() => {
     }
   };
 })();
+/* the installed app (task 6.1, shell/ios/App/App/BurinShell.swift) has two web views, one per screen, which may not hear
+   each other through a BroadcastChannel: the app carries those messages itself (BurinShell.channel) */
+function bcOpen(name) {
+  const sh = window.BurinShell;
+  if (sh && typeof sh.channel === 'function') { try { const c = sh.channel(name); if (c) return c; } catch (e) { /* the browser's own below */ } }
+  return 'BroadcastChannel' in window ? new BroadcastChannel(name) : null;
+}
+/* links that other people open (a class, homework, a lecture, a room's screen, the sign-in e-mails): inside the installed
+   app the page's own address (capacitor://localhost) works only on that device, so the app gives the site's address */
+function siteBase() {
+  const sh = window.BurinShell, u = sh && typeof sh.site === 'string' ? sh.site : '';
+  return /^https:\/\/[^\s]+\/$/.test(u) ? u : location.origin + location.pathname;
+}
 async function makeLocalStore() {
   let data = {}, useIdb = false;
   try { for (const [k, v] of await IDB.all('docs')) if (typeof k === 'string' && !k.startsWith('cloud:')) data[k] = v; useIdb = true; } catch (e) { useIdb = false; }
@@ -3124,7 +3143,7 @@ async function makeLocalStore() {
   const subs = new Set();
   const persistLs = debounce(() => store_ls.set('tp-local', JSON.stringify(data)), 500);
   const notify = () => subs.forEach((f) => { try { f(); } catch (e) { console.error(e); } });
-  const bc = 'BroadcastChannel' in window ? new BroadcastChannel('burin-docs') : null;
+  const bc = bcOpen('burin-docs');
   if (bc) bc.onmessage = (e) => { const m = e.data; if (!m || typeof m.k !== 'string') return; if (m.v == null) delete data[m.k]; else data[m.k] = m.v; notify(); };
   const write = (k, v) => {
     if (v == null) delete data[k]; else data[k] = v;
@@ -3179,8 +3198,8 @@ function setAssetSrc(el, id) {
   attempt();
 }
 function makeLocalRoom() {
-  if (!('BroadcastChannel' in window)) return null;
-  const bc = new BroadcastChannel('burin-room'), me = 't' + uid();
+  const bc = bcOpen('burin-room'); if (!bc) return null;
+  const me = 't' + uid();
   const topics = {}, peers = new Map(), peerCbs = [];
   let pres = null;
   const list = () => [...peers.values()].map((p) => ({ id: p.id, presence: p.presence, sameTab: false }));
@@ -3712,6 +3731,7 @@ const AI = {
     o = o || {};
     prompt = subjectize(String(prompt), o); if (/LaTeX|\$\.\.\.\$|\$ signs|math/i.test(prompt) && !o.noNotation) prompt += MATH_NOTATION; prompt += langDirective(prompt, o);
     const s = this.src(task);
+    if (this.ready(task)) await pdAIOk(s);
     if (s === 'claude') { if (!this.claude) throw { code: 'not_granted' }; return this.claude(prompt, o); }
     if (s === 'local') { const L = this.cfg.local; return runOpenAI(L.url, '', L.model, prompt, L.vision ? o : Object.assign({}, o, { images: null }), L.tools); }
     if (s === 'key') {
@@ -9669,6 +9689,7 @@ function expSync() {
   document.querySelectorAll('#expPages .pthumb').forEach((b) => b.setAttribute('aria-pressed', EXP.sel.has(b.dataset.pid) ? 'true' : 'false'));
   const n = pages.filter((p) => EXP.sel.has(p)).length;
   $('#bExpGo').textContent = n ? 'สร้างไฟล์ PDF ' + n + ' หน้า' : 'เลือกหน้าที่จะส่งออกก่อน'; $('#bExpGo').disabled = !n;
+  if (EXP.work) { $('#bExpGo').textContent = 'กำลังสร้าง PDF'; $('#bExpGo').disabled = true; } /* picking pages while one is being made */
   const all = n === pages.length, one = n === 1 && EXP.sel.has(S.pid);
   $('#expScope').querySelectorAll('.chip').forEach((x) => x.setAttribute('aria-pressed', (x.dataset.v === 'all' && all) || (x.dataset.v === 'page' && one && !all) || (x.dataset.v === 'none' && !n) ? 'true' : 'false'));
 }
@@ -9678,7 +9699,7 @@ function expRangeText() {
   return out.join(', ');
 }
 function openExport() {
-  $('#expMsg').innerHTML = ''; $('#exportSheet').hidden = false;
+  $('#pdfOutMsg').innerHTML = ''; $('#exportSheet').hidden = false;
   const pages = (S.nb && S.nb.pages) || [], g = $('#expPages'); g.innerHTML = '';
   EXP.sel = new Set(expScope === 'page' ? [S.pid] : pages);
   const tick = '<span class="tick"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 10.5l3.2 3.2L15 7" fill="none" stroke="#FFFFFF" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span>';
@@ -9694,24 +9715,37 @@ function openExport() {
   (async () => { for (const [pid, cv] of cvs) { if ($('#exportSheet').hidden) return; try { await drawThumb(pid, cv); } catch (e) { /* leave blank */ } await new Promise((r) => setTimeout(r, 0)); } })();
   const cur = g.querySelector('[data-pid="' + S.pid + '"]'); if (cur) setTimeout(() => cur.scrollIntoView({ block: 'nearest' }), 50);
 }
+/* a moment for the screen to show what was just written: a long piece of work done in one go otherwise keeps the screen
+   still, and the person cannot tell working from stuck (owner's report 26 Nov 2026: exporting a PDF looked frozen) */
+const paintNow = () => new Promise((r) => requestAnimationFrame(() => setTimeout(r, 0)));
 async function exportPdf() {
-  try { await need('scene'); } catch (e) { /* models print as boxes */ }
-  const msg = $('#expMsg');
+  /* its own name: #expMsg is the account export in the settings, which comes first on the page, so the progress went there unseen */
+  const msg = $('#pdfOutMsg'), go = $('#bExpGo');
   const say = (t, cls) => { msg.innerHTML = '<div class="note ' + (cls || '') + '">' + esc(t) + '</div>'; };
   if (!S.nb || !S.pid) { say('ยังเปิดสมุดไม่เสร็จ รอสักครู่แล้วลองอีกครั้ง', 'err'); return; }
-  $('#bExpGo').disabled = true;
+  if (EXP.work) return;
+  /* while it works: the moving wait line with the seconds, the page it is on, a bar, and a way to stop */
+  const work = EXP.work = { stop: false };
+  msg.innerHTML = '<div class="expwork"></div><div class="expbar" aria-hidden="true"><i></i></div><button class="btn" type="button" id="bExpStop">หยุด</button>';
+  waitLine(msg.querySelector('.expwork'), 'กำลังเตรียมเครื่องมือสร้าง PDF');
+  const step = async (t, f) => { const b = msg.querySelector('.expwork b'); if (b) b.textContent = t; const bar = msg.querySelector('.expbar i'); if (bar) bar.style.width = Math.round(Math.max(0, Math.min(1, f || 0)) * 100) + '%'; await paintNow(); };
+  $('#bExpStop').onclick = () => { work.stop = true; const b = $('#bExpStop'); if (b) { b.disabled = true; b.textContent = 'กำลังหยุด'; } };
+  go.disabled = true; go.textContent = 'กำลังสร้าง PDF';
+  try { msg.scrollIntoView({ block: 'nearest' }); } catch (e) { /* old browser */ }
+  await paintNow();
   try {
-    say('กำลังเตรียมเครื่องมือสร้าง PDF');
+    try { await need('scene'); } catch (e) { /* models print as boxes */ }
     await Promise.all([loadLib('jspdf'), loadLib('h2c'), loadLib('math').catch(() => {})]);
     saveMine.flush(); savePage.flush();
     const pids = (S.nb.pages || []).filter((p) => EXP.sel.has(p));
-    if (!pids.length) { say('เลือกหน้าที่จะส่งออกก่อน', 'err'); return; }
+    if (!pids.length) { say('เลือกหน้าที่จะส่งออกก่อน', 'err'); EXP.work = null; go.disabled = false; expSync(); return; }
     const pdf = new window.jspdf.jsPDF({ unit: 'mm', format: 'a4', compress: true, orientation: 'p' }); let pdfFirst = true;
     const host = document.createElement('div');
     host.style.cssText = 'position:fixed;left:-30000px;top:0;width:1000px;height:1414px;pointer-events:none';
     document.body.appendChild(host);
     for (let i = 0; i < pids.length; i++) {
-      say('กำลังสร้างหน้า ' + (i + 1) + ' จาก ' + pids.length);
+      if (work.stop) break;
+      await step('กำลังสร้างหน้า ' + (i + 1) + ' จาก ' + pids.length, i / pids.length);
       const pid = pids[i];
       const page = pid === S.pid ? S.page : await S.store.get('pages/' + pid);
       let strokes;
@@ -9746,6 +9780,8 @@ async function exportPdf() {
       host.removeChild(pg);
     }
     host.remove();
+    if (work.stop) { say('หยุดสร้าง PDF แล้ว ยังไม่ได้บันทึกไฟล์'); EXP.work = null; go.disabled = false; expSync(); return; }
+    await step('กำลังรวมเป็นไฟล์ PDF', 1);
     const d = new Date();
     const stamp = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
     const name = 'physics-notebook-' + stamp + '.pdf';
@@ -9756,7 +9792,7 @@ async function exportPdf() {
     if (e && e.code === 'declined') say('ยกเลิกการบันทึกไฟล์');
     else say('สร้าง PDF ไม่สำเร็จ ลองอีกครั้ง', 'err');
   }
-  $('#bExpGo').disabled = false;
+  EXP.work = null; go.disabled = false; expSync();
 }
 
 /* ---------- rendering UI ---------- */
@@ -9888,8 +9924,17 @@ function renderPageList() {
     const cv = b.querySelector('canvas'); cv.dataset.pid = pid;
     { const ar = thumbAr(pid); if (ar) b.querySelector('.pc').style.aspectRatio = ar; }
     if (PSEL.on) { b.setAttribute('aria-pressed', PSEL.set.has(pid) ? 'true' : 'false'); b.insertAdjacentHTML('afterbegin', '<span class="tick"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 10.5l3.2 3.2L15 7" fill="none" stroke="#FFFFFF" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span>'); }
-    holdable(b, () => { if (PSEL.on) { pselToggle(pid); return; } openPage(pid); if (window.innerWidth < 900) togglePages(false); }, () => { if (PSEL.on) pselToggle(pid); else pselStart(pid); });
-    b.title = PSEL.on ? 'แตะเพื่อเลือกหรือเอาออก' : 'แตะเพื่อเปิด แตะค้างเพื่อเลือกหลายหน้า';
+    const tap = () => { if (PSEL.on) { pselToggle(pid); return; } openPage(pid); if (window.innerWidth < 900) togglePages(false); }, hold = () => { if (PSEL.on) pselToggle(pid); else pselStart(pid); };
+    /* owner's request 26 Nov 2026: a page is moved by dragging its thumbnail (touch: hold, then drag; a mouse just drags),
+       the picked pages together when it is one of them. Off with "pagedrag" in flags.json: hold to pick, as before */
+    if (flagOn('pagedrag')) {
+      b.dataset.pid = pid;
+      dragItem(b, { items: () => [...el.querySelectorAll('.pthumb[data-pid]')], scroll: sc, onMove: (from, to) => pagesDrag(pid, from, to), onTap: tap, onHold: hold });
+      b.title = PSEL.on ? 'แตะเพื่อเลือกหรือเอาออก ลากเพื่อย้ายหน้าที่เลือก' : 'แตะเพื่อเปิด แตะค้างแล้วลากเพื่อย้ายหน้า แตะค้างแล้วปล่อยเพื่อเลือกหลายหน้า';
+    } else {
+      holdable(b, tap, hold);
+      b.title = PSEL.on ? 'แตะเพื่อเลือกหรือเอาออก' : 'แตะเพื่อเปิด แตะค้างเพื่อเลือกหลายหน้า';
+    }
     el.appendChild(b);
     if (io) io.observe(cv); else setTimeout(() => drawThumb(pid, cv).catch(() => {}), 30 * i);
   });
@@ -9974,6 +10019,23 @@ async function movePage(d) {
   pages.splice(i, 1); pages.splice(j, 0, S.pid);
   try { await S.store.update('notebooks/' + S.nid, { pages, updatedAt: now() }); S.nb = Object.assign({}, S.nb, { pages }); renderPageList(); renderTitle(); toast('ย้ายเป็นหน้า ' + (j + 1) + ' แล้ว', 1500); } catch (e) { onStoreError(e); }
 }
+/* a thumbnail dragged onto another (from and to among the thumbnails): the page, or every picked page when it is one of
+   them, goes where that one is (after it when moved forward, before it when moved back), in the order they had */
+async function pagesDrag(pid, from, to) {
+  if (!S.nb) return;
+  const pages = (S.nb.pages || []).slice(), tgt = pages[to]; if (pages[from] !== pid || !tgt) return;
+  const pick = PSEL.on && PSEL.set.has(pid) && PSEL.set.size > 1 ? pages.filter((p) => PSEL.set.has(p)) : [pid];
+  if (pick.includes(tgt)) return;
+  const rest = pages.filter((p) => !pick.includes(p)), at = rest.indexOf(tgt) + (to > from ? 1 : 0);
+  rest.splice(at, 0, ...pick);
+  if (rest.join() === pages.join()) return;
+  try {
+    await S.store.update('notebooks/' + S.nid, { pages: rest, updatedAt: now() }); S.nb = Object.assign({}, S.nb, { pages: rest });
+    renderPageList(); renderTitle();
+    const n = rest.indexOf(pick[0]) + 1;
+    toast(pick.length > 1 ? 'ย้าย ' + pick.length + ' หน้าไปเริ่มที่หน้า ' + n + ' แล้ว' : 'ย้ายเป็นหน้า ' + n + ' แล้ว', 1600);
+  } catch (e) { onStoreError(e); }
+}
 /* ---------- several pages at once: hold a thumbnail to start picking, then tap more ---------- */
 const PSEL = { on: false, set: new Set() };
 function pselStart(pid) { PSEL.on = true; PSEL.set = new Set(pid ? [pid] : []); $('#pselConfirm').hidden = true; renderPageList(); }
@@ -10056,7 +10118,7 @@ document.addEventListener('touchmove', (e) => { if (DRAG && DRAG.armed) e.preven
 function dragItem(el, o) {
   el.addEventListener('pointerdown', (e) => {
     if (e.button > 0 || e.target.closest('.bmore, .bstar, .nbedit, input, select, textarea')) return;
-    const d = DRAG = { el, x: e.clientX, y: e.clientY, armed: e.pointerType === 'mouse', moved: false, held: false, id: e.pointerId, down: { target: e.target, pointerType: e.pointerType } };
+    const d = DRAG = { el, x: e.clientX, y: e.clientY, armed: e.pointerType === 'mouse', moved: false, held: false, id: e.pointerId, down: { target: e.target, pointerType: e.pointerType }, st: o.scroll ? o.scroll.scrollTop : 0 };
     if (o.tapOnDown && o.onTap) { d.tapped = true; o.onTap(d.down); }
     d.t = setTimeout(() => { if (DRAG === d && !d.moved) { d.armed = true; d.held = true; el.classList.add('lift'); if (navigator.vibrate) navigator.vibrate(10); } }, o.holdMs || (e.pointerType === 'mouse' ? 450 : 280));
     try { el.setPointerCapture(e.pointerId); } catch (x) { /* fine */ }
@@ -10066,13 +10128,25 @@ function dragItem(el, o) {
     const dx = e.clientX - d.x, dy = e.clientY - d.y;
     if (!d.moved && Math.abs(dx) + Math.abs(dy) > 8) { if (!d.armed) { clearTimeout(d.t); DRAG = null; return; } d.moved = true; el.classList.add('lift', 'drag'); }
     if (!d.moved) return;
-    el.style.transform = 'translate(' + dx + 'px,' + dy + 'px)';
-    const sib = o.items().filter((x) => x !== el); let tgt = null;
-    for (const x of sib) { const r = x.getBoundingClientRect(); if (e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom) tgt = x; }
-    sib.forEach((x) => x.classList.toggle('droptarget', x === tgt)); d.tgt = tgt;
+    d.cx = e.clientX; d.cy = e.clientY;
+    dragPlace(d, el, o);
+    /* a long list (the pages of a notebook) scrolls by itself while the dragged thing is held near its top or bottom */
+    if (o.scroll && !d.raf) {
+      const step = () => {
+        d.raf = 0; if (DRAG !== d || !d.moved) return;
+        const r = o.scroll.getBoundingClientRect(), edge = 48;
+        /* only once the pointer has gone toward that edge: a thing picked up near the edge does not start the list moving */
+        const v = d.cy < r.top + edge && d.cy < d.y - 20 ? -Math.ceil((r.top + edge - d.cy) / 4) : d.cy > r.bottom - edge && d.cy > d.y + 20 ? Math.ceil((d.cy - r.bottom + edge) / 4) : 0;
+        if (!v) return;
+        const before = o.scroll.scrollTop; o.scroll.scrollTop = before + v;
+        if (o.scroll.scrollTop !== before) dragPlace(d, el, o);
+        d.raf = requestAnimationFrame(step);
+      };
+      d.raf = requestAnimationFrame(step);
+    }
   });
   const end = (e) => {
-    const d = DRAG; if (!d || d.el !== el) return; DRAG = null; clearTimeout(d.t);
+    const d = DRAG; if (!d || d.el !== el) return; DRAG = null; clearTimeout(d.t); if (d.raf) cancelAnimationFrame(d.raf);
     el.classList.remove('lift', 'drag'); el.style.transform = '';
     o.items().forEach((x) => x.classList.remove('droptarget'));
     if (e.type === 'pointercancel') return;
@@ -10083,6 +10157,14 @@ function dragItem(el, o) {
   el.addEventListener('pointerup', end); el.addEventListener('pointercancel', end);
   el.addEventListener('click', (e) => { if (o.onTap) e.preventDefault(); });
   el.addEventListener('contextmenu', (e) => { e.preventDefault(); if (o.onHold) o.onHold(el); });
+}
+/* the dragged thing follows the pointer (with what its list scrolled since), and the thing under the pointer is marked */
+function dragPlace(d, el, o) {
+  const dx = d.cx - d.x, dy = d.cy - d.y + (o.scroll ? o.scroll.scrollTop - d.st : 0);
+  el.style.transform = 'translate(' + dx + 'px,' + dy + 'px)';
+  const sib = o.items().filter((x) => x !== el); let tgt = null;
+  for (const x of sib) { const r = x.getBoundingClientRect(); if (d.cx >= r.left && d.cx <= r.right && d.cy >= r.top && d.cy <= r.bottom) tgt = x; }
+  sib.forEach((x) => x.classList.toggle('droptarget', x === tgt)); d.tgt = tgt;
 }
 const moveIn = (arr, from, to) => { const a = arr.slice(); a.splice(to, 0, a.splice(from, 1)[0]); return a; };
 /* a button inside a group (or inside เพิ่มเติม) opens its menu next to the group's button, which is still on screen:
@@ -11979,11 +12061,13 @@ function researchTemplate() {
 /* parts that are not needed to open a notebook and write are loaded the first time they are used (moving models,
    the equation solver, drawing from a reference, statistics), so the app opens fast and stays fast however much is added.
    Each part is kept for offline use by the service worker */
-const MODS = { scene: 'm/scene.js', cas: 'm/cas.js', sketch: 'm/sketch.js', stats: 'm/stats.js', video: 'm/video.js', data: 'm/data.js', measure: 'm/measure.js', imgmeas: 'm/imgmeas.js', cite: 'm/cite.js', work: 'm/work.js', search: 'm/search.js', toc: 'm/toc.js', keep: 'm/keep.js', trash: 'm/trash.js', export: 'm/export.js', history: 'm/history.js', aipages: 'm/aipages.js', cmds: 'm/cmds.js', clean: 'm/clean.js', ar: 'm/ar.js', typed: 'm/typed.js', account: 'm/account.js', cloudset: 'm/cloudset.js', quantum: 'm/quantum.js', figs: 'm/figs.js', mols: 'm/mols.js', animals: 'm/animals.js', board: 'm/board.js', story: 'm/story.js' }, MODP = {}, MODOK = {}, MODEV = {};
+const MODS = { scene: 'm/scene.js', cas: 'm/cas.js', sketch: 'm/sketch.js', stats: 'm/stats.js', video: 'm/video.js', data: 'm/data.js', measure: 'm/measure.js', imgmeas: 'm/imgmeas.js', cite: 'm/cite.js', work: 'm/work.js', search: 'm/search.js', toc: 'm/toc.js', keep: 'm/keep.js', trash: 'm/trash.js', export: 'm/export.js', history: 'm/history.js', aipages: 'm/aipages.js', cmds: 'm/cmds.js', clean: 'm/clean.js', ar: 'm/ar.js', typed: 'm/typed.js', account: 'm/account.js', cloudset: 'm/cloudset.js', quantum: 'm/quantum.js', figs: 'm/figs.js', mols: 'm/mols.js', animals: 'm/animals.js', board: 'm/board.js', story: 'm/story.js', consent: 'm/consent.js' }, MODP = {}, MODOK = {}, MODEV = {};
 /* switches to turn a part of the app off without putting a new release up: flags.json next to index.html,
    for example {"off": ["video"]}. Read once when the app opens; when it cannot be read, everything stays on */
 const FLAGS = { off: {}, told: {} };
-FLAGS.ready = (location.protocol === 'file:' || (window.claude && window.claude.use) ? Promise.resolve() : fetch('flags.json', { cache: 'no-store' }).then((r) => (r.ok ? r.json() : null)).then((j) => { if (j && Array.isArray(j.off)) j.off.forEach((n) => { if (typeof n === 'string') FLAGS.off[n] = true; }); }).catch(() => { /* no switches: everything on */ }));
+/* inside the installed app the switches of the site count (its own copy only when the site cannot be reached) */
+const flagsGet = () => { const sh = window.BurinShell, ok = (r) => (r.ok ? r.json() : null); if (!(sh && typeof sh.site === 'string' && /^https:\/\//.test(sh.site))) return fetch('flags.json', { cache: 'no-store' }).then(ok); return Promise.race([fetch(sh.site + 'flags.json', { cache: 'no-store' }).then(ok), new Promise((r, j) => setTimeout(j, 2000))]).catch(() => fetch('flags.json', { cache: 'no-store' }).then(ok)); };
+FLAGS.ready = (location.protocol === 'file:' || (window.claude && window.claude.use) ? Promise.resolve() : flagsGet().then((j) => { if (j && Array.isArray(j.off)) j.off.forEach((n) => { if (typeof n === 'string') FLAGS.off[n] = true; }); }).catch(() => { /* no switches: everything on */ }));
 function flagOn(name) { return !FLAGS.off[name]; }
 function flagsReady() { return Promise.race([FLAGS.ready, new Promise((r) => setTimeout(r, 2500))]); }
 /* ----- plans (task 4.1): free (เริ่มต้น), presenter (ผู้นำเสนอ), creator (ผู้สร้างสื่อ). Only on a site whose config.js says
@@ -12033,7 +12117,7 @@ function planGate(name) { if (planOn(name)) return true; planTell(name); return 
 function planLock(name) { const d = document.createElement('div'); d.className = 'note small plock'; const n = PLAN_NEED[name]; d.textContent = n ? n[1] + ' ใช้ได้ในแผน ' + PLAN_NAMES[n[0]] + (n[0] === 'presenter' ? ' ขึ้นไป' : '') : ''; return d; }
 const planKey = (id) => 'tp-plan-' + id;
 /* asked when the app knows the account, and again when asked (force); the answer is remembered for offline use */
-function planLoad(force) { planCache(); return flagsReady().then(() => planAsk(force)); }
+function planLoad(force) { planCache(); return flagsReady().then(() => planAsk(force)).then((r) => { shellAllow(); return r; }); }
 /* the plan this device was told last time, at once (offline, and before the cloud answers) */
 function planCache() {
   if (!planCloud() || PLAN.uid === CLOUD.user.id) return;
@@ -12112,12 +12196,12 @@ function need(name) {
     modSet(name, ex); MODEV[name] = ex.__ev; MODOK[name] = true;
   }).catch((e) => { delete MODP[name]; throw e; }));
 }
-let sbFromSel, sbPlay, sbEdit, bdOpen, bdRead, bdView, qnFigure, qnParse, fgFigure, mlParse, mlSmiles, AN_LIST, anDraw, anTick, anTap, anSpec, anThumb, anPage, anVis;
+let pdDoc, pdSignAsk, pdLoginAsk, pdAIAsk, sbFromSel, sbPlay, sbEdit, bdOpen, bdRead, bdView, qnFigure, qnParse, fgFigure, mlParse, mlSmiles, AN_LIST, anDraw, anTick, anTap, anSpec, anThumb, anPage, anVis;
 let SCENE_TPL, SCN, LIFE, renderScenePicker, scClean, scRender, restoreInk, openMotionPick, insertScene, buildScene, buildLife, sceneDomainFor, lifeBox, animKick, scReset, orb3Mark, ipActors, pwTap;
 let findShow, findRun, findGo, tocShow, tocHeads, tocMark, keepBoot, keepRender, keepSave, keepLoad, keepBanner, trashShow, trashPurge, trashRestore, trashDrop, trashList, expRender, expSave, expLoad, histNote, histOpen, histPurge, histRestore, histVersions, apRender, apSource, apWanted, apReading, ikGet, ikPut, ikPage, ikPageKeep, ikIndex, ikTexts, ikBoard, cmdShow, cmdList, cmdFind, cmdRun, cleanStart, cleanEnd, cleanFit, arOpen, arBuild, tyGraph, tyTable, tySteps, tyTidy, tyAdvice, acStep, acSay, acVerify, acForgot, acNewPw, acDelSection, devList, devFullOpen, csRender, csUsage, csSwitch;
 let texToCas, casVars, casWithUnits, casRun, casRowTex, casReady, solveSelection, openBgCut, openSketch, ST, openStats, openVideoLab, dataSelection, poolSection, poolShow, poolGot, poolEnd, openMeasure, openImgMeasure, unitCheck, openCite, captionSel, captionRenumber, hwHubOpen, hwStudentOpen, hwAssignOpen, hwBoard, hwDetail, hwPollRun;
 const MOD_EXPORTS = {
-  board: ['bdOpen', 'bdRead', 'bdView'], story: ['sbFromSel', 'sbPlay', 'sbEdit'],
+  board: ['bdOpen', 'bdRead', 'bdView'], story: ['sbFromSel', 'sbPlay', 'sbEdit'], consent: ['pdDoc', 'pdSignAsk', 'pdLoginAsk', 'pdAIAsk'],
   scene: ['SCENE_TPL', 'SCN', 'LIFE', 'renderScenePicker', 'scClean', 'scRender', 'restoreInk', 'openMotionPick', 'insertScene', 'buildScene', 'buildLife', 'sceneDomainFor', 'lifeBox', 'animKick', 'scReset', 'orb3Mark', 'ipActors', 'pwTap'],
   cas: ['texToCas', 'casVars', 'casWithUnits', 'casRun', 'casRowTex', 'casReady', 'solveSelection'],
   sketch: ['openBgCut', 'openSketch'], stats: ['ST', 'openStats'], video: ['openVideoLab'], data: ['dataSelection', 'poolSection', 'poolShow', 'poolGot', 'poolEnd', 'unitCheck'], measure: ['openMeasure'], imgmeas: ['openImgMeasure'], cite: ['openCite', 'captionSel', 'captionRenumber'], work: ['hwHubOpen', 'hwStudentOpen', 'hwAssignOpen', 'hwBoard', 'hwDetail', 'hwPollRun'], search: ['findShow', 'findRun', 'findGo'], toc: ['tocShow', 'tocHeads', 'tocMark'], keep: ['keepBoot', 'keepRender', 'keepSave', 'keepLoad', 'keepBanner'], trash: ['trashShow', 'trashPurge', 'trashRestore', 'trashDrop', 'trashList'], export: ['expRender', 'expSave', 'expLoad'], history: ['histNote', 'histOpen', 'histPurge', 'histRestore', 'histVersions'], aipages: ['apRender', 'apSource', 'apWanted', 'apReading', 'ikGet', 'ikPut', 'ikPage', 'ikPageKeep', 'ikIndex', 'ikTexts', 'ikBoard'], cmds: ['cmdShow', 'cmdList', 'cmdFind', 'cmdRun'], clean: ['cleanStart', 'cleanEnd', 'cleanFit'], ar: ['arOpen', 'arBuild'], typed: ['tyGraph', 'tyTable', 'tySteps', 'tyTidy', 'tyAdvice'], quantum: ['qnFigure', 'qnParse'], figs: ['fgFigure'], mols: ['mlParse', 'mlSmiles'], animals: ['AN_LIST', 'anDraw', 'anTick', 'anTap', 'anSpec', 'anThumb', 'anPage', 'anVis'], account: ['acStep', 'acSay', 'acVerify', 'acForgot', 'acNewPw', 'acDelSection', 'devList', 'devFullOpen'], cloudset: ['csRender', 'csUsage', 'csSwitch']
@@ -12126,6 +12210,7 @@ function modSet(name, x) {
   if (name === 'scene') { SCENE_TPL = x.SCENE_TPL; SCN = x.SCN; LIFE = x.LIFE; renderScenePicker = x.renderScenePicker; scClean = x.scClean; scRender = x.scRender; restoreInk = x.restoreInk; openMotionPick = x.openMotionPick; insertScene = x.insertScene; buildScene = x.buildScene; buildLife = x.buildLife; sceneDomainFor = x.sceneDomainFor; lifeBox = x.lifeBox; animKick = x.animKick; scReset = x.scReset; orb3Mark = x.orb3Mark; ipActors = x.ipActors; pwTap = x.pwTap; }
   else if (name === 'board') { bdOpen = x.bdOpen; bdRead = x.bdRead; bdView = x.bdView; }
   else if (name === 'story') { sbFromSel = x.sbFromSel; sbPlay = x.sbPlay; sbEdit = x.sbEdit; }
+  else if (name === 'consent') { pdDoc = x.pdDoc; pdSignAsk = x.pdSignAsk; pdLoginAsk = x.pdLoginAsk; pdAIAsk = x.pdAIAsk; }
   else if (name === 'cas') { texToCas = x.texToCas; casVars = x.casVars; casWithUnits = x.casWithUnits; casRun = x.casRun; casRowTex = x.casRowTex; casReady = x.casReady; solveSelection = x.solveSelection; }
   else if (name === 'sketch') { openBgCut = x.openBgCut; openSketch = x.openSketch; }
   else if (name === 'stats') { ST = x.ST; openStats = x.openStats; }
@@ -12159,7 +12244,15 @@ function modHold(d, it, forExport) {
   need('scene').then(() => { if (!d.isConnected) return; const nd = buildItemEl(forExport ? it : (findItem(it.id) || it), forExport); nd._sig = d._sig; d.replaceWith(nd); if (!forExport && typeof animSync === 'function') animSync(); }, () => {});
 }
 /* run something from a part, loading it first; says so plainly when there is no connection the first time */
-function withMod(name, fn) { return (...a) => need(name).then(() => fn(...a), () => toast('โหลดส่วนนี้ไม่สำเร็จ ตรวจอินเทอร์เน็ตแล้วลองใหม่', 3000)); }
+/* a button whose part is loaded on first use: on a slow connection that takes seconds, so after a short moment the
+   moving wait line shows until it is open (owner 26 Nov 2026: nothing that makes people wait may look still) */
+function withMod(name, fn) {
+  return (...a) => {
+    let close = null; const t = MODOK[name] ? 0 : setTimeout(() => { close = floatLine('กำลังเปิดส่วนนี้ครั้งแรก'); }, 400);
+    const done = () => { clearTimeout(t); if (close) close(); };
+    return need(name).then(() => { done(); return fn(...a); }, () => { done(); toast('โหลดส่วนนี้ไม่สำเร็จ ตรวจอินเทอร์เน็ตแล้วลองใหม่', 3000); });
+  };
+}
 function ipSegD(p, a, b) { const ex = b[0] - a[0], ey = b[1] - a[1], L2 = ex * ex + ey * ey || 1e-9, u = clamp(((p[0] - a[0]) * ex + (p[1] - a[1]) * ey) / L2, 0, 1); return Math.hypot(p[0] - a[0] - ex * u, p[1] - a[1] - ey * u); }
 /* ----- one button plays or stops every moving thing on the page at once: drawings brought to life, scenes and simulations.
    Each one keeps its own play button too. Drawings brought to life play by themselves when the page opens unless the teacher stopped them all last time ----- */
@@ -19244,7 +19337,7 @@ function liveSend(ev, data) {
     ch.send({ type: 'broadcast', event: ev, payload });
   }).catch(() => {});
 }
-function classLink(code) { return location.origin + location.pathname + '#class=' + code; }
+function classLink(code) { return siteBase() + '#class=' + code; }
 async function signedUrl(asset, secs) {
   const k = asset + ':' + (secs || 0), hit = LIVE.signed.get(k); if (hit && hit.exp > now() + 60000) return hit.u;
   try {
@@ -19606,7 +19699,7 @@ async function shareLecture(out, nbIn) {
     if (error) throw error;
     if (!NB.shareId) S.store.update('notebooks/' + NID, { shareId: id, sharedAt: now() }).catch(() => {});
     NB.shareId = id;
-    const link = location.origin + location.pathname + '#lecture=' + id;
+    const link = siteBase() + '#lecture=' + id;
     out.innerHTML = '<div class="livetop"><div class="qr"></div><div class="lcode"><span>ลิงก์เลคเชอร์ ' + esc(NB.title || '') + ' (' + pages.length + ' หน้า)</span><small>' + esc(link) + '</small></div></div>';
     const b = exEl('button', 'btn', 'คัดลอกลิงก์'); b.onclick = () => navigator.clipboard && navigator.clipboard.writeText(link).then(() => toast('คัดลอกแล้ว', 1200)).catch(() => {}); out.appendChild(b);
     drawQR(out.querySelector('.qr'), link, 150);
@@ -19719,7 +19812,7 @@ function showView(v) {
   if (typeof v.f === 'number') presentFlow(!!v.f);
   if (isFinite(v.y0) && isFinite(v.y1)) { PV.view = { y0: +v.y0, y1: +v.y1 }; if (isFinite(v.x0) && isFinite(v.x1) && v.x1 > v.x0 && v.y1 > v.y0) { PV.view.x0 = +v.x0; PV.view.x1 = +v.x1; } followView(); }
 }
-function showLink(code) { return location.origin + location.pathname + '#show=' + code; }
+function showLink(code) { return siteBase() + '#show=' + code; }
 async function showShare(win) {
   if (!planGate('audience')) return; /* task 4.1 */
   if (LIVE.role !== 'teacher' || !LIVE.ready) { await liveOpen(); if (LIVE.role !== 'teacher') return; }
@@ -22259,7 +22352,7 @@ const PLAN_PRESETS = [
   ['งาน 40 สอบย่อย 20 กลางภาค 20 ปลายภาค 20', [['งานและการบ้าน', 40], ['สอบย่อย', 20], ['สอบกลางภาค', 20], ['สอบปลายภาค', 20]]]
 ];
 function clsPlan(c) { c.plan = c.plan || { cats: [], late: 0, newCat: null, zero: true }; if (c.plan.zero == null) c.plan.zero = true; return c.plan; }
-const termLink = (id) => location.origin + location.pathname + '#term=' + id;
+const termLink = (id) => siteBase() + '#term=' + id;
 function itemDue(it) { return it.due ? Date.parse(it.due) : null; }
 /* one student's standing: each category scaled to its weight; work not yet due is left out, missing work after the due date counts as zero */
 function clsCalc(c, r, t) {
@@ -22524,7 +22617,7 @@ function classSelect(id, withNone) {
   return sel;
 }
 
-const hwLink = (id) => location.origin + location.pathname + '#hw=' + id;
+const hwLink = (id) => siteBase() + '#hw=' + id;
 function hwSqlHint(e) { const m = String((e && (e.message || e.code)) || e); if (quotaErr(e)) return QUOTA_MSG; if (limitErr(e)) return limitMsg(e); return /assignments|submissions|relation|schema cache|42P01|PGRST205|bucket/i.test(m) ? 'ยังไม่มีตารางสำหรับการบ้าน เปิด Supabase เมนู SQL Editor แล้วรันส่วนที่ 6 ของไฟล์ setup.sql (งานมอบหมายและการส่งงาน) ครั้งเดียว' : 'ไม่สำเร็จ ' + m; }
 /* ----- teacher: create (the work part) ----- */
 function openAssign(set) { return need('work').then(() => hwAssignOpen(set), () => toast('โหลดส่วนนี้ไม่สำเร็จ ตรวจอินเทอร์เน็ตแล้วลองใหม่', 3000)); }
@@ -22982,7 +23075,7 @@ async function deckExportPptx() {
 }
 
 /* ---------- new version notice (own website only) ---------- */
-const BUILD = '1795598633';
+const BUILD = '1795670777';
 let updShown = false;
 async function checkUpdate() {
   if (BUILD.startsWith('__') || (window.claude && window.claude.use) || updShown || !navigator.onLine) return;
@@ -23008,8 +23101,8 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden) chec
 setInterval(checkUpdate, 30 * 60 * 1000); setTimeout(checkUpdate, 8000);
 
 /* ---------- version and what is new ---------- */
-const VERSION = '20261125-643bb1fd';
-const NEWS = [{"id": 37, "date": "2026-11-25", "items": ["ห้องเรียนสด เปิดสมุดวิชาอื่นแล้ว ผู้เรียนยังเห็นสมุดเดิม และรหัสห้องของแต่ละสมุดคงเดิมทุกคาบ", "ลิ้นชักหน้าของสมุดที่มีหลายร้อยหน้า เลื่อนดูได้นิ่ง ไม่เด้งกลับระหว่างที่หน้ายังโหลด", "ฝั่งนักเรียน การบ้านที่ส่งแล้ว มีปุ่ม แก้ไขการส่ง เปิดมาพร้อมคำตอบเดิม", "ฝั่งนักเรียน แอปเตือนเมื่อการบ้านเหลือไม่ถึงหนึ่งวัน และไม่ถึงหนึ่งชั่วโมง", "กด ออกจากระบบเครื่องนี้ แล้ว เครื่องอื่นของบัญชีไม่หลุดตาม"]}, {"id": 36, "date": "2026-11-24", "items": ["บนคอมพิวเตอร์ กดปุ่มรูปมือแล้ว ลากเมาส์เลื่อนหน้าได้ เมื่อใช้ปากกาหรือปากกาเน้นข้อความ กดอีกครั้งเมาส์กลับมาเขียน", "ช่องรหัสผ่านกับปุ่มเข้าสู่ระบบไม่ชิดกันแล้ว และเมนูไม่มีแถบเลื่อนแนวนอน"]}, {"id": 35, "date": "2026-11-24", "items": ["มอบหมายการบ้านตอนเตรียมสอนแล้วเลือกได้ว่าผู้เรียนเห็นงานเมื่อไร ทันที หลังปิดห้องเรียนสด หรือตั้งเวลา ผู้เรียนจึงไม่ทำก่อนเรียนหรือทำระหว่างเรียน ครูกด ให้ผู้เรียนเห็นตอนนี้ หรือเปลี่ยนเวลาได้ในหน้ารายละเอียดของงาน"]}, {"id": 34, "date": "2026-11-23", "items": ["ห้องที่เคยเข้า ในหน้าเข้าห้องเรียน แสดงชื่อวิชาครบทุกห้อง และมีปุ่ม ลบ ท้ายแต่ละห้อง เลือกเอาออกจากรายการโดยสมุดที่จดยังอยู่ หรือลบห้องพร้อมสมุดไปถังขยะ กู้คืนได้ภายใน 30 วัน", "การบ้านที่ครูมอบหมายตอนเตรียมสอน นักเรียนเห็นได้เลยโดยไม่ต้องรอครูเปิดห้องเรียนสด ตัวเลขบนปุ่ม งานของฉัน ขึ้นเองเมื่อเปิดแอปหรือกลับมาที่แอป พร้อมข้อความแจ้งว่ามีการบ้านใหม่"]}, {"id": 33, "date": "2026-11-23", "items": ["สตอรี่บอร์ด วงภาพร่างและข้อความด้วยบ่วงบาศก์ แล้วกด สตอรี่บอร์ด ในกลุ่ม เห็นภาพ ได้เรื่องเป็นช่องตามลำดับ แต่ละช่องมีภาพ คำบรรยาย บทพูด และมุมกล้อง แก้ ย้าย ลบ หรือเพิ่มช่องได้", "กด ต่อเป็นแอนิเมชัน แล้วช่องเล่นต่อกัน ไอลอย อากาศไหลตามลูกศร เทอร์โมมิเตอร์ลดลงตามเวลาที่แอปคำนวณเองตามกฎการเย็นตัวของนิวตัน วางเป็นหน้าใหม่แล้วกด เล่น หรือ แก้ไข ที่มุมกล่องได้ทุกเมื่อ", "ไม่มี AI ก็ทำได้ ข้อความที่พิมพ์แบ่งเป็นช่องให้ คำในเครื่องหมายคำพูดเป็นบทพูด และภาพที่วาดเป็นภาพของช่องแรก"]}, {"id": 32, "date": "2026-11-23", "items": ["เขียนเส้นทับตัวสัตว์ สัตว์ตกใจแล้วเดินพ้นเส้น ไม่ยืนติดอยู่บนเส้นที่เขียนทับ", "แมวย่องเข้าหานกแล้วกระโจนจับ นกบินหนี สัตว์ผู้ล่าหลายชนิดมีเหยื่อเพิ่มตามธรรมชาติ"]}, {"id": 31, "date": "2026-11-23", "items": ["ภาพถ่ายกระดาน ที่ปุ่ม แทรก ถ่ายกระดานไวท์บอร์ด กระดานดำ หรือจอฉาย แอปหามุมให้ ลากปรับมุมได้ ดึงภาพให้ตรง และล้างพื้นหลัง เงา และแสงสะท้อนในเครื่อง ได้หน้าใหม่ที่เขียนทับได้ทันที", "ให้ AI อ่านกระดานแล้ววางข้อความ สมการ ตาราง กราฟ และรูปที่ตัดจากภาพเป็นกล่องที่แก้ได้ในตำแหน่งเดิม ภาพกระดานจางอยู่ข้างหลังให้เทียบ เลือกดูชัด จาง ภาพถ่ายจริง หรือซ่อน ได้ที่แถบ หน้านี้ ในลิ้นชักหน้า"]}, {"id": 30, "date": "2026-11-23", "items": ["แก้การบ้านหลังมอบหมายแล้วได้ในแผงเดียว กด แก้ไขหรือลบ ที่งาน แล้วเลือก แก้ไขการบ้าน เปลี่ยนชื่อ ย้ายห้อง เลื่อนวันเวลาส่งออกหรือเข้า ขยายเวลาทั้งห้องหรือรายคน เพิ่มข้อหรือหน้าที่ต้องทำต่อท้าย และฝากข้อความถึงนักเรียน", "นักเรียนเห็นแถบ ครูแก้การบ้านนี้ ในรายการงานและในหน้างาน แล้วกด รับทราบ คนที่ส่งไปแล้วส่งเพิ่มเฉพาะข้อที่ครูเพิ่ม ครูดูได้ในหน้ารายละเอียดของงานว่าใครรับทราบแล้ว"]}, {"id": 29, "date": "2026-11-23", "items": ["แบบจำลองที่สร้างจากโจทย์ที่เขียนหรือจากภาพวาด เช่น ลูกบอลที่ขว้าง เริ่มแบบไม่มีกรอบ ลูกบอลออกจากกล่องไปตกบนเส้นที่วาดหรือบนกล่องบนหน้าได้ ถ้าใส่กรอบก็ยังเห็นทั้งลูกเมื่อเลยกรอบออกไป", "สั่งให้ภาพเคลื่อนไหวด้วยคำพูดก็รู้จักสัตว์บนหน้า เช่น นกบินโฉบไปที่วัว ภาพที่ไปตามทางรอเมื่อสัตว์ขวาง และเดินขึ้นกล่องเตี้ยระหว่างทางได้", "ทุกอย่างบนหน้าตอบสนองเหมือนจริง แตะนกที่วาดแล้วบินหนี แตะหมาที่วาดแล้วกระโดดถอยหรือวิ่งหนี แตะลูกบอลแล้วกลิ้งออกจากนิ้ว นกที่วาดบินหนีก่อนสิ่งที่เข้ามาใกล้จะถึงตัว และของที่ตกลงมาวางบนภาพวาดที่อยู่ข้างใต้ได้"]}, {"id": 28, "date": "2026-11-23", "items": ["ภาพวาดที่ทำให้มีชีวิต เช่น หมาที่วาด รถ นก ปลา และลูกบอล ออกไปได้ทั่วหน้าเหมือนสัตว์ ยืนและเดินบนเส้นที่วาดทีหลังและบนกล่องที่เตี้ย เจอกล่องที่สูงแล้วหันกลับ และเห็นเต็มตัวตลอดไม่ขาดที่ขอบ", "ภาพวาดเจอสัตว์แล้วทำตามจริง หมาที่วาดกระโดดถอยแล้วหันกลับ นกบินขึ้นหนี รถหยุดรอให้สัตว์ผ่าน ลูกบอลถูกสัตว์ที่เดินชนดันกลิ้งไป ภาพที่ยืนอยู่สะดุ้งเมื่อสัตว์เข้ามาใกล้", "ภาพที่ขยับตามหลักฟิสิกส์ตกลงบนเส้นที่วาดทีหลังและบนตัวหนังสือในกล่องข้อความ คนที่วาดเดินขึ้นกล่องเตี้ยได้ และขว้างสูงขึ้นไปก็ยังเห็นทั้งลูก"]}, {"id": 27, "date": "2026-11-22", "items": ["สัตว์แบบไม่มีกรอบออกมาเดินบนหน้ากระดาษได้ทั่วหน้า ยืนและเดินบนเส้นที่วาดหรือบนกล่อง ขึ้นลงเนินตามเส้น เจอด้านข้างของกล่อง รูป หรือเส้นชันแล้วหยุดและหันกลับ นกบินข้ามของเตี้ย ๆ ได้ สัตว์สองตัวเจอกันแล้วหยุดมองกันหรือตัวเล็กวิ่งหนี", "อยากให้สัตว์อยู่กับที่แบบเดิม แตะปุ่มสามจุดของสัตว์แล้วกด อยู่กับที่", "สัตว์เห็นเต็มตัวตลอด ส่วนที่เดินเลยกรอบออกไปไม่ขาดหาย นกที่บินหนีสูงและหมึกที่ปลาหมึกพ่นก็ไม่ขาด", "เขียนด้วยปากกาชิดสัตว์หรือรูปสามมิติที่ไม่มีกรอบได้เลย ปากกาหมุนรูปเฉพาะเมื่อแตะตรงตัวรูป", "สัตว์เจอกันแล้วทำตามธรรมชาติ ผู้ล่าย่องแล้ววิ่งไล่ เหยื่อหนีหรือหลบ จับได้ก็กินแล้วมีตัวใหม่เดินเข้ามา ช้างไล่สิงโต ฝูงเดินไปด้วยกัน ตัวที่หวงถิ่นขู่กัน อยู่คนละบรรทัดถ้ากระโดดถึงก็กระโดด ถ้าไม่ถึงก็แค่มอง และสัตว์ตอบสนองกับคน รถ และลูกบอลที่ขยับได้บนหน้าด้วย", "แต่ละชนิดมีท่าของตัวเอง เสือและแมวย่องแล้วกระโจนตะครุบ จระเข้และกบซุ่มนิ่งแล้วพุ่งงับ สุนัขเห่าก่อนวิ่งไล่ กวางยืนนิ่งมองก่อนกระโจนหนี ม้าลายเตะสู้ ฝูงควายวิ่งเข้าใส่ แพะชนหัวประลองกัน ตัวกินมดเดินไปเลียมด", "ยามว่างสัตว์แต่ละชนิดทำสิ่งที่ชอบกับของบนหน้า แมวกระโดดขึ้นไปนั่งบนกล่องข้อความ ลิงปีนสำรวจ สุนัขและหมูดมเส้นที่วาด หนูวิ่งไปหลบชิดขอบกล่อง จระเข้และเต่านอนอาบแดด ฝูงเดินไปรวมกัน สิงโตนอนพักรวมฝูง", "แต่ละชนิดทำหลายอย่างสลับกันไม่ซ้ำลำดับ นกบินไปเกาะที่อื่น ตกใจแล้วระแวงมองรอบตัวสักพัก ผู้ล่าไล่ไม่ทันก็หอบพัก กินอิ่มแล้วนอน"]}, {"id": 26, "date": "2026-11-22", "items": ["เขียนด้วยปากกาบนกล่องได้ทุกกล่อง ทั้งแบบจำลอง สัตว์ กราฟ วิดีโอ ข้อความ และรูป เส้นที่เขียนอยู่เหนือกล่องและติดไปกับกล่องเวลาย้าย ย่อขยาย ทำสำเนา หรือลบ นิ้วยังใช้หมุน ลาก และกดเล่นแบบเดิม", "ทุกกล่องใส่กรอบหรือเอากรอบออกได้ เลือกกล่องแล้วกด แสดงกรอบ หรือ ไม่มีกรอบ ในแถบที่ขึ้นมา"]}, {"id": 25, "date": "2026-11-21", "items": ["สัตว์ในหลักสูตร เป็นสามมิติแบบสีไม้ที่ใช้ชีวิตเองเป็นวง เช่น วัวเดินแล้วก้มกินหญ้า กบพองคอร้องแล้วกระโดด ผีเสื้อบินไปดูดน้ำหวาน งูดินมุดดิน แตะตัวสัตว์แล้วมันตอบสนองเหมือนตัวจริง เช่น วิ่งหนี บินหนี หดเข้าเปลือก พ่นหมึก ลากเพื่อหมุนดูรอบตัว", "เพิ่มสัตว์ที่ข้อสอบแข่งขันและสอบเข้าชอบถามอีก 20 ชนิด เช่น ฟองน้ำ ไฮดรา แมงกะพรุน พลานาเรีย ปลิง หมึกยักษ์ ดาวทะเล แมงมุม แมงป่อง ตะขาบ กิ้งกือ ฉลาม ม้าน้ำ โลมา ตุ่นปากเป็ด จิงโจ้ เพนกวิน งูเห่า ใต้ตัวสัตว์ทุกตัวมีบรรทัด จุดเด่น บอกลักษณะที่มักออกสอบ ค้นด้วยคำอย่าง ไม่ใช่แมลง หรือ ออกลูกเป็นไข่ ก็เจอ", "สัตว์ขยับลื่นขึ้น ใช้แรงเครื่องน้อยลงมาก", "เครื่องมือรูปทรงมีแท็บ สัตว์ เรียงตามกลุ่มสัตว์พร้อมภาพเล็กของแต่ละตัว และช่องค้นหา แตะสัตว์แล้วแตะหรือลากบนหน้าเพื่อวาง", "เพิ่มนกที่บินไม่ได้ (นกกระจอกเทศ นกอีมู นกคาสโซวารี นกกีวี) ตัวกินมด ตัวนิ่ม ตัวกินมดหนาม และสัตว์ที่พบบ่อยในสวนสัตว์ (ยีราฟ ม้าลาย สิงโต เสือโคร่ง หมี หมีแพนด้า ฮิปโปโปเตมัส แรด อูฐ กวาง ลิง อุรังอุตัง แมวน้ำ นกยูง นกฟลามิงโก นกแก้ว) รวมเป็น 87 ชนิด", "สัตว์เลี้ยงลูกด้วยน้ำนมและนกแยกเป็นกลุ่มย่อยตามที่เรียน เช่น ออกลูกเป็นไข่ มีกระเป๋าหน้าท้อง มีกีบ กินเนื้อ ไพรเมต นกที่บินไม่ได้", "เพิ่มอีก 16 ชนิด ได้แก่ ม้า หมู แพะ หนู จระเข้ กิ้งก่า วาฬ ปลาดุก ปลาตีน หนอนผีเสื้อ ลูกอ๊อด แมลงวัน ด้วงกว่าง ดอกไม้ทะเล เม่นทะเล นกฮูก", "หาสัตว์ด้วยชื่อไทยในแผ่นแบบจำลอง หมวดชีววิทยา ก็ได้ เลือกสีของสัตว์ได้ที่ปุ่มสามจุด"]}, {"id": 24, "date": "2026-11-21", "items": ["แถบคำสั่งหลังเลือกด้วยบ่วงบาศก์ ปุ่ม ขยับได้ เป็นปุ่มแรกทุกครั้งที่ใช้ได้ ตามด้วยคำสั่งที่ใช้บ่อยกับสิ่งที่เลือกสามปุ่มข้างหน้า ที่เหลืออยู่ในกลุ่ม แปลง เห็นภาพ ตรวจและแก้ จัดวาง แตะกลุ่มแล้วคำสั่งขึ้นในแถบเดิม บน iPad แถบเหลือแถวเดียว บนมือถือสองแถว", "ออร์บิทัล s p d และ sp³ ที่วาดด้วยเครื่องมือรูปทรง เป็นสามมิติแล้ว ลากเพื่อหมุนดูได้ทุกทิศ ใช้สองนิ้วย่อขยาย แตะสองครั้งกลับมุมเดิม", "รูปเวกเตอร์สามมิติ ย่อขยายด้วยสองนิ้วได้ และแตะสองครั้งกลับมุมเดิม", "วาดโครงสร้างเคมีแล้วต่อกันเอง แตะหรือลากจากปลายพันธะเดิมได้พันธะใหม่ที่ต่อกัน ไม่หยิบพันธะเดิมไปแล้ว พันธะที่เริ่มหรือจบใกล้อักษรอะตอมที่เขียนหรือพิมพ์ ต่อที่ขอบอักษรนั้น มุมพันธะเข้า 109.5 120 หรือ 180 องศาเมื่อลากใกล้ แตะกลางด้านของวงได้วงที่เชื่อมกัน ทั้งโมเลกุลย้ายไปด้วยกัน กด ไม่ต่อกัน ที่ขึ้นด้านล่างถ้าไม่ต้องการให้ต่อ", "ลายมือที่เคยแปลงเป็นตัวพิมพ์แล้ว สร้างรูปและตรวจหน่วยได้ทันที แอปคำนวณเองโดยไม่ต้องรอ AI ทั้งกราฟของฟังก์ชัน เวกเตอร์ และบรรทัดคำนวณ ใช้ได้แม้ยังไม่ได้เชื่อม AI", "เลือกสัญลักษณ์ธาตุ ไอออน หรือการเปลี่ยนระดับพลังงาน เช่น Fe3+ หรือ n = 3 ไป n = 2 แล้วกด สร้างรูป ได้การจัดเรียงอิเล็กตรอน กล่องออร์บิทัล เลขควอนตัม หรือแผนภาพระดับพลังงานพร้อมความยาวคลื่นทันที แอปคำนวณเองไม่ใช้ AI และตรวจการจัดเรียงที่เขียนได้", "แก้สมการแล้วกด แสดงวิธีทำ ได้ขั้นตอนทันทีโดยไม่ต้องรอ AI ทั้งสมการเชิงเส้น สมการกำลังสอง ระบบสมการสองและสามตัวแปร และอนุพันธ์กับปริพันธ์ของพหุนาม วางลงหน้าได้", "เลือกค่าที่ให้ของสามเหลี่ยม ตัวต้านทานที่ต่ออนุกรมหรือขนาน หรือแรงที่บอกขนาดและทิศ แล้วกด สร้างรูป ได้รูปตามมาตราส่วนพร้อมค่าที่คำนวณทันทีโดยไม่ใช้ AI", "เลือกชื่อสาร สูตร หรือสมการเคมี เช่น เอทานอล หรือ CH4 + 2O2 -> CO2 + 2H2O แล้วกด สร้างรูป ได้โครงสร้างโมเลกุลทันทีจากตารางสารในแอปโดยไม่ใช้ AI", "หน้าที่พิมพ์ชื่อหัวข้อในหลักสูตร กด หาสื่อ แล้วได้ภาพ GIF และวิดีโอของหัวข้อนั้นทันทีโดยไม่ต้องรอ AI", "พิมพ์โจทย์การเคลื่อนที่ เช่น ขว้างลูกบอล 20 m/s ทำมุม 30 องศา ในแผ่นแบบจำลอง ได้แบบจำลองที่ขยับได้ทันทีพร้อมเวลา ระยะ และจุดสูงสุดที่คำนวณแล้ว โดยไม่ใช้ AI", "ออร์บิทัลสามมิติแบบไม่มีกรอบ แตะปุ่มสามจุดแล้วเลือกคู่สีของสองเฟสได้ห้าแบบ และปุ่มย่อขยายจางหายเองเมื่อไม่ได้ใช้"]}, {"id": 20, "date": "2026-11-20", "items": ["ต่อสาย จอสะอาด แบบ ทั้งหน้า เห็นหน้าครบถึงขอบล่าง พอดีความสูงจอ และพื้นรอบหน้าเป็นสีดำ โปรเจกเตอร์จึงฉายแสงเฉพาะหน้ากระดาษ"]}, {"id": 19, "date": "2026-11-20", "items": ["ขยายหน้าจออยู่ มีปุ่ม หน้าใหม่ ข้างเลขหน้าที่มุมล่าง แตะครั้งเดียวได้หน้าใหม่ต่อจากหน้านี้ ขยายเท่าเดิม พร้อมเขียนที่มุมบนซ้าย"]}, {"id": 18, "date": "2026-11-19", "items": ["เขียนตอนขยายหน้าจอ เส้นไม่หดตรงมุมเมื่อยกปากกาแล้ว ตัวอักษรอยู่ตรงที่เขียนเหมือนตอนกำลังเขียน", "ขยายหน้าจอแล้วพักปากกาครู่หนึ่งขณะเขียน ตัวอักษรไม่ถูกเปลี่ยนเป็นรูปทรงอีก วาดค้างไว้ให้เป็นรูปทรงยังใช้ได้กับรูปที่ใหญ่กว่าลายมือบนหน้า", "ห้องเรียนสดที่ครูเปิด PDF แอปของนักเรียนไม่ปิดเองเพราะหน่วยความจำเต็มอีก"]}, {"id": 17, "date": "2026-11-18", "items": ["มอบหมายการบ้าน กดปุ่มแล้วขึ้น กำลังมอบหมาย และ มอบหมายแล้ว กดซ้ำไม่ได้ จึงไม่มีการบ้านซ้ำ ลิงก์กับ QR เลื่อนขึ้นมาให้เห็นทันที"]}, {"id": 16, "date": "2026-11-18", "items": ["ตั้งค่าคลาวด์ใหม่ ที่เมนู แท็บ บัญชี ซิงก์ และ AI ใช้คลาวด์ BURIN ได้ทันทีโดยไม่ต้องตั้งค่า", "ใช้ Supabase ของตัวเองได้ในหัวข้อ ขั้นสูง และสลับกลับมาคลาวด์ BURIN ได้ทุกเมื่อ สมุดทั้งสองที่ไม่หาย"]}, {"id": 15, "date": "2026-11-18", "items": ["ลืมรหัสผ่าน ตั้งรหัสใหม่ได้จากหน้าเข้าสู่ระบบ กด ลืมรหัสผ่าน แล้วทำตามอีเมลที่ได้รับ", "สมัครบัญชีใหม่แล้วยืนยันอีเมลได้ในแอป และกดส่งอีเมลยืนยันอีกครั้งได้"]}, {"id": 14, "date": "2026-11-18", "items": ["ห้องเรียนสดที่ลืมปิดปิดเอง เมื่อกลับมาที่แอปหลังห่างไปเกิน 1 ชั่วโมง ห้องไม่เปิดต่อเองและไม่ส่งสิ่งที่เขียนให้ผู้เรียน แตะ เปิดห้องเดิมอีกครั้ง ได้รหัสเดิม", "ห้องที่ไม่มีผู้เรียนและครูไม่ได้ใช้แอปนาน 30 นาทีปิดเอง มีแถบบอกก่อน 1 นาที ครูที่กำลังสอนห้องไม่ปิด แม้ผู้เรียนล็อกจอ", "ปิดห้องแล้วผู้เรียนยังส่งการบ้านได้ถึงเวลาที่กำหนด และเห็นปุ่มไปที่งานของฉัน"]}, {"id": 13, "date": "2026-11-17", "items": ["ข้อความที่พิมพ์ไม่ต้องรอ AI สมการที่พิมพ์ เช่น y = 2x + 1 สร้างกราฟได้ทันที ตารางที่พิมพ์เป็นข้อมูลได้ทันที และตรวจหน่วยของบรรทัดคำนวณที่พิมพ์ได้ทันที ใช้ได้แม้ไม่มีอินเทอร์เน็ต", "วาดใหม่ จัดเส้นตรง สี่เหลี่ยม วงกลม ในภาพร่างให้เรียบร้อยทันทีโดยไม่ใช้ AI ตัวอักษรยังเป็นลายมือเดิม ถ้าต้องการให้แก้ตามเนื้อหา กด ให้ AI วาดใหม่ตามเนื้อหา", "หลังทำแบบฝึก บทที่ยังอ่อนบอกชนิดข้อที่พลาด และความเข้าใจที่ควรแก้จากตัวเลือกที่ตอบ"]}, {"id": 12, "date": "2026-11-17", "items": ["ลายมือที่ AI อ่านแล้วไม่ต้องอ่านซ้ำ แปลงเป็นตัวพิมพ์ แก้สมการ สร้างรูป ตรวจหน่วย และสร้างโจทย์ จากลายมือเดิมใช้คำที่อ่านไว้ เร็วขึ้นและไม่ส่งภาพซ้ำ ถ้าอ่านผิด สั่งงานเดิมอีกครั้ง AI จะอ่านใหม่", "ค้นหาในทุกสมุดพบลายมือที่ AI เคยอ่านแล้วด้วย"]}, {"id": 11, "date": "2026-11-17", "items": ["ทดลองวางวัตถุสามมิติบนโต๊ะจริง (AR) ได้ที่ ปุ่ม สมุดทั้งหมด แท็บ ภาษา การเขียน และจอ หัวข้อ ลองดูในห้องจริง ใช้ได้บน iPad และ iPhone แอปสร้างไฟล์ในเครื่องเอง ไม่ใช้ AI"]}, {"id": 10, "date": "2026-11-17", "items": ["คอมที่ต่อจอที่สอง เลือก จอที่สอง ผู้ชมไม่เห็นแถบ ในเมนู นำเสนอ ครูใช้ได้ทุกคำสั่ง จอใหญ่เห็นแต่หน้ากระดาษ ไม่ต้องใช้อินเทอร์เน็ต", "ระหว่างเปิดจอผู้ชม ครูมีแถบเล็ก จอผู้ชม เลือกให้จอใหญ่เห็นทั้งหน้า พักจอ หรือปิด (ปุ่ม B บนคีย์บอร์ดหรือรีโมตก็พักจอได้)", "ต่อ iPad ออกทีวีด้วยสาย ใช้ ต่อสาย จอสะอาด ในเมนู นำเสนอ (ปุ่ม สอนและนำเสนอ)", "เริ่มแล้วจอเห็นแต่หน้ากระดาษ ไม่มีแถบหรือปุ่มใดขึ้นเลย ทั้งบน iPad และทีวี", "ก่อนเริ่ม เลือกปากกาให้แต่ละขอบจอ (สี ไฮไลต์ ยางลบ หรือเลเซอร์) ระหว่างนำเสนอ แตะขอบจอด้วยนิ้วเพื่อหยิบปากกาของขอบนั้น", "เลือกได้ว่าให้เห็นทั้งหน้า และเริ่มด้วยม่านบังครึ่งล่างที่ใช้นิ้วลากลงเพื่อเปิดทีละบรรทัด", "แตะค้างสามนิ้ว 1 วินาที เพื่อออก ใช้รีโมตนำเสนอเปลี่ยนหน้า ปุ่ม B พักจอ ปุ่ม Esc ออก", "เมนู นำเสนอ เหลือสามข้อ จอแสดงผลแบบนักเรียนบนอีกเครื่องและบนจอที่สองรวมเป็นข้อเดียว"]}, {"id": 9, "date": "2026-11-17", "items": ["แถบบนเหลือปุ่มน้อยลง ปุ่มที่ใช้นาน ๆ ครั้ง รวมอยู่ในสองกลุ่ม", "ปุ่ม ต่อยอดจากหน้า มี แปลงเป็นตัวพิมพ์ สร้างโจทย์ และ ชุดโจทย์", "ปุ่ม สอนและนำเสนอ มี ห้องสด นำเสนอ และ ห้องเรียนและโจทย์ (ฝั่งนักเรียนชื่อ ห้องเรียน มี สแกน QR และ เข้าห้องเรียน ด้วย)", "เลือกด้วยบ่วงแล้ว แถบเหนือส่วนที่เลือก แสดงคำสั่งที่ใช้บ่อยก่อน คำสั่งอื่นอยู่ที่ปุ่ม เพิ่มเติม", "หาคำสั่งไม่เจอ พิมพ์ชื่อในช่องค้นหาที่เมนู เช่น PDF หรือ สามมิติ แล้วแตะคำสั่งที่ขึ้นมา"]}, {"id": 8, "date": "2026-11-16", "items": ["สร้างโจทย์ด้วย AI จากกี่หน้าก็ได้ ทั้งเล่ม ตามบท หรือเป็นช่วงหน้า", "อยู่ที่ปุ่ม สร้างโจทย์ด้วย AI หัวข้อ หน้าที่ใช้สร้างโจทย์ แตะ ทั้งเล่ม หรือแตะชื่อบท หรือใส่ช่วงหน้า แล้วกด เลือกช่วงนี้", "หน้าที่ AI อ่านแล้ว เก็บไว้ในเครื่องนี้ ครั้งต่อไป ไม่ต้องอ่านซ้ำ จึงเร็วขึ้น และประหยัดค่า AI"]}, {"id": 7, "date": "2026-11-16", "items": ["ลบผิด หรือเขียนทับผิด ดึงหน้า เมื่อไม่กี่นาทีก่อน หรือเมื่อวาน กลับมาได้", "อยู่ที่ ลิ้นชักหน้า แตะแถบ หน้านี้ ด้านล่าง แล้วกดปุ่ม รุ่นก่อนของหน้านี้ เลือกรุ่น ดูภาพหน้าก่อน แล้วกด คืนหน้าเป็นรุ่นนี้", "หน้าก่อนคืน ถูกเก็บไว้ด้วย จึงย้อนกลับได้ แอปเก็บรุ่นก่อน ไว้ในเครื่องนี้ 30 วัน"]}, {"id": 6, "date": "2026-11-16", "items": ["บัญชีคลาวด์ ส่งออกข้อมูลทั้งบัญชี เป็นไฟล์เดียวได้ ทั้งสมุด หน้า หมึก รูป วิดีโอ เลคเชอร์ที่แชร์ การบ้าน และงานที่นักเรียนส่ง", "อยู่ที่ เมนู แท็บตั้งค่า หัวข้อ ข้อมูลทั้งบัญชี กดปุ่ม ส่งออกทั้งบัญชี", "นำเข้าไฟล์นี้ ในบัญชีอื่น หรือเครื่องใหม่ได้ การนำเข้า เพิ่มเฉพาะส่วนที่ยังไม่มี ไม่ทับ และไม่ลบ ของที่มีอยู่"]}, {"id": 5, "date": "2026-11-15", "items": ["ลบสมุด หรือลบหน้าแล้ว ยังกู้คืนได้ ภายใน 30 วัน สิ่งที่ลบ ไปอยู่ในถังขยะ ก่อนถูกลบจริง", "เปิดถังขยะ ได้ที่ เมนู สมุดทั้งหมด ปุ่มถังขยะ ใต้รายการสมุด กดกู้คืน แล้วสมุดกลับไป ที่เดิม หน้ากลับไป ตำแหน่งเดิม ในสมุด", "ลบถาวร ทีละรายการ หรือลบทั้งหมด ในถังขยะได้ ครบ 30 วัน แล้วแอปลบให้เอง"]}, {"id": 4, "date": "2026-11-15", "items": ["สำรองสมุด ทั้งหมดเป็นไฟล์เดียว ได้ที่ เมนู แท็บตั้งค่า หัวข้อ สมุดในเครื่องนี้ ไฟล์เก็บสมุดทุกเล่ม รูป และวิดีโอ ในเครื่องนี้", "นำสมุดคืน จากไฟล์สำรอง ได้ที่เดียวกัน การนำคืน เพิ่มเฉพาะส่วน ที่ยังไม่มีในเครื่อง ไม่ทับ และไม่ลบ ของที่มีอยู่", "แอปขอให้เบราว์เซอร์ เก็บสมุดในเครื่อง ไว้ถาวร และเตือนให้สำรองสมุด ที่หน้ารายการสมุด เมื่อสมุดเปลี่ยนไป ตั้งแต่สำรองครั้งล่าสุด", "บน iPad และ iPhone ใน Safari แอปชวนให้ เพิ่มลงหน้าจอโฮม เพื่อไม่ให้ Safari ลบสมุด ที่ไม่ได้เปิดนาน ให้สำรองสมุดก่อน แล้วนำคืน ในแอปบนหน้าจอโฮม"]}, {"id": 3, "date": "2026-11-14", "items": ["สารบัญ ของสมุด แตะปุ่มหน้าในสมุด ที่มุมซ้ายบน แล้วเลือก สารบัญ จะเห็นหัวเรื่อง ของทุกหน้า แตะหัวเรื่อง เพื่อไปที่หน้านั้น ได้ทันที", "หัวเรื่อง มาจากข้อความที่พิมพ์ไว้ บนสุดของหน้า หรือบรรทัด ที่ขึ้นต้นด้วย ## ลายมือที่ยังไม่ได้แปลง เป็นตัวพิมพ์ ไม่ขึ้นในสารบัญ", "ที่คั่นหน้า แตะ ปักที่คั่นหน้านี้ ในหน้าสารบัญ แล้วตั้งชื่อเองได้ หน้าที่มีที่คั่น จะมีริบบิ้นสีแดง ที่ภาพหน้า", "ที่คั่นหน้า อยู่กับสมุด ของเราเท่านั้น ผู้เรียนในห้องสด ไม่เห็นที่คั่นหน้า ของครู"]}, {"id": 2, "date": "2026-11-14", "items": ["ค้นหาข้อความ ในทุกสมุดได้แล้ว พิมพ์คำในช่องค้นหาที่เมนู แอปจะค้นทั้งชื่อสมุด ข้อความที่พิมพ์ ลายมือที่แปลงเป็นตัวพิมพ์แล้ว หัวเรื่องของหน้า และข้อความในกล่องต่าง ๆ", "แตะผลการค้นหา เพื่อไปที่หน้านั้น กล่องที่มีคำนั้นจะเรืองแสงสักครู่ ให้เห็นตำแหน่ง", "พิมพ์คำไทย ติดกันหรือเว้นวรรค ก็ค้นเจอเหมือนกัน การค้นหาอ่านสมุดอย่างเดียว ไม่แก้ไขอะไรในสมุด"]}, {"id": 1, "date": "2026-11-13", "items": ["ดูเวอร์ชันของแอปได้ที่เมนู แท็บตั้งค่า หัวข้อเกี่ยวกับแอป", "เมื่อมีเวอร์ชันใหม่ระหว่างใช้งาน แอปจะไม่รีโหลดเอง รวมถึงจอผู้ชม เวอร์ชันใหม่จะมีผล เมื่อเปิดแอปครั้งถัดไป หรือเมื่อแตะแถบ มีเวอร์ชันใหม่", "หน้าที่เปิดค้างไว้ ใช้ส่วนต่าง ๆ ของแอป จากเวอร์ชันเดียวกับตัวเองเสมอ ไม่ปนกับเวอร์ชันใหม่", "เมื่อแอปทำงานผิดพลาด แอปจะส่งรายงาน ให้ผู้พัฒนา โดยส่งเฉพาะ ข้อความแจ้งข้อผิดพลาด ตำแหน่งในโค้ด รุ่นเครื่อง และเวอร์ชันของแอป ไม่ส่งเนื้อหาสมุด ชื่อ หรืออีเมล"]}];
+const VERSION = '20261126-8fdc136c';
+const NEWS = [{"id": 39, "date": "2026-11-26", "items": ["ย้ายหน้าได้ด้วยการลากภาพหน้าในลิ้นชักหน้า แตะค้างแล้วลากไปวางที่หน้าที่ต้องการ เมาส์ลากได้เลย", "เลือกหลายหน้าแล้วลากหน้าใดหน้าหนึ่ง หน้าที่เลือกทั้งหมดย้ายไปด้วยกัน ลากค้างไว้ชิดขอบล่างหรือขอบบน รายการเลื่อนตามเอง", "สร้าง PDF บอกว่ากำลังทำหน้าไหน มีแถบความคืบหน้าและปุ่ม หยุด ไม่นิ่งเงียบอีก", "ปุ่ม วิดีโอ ในแผ่นแทรกใส่ไฟล์วิดีโอได้แล้ว และปุ่ม วิเคราะห์วิดีโอ เปิดห้องวิเคราะห์ได้ตามชื่อ"]}, {"id": 38, "date": "2026-11-25", "items": ["สร้างบัญชีบนคลาวด์ BURIN ถามช่วงอายุ ผู้ใช้ที่อายุต่ำกว่า 20 ปี ต้องได้ความยินยอมจากผู้ปกครอง และกดยอมรับข้อตกลงการใช้กับนโยบายความเป็นส่วนตัว", "ก่อนใช้ AI ของผู้ให้บริการแต่ละรายครั้งแรก แอปบอกว่าส่งอะไรไปที่ไหน และให้เลือกได้ว่าจะใช้หรือยัง", "อ่านนโยบายความเป็นส่วนตัวและข้อตกลงการใช้ได้ที่แท็บตั้งค่า หัวข้อ เกี่ยวกับแอป"]}, {"id": 37, "date": "2026-11-25", "items": ["ห้องเรียนสด เปิดสมุดวิชาอื่นแล้ว ผู้เรียนยังเห็นสมุดเดิม และรหัสห้องของแต่ละสมุดคงเดิมทุกคาบ", "ลิ้นชักหน้าของสมุดที่มีหลายร้อยหน้า เลื่อนดูได้นิ่ง ไม่เด้งกลับระหว่างที่หน้ายังโหลด", "ฝั่งนักเรียน การบ้านที่ส่งแล้ว มีปุ่ม แก้ไขการส่ง เปิดมาพร้อมคำตอบเดิม", "ฝั่งนักเรียน แอปเตือนเมื่อการบ้านเหลือไม่ถึงหนึ่งวัน และไม่ถึงหนึ่งชั่วโมง", "กด ออกจากระบบเครื่องนี้ แล้ว เครื่องอื่นของบัญชีไม่หลุดตาม"]}, {"id": 36, "date": "2026-11-24", "items": ["บนคอมพิวเตอร์ กดปุ่มรูปมือแล้ว ลากเมาส์เลื่อนหน้าได้ เมื่อใช้ปากกาหรือปากกาเน้นข้อความ กดอีกครั้งเมาส์กลับมาเขียน", "ช่องรหัสผ่านกับปุ่มเข้าสู่ระบบไม่ชิดกันแล้ว และเมนูไม่มีแถบเลื่อนแนวนอน"]}, {"id": 35, "date": "2026-11-24", "items": ["มอบหมายการบ้านตอนเตรียมสอนแล้วเลือกได้ว่าผู้เรียนเห็นงานเมื่อไร ทันที หลังปิดห้องเรียนสด หรือตั้งเวลา ผู้เรียนจึงไม่ทำก่อนเรียนหรือทำระหว่างเรียน ครูกด ให้ผู้เรียนเห็นตอนนี้ หรือเปลี่ยนเวลาได้ในหน้ารายละเอียดของงาน"]}, {"id": 34, "date": "2026-11-23", "items": ["ห้องที่เคยเข้า ในหน้าเข้าห้องเรียน แสดงชื่อวิชาครบทุกห้อง และมีปุ่ม ลบ ท้ายแต่ละห้อง เลือกเอาออกจากรายการโดยสมุดที่จดยังอยู่ หรือลบห้องพร้อมสมุดไปถังขยะ กู้คืนได้ภายใน 30 วัน", "การบ้านที่ครูมอบหมายตอนเตรียมสอน นักเรียนเห็นได้เลยโดยไม่ต้องรอครูเปิดห้องเรียนสด ตัวเลขบนปุ่ม งานของฉัน ขึ้นเองเมื่อเปิดแอปหรือกลับมาที่แอป พร้อมข้อความแจ้งว่ามีการบ้านใหม่"]}, {"id": 33, "date": "2026-11-23", "items": ["สตอรี่บอร์ด วงภาพร่างและข้อความด้วยบ่วงบาศก์ แล้วกด สตอรี่บอร์ด ในกลุ่ม เห็นภาพ ได้เรื่องเป็นช่องตามลำดับ แต่ละช่องมีภาพ คำบรรยาย บทพูด และมุมกล้อง แก้ ย้าย ลบ หรือเพิ่มช่องได้", "กด ต่อเป็นแอนิเมชัน แล้วช่องเล่นต่อกัน ไอลอย อากาศไหลตามลูกศร เทอร์โมมิเตอร์ลดลงตามเวลาที่แอปคำนวณเองตามกฎการเย็นตัวของนิวตัน วางเป็นหน้าใหม่แล้วกด เล่น หรือ แก้ไข ที่มุมกล่องได้ทุกเมื่อ", "ไม่มี AI ก็ทำได้ ข้อความที่พิมพ์แบ่งเป็นช่องให้ คำในเครื่องหมายคำพูดเป็นบทพูด และภาพที่วาดเป็นภาพของช่องแรก"]}, {"id": 32, "date": "2026-11-23", "items": ["เขียนเส้นทับตัวสัตว์ สัตว์ตกใจแล้วเดินพ้นเส้น ไม่ยืนติดอยู่บนเส้นที่เขียนทับ", "แมวย่องเข้าหานกแล้วกระโจนจับ นกบินหนี สัตว์ผู้ล่าหลายชนิดมีเหยื่อเพิ่มตามธรรมชาติ"]}, {"id": 31, "date": "2026-11-23", "items": ["ภาพถ่ายกระดาน ที่ปุ่ม แทรก ถ่ายกระดานไวท์บอร์ด กระดานดำ หรือจอฉาย แอปหามุมให้ ลากปรับมุมได้ ดึงภาพให้ตรง และล้างพื้นหลัง เงา และแสงสะท้อนในเครื่อง ได้หน้าใหม่ที่เขียนทับได้ทันที", "ให้ AI อ่านกระดานแล้ววางข้อความ สมการ ตาราง กราฟ และรูปที่ตัดจากภาพเป็นกล่องที่แก้ได้ในตำแหน่งเดิม ภาพกระดานจางอยู่ข้างหลังให้เทียบ เลือกดูชัด จาง ภาพถ่ายจริง หรือซ่อน ได้ที่แถบ หน้านี้ ในลิ้นชักหน้า"]}, {"id": 30, "date": "2026-11-23", "items": ["แก้การบ้านหลังมอบหมายแล้วได้ในแผงเดียว กด แก้ไขหรือลบ ที่งาน แล้วเลือก แก้ไขการบ้าน เปลี่ยนชื่อ ย้ายห้อง เลื่อนวันเวลาส่งออกหรือเข้า ขยายเวลาทั้งห้องหรือรายคน เพิ่มข้อหรือหน้าที่ต้องทำต่อท้าย และฝากข้อความถึงนักเรียน", "นักเรียนเห็นแถบ ครูแก้การบ้านนี้ ในรายการงานและในหน้างาน แล้วกด รับทราบ คนที่ส่งไปแล้วส่งเพิ่มเฉพาะข้อที่ครูเพิ่ม ครูดูได้ในหน้ารายละเอียดของงานว่าใครรับทราบแล้ว"]}, {"id": 29, "date": "2026-11-23", "items": ["แบบจำลองที่สร้างจากโจทย์ที่เขียนหรือจากภาพวาด เช่น ลูกบอลที่ขว้าง เริ่มแบบไม่มีกรอบ ลูกบอลออกจากกล่องไปตกบนเส้นที่วาดหรือบนกล่องบนหน้าได้ ถ้าใส่กรอบก็ยังเห็นทั้งลูกเมื่อเลยกรอบออกไป", "สั่งให้ภาพเคลื่อนไหวด้วยคำพูดก็รู้จักสัตว์บนหน้า เช่น นกบินโฉบไปที่วัว ภาพที่ไปตามทางรอเมื่อสัตว์ขวาง และเดินขึ้นกล่องเตี้ยระหว่างทางได้", "ทุกอย่างบนหน้าตอบสนองเหมือนจริง แตะนกที่วาดแล้วบินหนี แตะหมาที่วาดแล้วกระโดดถอยหรือวิ่งหนี แตะลูกบอลแล้วกลิ้งออกจากนิ้ว นกที่วาดบินหนีก่อนสิ่งที่เข้ามาใกล้จะถึงตัว และของที่ตกลงมาวางบนภาพวาดที่อยู่ข้างใต้ได้"]}, {"id": 28, "date": "2026-11-23", "items": ["ภาพวาดที่ทำให้มีชีวิต เช่น หมาที่วาด รถ นก ปลา และลูกบอล ออกไปได้ทั่วหน้าเหมือนสัตว์ ยืนและเดินบนเส้นที่วาดทีหลังและบนกล่องที่เตี้ย เจอกล่องที่สูงแล้วหันกลับ และเห็นเต็มตัวตลอดไม่ขาดที่ขอบ", "ภาพวาดเจอสัตว์แล้วทำตามจริง หมาที่วาดกระโดดถอยแล้วหันกลับ นกบินขึ้นหนี รถหยุดรอให้สัตว์ผ่าน ลูกบอลถูกสัตว์ที่เดินชนดันกลิ้งไป ภาพที่ยืนอยู่สะดุ้งเมื่อสัตว์เข้ามาใกล้", "ภาพที่ขยับตามหลักฟิสิกส์ตกลงบนเส้นที่วาดทีหลังและบนตัวหนังสือในกล่องข้อความ คนที่วาดเดินขึ้นกล่องเตี้ยได้ และขว้างสูงขึ้นไปก็ยังเห็นทั้งลูก"]}, {"id": 27, "date": "2026-11-22", "items": ["สัตว์แบบไม่มีกรอบออกมาเดินบนหน้ากระดาษได้ทั่วหน้า ยืนและเดินบนเส้นที่วาดหรือบนกล่อง ขึ้นลงเนินตามเส้น เจอด้านข้างของกล่อง รูป หรือเส้นชันแล้วหยุดและหันกลับ นกบินข้ามของเตี้ย ๆ ได้ สัตว์สองตัวเจอกันแล้วหยุดมองกันหรือตัวเล็กวิ่งหนี", "อยากให้สัตว์อยู่กับที่แบบเดิม แตะปุ่มสามจุดของสัตว์แล้วกด อยู่กับที่", "สัตว์เห็นเต็มตัวตลอด ส่วนที่เดินเลยกรอบออกไปไม่ขาดหาย นกที่บินหนีสูงและหมึกที่ปลาหมึกพ่นก็ไม่ขาด", "เขียนด้วยปากกาชิดสัตว์หรือรูปสามมิติที่ไม่มีกรอบได้เลย ปากกาหมุนรูปเฉพาะเมื่อแตะตรงตัวรูป", "สัตว์เจอกันแล้วทำตามธรรมชาติ ผู้ล่าย่องแล้ววิ่งไล่ เหยื่อหนีหรือหลบ จับได้ก็กินแล้วมีตัวใหม่เดินเข้ามา ช้างไล่สิงโต ฝูงเดินไปด้วยกัน ตัวที่หวงถิ่นขู่กัน อยู่คนละบรรทัดถ้ากระโดดถึงก็กระโดด ถ้าไม่ถึงก็แค่มอง และสัตว์ตอบสนองกับคน รถ และลูกบอลที่ขยับได้บนหน้าด้วย", "แต่ละชนิดมีท่าของตัวเอง เสือและแมวย่องแล้วกระโจนตะครุบ จระเข้และกบซุ่มนิ่งแล้วพุ่งงับ สุนัขเห่าก่อนวิ่งไล่ กวางยืนนิ่งมองก่อนกระโจนหนี ม้าลายเตะสู้ ฝูงควายวิ่งเข้าใส่ แพะชนหัวประลองกัน ตัวกินมดเดินไปเลียมด", "ยามว่างสัตว์แต่ละชนิดทำสิ่งที่ชอบกับของบนหน้า แมวกระโดดขึ้นไปนั่งบนกล่องข้อความ ลิงปีนสำรวจ สุนัขและหมูดมเส้นที่วาด หนูวิ่งไปหลบชิดขอบกล่อง จระเข้และเต่านอนอาบแดด ฝูงเดินไปรวมกัน สิงโตนอนพักรวมฝูง", "แต่ละชนิดทำหลายอย่างสลับกันไม่ซ้ำลำดับ นกบินไปเกาะที่อื่น ตกใจแล้วระแวงมองรอบตัวสักพัก ผู้ล่าไล่ไม่ทันก็หอบพัก กินอิ่มแล้วนอน"]}, {"id": 26, "date": "2026-11-22", "items": ["เขียนด้วยปากกาบนกล่องได้ทุกกล่อง ทั้งแบบจำลอง สัตว์ กราฟ วิดีโอ ข้อความ และรูป เส้นที่เขียนอยู่เหนือกล่องและติดไปกับกล่องเวลาย้าย ย่อขยาย ทำสำเนา หรือลบ นิ้วยังใช้หมุน ลาก และกดเล่นแบบเดิม", "ทุกกล่องใส่กรอบหรือเอากรอบออกได้ เลือกกล่องแล้วกด แสดงกรอบ หรือ ไม่มีกรอบ ในแถบที่ขึ้นมา"]}, {"id": 25, "date": "2026-11-21", "items": ["สัตว์ในหลักสูตร เป็นสามมิติแบบสีไม้ที่ใช้ชีวิตเองเป็นวง เช่น วัวเดินแล้วก้มกินหญ้า กบพองคอร้องแล้วกระโดด ผีเสื้อบินไปดูดน้ำหวาน งูดินมุดดิน แตะตัวสัตว์แล้วมันตอบสนองเหมือนตัวจริง เช่น วิ่งหนี บินหนี หดเข้าเปลือก พ่นหมึก ลากเพื่อหมุนดูรอบตัว", "เพิ่มสัตว์ที่ข้อสอบแข่งขันและสอบเข้าชอบถามอีก 20 ชนิด เช่น ฟองน้ำ ไฮดรา แมงกะพรุน พลานาเรีย ปลิง หมึกยักษ์ ดาวทะเล แมงมุม แมงป่อง ตะขาบ กิ้งกือ ฉลาม ม้าน้ำ โลมา ตุ่นปากเป็ด จิงโจ้ เพนกวิน งูเห่า ใต้ตัวสัตว์ทุกตัวมีบรรทัด จุดเด่น บอกลักษณะที่มักออกสอบ ค้นด้วยคำอย่าง ไม่ใช่แมลง หรือ ออกลูกเป็นไข่ ก็เจอ", "สัตว์ขยับลื่นขึ้น ใช้แรงเครื่องน้อยลงมาก", "เครื่องมือรูปทรงมีแท็บ สัตว์ เรียงตามกลุ่มสัตว์พร้อมภาพเล็กของแต่ละตัว และช่องค้นหา แตะสัตว์แล้วแตะหรือลากบนหน้าเพื่อวาง", "เพิ่มนกที่บินไม่ได้ (นกกระจอกเทศ นกอีมู นกคาสโซวารี นกกีวี) ตัวกินมด ตัวนิ่ม ตัวกินมดหนาม และสัตว์ที่พบบ่อยในสวนสัตว์ (ยีราฟ ม้าลาย สิงโต เสือโคร่ง หมี หมีแพนด้า ฮิปโปโปเตมัส แรด อูฐ กวาง ลิง อุรังอุตัง แมวน้ำ นกยูง นกฟลามิงโก นกแก้ว) รวมเป็น 87 ชนิด", "สัตว์เลี้ยงลูกด้วยน้ำนมและนกแยกเป็นกลุ่มย่อยตามที่เรียน เช่น ออกลูกเป็นไข่ มีกระเป๋าหน้าท้อง มีกีบ กินเนื้อ ไพรเมต นกที่บินไม่ได้", "เพิ่มอีก 16 ชนิด ได้แก่ ม้า หมู แพะ หนู จระเข้ กิ้งก่า วาฬ ปลาดุก ปลาตีน หนอนผีเสื้อ ลูกอ๊อด แมลงวัน ด้วงกว่าง ดอกไม้ทะเล เม่นทะเล นกฮูก", "หาสัตว์ด้วยชื่อไทยในแผ่นแบบจำลอง หมวดชีววิทยา ก็ได้ เลือกสีของสัตว์ได้ที่ปุ่มสามจุด"]}, {"id": 24, "date": "2026-11-21", "items": ["แถบคำสั่งหลังเลือกด้วยบ่วงบาศก์ ปุ่ม ขยับได้ เป็นปุ่มแรกทุกครั้งที่ใช้ได้ ตามด้วยคำสั่งที่ใช้บ่อยกับสิ่งที่เลือกสามปุ่มข้างหน้า ที่เหลืออยู่ในกลุ่ม แปลง เห็นภาพ ตรวจและแก้ จัดวาง แตะกลุ่มแล้วคำสั่งขึ้นในแถบเดิม บน iPad แถบเหลือแถวเดียว บนมือถือสองแถว", "ออร์บิทัล s p d และ sp³ ที่วาดด้วยเครื่องมือรูปทรง เป็นสามมิติแล้ว ลากเพื่อหมุนดูได้ทุกทิศ ใช้สองนิ้วย่อขยาย แตะสองครั้งกลับมุมเดิม", "รูปเวกเตอร์สามมิติ ย่อขยายด้วยสองนิ้วได้ และแตะสองครั้งกลับมุมเดิม", "วาดโครงสร้างเคมีแล้วต่อกันเอง แตะหรือลากจากปลายพันธะเดิมได้พันธะใหม่ที่ต่อกัน ไม่หยิบพันธะเดิมไปแล้ว พันธะที่เริ่มหรือจบใกล้อักษรอะตอมที่เขียนหรือพิมพ์ ต่อที่ขอบอักษรนั้น มุมพันธะเข้า 109.5 120 หรือ 180 องศาเมื่อลากใกล้ แตะกลางด้านของวงได้วงที่เชื่อมกัน ทั้งโมเลกุลย้ายไปด้วยกัน กด ไม่ต่อกัน ที่ขึ้นด้านล่างถ้าไม่ต้องการให้ต่อ", "ลายมือที่เคยแปลงเป็นตัวพิมพ์แล้ว สร้างรูปและตรวจหน่วยได้ทันที แอปคำนวณเองโดยไม่ต้องรอ AI ทั้งกราฟของฟังก์ชัน เวกเตอร์ และบรรทัดคำนวณ ใช้ได้แม้ยังไม่ได้เชื่อม AI", "เลือกสัญลักษณ์ธาตุ ไอออน หรือการเปลี่ยนระดับพลังงาน เช่น Fe3+ หรือ n = 3 ไป n = 2 แล้วกด สร้างรูป ได้การจัดเรียงอิเล็กตรอน กล่องออร์บิทัล เลขควอนตัม หรือแผนภาพระดับพลังงานพร้อมความยาวคลื่นทันที แอปคำนวณเองไม่ใช้ AI และตรวจการจัดเรียงที่เขียนได้", "แก้สมการแล้วกด แสดงวิธีทำ ได้ขั้นตอนทันทีโดยไม่ต้องรอ AI ทั้งสมการเชิงเส้น สมการกำลังสอง ระบบสมการสองและสามตัวแปร และอนุพันธ์กับปริพันธ์ของพหุนาม วางลงหน้าได้", "เลือกค่าที่ให้ของสามเหลี่ยม ตัวต้านทานที่ต่ออนุกรมหรือขนาน หรือแรงที่บอกขนาดและทิศ แล้วกด สร้างรูป ได้รูปตามมาตราส่วนพร้อมค่าที่คำนวณทันทีโดยไม่ใช้ AI", "เลือกชื่อสาร สูตร หรือสมการเคมี เช่น เอทานอล หรือ CH4 + 2O2 -> CO2 + 2H2O แล้วกด สร้างรูป ได้โครงสร้างโมเลกุลทันทีจากตารางสารในแอปโดยไม่ใช้ AI", "หน้าที่พิมพ์ชื่อหัวข้อในหลักสูตร กด หาสื่อ แล้วได้ภาพ GIF และวิดีโอของหัวข้อนั้นทันทีโดยไม่ต้องรอ AI", "พิมพ์โจทย์การเคลื่อนที่ เช่น ขว้างลูกบอล 20 m/s ทำมุม 30 องศา ในแผ่นแบบจำลอง ได้แบบจำลองที่ขยับได้ทันทีพร้อมเวลา ระยะ และจุดสูงสุดที่คำนวณแล้ว โดยไม่ใช้ AI", "ออร์บิทัลสามมิติแบบไม่มีกรอบ แตะปุ่มสามจุดแล้วเลือกคู่สีของสองเฟสได้ห้าแบบ และปุ่มย่อขยายจางหายเองเมื่อไม่ได้ใช้"]}, {"id": 20, "date": "2026-11-20", "items": ["ต่อสาย จอสะอาด แบบ ทั้งหน้า เห็นหน้าครบถึงขอบล่าง พอดีความสูงจอ และพื้นรอบหน้าเป็นสีดำ โปรเจกเตอร์จึงฉายแสงเฉพาะหน้ากระดาษ"]}, {"id": 19, "date": "2026-11-20", "items": ["ขยายหน้าจออยู่ มีปุ่ม หน้าใหม่ ข้างเลขหน้าที่มุมล่าง แตะครั้งเดียวได้หน้าใหม่ต่อจากหน้านี้ ขยายเท่าเดิม พร้อมเขียนที่มุมบนซ้าย"]}, {"id": 18, "date": "2026-11-19", "items": ["เขียนตอนขยายหน้าจอ เส้นไม่หดตรงมุมเมื่อยกปากกาแล้ว ตัวอักษรอยู่ตรงที่เขียนเหมือนตอนกำลังเขียน", "ขยายหน้าจอแล้วพักปากกาครู่หนึ่งขณะเขียน ตัวอักษรไม่ถูกเปลี่ยนเป็นรูปทรงอีก วาดค้างไว้ให้เป็นรูปทรงยังใช้ได้กับรูปที่ใหญ่กว่าลายมือบนหน้า", "ห้องเรียนสดที่ครูเปิด PDF แอปของนักเรียนไม่ปิดเองเพราะหน่วยความจำเต็มอีก"]}, {"id": 17, "date": "2026-11-18", "items": ["มอบหมายการบ้าน กดปุ่มแล้วขึ้น กำลังมอบหมาย และ มอบหมายแล้ว กดซ้ำไม่ได้ จึงไม่มีการบ้านซ้ำ ลิงก์กับ QR เลื่อนขึ้นมาให้เห็นทันที"]}, {"id": 16, "date": "2026-11-18", "items": ["ตั้งค่าคลาวด์ใหม่ ที่เมนู แท็บ บัญชี ซิงก์ และ AI ใช้คลาวด์ BURIN ได้ทันทีโดยไม่ต้องตั้งค่า", "ใช้ Supabase ของตัวเองได้ในหัวข้อ ขั้นสูง และสลับกลับมาคลาวด์ BURIN ได้ทุกเมื่อ สมุดทั้งสองที่ไม่หาย"]}, {"id": 15, "date": "2026-11-18", "items": ["ลืมรหัสผ่าน ตั้งรหัสใหม่ได้จากหน้าเข้าสู่ระบบ กด ลืมรหัสผ่าน แล้วทำตามอีเมลที่ได้รับ", "สมัครบัญชีใหม่แล้วยืนยันอีเมลได้ในแอป และกดส่งอีเมลยืนยันอีกครั้งได้"]}, {"id": 14, "date": "2026-11-18", "items": ["ห้องเรียนสดที่ลืมปิดปิดเอง เมื่อกลับมาที่แอปหลังห่างไปเกิน 1 ชั่วโมง ห้องไม่เปิดต่อเองและไม่ส่งสิ่งที่เขียนให้ผู้เรียน แตะ เปิดห้องเดิมอีกครั้ง ได้รหัสเดิม", "ห้องที่ไม่มีผู้เรียนและครูไม่ได้ใช้แอปนาน 30 นาทีปิดเอง มีแถบบอกก่อน 1 นาที ครูที่กำลังสอนห้องไม่ปิด แม้ผู้เรียนล็อกจอ", "ปิดห้องแล้วผู้เรียนยังส่งการบ้านได้ถึงเวลาที่กำหนด และเห็นปุ่มไปที่งานของฉัน"]}, {"id": 13, "date": "2026-11-17", "items": ["ข้อความที่พิมพ์ไม่ต้องรอ AI สมการที่พิมพ์ เช่น y = 2x + 1 สร้างกราฟได้ทันที ตารางที่พิมพ์เป็นข้อมูลได้ทันที และตรวจหน่วยของบรรทัดคำนวณที่พิมพ์ได้ทันที ใช้ได้แม้ไม่มีอินเทอร์เน็ต", "วาดใหม่ จัดเส้นตรง สี่เหลี่ยม วงกลม ในภาพร่างให้เรียบร้อยทันทีโดยไม่ใช้ AI ตัวอักษรยังเป็นลายมือเดิม ถ้าต้องการให้แก้ตามเนื้อหา กด ให้ AI วาดใหม่ตามเนื้อหา", "หลังทำแบบฝึก บทที่ยังอ่อนบอกชนิดข้อที่พลาด และความเข้าใจที่ควรแก้จากตัวเลือกที่ตอบ"]}, {"id": 12, "date": "2026-11-17", "items": ["ลายมือที่ AI อ่านแล้วไม่ต้องอ่านซ้ำ แปลงเป็นตัวพิมพ์ แก้สมการ สร้างรูป ตรวจหน่วย และสร้างโจทย์ จากลายมือเดิมใช้คำที่อ่านไว้ เร็วขึ้นและไม่ส่งภาพซ้ำ ถ้าอ่านผิด สั่งงานเดิมอีกครั้ง AI จะอ่านใหม่", "ค้นหาในทุกสมุดพบลายมือที่ AI เคยอ่านแล้วด้วย"]}, {"id": 11, "date": "2026-11-17", "items": ["ทดลองวางวัตถุสามมิติบนโต๊ะจริง (AR) ได้ที่ ปุ่ม สมุดทั้งหมด แท็บ ภาษา การเขียน และจอ หัวข้อ ลองดูในห้องจริง ใช้ได้บน iPad และ iPhone แอปสร้างไฟล์ในเครื่องเอง ไม่ใช้ AI"]}, {"id": 10, "date": "2026-11-17", "items": ["คอมที่ต่อจอที่สอง เลือก จอที่สอง ผู้ชมไม่เห็นแถบ ในเมนู นำเสนอ ครูใช้ได้ทุกคำสั่ง จอใหญ่เห็นแต่หน้ากระดาษ ไม่ต้องใช้อินเทอร์เน็ต", "ระหว่างเปิดจอผู้ชม ครูมีแถบเล็ก จอผู้ชม เลือกให้จอใหญ่เห็นทั้งหน้า พักจอ หรือปิด (ปุ่ม B บนคีย์บอร์ดหรือรีโมตก็พักจอได้)", "ต่อ iPad ออกทีวีด้วยสาย ใช้ ต่อสาย จอสะอาด ในเมนู นำเสนอ (ปุ่ม สอนและนำเสนอ)", "เริ่มแล้วจอเห็นแต่หน้ากระดาษ ไม่มีแถบหรือปุ่มใดขึ้นเลย ทั้งบน iPad และทีวี", "ก่อนเริ่ม เลือกปากกาให้แต่ละขอบจอ (สี ไฮไลต์ ยางลบ หรือเลเซอร์) ระหว่างนำเสนอ แตะขอบจอด้วยนิ้วเพื่อหยิบปากกาของขอบนั้น", "เลือกได้ว่าให้เห็นทั้งหน้า และเริ่มด้วยม่านบังครึ่งล่างที่ใช้นิ้วลากลงเพื่อเปิดทีละบรรทัด", "แตะค้างสามนิ้ว 1 วินาที เพื่อออก ใช้รีโมตนำเสนอเปลี่ยนหน้า ปุ่ม B พักจอ ปุ่ม Esc ออก", "เมนู นำเสนอ เหลือสามข้อ จอแสดงผลแบบนักเรียนบนอีกเครื่องและบนจอที่สองรวมเป็นข้อเดียว"]}, {"id": 9, "date": "2026-11-17", "items": ["แถบบนเหลือปุ่มน้อยลง ปุ่มที่ใช้นาน ๆ ครั้ง รวมอยู่ในสองกลุ่ม", "ปุ่ม ต่อยอดจากหน้า มี แปลงเป็นตัวพิมพ์ สร้างโจทย์ และ ชุดโจทย์", "ปุ่ม สอนและนำเสนอ มี ห้องสด นำเสนอ และ ห้องเรียนและโจทย์ (ฝั่งนักเรียนชื่อ ห้องเรียน มี สแกน QR และ เข้าห้องเรียน ด้วย)", "เลือกด้วยบ่วงแล้ว แถบเหนือส่วนที่เลือก แสดงคำสั่งที่ใช้บ่อยก่อน คำสั่งอื่นอยู่ที่ปุ่ม เพิ่มเติม", "หาคำสั่งไม่เจอ พิมพ์ชื่อในช่องค้นหาที่เมนู เช่น PDF หรือ สามมิติ แล้วแตะคำสั่งที่ขึ้นมา"]}, {"id": 8, "date": "2026-11-16", "items": ["สร้างโจทย์ด้วย AI จากกี่หน้าก็ได้ ทั้งเล่ม ตามบท หรือเป็นช่วงหน้า", "อยู่ที่ปุ่ม สร้างโจทย์ด้วย AI หัวข้อ หน้าที่ใช้สร้างโจทย์ แตะ ทั้งเล่ม หรือแตะชื่อบท หรือใส่ช่วงหน้า แล้วกด เลือกช่วงนี้", "หน้าที่ AI อ่านแล้ว เก็บไว้ในเครื่องนี้ ครั้งต่อไป ไม่ต้องอ่านซ้ำ จึงเร็วขึ้น และประหยัดค่า AI"]}, {"id": 7, "date": "2026-11-16", "items": ["ลบผิด หรือเขียนทับผิด ดึงหน้า เมื่อไม่กี่นาทีก่อน หรือเมื่อวาน กลับมาได้", "อยู่ที่ ลิ้นชักหน้า แตะแถบ หน้านี้ ด้านล่าง แล้วกดปุ่ม รุ่นก่อนของหน้านี้ เลือกรุ่น ดูภาพหน้าก่อน แล้วกด คืนหน้าเป็นรุ่นนี้", "หน้าก่อนคืน ถูกเก็บไว้ด้วย จึงย้อนกลับได้ แอปเก็บรุ่นก่อน ไว้ในเครื่องนี้ 30 วัน"]}, {"id": 6, "date": "2026-11-16", "items": ["บัญชีคลาวด์ ส่งออกข้อมูลทั้งบัญชี เป็นไฟล์เดียวได้ ทั้งสมุด หน้า หมึก รูป วิดีโอ เลคเชอร์ที่แชร์ การบ้าน และงานที่นักเรียนส่ง", "อยู่ที่ เมนู แท็บตั้งค่า หัวข้อ ข้อมูลทั้งบัญชี กดปุ่ม ส่งออกทั้งบัญชี", "นำเข้าไฟล์นี้ ในบัญชีอื่น หรือเครื่องใหม่ได้ การนำเข้า เพิ่มเฉพาะส่วนที่ยังไม่มี ไม่ทับ และไม่ลบ ของที่มีอยู่"]}, {"id": 5, "date": "2026-11-15", "items": ["ลบสมุด หรือลบหน้าแล้ว ยังกู้คืนได้ ภายใน 30 วัน สิ่งที่ลบ ไปอยู่ในถังขยะ ก่อนถูกลบจริง", "เปิดถังขยะ ได้ที่ เมนู สมุดทั้งหมด ปุ่มถังขยะ ใต้รายการสมุด กดกู้คืน แล้วสมุดกลับไป ที่เดิม หน้ากลับไป ตำแหน่งเดิม ในสมุด", "ลบถาวร ทีละรายการ หรือลบทั้งหมด ในถังขยะได้ ครบ 30 วัน แล้วแอปลบให้เอง"]}, {"id": 4, "date": "2026-11-15", "items": ["สำรองสมุด ทั้งหมดเป็นไฟล์เดียว ได้ที่ เมนู แท็บตั้งค่า หัวข้อ สมุดในเครื่องนี้ ไฟล์เก็บสมุดทุกเล่ม รูป และวิดีโอ ในเครื่องนี้", "นำสมุดคืน จากไฟล์สำรอง ได้ที่เดียวกัน การนำคืน เพิ่มเฉพาะส่วน ที่ยังไม่มีในเครื่อง ไม่ทับ และไม่ลบ ของที่มีอยู่", "แอปขอให้เบราว์เซอร์ เก็บสมุดในเครื่อง ไว้ถาวร และเตือนให้สำรองสมุด ที่หน้ารายการสมุด เมื่อสมุดเปลี่ยนไป ตั้งแต่สำรองครั้งล่าสุด", "บน iPad และ iPhone ใน Safari แอปชวนให้ เพิ่มลงหน้าจอโฮม เพื่อไม่ให้ Safari ลบสมุด ที่ไม่ได้เปิดนาน ให้สำรองสมุดก่อน แล้วนำคืน ในแอปบนหน้าจอโฮม"]}, {"id": 3, "date": "2026-11-14", "items": ["สารบัญ ของสมุด แตะปุ่มหน้าในสมุด ที่มุมซ้ายบน แล้วเลือก สารบัญ จะเห็นหัวเรื่อง ของทุกหน้า แตะหัวเรื่อง เพื่อไปที่หน้านั้น ได้ทันที", "หัวเรื่อง มาจากข้อความที่พิมพ์ไว้ บนสุดของหน้า หรือบรรทัด ที่ขึ้นต้นด้วย ## ลายมือที่ยังไม่ได้แปลง เป็นตัวพิมพ์ ไม่ขึ้นในสารบัญ", "ที่คั่นหน้า แตะ ปักที่คั่นหน้านี้ ในหน้าสารบัญ แล้วตั้งชื่อเองได้ หน้าที่มีที่คั่น จะมีริบบิ้นสีแดง ที่ภาพหน้า", "ที่คั่นหน้า อยู่กับสมุด ของเราเท่านั้น ผู้เรียนในห้องสด ไม่เห็นที่คั่นหน้า ของครู"]}, {"id": 2, "date": "2026-11-14", "items": ["ค้นหาข้อความ ในทุกสมุดได้แล้ว พิมพ์คำในช่องค้นหาที่เมนู แอปจะค้นทั้งชื่อสมุด ข้อความที่พิมพ์ ลายมือที่แปลงเป็นตัวพิมพ์แล้ว หัวเรื่องของหน้า และข้อความในกล่องต่าง ๆ", "แตะผลการค้นหา เพื่อไปที่หน้านั้น กล่องที่มีคำนั้นจะเรืองแสงสักครู่ ให้เห็นตำแหน่ง", "พิมพ์คำไทย ติดกันหรือเว้นวรรค ก็ค้นเจอเหมือนกัน การค้นหาอ่านสมุดอย่างเดียว ไม่แก้ไขอะไรในสมุด"]}, {"id": 1, "date": "2026-11-13", "items": ["ดูเวอร์ชันของแอปได้ที่เมนู แท็บตั้งค่า หัวข้อเกี่ยวกับแอป", "เมื่อมีเวอร์ชันใหม่ระหว่างใช้งาน แอปจะไม่รีโหลดเอง รวมถึงจอผู้ชม เวอร์ชันใหม่จะมีผล เมื่อเปิดแอปครั้งถัดไป หรือเมื่อแตะแถบ มีเวอร์ชันใหม่", "หน้าที่เปิดค้างไว้ ใช้ส่วนต่าง ๆ ของแอป จากเวอร์ชันเดียวกับตัวเองเสมอ ไม่ปนกับเวอร์ชันใหม่", "เมื่อแอปทำงานผิดพลาด แอปจะส่งรายงาน ให้ผู้พัฒนา โดยส่งเฉพาะ ข้อความแจ้งข้อผิดพลาด ตำแหน่งในโค้ด รุ่นเครื่อง และเวอร์ชันของแอป ไม่ส่งเนื้อหาสมุด ชื่อ หรืออีเมล"]}];
 const TH_MON = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
 function thDay(iso) { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || ''); return m ? (+m[3]) + ' ' + TH_MON[+m[2] - 1] + ' ' + (+m[1] + 543) : ''; }
 function renderVersion() { const el = $('#verNote'); if (el) el.innerHTML = 'เวอร์ชัน <span class="nowrap">' + esc(VERSION.startsWith('__') ? 'ในเครื่อง (ยังไม่ได้ประกอบ)' : VERSION) + '</span>'; }
@@ -23077,6 +23170,10 @@ function arSetShow() {
 }
 $('#bArTry').onclick = () => { if (planGate('ar')) need('ar').then(() => arOpen()).catch(() => {}); };
 $('#bNews').onclick = () => openNews();
+/* the policy and the terms, to read at any time (task 1.10) */
+$('#bPdPriv').onclick = () => need('consent').then(() => pdDoc('privacy')).catch(() => {});
+$('#bPdTerms').onclick = () => need('consent').then(() => pdDoc('terms')).catch(() => {});
+flagsReady().then(() => { const on = flagOn('consent') && !!(window.BURIN_CONFIG && window.BURIN_CONFIG.consent); $('#bPdPriv').hidden = !on; $('#bPdTerms').hidden = !on; }).catch(() => {});
 $('#bNewsOk').onclick = () => { $('#newsSheet').hidden = true; };
 $('#bHist').onclick = () => { need('history').then(() => histOpen()).catch(() => {}); };
 $('#bHistClose').onclick = () => { $('#histSheet').hidden = true; };
@@ -23197,6 +23294,39 @@ function openAuth() {
 /* the steps of an account for everyone (task 1.3, the part m/account.js): the code that confirms the e-mail, a new
    password, deleting the account. "account" in flags.json turns them off and the form is as before */
 function acReady() { return flagsReady().then(() => (flagOn('account') ? need('account').then(() => true, () => false) : false)); }
+/* ----- consent under the PDPA (task 1.10, m/consent.js, "consent" in flags.json turns it off): the terms and the privacy
+   policy agreed at sign-up and by accounts that have not agreed to this version, both only on the cloud of the site;
+   and a notice before the first use of each AI that is not on this computer ----- */
+const pdOn = () => flagOn('consent') && !window.__pdSkip;
+/* the questions of the account are for a site whose config.js says consent: true (the central cloud, whose policy the
+   texts describe); a site without it, and Supabase of one's own, ask nothing */
+const pdCfgOn = () => !!(window.BURIN_CONFIG && window.BURIN_CONFIG.consent);
+const pdSite = () => !!(pdCfgOn() && CLOUD.cfg.site && CLOUD.cfg.url.replace(/\/+$/, '') === CLOUD.cfg.site.url);
+/* the record that goes with signUp ({} when nothing is asked), or null when the person went back */
+function pdSignup() {
+  return flagsReady().then(() => {
+    if (!pdOn() || !pdSite()) return {};
+    return need('consent').then(() => pdSignAsk().then((r) => (r ? { consent: r } : null)), () => ({}));
+  });
+}
+function pdLoginCheck() {
+  if (CLOUD.state !== 'on' || !CLOUD.user || !pdSite() || S.student || S.show || S.present) return;
+  flagsReady().then(() => { if (pdOn()) return need('consent').then(() => pdLoginAsk()); }).catch(() => {});
+}
+/* before an AI that is somebody else's is used for the first time (each provider once on this device); a refusal stops
+   the task like cancelling it */
+let pdAIP = null;
+function pdAIOk(s) {
+  if (s === 'local' || s === 'off' || S.show || S.present) return Promise.resolve();
+  const name = AI.srcName(s);
+  return flagsReady().then(() => {
+    if (!pdOn()) return;
+    let m = {}; try { m = JSON.parse(store_ls.get('tp-aiok') || '{}') || {}; } catch (e) { m = {}; }
+    if (m[name]) return;
+    if (!pdAIP) pdAIP = need('consent').then(() => pdAIAsk(name), () => true).then((v) => { pdAIP = null; return v; }, (e) => { pdAIP = null; throw e; });
+    return pdAIP.then((ok) => { if (!ok) throw { code: 'cancelled' }; });
+  });
+}
 /* ----- Cloudflare Turnstile against bots on sign-up, sign-in and the e-mails, when config.js of the site names a site
    key (turnstileKey) and the app uses that site's own project; Supabase checks the answer (Authentication, Attack
    Protection). A project set up by hand on this device has no key: nothing is shown ----- */
@@ -23243,16 +23373,20 @@ function authErr(e) {
   if (/fetch|network|load failed|internet|offline|timed? ?out/i.test(m)) return 'ส่งคำขอไปถึงระบบบัญชีไม่ได้ อาจเพราะโปรเจกต์ Supabase ถูกพักไว้ (เข้า supabase.com แล้วกด Restore) หรือเครือข่ายนี้บล็อก supabase.co (ลองสลับไปใช้เน็ตมือถือ) บัญชีและสมุดไม่ได้หายไปไหน';
   return 'เข้าสู่ระบบไม่สำเร็จ (' + m.slice(0, 90) + ')';
 }
+let pdWait = false;
 async function doAuth(signup) {
   const email = $('#aEmail').value.trim(), password = $('#aPass').value;
   const say = (t, cls) => { $('#aMsg').innerHTML = '<div class="note ' + (cls || '') + '">' + esc(t) + '</div>'; };
   if (!/^\S+@\S+\.\S+$/.test(email)) { say('ใส่อีเมลให้ถูกต้อง', 'err'); return; }
   if (password.length < 8) { say('รหัสผ่านต้องยาวอย่างน้อย 8 ตัว', 'err'); return; }
+  /* the age band and the agreement first (task 1.10); they go with the sign-up itself */
+  let pd = {};
+  if (signup) { if (pdWait) return; $('#aMsg').innerHTML = ''; pdWait = true; try { pd = await pdSignup(); } finally { pdWait = false; } if (!pd) return; }
   say(signup ? 'กำลังสร้างบัญชี' : 'กำลังเข้าสู่ระบบ');
   const btns = [$('#bSignIn'), $('#bSignUp')]; btns.forEach((b) => { b.disabled = true; });
   /* the answer of the bot check goes with each request to the site's own project (none for a project of one's own) */
   const opt = (o, cap) => { if (cap) o.captchaToken = cap; return o; };
-  const up = async (sb) => sb.auth.signUp({ email, password, options: opt({ emailRedirectTo: location.origin + location.pathname }, await capToken()) });
+  const up = async (sb) => sb.auth.signUp({ email, password, options: opt(Object.assign({ emailRedirectTo: siteBase() }, pd.consent ? { data: pd } : {}), await capToken()) });
   try {
     const sb = await cloudClient();
     let r = signup ? await up(sb) : await sb.auth.signInWithPassword({ email, password, options: opt({}, await capToken()) });
@@ -23712,7 +23846,8 @@ $('#qsORGo').onclick = () => { const c = $('#qsORCode').value.trim(); if (c) orF
 $('#qsKey').addEventListener('input', () => { const g = detectVendor($('#qsKey').value); $('#qsWho').textContent = g ? 'ดูจากคีย์แล้ว เป็นของ ' + KEY_VENDORS[g].name.replace(/\s*\(.*\)/, '') + (g === 'openai' ? ' หรือ Typhoon' : '') : 'ระบบดูจากคีย์ว่าเป็นของผู้ให้บริการไหน'; }); $('#qsClose').onclick = () => { $('#aiSetup').hidden = true; };
 $('#qsMore').onclick = () => { $('#aiSetup').hidden = true; menuTab('acc'); $('#menu').hidden = false; const c = $('#cfgKey'); if (c) { c.open = true; setTimeout(() => c.scrollIntoView({ block: 'center' }), 50); } };
 $('#iLab').onclick = () => { closeSheets(); renderLabPicker(); $('#labSheet').hidden = false; };
-$('#iVid').onclick = withMod('video', () => { $('#insSheet').hidden = true; openVideoLab(); });
+/* its own id (fix 26 Nov 2026): it shared iVid with the button that puts in an MP4, so that one opened the analysis and this one did nothing */
+$('#iVidLab').onclick = withMod('video', () => { $('#insSheet').hidden = true; openVideoLab(); });
 $('#iMeas').onclick = withMod('measure', () => { $('#insSheet').hidden = true; openMeasure(); });
 $('#iRec').onclick = () => { $('#insSheet').hidden = true; researchTemplate(); };
 $('#iCite').onclick = withMod('cite', () => { $('#insSheet').hidden = true; openCite(); });
@@ -24132,7 +24267,31 @@ document.addEventListener('keydown', (e) => {
 $('#bShowX').onclick = () => { $('#showSheet').hidden = true; };
 $('#bShowCopy').onclick = async () => { try { await navigator.clipboard.writeText(showLink(LIVE.code)); toast('คัดลอกลิงก์จอแสดงผลแล้ว', 1600); } catch (e) { toast(showLink(LIVE.code), 5000); } };
 $('#bShowWin').onclick = () => { if (flagOn('audience') && audienceWay()) { $('#showSheet').hidden = true; openAudience(); } else showShare(true); };
-window.addEventListener('burin-displays', (e) => { const n = e && e.detail ? +e.detail.count || 0 : 0; if (n > 0 && !S.present && shellAud() && flagOn('audience')) toast('พบจอที่สอง แตะ นำเสนอ แล้วเลือก จอที่สอง ผู้ชมไม่เห็นแถบ', 4000); });
+window.addEventListener('burin-displays', (e) => {
+  const n = e && e.detail ? +e.detail.count || 0 : 0;
+  if (n > 0 && !S.present && shellAud() && flagOn('audience')) toast(e.detail.shown ? 'จอที่สองเห็นแต่หน้ากระดาษแล้ว เครื่องนี้ใช้ได้ตามปกติ' : 'พบจอที่สอง แตะ นำเสนอ แล้วเลือก จอที่สอง ผู้ชมไม่เห็นแถบ', 4000);
+});
+/* the installed app (task 6.1) shows the page on a TV or projector by itself as soon as it is connected (the convenient
+   way: what belongs together connects by itself), when the switch "appscreen", the audience screen and the plan allow it;
+   otherwise iOS mirrors the iPad there as before. The app is told again once the plan is known */
+function shellAllow() {
+  const sh = shellAud(); if (!sh || sh.audience || typeof sh.allowAuto !== 'function') return;
+  try { sh.allowAuto(flagOn('appscreen') && flagOn('audience') && planOn('audience')); } catch (e) { /* an older app */ }
+}
+flagsReady().then(shellAllow).catch(() => {});
+/* what the app wrote about the screens, for the owner to copy and send (the app is built in the cloud, with no Mac to
+   watch it): a line and a button under the version, only inside the installed app */
+function shellLogShow() {
+  const sh = window.BurinShell, v = $('#verNote'); if (!sh || typeof sh.log !== 'function' || !v || $('#bShellLog')) return;
+  const r = document.createElement('div'); r.className = 'row2';
+  r.innerHTML = '<span class="note">แอป BURIN <span class="nowrap">' + esc(String(sh.app || '')) + '</span></span><button class="btn" id="bShellLog" type="button">คัดลอกบันทึกจอที่สอง</button>';
+  v.after(r);
+  $('#bShellLog').onclick = async () => {
+    let t = ''; try { t = await sh.log(); } catch (e) { t = ''; }
+    t += '\nweb ' + VERSION + ' flags off: ' + (Object.keys(FLAGS.off).join(' ') || 'none') + ' room ' + (S.room ? S.room.kind || 'cloud' : 'none') + ' watchers ' + (S.watchers || 0);
+    try { await navigator.clipboard.writeText(t); toast('คัดลอกบันทึกแล้ว วางในข้อความถึงผู้พัฒนาได้เลย', 2600); } catch (e) { toast(t.slice(-600), 8000); }
+  };
+}
 $('#bViewer').onclick = (e) => {
   const ic2 = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="4" width="19" height="13" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M8 20.5h8 M12 17v3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
   const ic3 = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6z" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="12" r="2.8" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>';
@@ -24142,7 +24301,7 @@ $('#bViewer').onclick = (e) => {
   popMenu(e.currentTarget, 'นำเสนอ', (flagOn('audience') && audienceWay() ? [
     ['จอที่สอง ผู้ชมไม่เห็นแถบ', () => { openAudience(); }, 'เครื่องนี้ใช้ได้ทุกคำสั่ง จอใหญ่เห็นแต่หน้ากระดาษ ไม่ต้องใช้อินเทอร์เน็ต', ic1]
   ] : []).concat([
-    ['ต่อสาย เห็นเหมือนจอนี้', () => { setFocus(true); }, 'จอใหญ่เห็นทั้งหน้าและแถบเครื่องมือ ใช้ได้ทุกคำสั่ง', ic2],
+    ['ต่อสาย เห็นเหมือนจอนี้', () => { const sh = shellAud(); if (sh && typeof sh.closeAudience === 'function') { try { sh.closeAudience({ mirror: true }); } catch (err) { /* fine */ } } setFocus(true); }, 'จอใหญ่เห็นทั้งหน้าและแถบเครื่องมือ ใช้ได้ทุกคำสั่ง', ic2],
   ]).concat(flagOn('clean') && audienceWay() !== 'shell' ? [ /* an installed app shows the audience its own screen: the clean mirror is not needed there */
     ['ต่อสาย จอสะอาด', () => { need('clean').then(() => cleanStart(), () => {}); }, 'จอใหญ่เห็นแต่หน้ากระดาษ เลือกปากกาก่อนเริ่ม', ic4]
   ] : []).concat([
@@ -24175,7 +24334,7 @@ function menuTab(t) {
   if (t === 'nb' && LIBV.stale) renderLibrary();
   $('#menuTabs').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', b.dataset.m === t ? 'true' : 'false'));
   document.querySelectorAll('#menu [data-mp]').forEach((p) => { p.hidden = p.dataset.mp !== t; });
-  if (t === 'set') { renderLangSettings(); keepSetShow(); expSetShow(); arSetShow(); }
+  if (t === 'set') { renderLangSettings(); keepSetShow(); expSetShow(); arSetShow(); shellLogShow(); }
   if (t === 'acc' && CLOUD.cfg.site) csShow();
   if (t === 'nb') keepBanShow();
 }
@@ -24630,6 +24789,7 @@ async function boot() {
   if (CLOUD.state === 'signedout' && !S.present && !S.student) openStart();
   else if (!S.student && !S.present && !store_ls.get('tp-role') && CLOUD.state === 'on') setTimeout(() => { if (!store_ls.get('tp-role')) { closeSheets(); $('#roleSheet').hidden = false; } }, 900);
   setTimeout(newsCheck, 2500);
+  setTimeout(pdLoginCheck, 1500);
   setTimeout(keepCheck, 5000);
   setTimeout(trashCheck, 8000);
   setTimeout(histCheck, 14000);

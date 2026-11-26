@@ -547,7 +547,7 @@ function anTap(sp, r, x, y, w, h) {
 const AN_PAGE = new Map();
 let AN_CLK = 0;
 let AN_ENV = null;
-function anPageOn(sp) { return !!(sp && sp.clean && !sp.stay && !sp.thumb && (typeof flagOn !== 'function' || flagOn('onpage'))); }
+function anPageOn(sp) { return !!(sp && sp.clean && !sp.stay && !sp.thumb && (typeof flagOn !== 'function' || flagOn('onpage')) && (typeof planOn !== 'function' || planOn('onpage'))); }
 /* everything on the page an animal can stand on or bump into, as segments; built again at most twice a second, and only
    when the lines or the boxes changed */
 function anEnvSig() {
@@ -570,13 +570,13 @@ function anEnv(dt) {
     const step = p.length > 900 ? 9 : p.length > 180 ? 6 : 3; /* every point of a short line (its corners), every second or third of a long one */
     for (let i = step; ; i += step) { const j = Math.min(i, p.length - 3), x = p[j] / 10, y = p[j + 1] / 10; if (Math.hypot(x - px, y - py) > 0.5) { seg.push([px, py, x, y]); px = x; py = y; } if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; if (j >= p.length - 3) break; }
     const f0 = p[0] / 10, g0 = p[1] / 10; x0 = Math.min(x0, f0); x1 = Math.max(x1, f0); y0 = Math.min(y0, g0); y1 = Math.max(y1, g0);
-    if (seg.length) L.push({ b: [x0, y0, x1, y1], seg });
+    if (seg.length) L.push({ b: [x0, y0, x1, y1], seg, k: 'L:' + (st.id || p[0] + ',' + p[1] + ',' + p.length) });
   }
   /* boxes: their top to stand on and their sides to bump into (a text box only where its words are) */
   const R = [];
   for (const it of visibleItems()) {
     if (AN_PAGE.has(it.id) || isBgItem(it) || it.type === 'life' || (it.spec && (it.spec.bare || it.spec.clean))) continue;
-    if (it.type === 'scene' && it.fr === 0 && it.spec && it.spec.domain === 'phys' && it.spec.dim !== 3 && (typeof flagOn !== 'function' || flagOn('pagemove'))) continue; /* a frameless model out on the paper: its bodies are met (anActors), not its box */
+    if (it.type === 'scene' && it.fr === 0 && it.spec && it.spec.domain === 'phys' && it.spec.dim !== 3 && (typeof flagOn !== 'function' || flagOn('pagemove')) && (typeof planOn !== 'function' || planOn('pagemove'))) continue; /* a frameless model out on the paper: its bodies are met (anActors), not its box */
     const el = itemsEl.querySelector('[data-id="' + it.id + '"]'); if (!el || el.hidden || !el.offsetHeight) continue;
     const b = !it.type || it.type === 'text' ? tightItemBox(it) : itemBox(it); if (b[2] - b[0] < 4 || b[3] - b[1] < 4) continue;
     R.push({ id: it.id, b, seg: [[b[0], b[1], b[2], b[1]], [b[0], b[1], b[0], b[3]], [b[2], b[1], b[2], b[3]]] });
@@ -585,7 +585,7 @@ function anEnv(dt) {
 }
 /* the segments near x0..x1 (and the boxes the animal is not standing inside) */
 function anEnvNear(E, x0, x1, skip) {
-  const out = []; for (const l of E.L) if (l.b[2] >= x0 && l.b[0] <= x1) for (const q of l.seg) out.push(q);
+  const out = []; for (const l of E.L) if (l.b[2] >= x0 && l.b[0] <= x1 && !skip.has(l.k)) for (const q of l.seg) out.push(q);
   for (const o of E.R) if (!skip.has(o.id) && o.b[2] >= x0 && o.b[0] <= x1) for (const q of o.seg) out.push(q);
   return out;
 }
@@ -684,6 +684,23 @@ function anPage(it, r, dt) {
   const nx = pg.fx + dx, ex = pg.ext || [-cw * 0.25, cw * 0.25], sg = dx >= 0 ? 1 : -1, front = anCl(sg > 0 ? ex[1] : -ex[0], 4, cw * 0.48) * sg;
   /* the boxes it stands in front of (put down over them) do not stop it */
   const skip = new Set(); for (const q of E.R) if (pg.fx > q.b[0] && pg.fx < q.b[2] && pg.fy - zp > q.b[1] + stepUp && pg.fy - zp - body < q.b[3]) skip.add(q.id);
+  /* a line drawn across its body (owner 23 พ.ย. 2569: a cat with lines written over it stood stuck on them): it is not a
+     wall or ground for this animal until it has walked clear of it, so it walks off it whichever way it goes */
+  {
+    const ex0 = pg.ext || [-cw * 0.25, cw * 0.25], fe0 = pg.fy - zp, bx = [pg.fx + ex0[0], fe0 - (pg.headH || body), pg.fx + ex0[1], fe0 - stepUp];
+    const over = (l) => l.b[2] >= bx[0] && l.b[0] <= bx[2] && l.b[3] >= bx[1] && l.b[1] <= bx[3] && l.seg.some((q) => Math.max(q[0], q[2]) >= bx[0] && Math.min(q[0], q[2]) <= bx[2] && Math.max(q[1], q[3]) >= bx[1] && Math.min(q[1], q[3]) <= bx[3]);
+    const first = !pg.under; if (first) { pg.under = new Set(); pg.known = new Set(); }
+    if (pg.envSeen !== E) {
+      pg.envSeen = E;
+      for (const l of E.L) if (!pg.known.has(l.k)) {
+        pg.known.add(l.k); if (!over(l)) continue; pg.under.add(l.k);
+        /* written over just now (not there when it was put down): the pen came across it, so it starts away from the line,
+           the way it answers a touch */
+        if (!first && !s.rx && !s.hidden) { const side = (l.b[0] + l.b[2]) / 2 > pg.fx ? -1 : 1; pg.dir = side; anReact(D, s, [pg.R[0] * side, pg.R[1] * side, 0]); }
+      }
+    }
+    if (pg.under.size) for (const l of E.L) if (pg.under.has(l.k)) { if (over(l)) skip.add(l.k); else pg.under.delete(l.k); }
+  }
   /* the nose sweeps from where it was last time (turning round brings the nose round to the other side: it does not jump
      through a line that way) */
   const nose0 = pg.nose != null && pg.noseSg === sg ? pg.nose : pg.fx + front;
@@ -746,20 +763,21 @@ const AN_SIZE = anList('1:ant mosquito housefly bee butterfly dragonfly grasshop
 /* what each one hunts and eats (all in this book of animals) */
 const AN_EATS = {
   lion: 'deer zebra buffalo giraffe horse goat pig cow ostrich camel', tiger: 'deer pig buffalo goat cow horse monkey',
-  cat: 'rat bird gecko houselizard gardenlizard cockroach grasshopper fish', dog: 'rat', bear: 'fish catfish ant bee',
-  crocodile: 'deer zebra buffalo pig goat fish catfish duck turtle', shark: 'fish seal squid octopus catfish', dolphin: 'fish squid',
-  whale: 'shrimp', seal: 'fish squid octopus shrimp catfish', penguin: 'fish squid shrimp', owl: 'rat frog ricefrog toad gecko bird',
+  cat: 'rat bird parrot kiwi gecko houselizard gardenlizard cockroach grasshopper fish mudskipper', dog: 'rat kiwi',
+  crocodile: 'deer zebra buffalo pig goat fish catfish duck turtle dog monkey', shark: 'fish seal squid octopus catfish penguin turtle', dolphin: 'fish squid',
+  whale: 'shrimp', seal: 'fish squid octopus shrimp catfish penguin', penguin: 'fish squid shrimp', owl: 'rat frog ricefrog toad gecko houselizard bird bat',
   bat: 'mosquito housefly butterfly beetle grasshopper', cobra: 'rat frog ricefrog toad bird gecko houselizard gardenlizard',
   frog: 'mosquito housefly ant cockroach grasshopper worm caterpillar spider', ricefrog: 'mosquito housefly ant grasshopper caterpillar',
-  toad: 'mosquito housefly ant cockroach grasshopper worm caterpillar', gecko: 'mosquito housefly ant cockroach butterfly grasshopper spider',
+  toad: 'mosquito housefly ant cockroach grasshopper worm caterpillar beetle', gecko: 'mosquito housefly ant cockroach butterfly grasshopper spider houselizard',
   houselizard: 'mosquito housefly ant cockroach', gardenlizard: 'ant grasshopper cockroach caterpillar butterfly',
-  chicken: 'worm ant grasshopper caterpillar cockroach centipede spider', duck: 'snail worm tadpole shrimp grasshopper',
-  bird: 'worm caterpillar grasshopper ant mosquito spider butterfly', peacock: 'worm grasshopper cobra', ostrich: 'grasshopper caterpillar',
+  chicken: 'worm ant grasshopper caterpillar cockroach centipede spider houselizard housefly', duck: 'snail worm tadpole shrimp grasshopper',
+  bird: 'worm caterpillar grasshopper ant mosquito housefly spider butterfly', peacock: 'worm grasshopper cobra gardenlizard centipede', ostrich: 'grasshopper caterpillar',
   emu: 'grasshopper caterpillar', cassowary: 'grasshopper caterpillar', kiwi: 'worm caterpillar spider', flamingo: 'shrimp',
-  spider: 'mosquito housefly butterfly ant grasshopper', scorpion: 'cockroach grasshopper spider', centipede: 'cockroach spider ant worm',
-  dragonfly: 'mosquito housefly', mudskipper: 'ant housefly mosquito shrimp worm', catfish: 'shrimp worm tadpole',
+  spider: 'mosquito housefly butterfly ant grasshopper cockroach', scorpion: 'cockroach grasshopper spider', centipede: 'cockroach spider ant worm grasshopper',
+  dragonfly: 'mosquito housefly', mudskipper: 'ant housefly mosquito shrimp worm', catfish: 'shrimp worm tadpole snail',
   octopus: 'crab shrimp clam fish', squid: 'shrimp fish', starfish: 'clam', seahorse: 'shrimp',
-  anteater: 'ant', pangolin: 'ant', echidna: 'ant', platypus: 'worm shrimp tadpole', pig: 'worm', monkey: 'grasshopper'
+  anteater: 'ant', pangolin: 'ant', echidna: 'ant', platypus: 'worm shrimp tadpole', pig: 'worm snail', monkey: 'grasshopper caterpillar spider',
+  orangutan: 'ant caterpillar', rat: 'cockroach', turtle: 'jellyfish snail worm', crab: 'clam worm', bear: 'fish catfish ant bee deer'
 };
 /* how often a catch works, from field studies (a lion about one hunt in four) */
 const AN_CATCH = { lion: 0.3, tiger: 0.35, cat: 0.5, dog: 0.3, owl: 0.5, crocodile: 0.5, shark: 0.5, cobra: 0.5, bat: 0.6, dragonfly: 0.8, spider: 0.7, anteater: 0.95, pangolin: 0.95, echidna: 0.95, starfish: 0.9, flamingo: 0.9, whale: 0.95 };
@@ -790,8 +808,9 @@ const AN_STYLE = {
   spider: { h: 'ambush', lunge: 0.8, eat: 5 }, cobra: { h: 'ambush', lunge: 1.0, eat: 9 }, gecko: { h: 'ambush', lunge: 0.9, eat: 1.5 }, houselizard: { h: 'ambush', lunge: 0.9, eat: 1.5 },
   gardenlizard: { h: 'ambush', lunge: 0.9, eat: 1.5 }, scorpion: { h: 'ambush', lunge: 0.7, eat: 5 }, mudskipper: { h: 'ambush', lunge: 0.8, eat: 1.5 }, catfish: { h: 'browse', eat: 2 },
   owl: { h: 'swoop', T: 8, eat: 4 }, bat: { h: 'aerial', T: 5, eat: 1 }, dragonfly: { h: 'aerial', T: 5, eat: 1.5 }, shark: { h: 'stalk', T: 8, eat: 5 }, dolphin: { h: 'pursuit', T: 8, eat: 2 },
-  seal: { h: 'pursuit', T: 8, eat: 2 }, penguin: { h: 'pursuit', T: 6, eat: 1.5 }, bear: { h: 'browse', eat: 6 }, octopus: { h: 'ambush', lunge: 1.0, eat: 5 }, squid: { h: 'ambush', lunge: 0.9, eat: 3 },
+  seal: { h: 'pursuit', T: 8, eat: 2 }, penguin: { h: 'pursuit', T: 6, eat: 1.5 }, bear: { h: 'pursuit', T: 8, eat: 6 }, octopus: { h: 'ambush', lunge: 1.0, eat: 5 }, squid: { h: 'ambush', lunge: 0.9, eat: 3 },
   anteater: { h: 'browse', eat: 4 }, pangolin: { h: 'browse', eat: 4 }, echidna: { h: 'browse', eat: 4 }, flamingo: { h: 'browse', eat: 2 }, whale: { h: 'browse', eat: 3 }, starfish: { h: 'browse', eat: 10 },
+  turtle: { h: 'browse', eat: 4 }, crab: { h: 'browse', eat: 3 }, rat: { h: 'browse', eat: 1.5 }, monkey: { h: 'browse', eat: 1.5 }, orangutan: { h: 'browse', eat: 2 },
   duck: { h: 'browse', eat: 1.5 }, chicken: { h: 'browse', eat: 1.2 }, bird: { h: 'browse', eat: 1.2 }, kiwi: { h: 'browse', eat: 1.5 }, peacock: { h: 'pursuit', T: 5, eat: 3 }, pig: { h: 'browse', eat: 2 }
 };
 /* what it says it is doing, its own words (the line under the animal) */
@@ -886,11 +905,11 @@ function anSocial(id, dt, E) {
   const k0 = A.s.rx && A.s.rx.k; if (k0 && 'flee dart jump flyoff hide burrow ink flip puff'.indexOf(k0) >= 0) p.scared = 1;
   else if (!k0 && p.scared) { p.scared = 0; p.alertT = 5 + anRng(A.s) * 4; p.alook = 0; }
   if (k0 === 'eat') p.ate = 1; else if (!k0 && p.ate) { p.ate = 0; const i = A.D.loop.findIndex((x) => x[0] === 'rest' || x[0] === 'sit'); if (anDrive(A, 'wdo', null, 0, 10)) { A.s.rx.say = 'นอนพักหลังกินอิ่ม'; A.s.rx.wk = 'rest'; if (i >= 0) A.s.act = A.D.loop[i][0]; } p.wish = null; }
-  if (p.alertT > 0) { p.alertT -= dt; p.alook -= dt; if (p.alook <= 0 && !anBusy(A) && !p.hunt) { p.alook = 1.4; anLook(A, anRng(A.s) < 0.5 ? -1 : 1, 1); if (anDrive(A, 'wdo', null, 0, 1)) { A.s.rx.say = 'ระแวง มองรอบตัว'; A.s.rx.wk = 'alert'; } } }
+  if (p.alertT > 0) { p.alertT -= dt; p.alook -= dt; if (p.alook <= 0 && !anBusy(A) && !p.hunt) { p.alook = 1.4; anLook(A, anRng(A.s) < 0.5 ? -1 : 1, 1); if (!(A.s.rx && A.s.rx.wk === 'alert') && anDrive(A, 'wdo', null, 0, Math.max(1, p.alertT))) { A.s.rx.say = 'ระแวง มองรอบตัว'; A.s.rx.wk = 'alert'; } } }
   const a = anWhere(A), dA = A.D;
   /* the one it is after now: keep at it, catch it, or give up */
   if (p.hunt) {
-    const B = AN_PAGE.get(p.hunt.id), H = p.hunt; H.t += dt;
+    const B = AN_PAGE.get(p.hunt.id), H = p.hunt; H.t += H.stalk ? dt * 0.35 : dt; /* creeping up, unseen, takes as long as it takes */
     if (!B || B.pg.gone || t - B.t > 0.4 || !B.r.cv || !B.r.cv.isConnected) { p.hunt = null; anFree(A); }
     else {
       const b = anWhere(B), how = anReach(A, a, b, B), seen = anSees(E, a, b), side = b.x >= a.x ? 1 : -1;
@@ -1066,7 +1085,7 @@ function anWish(A, a, dt, E) {
   if (w) {
     w.t += dt; const near = Math.abs(a.x - w.x) < A.w * 0.15;
     if (w.t > 9) { p.wish = null; return; }
-    if (!near) { if (anDrive(A, 'wgo', anGoal(A, a, w.x, a.y), (D.spd || 0.1) * (w.k === 'edge' ? 2.2 : 1.1), 1)) { s.rx.say = AN_WSAY[w.k]; s.rx.wk = w.k; } return; }
+    if (!near) { if (anDrive(A, 'wgo', anGoal(A, a, w.x, a.y), (D.spd || 0.1) * (w.k === 'edge' ? 2.2 : 1.1), Math.max(1, 9.2 - w.t))) { s.rx.say = AN_WSAY[w.k]; s.rx.wk = w.k; } return; }
     p.wish = null; anFree(A);
     if ((w.k === 'perch' || w.k === 'explore') && w.y != null) { anLeap(A, w.x2 != null ? w.x2 : w.x, w.y); p.after = { k: w.k, T: w.k === 'perch' ? 7 : 3 }; return; }
     if (anDrive(A, 'wdo', null, 0, w.k === 'bask' ? 9 : w.k === 'edge' ? 5 : w.k === 'group' ? 4 : 3)) { s.rx.say = AN_WSAY[w.k]; s.rx.wk = w.k; }
@@ -1125,8 +1144,10 @@ function anWish(A, a, dt, E) {
    still); a drawing that moves by itself (life.js) gives its speed from where it was the frame before */
 let AN_ACT = { t: 0, list: [], prev: new Map() };
 function anActors() {
-  const now = performance.now(); if (now - AN_ACT.t < 30) return AN_ACT.list;
-  const out = [], dts = Math.max(0.016, (now - (AN_ACT.t || now - 16)) / 1000);
+  /* by the animals' own clock (seconds), not the wall clock: the same steps give the same speeds every time (a test that
+     drives the steps itself ran a little differently each run) */
+  const now = AN_CLK, n = visibleItems().length; if (AN_ACT.ok && AN_ACT.n === n && now >= AN_ACT.t && now - AN_ACT.t < 0.03) return AN_ACT.list; /* a picture added or taken away: at once */
+  const out = [], dts = Math.max(0.016, AN_ACT.ok && now > AN_ACT.t ? now - AN_ACT.t : 0.016);
   if (typeof ipActors === 'function') { try { for (const o of ipActors()) out.push(o); } catch (e) { /* not ready */ } }
   if (typeof LIFE !== 'undefined' && LIFE && typeof lifeBox === 'function') for (const o of visibleItems()) {
     if (o.type !== 'life' || !o.B) continue; const L = LIFE.get(o.id); if (!L) continue; const box = lifeBox(o, L), beh = o.beh || {};
@@ -1134,7 +1155,7 @@ function anActors() {
     const cx = (box[0] + box[2]) / 2, pv = AN_ACT.prev.get(o.id), vx = pv != null ? (cx - pv) / dts : 0; AN_ACT.prev.set(o.id, cx);
     out.push({ id: o.id, kind, box, vx });
   }
-  AN_ACT = { t: now, list: out, prev: AN_ACT.prev }; return out;
+  AN_ACT = { t: now, list: out, prev: AN_ACT.prev, ok: 1, n }; return out;
 }
 /* the body of an animal on the page, for the drawn pictures that walk (they stop at it, not at its empty box) */
 function anVis(id) { const A = AN_PAGE.get(id); if (!A || A.pg.gone || AN_CLK - A.t > 0.4) return null; const a = anWhere(A); return [a.x0, a.top, a.x1, a.g, A.pg.vx || 0]; }
