@@ -9,5 +9,8 @@ window.BURIN_CONFIG = {
   previous: {
     supabaseUrl: 'https://ibdxqqaiyvomtfenjizx.supabase.co',
     supabaseKey: 'sb_publishable_pfUDQbEK4Fji4zBGxlqG9Q_xSnexz-Q'
-  }
+  },
+  consent: true,
+  privacyOwner: 'Sarayut Pantian',
+  privacyContact: 's1pantian@gmail.com'
 };
