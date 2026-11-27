@@ -81,7 +81,7 @@ function acForgot() {
     send.disabled = true; acSay('กำลังส่งรหัส');
     try {
       const sb = await cloudClient(), cap = await capToken();
-      const o = { redirectTo: location.origin + location.pathname }; if (cap) o.captchaToken = cap;
+      const o = { redirectTo: siteBase() }; if (cap) o.captchaToken = cap;
       const r = await sb.auth.resetPasswordForEmail(email, o);
       if (r.error) throw r.error;
       AC.email = email; AC.wait = Date.now() + 60e3; verified = false; box.hidden = false;
@@ -245,5 +245,82 @@ function acDelAsk(box) {
     };
     setTimeout(() => inp.focus({ preventScroll: true }), 60);
   };
+}
+
+/* ----- devices of the account (task 4.2): every sign-in from the database (my_devices), and signing one out
+   (device_remove), which takes it off at once; its notebooks on that device are not touched ----- */
+function devAgent(ua) {
+  ua = String(ua || '');
+  if (/iPad/.test(ua)) return 'iPad'; if (/iPhone/.test(ua)) return 'iPhone';
+  if (/Android/.test(ua)) return /Mobile/.test(ua) ? 'โทรศัพท์ Android' : 'แท็บเล็ต Android';
+  if (/CrOS/.test(ua)) return 'Chromebook'; if (/Windows/.test(ua)) return 'คอมพิวเตอร์ Windows';
+  if (/Macintosh/.test(ua)) return 'Mac หรือ iPad'; if (/Linux/.test(ua)) return 'คอมพิวเตอร์ Linux';
+  return 'อุปกรณ์';
+}
+async function devRows() {
+  const { data, error } = await CLOUD.client.rpc('my_devices');
+  if (error) throw error;
+  return Array.isArray(data) ? data : [];
+}
+/* one row per device; the others have a button that signs them out (touched twice) */
+function devDraw(box, rows, after) {
+  box.innerHTML = '';
+  for (const r of rows) {
+    const row = exEl('div', ''), mine = !!r.me;
+    row.innerHTML = '<span><b></b><small></small></span>' + (mine ? '<span class="me">เครื่องนี้</span>' : '');
+    row.querySelector('b').textContent = (mine ? devName() : String(r.name || '').slice(0, 40)) || devAgent(r.agent);
+    const at = Date.parse(r.active || r.made || '');
+    row.querySelector('small').innerHTML = (isFinite(at) ? 'ใช้ล่าสุด <span class="nw">' + esc(new Date(at).toLocaleString(LOC, { dateStyle: 'medium', timeStyle: 'short' })) + '</span>' : '')
+      + (r.screen ? ' : จอแสดงอย่างเดียว ไม่นับ' : !r.seat ? (mine ? ' : รอที่ว่าง' : ' : ไม่ได้ใช้นาน ไม่นับ') : '');
+    if (!mine) {
+      const x = exEl('button', 'btn', 'ออกจากระบบเครื่องนั้น'); let armed = false;
+      x.onclick = async () => {
+        if (!armed) { armed = true; x.textContent = 'แตะอีกครั้งเพื่อยืนยัน'; return; }
+        x.disabled = true;
+        try { const { data, error } = await CLOUD.client.rpc('device_remove', { p_session: r.session }); if (error) throw error; if (data === 'ok' || data === 'none') { row.remove(); if (after) after(); } }
+        catch (e) { x.disabled = false; armed = false; x.textContent = 'ออกจากระบบเครื่องนั้น'; toast('ยังเอาเครื่องออกไม่ได้ ตรวจอินเทอร์เน็ตแล้วลองอีกครั้ง', 3500); }
+      };
+      row.appendChild(x);
+    }
+    box.appendChild(row);
+  }
+}
+/* in the sheet of the account */
+function devList(dl) {
+  const head = exEl('div', 'note small', ''); dl.parentNode.insertBefore(head, dl);
+  const load = () => devRows().then((rows) => {
+    const used = rows.filter((r) => r.seat).length;
+    head.textContent = 'ใช้ ' + used + ' จาก ' + DEVS.max + ' เครื่อง จอที่แสดงอย่างเดียวและจอแสดงผลของห้องไม่นับ เครื่องที่ออกจากระบบแล้ว สมุดในเครื่องนั้นไม่หาย';
+    devDraw(dl, rows, load);
+  }).catch(() => { head.textContent = 'ดูรายการเครื่องไม่ได้ตอนนี้ ตรวจอินเทอร์เน็ตแล้วเปิดแผ่นนี้อีกครั้ง'; });
+  load();
+}
+/* this device has no seat: the account already uses all of them, or another device signed this one out */
+function devFullOpen() {
+  let sh = $('#devSheet');
+  if (!sh) {
+    sh = document.createElement('div'); sh.className = 'sheet'; sh.id = 'devSheet';
+    sh.innerHTML = '<div class="panel" role="dialog" aria-labelledby="devHead"><h2 id="devHead"></h2><div class="note" id="devSay"></div><div class="devlist" id="devRows"></div>'
+      + '<div class="row2"><button class="btn solid" type="button" id="devOut"></button></div></div>';
+    document.body.appendChild(sh);
+  }
+  sh.hidden = false;
+  const gone = DEVS.state === 'gone', n = DEVS.max;
+  $('#devHead').textContent = gone ? 'เครื่องนี้ออกจากระบบแล้ว' : 'บัญชีนี้ใช้ครบ ' + n + ' เครื่องแล้ว';
+  $('#devSay').textContent = gone
+    ? 'เครื่องอื่นของบัญชีนี้ให้เครื่องนี้ออกจากระบบ สมุดในเครื่องนี้ยังอยู่ เข้าระบบอีกครั้งเพื่อใช้ต่อ'
+    : 'บัญชีหนึ่งใช้ได้พร้อมกัน ' + n + ' เครื่อง เลือกเครื่องที่ไม่ได้ใช้แล้วให้ออกจากระบบ เครื่องนี้จะใช้ได้ทันที สมุดในเครื่องนั้นไม่หาย ถ้าจะใช้เครื่องนั้นอีก เข้าระบบใหม่ที่เครื่องนั้น';
+  const out = $('#devOut'); out.textContent = gone ? 'เข้าระบบอีกครั้ง' : 'ออกจากระบบเครื่องนี้';
+  out.onclick = () => acctSwitch(gone ? (CLOUD.user && CLOUD.user.email) || '' : null);
+  const list = $('#devRows'); list.hidden = gone; list.innerHTML = '';
+  if (gone) return;
+  const load = () => devRows().then((rows) => {
+    devDraw(list, rows, async () => {
+      /* a seat may be free now: this device asks again, and opens the account's notebooks when it has one */
+      await devHello(CLOUD.client);
+      if (!devWaits()) { $('#devSay').textContent = 'เครื่องนี้ใช้ได้แล้ว กำลังเปิดสมุด'; setTimeout(() => location.reload(), 400); } else load();
+    });
+  }).catch(() => { $('#devSay').textContent = 'ดูรายการเครื่องไม่ได้ตอนนี้ ตรวจอินเทอร์เน็ตแล้วลองเปิดแอปอีกครั้ง'; });
+  load();
 }
 

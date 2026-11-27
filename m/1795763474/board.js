@@ -468,6 +468,7 @@ async function bdShot(blob) {
 }
 const BD_DONE = new Set();
 async function bdRead() {
+  if (typeof planGate === 'function' && !planGate('boardread')) return; /* task 4.1 */
   const it = bdItem(); if (!it || BD.reading) return;
   let blob = null; try { blob = await getAssetBlob(it.asset); } catch (e) { blob = null; }
   if (!blob) { toast('ยังโหลดภาพกระดานไม่ได้ ลองอีกครั้ง', 3500); return; }

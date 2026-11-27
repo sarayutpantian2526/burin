@@ -145,7 +145,7 @@ async function expSave(say) {
     if (r.files) bits.push('รูปและวิดีโอ ' + r.files + ' ไฟล์');
     if (r.shares) bits.push('เลคเชอร์ที่แชร์และกุญแจห้อง ' + r.shares + ' รายการ');
     if (r.hw) bits.push('การบ้านและสมุดคะแนน ' + r.hw + ' ชิ้น งานที่ส่ง ' + r.subs + ' ชิ้น');
-    say && say('ส่งออกแล้ว ' + bits.join(' ') + ' ขนาด ' + expSize(r.blob.size) + (r.skip ? ' มีไฟล์ ' + r.skip + ' ไฟล์ที่อ่านจากคลาวด์ไม่ได้ จึงไม่อยู่ในไฟล์' : '') + (f ? ' ไฟล์อยู่ในที่ที่เลือกไว้ในแอป ไฟล์' : ' บน iPad ไฟล์อยู่ในแอป ไฟล์ โฟลเดอร์ ดาวน์โหลด'), r.skip ? 'err' : 'ok');
+    say && say('ส่งออกแล้ว ' + bits.join(' ') + ' ขนาด ' + expSize(r.blob.size) + (r.skip ? ' มีไฟล์ ' + r.skip + ' ไฟล์ที่อ่านจากคลาวด์ไม่ได้ จึงไม่อยู่ในไฟล์' : '') + (f ? ' ไฟล์อยู่ในที่ที่เลือกไว้ในแอป ไฟล์' : (window.BurinShell && window.BurinShell.platform === 'android' ? ' ไฟล์อยู่ในที่ที่เลือกไว้' : ' บน iPad ไฟล์อยู่ในแอป ไฟล์ โฟลเดอร์ ดาวน์โหลด')), r.skip ? 'err' : 'ok');
     return r;
   } catch (e) {
     if (e && e.code === 'declined') { say && say('ยกเลิกการบันทึกไฟล์'); return null; }

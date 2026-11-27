@@ -547,7 +547,7 @@ function anTap(sp, r, x, y, w, h) {
 const AN_PAGE = new Map();
 let AN_CLK = 0;
 let AN_ENV = null;
-function anPageOn(sp) { return !!(sp && sp.clean && !sp.stay && !sp.thumb && (typeof flagOn !== 'function' || flagOn('onpage'))); }
+function anPageOn(sp) { return !!(sp && sp.clean && !sp.stay && !sp.thumb && (typeof flagOn !== 'function' || flagOn('onpage')) && (typeof planOn !== 'function' || planOn('onpage'))); }
 /* everything on the page an animal can stand on or bump into, as segments; built again at most twice a second, and only
    when the lines or the boxes changed */
 function anEnvSig() {
@@ -576,7 +576,7 @@ function anEnv(dt) {
   const R = [];
   for (const it of visibleItems()) {
     if (AN_PAGE.has(it.id) || isBgItem(it) || it.type === 'life' || (it.spec && (it.spec.bare || it.spec.clean))) continue;
-    if (it.type === 'scene' && it.fr === 0 && it.spec && it.spec.domain === 'phys' && it.spec.dim !== 3 && (typeof flagOn !== 'function' || flagOn('pagemove'))) continue; /* a frameless model out on the paper: its bodies are met (anActors), not its box */
+    if (it.type === 'scene' && it.fr === 0 && it.spec && it.spec.domain === 'phys' && it.spec.dim !== 3 && (typeof flagOn !== 'function' || flagOn('pagemove')) && (typeof planOn !== 'function' || planOn('pagemove'))) continue; /* a frameless model out on the paper: its bodies are met (anActors), not its box */
     const el = itemsEl.querySelector('[data-id="' + it.id + '"]'); if (!el || el.hidden || !el.offsetHeight) continue;
     const b = !it.type || it.type === 'text' ? tightItemBox(it) : itemBox(it); if (b[2] - b[0] < 4 || b[3] - b[1] < 4) continue;
     R.push({ id: it.id, b, seg: [[b[0], b[1], b[2], b[1]], [b[0], b[1], b[0], b[3]], [b[2], b[1], b[2], b[3]]] });
@@ -1144,8 +1144,10 @@ function anWish(A, a, dt, E) {
    still); a drawing that moves by itself (life.js) gives its speed from where it was the frame before */
 let AN_ACT = { t: 0, list: [], prev: new Map() };
 function anActors() {
-  const now = performance.now(); if (now - AN_ACT.t < 30) return AN_ACT.list;
-  const out = [], dts = Math.max(0.016, (now - (AN_ACT.t || now - 16)) / 1000);
+  /* by the animals' own clock (seconds), not the wall clock: the same steps give the same speeds every time (a test that
+     drives the steps itself ran a little differently each run) */
+  const now = AN_CLK, n = visibleItems().length; if (AN_ACT.ok && AN_ACT.n === n && now >= AN_ACT.t && now - AN_ACT.t < 0.03) return AN_ACT.list; /* a picture added or taken away: at once */
+  const out = [], dts = Math.max(0.016, AN_ACT.ok && now > AN_ACT.t ? now - AN_ACT.t : 0.016);
   if (typeof ipActors === 'function') { try { for (const o of ipActors()) out.push(o); } catch (e) { /* not ready */ } }
   if (typeof LIFE !== 'undefined' && LIFE && typeof lifeBox === 'function') for (const o of visibleItems()) {
     if (o.type !== 'life' || !o.B) continue; const L = LIFE.get(o.id); if (!L) continue; const box = lifeBox(o, L), beh = o.beh || {};
@@ -1153,7 +1155,7 @@ function anActors() {
     const cx = (box[0] + box[2]) / 2, pv = AN_ACT.prev.get(o.id), vx = pv != null ? (cx - pv) / dts : 0; AN_ACT.prev.set(o.id, cx);
     out.push({ id: o.id, kind, box, vx });
   }
-  AN_ACT = { t: now, list: out, prev: AN_ACT.prev }; return out;
+  AN_ACT = { t: now, list: out, prev: AN_ACT.prev, ok: 1, n }; return out;
 }
 /* the body of an animal on the page, for the drawn pictures that walk (they stop at it, not at its empty box) */
 function anVis(id) { const A = AN_PAGE.get(id); if (!A || A.pg.gone || AN_CLK - A.t > 0.4) return null; const a = anWhere(A); return [a.x0, a.top, a.x1, a.g, A.pg.vx || 0]; }

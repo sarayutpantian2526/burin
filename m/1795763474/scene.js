@@ -784,7 +784,7 @@ function buildScene(d, it, forExport) {
       }
       sb2.appendChild(cr);
       /* out on the paper (switch onpage): it walks over the whole page, or stays at its place as before; one step of undo */
-      if (typeof flagOn !== 'function' || flagOn('onpage')) {
+      if ((typeof flagOn !== 'function' || flagOn('onpage')) && (typeof planOn !== 'function' || planOn('onpage'))) {
         const st = document.createElement('button'); st.type = 'button'; st.className = 'anstay'; st.textContent = sp.stay ? 'เดินทั่วหน้า' : 'อยู่กับที่';
         st.title = sp.stay ? 'ให้ออกมาเดินบนหน้า ชนกล่องหรือเส้นแล้วหยุดหรือเลี่ยง เดินบนเส้นที่วาดได้' : 'ให้อยู่ตรงนี้ ไม่เดินไปทั่วหน้า';
         st.onclick = () => { const before = clone(S.page.items || []), items = clone(before), x = items.find((t) => t.id === it.id); if (!x) return; if (x.spec.stay) delete x.spec.stay; else x.spec.stay = true; setItems(items, before); };
@@ -820,7 +820,7 @@ function buildScene(d, it, forExport) {
    the frame is the user's choice) */
 function scNoFrame(sp) { return pwOn() && (typeof frameOn !== 'function' || frameOn()) && sp && sp.domain === 'phys' && sp.dim !== 3 && !sp.bare; }
 function insertScene(spec, at) {
-  if (!S.page) return; const w = 520; const [x, y] = at || viewSpot(w, 520);
+  if (!S.page || (typeof planSimOk === 'function' && !planSimOk(spec))) return; const w = 520; const [x, y] = at || viewSpot(w, 520);
   const sp = scClean(spec); addItem(Object.assign({ type: 'scene', spec: sp, x, y, w }, scNoFrame(sp) ? { fr: 0 } : {}));
   toast('วางแบบจำลองแล้ว กดเล่น เปิดปิดแผนภาพแรงและกราฟได้ เลื่อนแถบเพื่อเปลี่ยนค่า', 3000);
 }
@@ -1379,6 +1379,7 @@ async function openMotionPick() {
   sh.hidden = false;
 }
 async function placeMotion(sp, make, person) {
+  if (typeof planSimOk === 'function' && !planSimOk(null)) return; /* task 4.1 */
   let spec;
   if (person) {
     const t = SCENE_TPL.person.find((x) => x[2].bodies[0].act === person); spec = JSON.parse(JSON.stringify(t[2]));
@@ -1799,7 +1800,7 @@ function renderScenePicker(box, dom, q) {
    time of flight, range, highest point, speed at the ground, acceleration down the incline, period.
    Anything else returns null and the AI makes the model as before. "scenetext" in flags.json turns it off (or
    "localcalc") ---------- */
-function stOn() { return flagOn('scenetext') && flagOn('localcalc'); }
+function stOn() { return flagOn('scenetext') && flagOn('localcalc') && (typeof planOn !== 'function' || planOn('scenetext')); }
 const stR = (v) => { if (!isFinite(v)) return String(v); return Number(v.toPrecision(Math.abs(v) >= 100 ? 4 : 3)).toString(); };
 function stClean(t) {
   return String(t || '').replace(/\$/g, ' ').replace(/\\text\{([^}]*)\}|\\mathrm\{([^}]*)\}/g, '$1$2').replace(/\^\s*\{?\\circ\}?|\\degree/g, '°').replace(/\\(?:theta|mu|,|;| )/g, (m) => (m === '\\theta' ? 'θ' : m === '\\mu' ? 'μ' : ' '))
@@ -2648,14 +2649,16 @@ function lifePathPage(it, rt, dt) {
   const now = at(rt.pt), next = at(rt.pt + dt * sp), Wd = lifeWorldNow(), m = Math.min(bw, bh) * 0.12;
   const shrink = (q) => [q[0] + m, q[1] + m, q[2] - m, q[3] - m];
   let who = null;
-  for (const o of lifeMet()) if (ov(shrink(next), o[0]) && !ov(shrink(now), o[0])) { who = o; break; }
+  /* in the way: what its next step would go into, or (when an animal has come up against it) closer into */
+  const cen = (q) => [(q[0] + q[2]) / 2, (q[1] + q[3]) / 2], closer = (q) => { const a = cen(now), z = cen(next), c = cen(q); return Math.hypot(z[0] - c[0], z[1] - c[1]) < Math.hypot(a[0] - c[0], a[1] - c[1]) - 1e-6; };
+  for (const o of lifeMet()) if (ov(shrink(next), o[0]) && (!ov(shrink(now), o[0]) || closer(o[0]))) { who = o; break; }
   const walks = flat && LIFE_GROUND.includes(sub);
   let wall = false; if (!who) for (const q of Wd.boxes) if (ov(shrink(next), q) && !ov(shrink(now), q) && !(walks && q[1] > next[3] - bh * 0.6)) { wall = true; break; } /* a low box under its feet is ground, not a wall */
   if (who || wall) {
     rt.pblock += dt; rt.met = who ? who[3] : rt.met;
     if (rt.pblock < dt * 1.5) { rt.scare = Math.min(1, (rt.scare || 0) + 0.7); rt.bump = 1; }
     /* an animal goes by in a few seconds; a box stays: after a while it goes on along its path past it */
-    if (rt.pblock > (wall ? 1.2 : 5)) { let t = rt.pt; const dur = Math.max(0.2, ...keys.map((k) => +k.t || 0)); for (let i = 0; i < 80 && t < rt.pt + dur; i++) { t += 0.1; const q = at(t); if (!Wd.boxes.some((x) => ov(shrink(q), x)) && !lifeMet().some((o) => ov(shrink(q), o[0]))) break; } rt.pt = t; rt.pblock = 0; }
+    if (rt.pblock > (wall ? 1.2 : 5)) { const dur = Math.max(0.2, ...keys.map((k) => +k.t || 0)); let t = rt.pt, clear = null; for (let i = 0; i < 80 && t < rt.pt + dur; i++) { t += 0.1; const q = at(t); if (!Wd.boxes.some((x) => ov(shrink(q), x)) && !lifeMet().some((o) => ov(shrink(q), o[0]))) { clear = t; break; } } if (clear != null) rt.pt = clear; rt.pblock = 0; } /* no clear place further along (its path ends in the thing): it keeps waiting, never into it */
   } else { rt.pt += dt * sp; rt.pblock = 0; }
   /* along the ground: up onto a drawn line or the top of a box under it, as a walking picture does */
   if (walks) {
@@ -3209,7 +3212,7 @@ function animKick(on) { if (on && !lifeRaf && LIFE.size) lifeRaf = requestAnimat
    each other, and are always drawn whole. Built on the same idea as the animals' page (animals.js anEnv anSupport anHits):
    the page as segments, built again when a line or a box is added or taken away, and looked at again twice a second.
    The parts live in separate scopes, so this is the same work done here for the pictures; the animals keep their own ----- */
-function pwOn() { return typeof flagOn !== 'function' || flagOn('pagemove'); }
+function pwOn() { return (typeof flagOn !== 'function' || flagOn('pagemove')) && (typeof planOn !== 'function' || planOn('pagemove')); }
 /* what walks by itself on the page: it is not ground or a wall for the others (they meet it as a moving thing) */
 function pwWalker(it) { return !!(it && (it.type === 'life' || (it.spec && (it.spec.bare || it.spec.clean)) || (it.type === 'scene' && it.fr === 0 && it.spec && it.spec.domain === 'phys' && it.spec.dim !== 3))); }
 let PW_ENV = null, PW_T = 0;

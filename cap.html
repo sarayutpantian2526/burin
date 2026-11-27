@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>BURIN ตรวจว่าไม่ใช่บอต</title>
+<!--
+ The bot check of the installed app (task 6.1). Cloudflare Turnstile works only on the addresses its site key is
+ registered for, and the app's own page is at capacitor://localhost (iPad) or https://localhost (Android, task 6.2). So the app shows this small page of the site,
+ where the key works:
+   - in an iframe inside the sign-in form (the app first says hello with postMessage; the answer goes back only to
+     that page, and only when it is the app or this site itself)
+   - or, when that does not work, as a page of its own in a sheet of the app (?app=1): the answer goes to the app
+     through window.webkit.messageHandlers.burinCap (iPad) or window.burinCap (Android, a JSON string)
+ Messages to the page that opened it: { burinCap: 1, t: 'ready' | 'token' | 'expired' | 'error', v, h }
+ (h is the height of the widget, for the iframe). The site key is turnstileKey in config.js of this site.
+-->
+<style>
+  html, body { margin: 0; padding: 0; background: transparent; font-family: -apple-system, "Sarabun", "Noto Sans Thai", sans-serif; color: #1F2430; }
+  body.app { background: #fff; padding: 24px 16px; text-align: center; }
+  @media (prefers-color-scheme: dark) { body { color: #E8EAF0; } body.app { background: #1C1F26; } }
+  h1 { font-size: 18px; margin: 0 0 6px; }
+  p { font-size: 15px; line-height: 1.6; margin: 0 0 14px; }
+  #w { display: inline-block; min-height: 65px; }
+  #m { font-size: 14px; margin-top: 8px; }
+  body:not(.app) h1, body:not(.app) p { display: none; }
+</style>
+<script src="config.js"></script>
+</head>
+<body>
+<h1>ตรวจว่าไม่ใช่บอต</h1>
+<p>รอสักครู่ ถ้ามีช่องให้ติ๊ก แตะช่องนั้นครั้งเดียว</p>
+<div id="w"></div>
+<div id="m" role="status"></div>
+<script>
+(function () {
+  var q = location.search || '', app = /[?&]app=1/.test(q), th = (/[?&]th=(dark|light)/.exec(q) || [])[1] || 'auto';
+  var key = String((window.BURIN_CONFIG && window.BURIN_CONFIG.turnstileKey) || '');
+  var parentOrigin = '', queue = [], wid = null;
+  if (app) document.body.className = 'app';
+  function okOrigin(o) {
+    /* the app (capacitor or ionic scheme on the iPad, https://localhost on Android), this site, and a page on this computer (the tests) */
+    return /^(capacitor|ionic):\/\/localhost$/.test(o) || o === 'https://localhost' || o === location.origin || /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(o);
+  }
+  function height() { var w = document.getElementById('w'); return Math.ceil((w && w.getBoundingClientRect().height) || 65); }
+  function send(t, v) {
+    var m = { burinCap: 1, t: t, v: v || '', h: height() };
+    if (app) {
+      try {
+        if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.burinCap) window.webkit.messageHandlers.burinCap.postMessage(m);
+        else if (window.burinCap && typeof window.burinCap.postMessage === 'function') window.burinCap.postMessage(JSON.stringify(m));
+      } catch (e) { /* not in the app */ }
+      return;
+    }
+    if (window.parent === window) return;
+    if (!parentOrigin) { queue.push(m); return; }
+    try { window.parent.postMessage(m, parentOrigin); } catch (e) { /* the page went away */ }
+  }
+  window.addEventListener('message', function (e) {
+    var d = e.data || {};
+    if (!d || d.burinCap !== 1 || e.source !== window.parent || !okOrigin(e.origin)) return;
+    if (d.t === 'hello' && !parentOrigin) {
+      parentOrigin = e.origin;
+      var q2 = queue; queue = [];
+      for (var i = 0; i < q2.length; i++) { try { window.parent.postMessage(q2[i], parentOrigin); } catch (err) { /* fine */ } }
+    } else if (d.t === 'reset' && wid !== null && window.turnstile) {
+      try { window.turnstile.reset(wid); } catch (err) { /* a new answer comes by itself */ }
+    }
+  });
+  function say(t) { var m = document.getElementById('m'); if (m) m.textContent = t; }
+  if (!key) { say('เว็บนี้ไม่ได้ตั้งตัวกันบอต'); send('error', 'nokey'); return; }
+  window.burinCapGo = function () {
+    try {
+      wid = window.turnstile.render('#w', {
+        sitekey: key, language: 'th', theme: th,
+        callback: function (t) { say(''); send('token', t); },
+        'expired-callback': function () { send('expired'); },
+        'error-callback': function (c) { send('error', String(c || '')); return true; }
+      });
+      send('ready');
+    } catch (e) { send('error', 'render'); }
+  };
+  var s = document.createElement('script');
+  s.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit&onload=burinCapGo';
+  s.async = true;
+  s.onerror = function () { say('โหลดตัวตรวจของ Cloudflare ไม่ได้ ตรวจอินเทอร์เน็ตแล้วลองใหม่'); send('error', 'load'); };
+  document.head.appendChild(s);
+})();
+</script>
+</body>
+</html>

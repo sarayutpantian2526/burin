@@ -23,6 +23,8 @@ function keepIos() {
   return /iPad|iPhone|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
 }
 function keepStandalone() {
+  /* the installed app (task 6.1) keeps its notebooks as an app does: Safari's clearing does not apply, nothing to add */
+  if (window.BurinShell) return true;
   try { return !!(navigator.standalone || matchMedia('(display-mode: standalone)').matches || matchMedia('(display-mode: fullscreen)').matches); } catch (e) { return false; }
 }
 function keepLocal() { return !!(S.store && S.store.kind === 'local' && typeof S.store.keys === 'function'); }
@@ -117,7 +119,7 @@ async function keepSave(say) {
       if (res && res.status && res.status !== 'saved') { say && say('ยกเลิกการบันทึกไฟล์'); return null; }
     }
     store_ls.set('tp-keep-bak', String(now()));
-    say && say('สำรองสมุด ' + r.books + ' เล่ม ' + r.pages + ' หน้า ' + (r.files ? 'กับรูปและวิดีโอ ' + r.files + ' ไฟล์ ' : '') + 'ขนาด ' + keepSize(r.blob.size) + ' แล้ว ' + (f ? 'ไฟล์อยู่ในที่ที่เลือกไว้ในแอป ไฟล์' : 'บน iPad ไฟล์อยู่ในแอป ไฟล์ โฟลเดอร์ ดาวน์โหลด'), 'ok');
+    say && say('สำรองสมุด ' + r.books + ' เล่ม ' + r.pages + ' หน้า ' + (r.files ? 'กับรูปและวิดีโอ ' + r.files + ' ไฟล์ ' : '') + 'ขนาด ' + keepSize(r.blob.size) + ' แล้ว ' + (f ? 'ไฟล์อยู่ในที่ที่เลือกไว้ในแอป ไฟล์' : (window.BurinShell && window.BurinShell.platform === 'android' ? 'ไฟล์อยู่ในที่ที่เลือกไว้' : 'บน iPad ไฟล์อยู่ในแอป ไฟล์ โฟลเดอร์ ดาวน์โหลด')), 'ok');
     return r;
   } catch (e) {
     if (e && e.code === 'declined') { say && say('ยกเลิกการบันทึกไฟล์'); return null; }
